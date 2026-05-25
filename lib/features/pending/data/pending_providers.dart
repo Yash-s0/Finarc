@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_providers.dart';
+import '../../alerts/data/alerts_providers.dart';
 import '../../expenses/data/expenses_providers.dart';
 import '../models/pending_models.dart';
 import '../parsing/parsing.dart';
@@ -75,6 +76,7 @@ final pendingActionProvider = Provider((ref) {
 
   Future<void> confirm(int pendingId, PendingEditData editedData) async {
     await service.confirmPendingTransaction(pendingId, editedData);
+    await ref.read(alertEvaluationActionsProvider).evaluateAll();
     ref.invalidate(pendingTransactionsProvider);
     ref.invalidate(expenseListProvider);
     ref.invalidate(pendingCountProvider);

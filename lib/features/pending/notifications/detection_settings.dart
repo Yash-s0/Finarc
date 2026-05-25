@@ -19,6 +19,20 @@ class DetectionSettings {
     required this.smsBackfillEnabled,
     required this.smsBackfillDays,
     required this.smsLastScannedAt,
+    required this.quietHoursStartHour,
+    required this.quietHoursStartMinute,
+    required this.quietHoursEndHour,
+    required this.quietHoursEndMinute,
+    required this.smartAlertsEnabled,
+    required this.lowBalanceAlertsEnabled,
+    required this.lowBalanceThreshold,
+    required this.largeExpenseAlertsEnabled,
+    required this.largeExpenseThreshold,
+    required this.unusualSpendingAlertsEnabled,
+    required this.unusualSpendingMultiplier,
+    required this.recurringMerchantAlertsEnabled,
+    required this.weeklySummaryAlertsEnabled,
+    required this.monthlySummaryAlertsEnabled,
   });
 
   final bool notificationDetectionEnabled;
@@ -38,6 +52,20 @@ class DetectionSettings {
   final bool smsBackfillEnabled;
   final int smsBackfillDays;
   final DateTime? smsLastScannedAt;
+  final int quietHoursStartHour;
+  final int quietHoursStartMinute;
+  final int quietHoursEndHour;
+  final int quietHoursEndMinute;
+  final bool smartAlertsEnabled;
+  final bool lowBalanceAlertsEnabled;
+  final double lowBalanceThreshold;
+  final bool largeExpenseAlertsEnabled;
+  final double largeExpenseThreshold;
+  final bool unusualSpendingAlertsEnabled;
+  final double unusualSpendingMultiplier;
+  final bool recurringMerchantAlertsEnabled;
+  final bool weeklySummaryAlertsEnabled;
+  final bool monthlySummaryAlertsEnabled;
 
   TimeOfDay get reminderTime =>
       TimeOfDay(hour: reminderHour, minute: reminderMinute);
@@ -61,6 +89,20 @@ class DetectionSettings {
     bool? smsBackfillEnabled,
     int? smsBackfillDays,
     DateTime? smsLastScannedAt,
+    int? quietHoursStartHour,
+    int? quietHoursStartMinute,
+    int? quietHoursEndHour,
+    int? quietHoursEndMinute,
+    bool? smartAlertsEnabled,
+    bool? lowBalanceAlertsEnabled,
+    double? lowBalanceThreshold,
+    bool? largeExpenseAlertsEnabled,
+    double? largeExpenseThreshold,
+    bool? unusualSpendingAlertsEnabled,
+    double? unusualSpendingMultiplier,
+    bool? recurringMerchantAlertsEnabled,
+    bool? weeklySummaryAlertsEnabled,
+    bool? monthlySummaryAlertsEnabled,
     bool clearSmsLastScannedAt = false,
     bool clearLastReminderShownAt = false,
   }) {
@@ -96,6 +138,29 @@ class DetectionSettings {
       smsLastScannedAt: clearSmsLastScannedAt
           ? null
           : (smsLastScannedAt ?? this.smsLastScannedAt),
+      quietHoursStartHour: quietHoursStartHour ?? this.quietHoursStartHour,
+      quietHoursStartMinute:
+          quietHoursStartMinute ?? this.quietHoursStartMinute,
+      quietHoursEndHour: quietHoursEndHour ?? this.quietHoursEndHour,
+      quietHoursEndMinute: quietHoursEndMinute ?? this.quietHoursEndMinute,
+      smartAlertsEnabled: smartAlertsEnabled ?? this.smartAlertsEnabled,
+      lowBalanceAlertsEnabled:
+          lowBalanceAlertsEnabled ?? this.lowBalanceAlertsEnabled,
+      lowBalanceThreshold: lowBalanceThreshold ?? this.lowBalanceThreshold,
+      largeExpenseAlertsEnabled:
+          largeExpenseAlertsEnabled ?? this.largeExpenseAlertsEnabled,
+      largeExpenseThreshold:
+          largeExpenseThreshold ?? this.largeExpenseThreshold,
+      unusualSpendingAlertsEnabled:
+          unusualSpendingAlertsEnabled ?? this.unusualSpendingAlertsEnabled,
+      unusualSpendingMultiplier:
+          unusualSpendingMultiplier ?? this.unusualSpendingMultiplier,
+      recurringMerchantAlertsEnabled:
+          recurringMerchantAlertsEnabled ?? this.recurringMerchantAlertsEnabled,
+      weeklySummaryAlertsEnabled:
+          weeklySummaryAlertsEnabled ?? this.weeklySummaryAlertsEnabled,
+      monthlySummaryAlertsEnabled:
+          monthlySummaryAlertsEnabled ?? this.monthlySummaryAlertsEnabled,
     );
   }
 
@@ -118,6 +183,20 @@ class DetectionSettings {
       smsBackfillEnabled: false,
       smsBackfillDays: 7,
       smsLastScannedAt: null,
+      quietHoursStartHour: 22,
+      quietHoursStartMinute: 0,
+      quietHoursEndHour: 7,
+      quietHoursEndMinute: 0,
+      smartAlertsEnabled: true,
+      lowBalanceAlertsEnabled: true,
+      lowBalanceThreshold: 2000,
+      largeExpenseAlertsEnabled: true,
+      largeExpenseThreshold: 10000,
+      unusualSpendingAlertsEnabled: true,
+      unusualSpendingMultiplier: 1.8,
+      recurringMerchantAlertsEnabled: true,
+      weeklySummaryAlertsEnabled: true,
+      monthlySummaryAlertsEnabled: true,
     );
   }
 }

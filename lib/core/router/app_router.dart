@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/analytics/presentation/analytics_screen.dart';
+import '../../features/alerts/presentation/alerts_center_screen.dart';
 import '../../features/cards/presentation/add_card_screen.dart';
 import '../../features/cards/presentation/bill_detail_screen.dart';
 import '../../features/cards/presentation/card_detail_screen.dart';
@@ -205,6 +206,7 @@ final appRouter = GoRouter(
       },
     ),
     GoRoute(path: '/analytics', builder: (_, _) => const AnalyticsScreen()),
+    GoRoute(path: '/alerts', builder: (_, _) => const AlertsCenterScreen()),
     GoRoute(
       path: '/onboarding',
       builder: (_, _) => const OnboardingFlowScreen(),

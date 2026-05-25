@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/database_providers.dart';
 import '../../../core/router/app_router.dart';
+import '../../alerts/data/alerts_providers.dart';
 import '../data/pending_providers.dart';
 import 'detection_settings.dart';
 import 'detection_settings_service.dart';
@@ -71,6 +72,20 @@ class DetectionSettingsController extends AsyncNotifier<DetectionSettings> {
     bool? smsBackfillEnabled,
     int? smsBackfillDays,
     DateTime? smsLastScannedAt,
+    int? quietHoursStartHour,
+    int? quietHoursStartMinute,
+    int? quietHoursEndHour,
+    int? quietHoursEndMinute,
+    bool? smartAlertsEnabled,
+    bool? lowBalanceAlertsEnabled,
+    double? lowBalanceThreshold,
+    bool? largeExpenseAlertsEnabled,
+    double? largeExpenseThreshold,
+    bool? unusualSpendingAlertsEnabled,
+    double? unusualSpendingMultiplier,
+    bool? recurringMerchantAlertsEnabled,
+    bool? weeklySummaryAlertsEnabled,
+    bool? monthlySummaryAlertsEnabled,
     bool clearSmsLastScannedAt = false,
     bool clearLastReminderShownAt = false,
   }) async {
@@ -94,6 +109,20 @@ class DetectionSettingsController extends AsyncNotifier<DetectionSettings> {
       smsBackfillEnabled: smsBackfillEnabled,
       smsBackfillDays: smsBackfillDays,
       smsLastScannedAt: smsLastScannedAt,
+      quietHoursStartHour: quietHoursStartHour,
+      quietHoursStartMinute: quietHoursStartMinute,
+      quietHoursEndHour: quietHoursEndHour,
+      quietHoursEndMinute: quietHoursEndMinute,
+      smartAlertsEnabled: smartAlertsEnabled,
+      lowBalanceAlertsEnabled: lowBalanceAlertsEnabled,
+      lowBalanceThreshold: lowBalanceThreshold,
+      largeExpenseAlertsEnabled: largeExpenseAlertsEnabled,
+      largeExpenseThreshold: largeExpenseThreshold,
+      unusualSpendingAlertsEnabled: unusualSpendingAlertsEnabled,
+      unusualSpendingMultiplier: unusualSpendingMultiplier,
+      recurringMerchantAlertsEnabled: recurringMerchantAlertsEnabled,
+      weeklySummaryAlertsEnabled: weeklySummaryAlertsEnabled,
+      monthlySummaryAlertsEnabled: monthlySummaryAlertsEnabled,
       clearSmsLastScannedAt: clearSmsLastScannedAt,
       clearLastReminderShownAt: clearLastReminderShownAt,
     );
@@ -295,6 +324,10 @@ final notificationListenerBootstrapProvider = Provider<void>((ref) {
     ref.read(smsPermissionCachedProvider.notifier).state = granted;
   }
 
+  Future<void> runAlertEvaluation() async {
+    await ref.read(alertEvaluationActionsProvider).evaluateAll();
+  }
+
   Future<void> handleRoute(String route) async {
     final action = parseNotificationRouteAction(route);
     if (action.type == 'ignore' && action.pendingId != null) {
@@ -309,18 +342,49 @@ final notificationListenerBootstrapProvider = Provider<void>((ref) {
     appRouter.go(route);
   }
 
+  String pendingAlertTitle(NotificationPayload payload) {
+    final text = payload.combinedText;
+    final amountMatch = RegExp(
+      r'(?:INR|Rs\.?|₹)\s*[0-9][0-9,]*(?:\.[0-9]{1,2})?',
+      caseSensitive: false,
+    ).firstMatch(text);
+    final amount = amountMatch?.group(0)?.replaceAll('INR', '₹') ?? 'Amount';
+    final merchant =
+        payload.title?.trim().isNotEmpty == true
+        ? payload.title!.trim()
+        : (payload.sender?.trim().isNotEmpty == true
+              ? payload.sender!.trim()
+              : (payload.appName ?? 'merchant'));
+    return '$amount detected at $merchant';
+  }
+
   unawaited(refreshSmsPermission());
+  unawaited(runAlertEvaluation());
 
   unawaited(
     bridge.initialize(
       onPayload: (payload) async {
         if (payload.sourceType == 'sms') {
-          await smsIngestion.processSmsPayload(payload);
+          final ids = await smsIngestion.processSmsPayload(payload);
+          if (ids.isNotEmpty) {
+            await ref.read(alertEvaluationActionsProvider).onPendingDetected(
+              pendingId: ids.first,
+              title: pendingAlertTitle(payload),
+              body: 'Confirm this transaction in Finarc.',
+            );
+          }
           ref.invalidate(pendingTransactionsProvider);
           ref.invalidate(pendingCountProvider);
           return;
         }
-        await notificationIngestion.processPayload(payload);
+        final ids = await notificationIngestion.processPayload(payload);
+        if (ids.isNotEmpty) {
+          await ref.read(alertEvaluationActionsProvider).onPendingDetected(
+            pendingId: ids.first,
+            title: pendingAlertTitle(payload),
+            body: 'Confirm this transaction in Finarc.',
+          );
+        }
         ref.invalidate(pendingTransactionsProvider);
         ref.invalidate(pendingCountProvider);
       },

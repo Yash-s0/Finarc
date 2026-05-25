@@ -13,6 +13,7 @@ import '../../../core/database/database_providers.dart';
 import '../../../core/database/reset_data_service.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../accounts/data/accounts_providers.dart';
+import '../../alerts/data/alerts_providers.dart';
 import '../../cards/data/cards_providers.dart';
 import '../../dashboard/data/dashboard_providers.dart';
 import '../../expenses/data/expenses_providers.dart';
@@ -20,6 +21,7 @@ import '../../loans/data/loans_providers.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
 import '../../onboarding/data/onboarding_providers.dart';
 import '../../pending/data/pending_providers.dart';
+import '../../pending/notifications/detection_settings.dart';
 import '../../pending/notifications/notification_providers.dart';
 import '../../split/data/split_providers.dart';
 
@@ -138,6 +140,119 @@ class ProfileScreen extends ConsumerWidget {
                         ),
                       ),
                     ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          FinarcCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Alerts & Quiet Hours',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: AppSpacing.xxs),
+                Text(
+                  'Control smart local alerts, summaries, and quiet-hour suppression.',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FinarcSecondaryButton(
+                        onPressed: () => context.push('/alerts'),
+                        label: 'Open Alerts Center',
+                        icon: Icons.notifications_none_rounded,
+                      ),
+                    ),
+                  ],
+                ),
+                if (settings != null) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  _settingToggle(
+                    context,
+                    label: 'Smart alerts enabled',
+                    value: settings.smartAlertsEnabled,
+                    onChanged: (value) {
+                      ref
+                          .read(detectionSettingsProvider.notifier)
+                          .applyChanges(smartAlertsEnabled: value);
+                    },
+                  ),
+                  _settingToggle(
+                    context,
+                    label: 'Low balance alerts',
+                    value: settings.lowBalanceAlertsEnabled,
+                    onChanged: (value) {
+                      ref
+                          .read(detectionSettingsProvider.notifier)
+                          .applyChanges(lowBalanceAlertsEnabled: value);
+                    },
+                  ),
+                  _settingToggle(
+                    context,
+                    label: 'Large expense alerts',
+                    value: settings.largeExpenseAlertsEnabled,
+                    onChanged: (value) {
+                      ref
+                          .read(detectionSettingsProvider.notifier)
+                          .applyChanges(largeExpenseAlertsEnabled: value);
+                    },
+                  ),
+                  _settingToggle(
+                    context,
+                    label: 'Unusual spending alerts',
+                    value: settings.unusualSpendingAlertsEnabled,
+                    onChanged: (value) {
+                      ref
+                          .read(detectionSettingsProvider.notifier)
+                          .applyChanges(unusualSpendingAlertsEnabled: value);
+                    },
+                  ),
+                  _settingToggle(
+                    context,
+                    label: 'Recurring merchant alerts',
+                    value: settings.recurringMerchantAlertsEnabled,
+                    onChanged: (value) {
+                      ref
+                          .read(detectionSettingsProvider.notifier)
+                          .applyChanges(recurringMerchantAlertsEnabled: value);
+                    },
+                  ),
+                  _settingToggle(
+                    context,
+                    label: 'Weekly summary alerts',
+                    value: settings.weeklySummaryAlertsEnabled,
+                    onChanged: (value) {
+                      ref
+                          .read(detectionSettingsProvider.notifier)
+                          .applyChanges(weeklySummaryAlertsEnabled: value);
+                    },
+                  ),
+                  _settingToggle(
+                    context,
+                    label: 'Monthly summary alerts',
+                    value: settings.monthlySummaryAlertsEnabled,
+                    onChanged: (value) {
+                      ref
+                          .read(detectionSettingsProvider.notifier)
+                          .applyChanges(monthlySummaryAlertsEnabled: value);
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'Quiet hours: ${_timeFmt(settings.quietHoursStartHour, settings.quietHoursStartMinute)} - ${_timeFmt(settings.quietHoursEndHour, settings.quietHoursEndMinute)}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  FinarcSecondaryButton(
+                    onPressed: () => _pickQuietHours(context, ref, settings),
+                    icon: Icons.nightlight_round,
+                    label: 'Configure Quiet Hours',
                   ),
                 ],
               ],
@@ -704,9 +819,68 @@ class ProfileScreen extends ConsumerWidget {
     ref.invalidate(pendingCountProvider);
     ref.invalidate(splitDashboardProvider);
     ref.invalidate(loansDashboardProvider);
+    ref.invalidate(alertsInboxProvider);
+    ref.invalidate(alertsUnreadCountProvider);
+    ref.invalidate(latestImportantAlertProvider);
     ref.invalidate(onboardingCompletedProvider);
     ref.invalidate(detectionSettingsProvider);
     ref.invalidate(_localRowsSummaryProvider);
+  }
+
+  Widget _settingToggle(
+    BuildContext context, {
+    required String label,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ),
+        Switch.adaptive(value: value, onChanged: onChanged),
+      ],
+    );
+  }
+
+  String _timeFmt(int hour, int minute) {
+    final suffix = hour >= 12 ? 'PM' : 'AM';
+    final h = hour % 12 == 0 ? 12 : hour % 12;
+    return '${h.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')} $suffix';
+  }
+
+  Future<void> _pickQuietHours(
+    BuildContext context,
+    WidgetRef ref,
+    DetectionSettings settings,
+  ) async {
+    final start = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(
+        hour: settings.quietHoursStartHour as int,
+        minute: settings.quietHoursStartMinute as int,
+      ),
+    );
+    if (start == null || !context.mounted) return;
+
+    final end = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(
+        hour: settings.quietHoursEndHour as int,
+        minute: settings.quietHoursEndMinute as int,
+      ),
+    );
+    if (end == null || !context.mounted) return;
+
+    await ref.read(detectionSettingsProvider.notifier).applyChanges(
+      quietHoursStartHour: start.hour,
+      quietHoursStartMinute: start.minute,
+      quietHoursEndHour: end.hour,
+      quietHoursEndMinute: end.minute,
+    );
   }
 
   Future<void> _confirmResetAllData(BuildContext context, WidgetRef ref) async {

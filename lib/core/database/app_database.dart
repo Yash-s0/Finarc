@@ -199,6 +199,21 @@ class LoanPayments extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
+class Alerts extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get alertType => text()();
+  TextColumn get title => text()();
+  TextColumn get body => text()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get scheduledAt => dateTime().nullable()();
+  TextColumn get priority => text().withDefault(const Constant('info'))();
+  DateTimeColumn get readAt => dateTime().nullable()();
+  TextColumn get actionRoute => text().nullable()();
+  TextColumn get payload => text().nullable()();
+  DateTimeColumn get dismissedAt => dateTime().nullable()();
+  TextColumn get dedupeKey => text().nullable()();
+}
+
 class AppSettings extends Table {
   IntColumn get id => integer().autoIncrement()();
   BoolColumn get isDarkMode => boolean().withDefault(const Constant(false))();
@@ -234,6 +249,33 @@ class AppSettings extends Table {
   DateTimeColumn get smsLastScannedAt => dateTime().nullable()();
   BoolColumn get hasCompletedOnboarding =>
       boolean().withDefault(const Constant(false))();
+  IntColumn get quietHoursStartHour =>
+      integer().withDefault(const Constant(22))();
+  IntColumn get quietHoursStartMinute =>
+      integer().withDefault(const Constant(0))();
+  IntColumn get quietHoursEndHour => integer().withDefault(const Constant(7))();
+  IntColumn get quietHoursEndMinute =>
+      integer().withDefault(const Constant(0))();
+  BoolColumn get smartAlertsEnabled =>
+      boolean().withDefault(const Constant(true))();
+  BoolColumn get lowBalanceAlertsEnabled =>
+      boolean().withDefault(const Constant(true))();
+  RealColumn get lowBalanceThreshold =>
+      real().withDefault(const Constant(2000))();
+  BoolColumn get largeExpenseAlertsEnabled =>
+      boolean().withDefault(const Constant(true))();
+  RealColumn get largeExpenseThreshold =>
+      real().withDefault(const Constant(10000))();
+  BoolColumn get unusualSpendingAlertsEnabled =>
+      boolean().withDefault(const Constant(true))();
+  RealColumn get unusualSpendingMultiplier =>
+      real().withDefault(const Constant(1.8))();
+  BoolColumn get recurringMerchantAlertsEnabled =>
+      boolean().withDefault(const Constant(true))();
+  BoolColumn get weeklySummaryAlertsEnabled =>
+      boolean().withDefault(const Constant(true))();
+  BoolColumn get monthlySummaryAlertsEnabled =>
+      boolean().withDefault(const Constant(true))();
 }
 
 @DriftDatabase(
@@ -251,6 +293,7 @@ class AppSettings extends Table {
     SplitSettlements,
     Loans,
     LoanPayments,
+    Alerts,
     AppSettings,
   ],
 )
@@ -258,7 +301,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -378,6 +421,32 @@ class AppDatabase extends _$AppDatabase {
         if (hasLoanPayments.isEmpty) {
           await m.createTable(loanPayments);
         }
+      }
+      if (from < 11) {
+        await m.createTable(alerts);
+        await m.addColumn(appSettings, appSettings.quietHoursStartHour);
+        await m.addColumn(appSettings, appSettings.quietHoursStartMinute);
+        await m.addColumn(appSettings, appSettings.quietHoursEndHour);
+        await m.addColumn(appSettings, appSettings.quietHoursEndMinute);
+        await m.addColumn(appSettings, appSettings.smartAlertsEnabled);
+        await m.addColumn(appSettings, appSettings.lowBalanceAlertsEnabled);
+        await m.addColumn(appSettings, appSettings.lowBalanceThreshold);
+        await m.addColumn(appSettings, appSettings.largeExpenseAlertsEnabled);
+        await m.addColumn(appSettings, appSettings.largeExpenseThreshold);
+        await m.addColumn(
+          appSettings,
+          appSettings.unusualSpendingAlertsEnabled,
+        );
+        await m.addColumn(appSettings, appSettings.unusualSpendingMultiplier);
+        await m.addColumn(
+          appSettings,
+          appSettings.recurringMerchantAlertsEnabled,
+        );
+        await m.addColumn(appSettings, appSettings.weeklySummaryAlertsEnabled);
+        await m.addColumn(
+          appSettings,
+          appSettings.monthlySummaryAlertsEnabled,
+        );
       }
     },
   );

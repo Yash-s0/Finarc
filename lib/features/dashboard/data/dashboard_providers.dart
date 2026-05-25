@@ -32,6 +32,8 @@ class DashboardSnapshot {
     required this.payableAmount,
     required this.debtRatio,
     required this.monthlyEmiBurden,
+    required this.unreadAlertsCount,
+    required this.latestImportantAlert,
   });
 
   final double netWorth;
@@ -55,6 +57,8 @@ class DashboardSnapshot {
   final double payableAmount;
   final double debtRatio;
   final double monthlyEmiBurden;
+  final int unreadAlertsCount;
+  final Alert? latestImportantAlert;
 }
 
 final dashboardProvider = FutureProvider<DashboardSnapshot>((ref) async {
@@ -77,6 +81,22 @@ final dashboardProvider = FutureProvider<DashboardSnapshot>((ref) async {
           .getSingle()
           .then((r) => r.read(db.pendingTransactions.id.count()) ?? 0);
   final bills = await db.select(db.cardBills).get();
+  final unreadAlertsCount =
+      await (db.selectOnly(db.alerts)
+            ..addColumns([db.alerts.id.count()])
+            ..where(db.alerts.readAt.isNull() & db.alerts.dismissedAt.isNull()))
+          .getSingle()
+          .then((r) => r.read(db.alerts.id.count()) ?? 0);
+  final latestImportantAlert =
+      await (db.select(db.alerts)
+            ..where(
+              (a) =>
+                  a.dismissedAt.isNull() &
+                  (a.priority.equals('critical') | a.priority.equals('warning')),
+            )
+            ..orderBy([(a) => OrderingTerm.desc(a.createdAt)])
+            ..limit(1))
+          .getSingleOrNull();
   final settings = await (db.select(
     db.appSettings,
   )..limit(1)).getSingleOrNull();
@@ -138,5 +158,7 @@ final dashboardProvider = FutureProvider<DashboardSnapshot>((ref) async {
     payableAmount: breakdown.payableAmount,
     debtRatio: breakdown.debtRatio,
     monthlyEmiBurden: breakdown.monthlyEmiBurden,
+    unreadAlertsCount: unreadAlertsCount,
+    latestImportantAlert: latestImportantAlert,
   );
 });

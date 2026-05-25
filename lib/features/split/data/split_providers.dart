@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_providers.dart';
+import '../../alerts/data/alerts_providers.dart';
 import '../../expenses/data/expenses_providers.dart';
 import 'split_service.dart';
 
@@ -172,6 +173,7 @@ final splitActionsProvider = Provider((ref) {
 
   Future<int> addExpense(AddSplitExpenseInput input) async {
     final id = await service.addSplitExpense(input);
+    await ref.read(alertEvaluationActionsProvider).evaluateAll();
     ref.invalidate(splitGroupDetailProvider(input.groupId));
     ref.invalidate(splitDashboardProvider);
     return id;
@@ -197,6 +199,7 @@ final splitActionsProvider = Provider((ref) {
       paymentSourceId: paymentSourceId,
       notes: notes,
     );
+    await ref.read(alertEvaluationActionsProvider).evaluateAll();
     ref.invalidate(splitGroupDetailProvider(groupId));
     ref.invalidate(splitDashboardProvider);
     return id;

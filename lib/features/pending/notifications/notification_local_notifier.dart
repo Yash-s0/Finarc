@@ -48,6 +48,27 @@ class NotificationLocalNotifier {
     }
   }
 
+  Future<void> showAlert({
+    required String title,
+    required String body,
+    String route = '/alerts',
+    String channelType = 'alerts',
+  }) async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+    try {
+      await _channel.invokeMethod<void>('showAlertNotification', {
+        'title': title,
+        'body': body,
+        'route': route,
+        'channelType': channelType,
+      });
+    } on MissingPluginException {
+      return;
+    } on PlatformException {
+      return;
+    }
+  }
+
   Future<void> scheduleReminder({
     required int reminderId,
     required DateTime triggerAt,

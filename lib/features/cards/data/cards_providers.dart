@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_providers.dart';
+import '../../alerts/data/alerts_providers.dart';
 import 'billing_service.dart';
 
 final billingServiceProvider = Provider<BillingService>((ref) {
@@ -126,6 +127,7 @@ final markBillPaidProvider = Provider((ref) {
     await ref
         .read(billingServiceProvider)
         .markBillAsPaid(billId, bankAccountId, amount);
+    await ref.read(alertEvaluationActionsProvider).evaluateAll();
     ref.invalidate(cardsOverviewProvider);
   };
 });

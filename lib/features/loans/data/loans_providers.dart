@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_providers.dart';
+import '../../alerts/data/alerts_providers.dart';
 import '../../dashboard/data/dashboard_providers.dart';
 import '../../expenses/data/expenses_providers.dart';
 import '../../pending/notifications/notification_providers.dart';
@@ -181,6 +182,7 @@ final loanActionsProvider = Provider((ref) {
       notes: notes,
     );
     await reminderService.syncLoanEmiReminders(enabled: true);
+    await ref.read(alertEvaluationActionsProvider).evaluateAll();
     ref.invalidate(loansDashboardProvider);
     ref.invalidate(dashboardProvider);
     return id;
@@ -219,6 +221,7 @@ final loanActionsProvider = Provider((ref) {
       notes: notes,
     );
     await reminderService.syncLoanEmiReminders(enabled: true);
+    await ref.read(alertEvaluationActionsProvider).evaluateAll();
     ref.invalidate(loansDashboardProvider);
     ref.invalidate(loanDetailProvider(id));
     ref.invalidate(dashboardProvider);
@@ -227,6 +230,7 @@ final loanActionsProvider = Provider((ref) {
   Future<void> closeLoan(int id) async {
     await service.closeLoan(id);
     await reminderService.syncLoanEmiReminders(enabled: true);
+    await ref.read(alertEvaluationActionsProvider).evaluateAll();
     ref.invalidate(loansDashboardProvider);
     ref.invalidate(loanDetailProvider(id));
     ref.invalidate(dashboardProvider);
@@ -249,6 +253,7 @@ final loanActionsProvider = Provider((ref) {
       notes: notes,
     );
     await reminderService.syncLoanEmiReminders(enabled: true);
+    await ref.read(alertEvaluationActionsProvider).evaluateAll();
     ref.invalidate(loansDashboardProvider);
     ref.invalidate(loanDetailProvider(loanId));
     ref.invalidate(dashboardProvider);

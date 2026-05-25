@@ -200,6 +200,45 @@ class DashboardScreen extends ConsumerWidget {
                   'Track money confidently, offline.',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
+                const SizedBox(height: AppSpacing.sm),
+                FinarcCard(
+                  onTap: () => context.push('/alerts'),
+                  child: Row(
+                    children: [
+                      const CircleAvatar(
+                        radius: 18,
+                        backgroundColor: AppColors.darkPrimarySoft,
+                        child: Icon(Icons.notifications_none_rounded, size: 18),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('View Alerts'),
+                            const SizedBox(height: 2),
+                            Text(
+                              data.latestImportantAlert?.body ??
+                                  'Open alerts center to review reminders and warnings.',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                      FinarcStatusBadge(
+                        label: data.unreadAlertsCount > 0
+                            ? '${data.unreadAlertsCount} NEW'
+                            : 'NO NEW',
+                        tone: data.unreadAlertsCount > 0
+                            ? FinarcStatusTone.warning
+                            : FinarcStatusTone.neutral,
+                        compact: true,
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: AppSpacing.md),
                 FinarcBalanceCard(
                   label: 'Net Worth',

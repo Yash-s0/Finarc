@@ -64,6 +64,7 @@ class ResetDataService {
       await _db.delete(_db.cashWallets).go();
       await _db.delete(_db.loanPayments).go();
       await _db.delete(_db.loans).go();
+      await _db.delete(_db.alerts).go();
 
       if (settings == null) {
         await _db

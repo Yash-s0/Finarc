@@ -27,6 +27,20 @@ class MainActivity : FlutterActivity() {
         private const val DETECTED_CHANNEL_NAME = "Detected Transactions"
         private const val REMINDER_CHANNEL_ID = "finarc_reminders"
         private const val REMINDER_CHANNEL_NAME = "Finarc Reminders"
+        private const val ALERTS_CHANNEL_ID = "finarc_alerts"
+        private const val ALERTS_CHANNEL_NAME = "Finarc Alerts"
+        private const val TRANSACTIONS_CHANNEL_ID = "finarc_transactions"
+        private const val TRANSACTIONS_CHANNEL_NAME = "Transactions"
+        private const val BILLS_CHANNEL_ID = "finarc_bills"
+        private const val BILLS_CHANNEL_NAME = "Bills"
+        private const val EMIS_CHANNEL_ID = "finarc_emis"
+        private const val EMIS_CHANNEL_NAME = "EMIs"
+        private const val SPLITS_CHANNEL_ID = "finarc_splits"
+        private const val SPLITS_CHANNEL_NAME = "Splits"
+        private const val ANALYTICS_CHANNEL_ID = "finarc_analytics"
+        private const val ANALYTICS_CHANNEL_NAME = "Analytics"
+        private const val SUMMARIES_CHANNEL_ID = "finarc_summaries"
+        private const val SUMMARIES_CHANNEL_NAME = "Summaries"
         private const val EXTRA_ROUTE = "finarc_route"
         private const val SMS_PERMISSION_REQUEST_CODE = 7307
 
@@ -106,6 +120,15 @@ class MainActivity : FlutterActivity() {
                     val body = call.argument<String>("body") ?: "Open Finarc"
                     val route = call.argument<String>("route") ?: "/"
                     showReminderNotification(title, body, route)
+                    result.success(true)
+                }
+
+                "showAlertNotification" -> {
+                    val title = call.argument<String>("title") ?: "Finarc Alert"
+                    val body = call.argument<String>("body") ?: "Open Finarc"
+                    val route = call.argument<String>("route") ?: "/alerts"
+                    val channelType = call.argument<String>("channelType") ?: "alerts"
+                    showAlertNotification(title, body, route, channelType)
                     result.success(true)
                 }
 
@@ -328,6 +351,30 @@ class MainActivity : FlutterActivity() {
         NotificationManagerCompat.from(this).notify((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), notification)
     }
 
+    private fun showAlertNotification(title: String, body: String, route: String, channelType: String) {
+        createChannelsIfNeeded()
+        val channelId = when (channelType) {
+            "transactions" -> TRANSACTIONS_CHANNEL_ID
+            "bills" -> BILLS_CHANNEL_ID
+            "emis" -> EMIS_CHANNEL_ID
+            "splits" -> SPLITS_CHANNEL_ID
+            "analytics" -> ANALYTICS_CHANNEL_ID
+            "summaries" -> SUMMARIES_CHANNEL_ID
+            "alerts" -> ALERTS_CHANNEL_ID
+            else -> ALERTS_CHANNEL_ID
+        }
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setContentIntent(createRoutePendingIntent(route, "$route:$channelType".hashCode()))
+            .build()
+        NotificationManagerCompat.from(this).notify((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), notification)
+    }
+
     private fun scheduleReminder(
         reminderId: Int,
         triggerAtMillis: Long,
@@ -437,5 +484,57 @@ class MainActivity : FlutterActivity() {
             description = "Finance reminders from Finarc"
         }
         manager.createNotificationChannel(reminderChannel)
+
+        val alertsChannel = NotificationChannel(
+            ALERTS_CHANNEL_ID,
+            ALERTS_CHANNEL_NAME,
+            NotificationManager.IMPORTANCE_DEFAULT,
+        ).apply {
+            description = "General financial alerts"
+        }
+        manager.createNotificationChannel(alertsChannel)
+
+        manager.createNotificationChannel(
+            NotificationChannel(
+                TRANSACTIONS_CHANNEL_ID,
+                TRANSACTIONS_CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ),
+        )
+        manager.createNotificationChannel(
+            NotificationChannel(
+                BILLS_CHANNEL_ID,
+                BILLS_CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_HIGH,
+            ),
+        )
+        manager.createNotificationChannel(
+            NotificationChannel(
+                EMIS_CHANNEL_ID,
+                EMIS_CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_HIGH,
+            ),
+        )
+        manager.createNotificationChannel(
+            NotificationChannel(
+                SPLITS_CHANNEL_ID,
+                SPLITS_CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ),
+        )
+        manager.createNotificationChannel(
+            NotificationChannel(
+                ANALYTICS_CHANNEL_ID,
+                ANALYTICS_CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_LOW,
+            ),
+        )
+        manager.createNotificationChannel(
+            NotificationChannel(
+                SUMMARIES_CHANNEL_ID,
+                SUMMARIES_CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_LOW,
+            ),
+        )
     }
 }

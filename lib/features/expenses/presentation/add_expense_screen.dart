@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,10 +7,12 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
+import '../../alerts/data/alerts_providers.dart';
 import '../../cards/data/cards_providers.dart';
 import '../data/expenses_providers.dart';
 import '../data/transaction_engine.dart';
 import '../models/transaction_types.dart';
+import '../../../core/database/database_providers.dart';
 
 class AddExpenseScreen extends ConsumerStatefulWidget {
   const AddExpenseScreen({super.key, this.isIncome = false});
@@ -372,6 +375,16 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
               recoverableAmount: recoverable,
             ),
           );
+
+      final db = ref.read(appDatabaseProvider);
+      final latest = await (db.select(
+        db.transactions,
+      )..orderBy([(t) => OrderingTerm.desc(t.id)])..limit(1)).getSingleOrNull();
+      if (latest != null) {
+        await ref
+            .read(alertEvaluationActionsProvider)
+            .evaluateAfterTransaction(latest);
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
