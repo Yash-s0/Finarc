@@ -1,0 +1,3 @@
+class AppPlaceholderModel {
+  const AppPlaceholderModel();
+}

@@ -1,0 +1,257 @@
+import 'package:drift/native.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import 'package:finarc/core/database/app_database.dart';
+import 'package:finarc/features/expenses/data/transaction_engine.dart';
+import 'package:finarc/features/pending/data/pending_service.dart';
+import 'package:finarc/features/pending/notifications/notification_keyword_filter.dart';
+import 'package:finarc/features/pending/notifications/notification_local_notifier.dart';
+import 'package:finarc/features/pending/notifications/notification_payload.dart';
+import 'package:finarc/features/pending/notifications/notification_fingerprint.dart';
+import 'package:finarc/features/pending/notifications/notification_ingestion_service.dart';
+import 'package:finarc/features/pending/notifications/sms_fingerprint.dart';
+import 'package:finarc/features/pending/notifications/sms_ingestion_service.dart';
+import 'package:finarc/features/pending/parsing/parsers/card_notification_parser.dart';
+import 'package:finarc/features/pending/parsing/parsers/generic_bank_sms_parser.dart';
+import 'package:finarc/features/pending/parsing/parsers/generic_fallback_parser.dart';
+import 'package:finarc/features/pending/parsing/parsers/upi_notification_parser.dart';
+import 'package:finarc/features/pending/parsing/pending_ingestion_service.dart';
+import 'package:finarc/features/pending/parsing/transaction_parser_registry.dart';
+
+class _FakeNotifier extends NotificationLocalNotifier {
+  int showCount = 0;
+
+  @override
+  Future<void> showDetected({
+    required String title,
+    required String body,
+    String route = '/pending',
+    int? pendingId,
+    bool showActions = true,
+  }) async {
+    showCount += 1;
+  }
+}
+
+void main() {
+  group('sms keyword filter', () {
+    test('accepts transaction SMS keyword set', () {
+      final filter = NotificationKeywordFilter();
+      final payload = NotificationPayload(
+        packageName: 'android.sms',
+        sourceType: 'sms',
+        receivedAt: DateTime(2026, 5, 25, 9),
+        sender: 'HDFCBK',
+        body: 'INR 1200 debited from your A/c. Avl Bal INR 5000',
+      );
+      final result = filter.evaluate(payload);
+      expect(result.accepted, isTrue);
+    });
+  });
+
+  group('sms fingerprint', () {
+    test('suppresses duplicates', () {
+      final fp = SmsFingerprint();
+      final key = fp.build(
+        sender: 'HDFCBK',
+        body: 'INR 1200 debited from your account',
+        receivedAt: DateTime(2026, 5, 25, 9, 0, 0, 100),
+      );
+      expect(fp.isDuplicate(key, DateTime(2026, 5, 25, 9, 0, 0, 100)), isFalse);
+      expect(fp.isDuplicate(key, DateTime(2026, 5, 25, 9, 1, 0, 100)), isTrue);
+    });
+  });
+
+  group('sms ingestion service', () {
+    late AppDatabase db;
+    late SmsIngestionService smsService;
+    late PendingIngestionService pendingIngestion;
+    late _FakeNotifier notifier;
+
+    setUp(() {
+      db = AppDatabase(NativeDatabase.memory());
+      final pendingService = PendingService(db, TransactionEngine(db));
+      final registry = TransactionParserRegistry(
+        parsers: [
+          UpiNotificationParser(),
+          CardNotificationParser(),
+          GenericBankSmsParser(),
+        ],
+        fallbackParser: GenericFallbackParser(),
+      );
+      pendingIngestion = PendingIngestionService(db, pendingService, registry);
+      notifier = _FakeNotifier();
+      smsService = SmsIngestionService(
+        database: db,
+        pendingIngestionService: pendingIngestion,
+        keywordFilter: NotificationKeywordFilter(),
+        fingerprint: SmsFingerprint(),
+        localNotifier: notifier,
+        isSmsDetectionEnabled: () => true,
+        isSmsPermissionGranted: () => true,
+        shouldShowDetectionNotifications: () => true,
+        appendDebug: (_) {},
+      );
+    });
+
+    tearDown(() async {
+      await db.close();
+    });
+
+    test('sms payload -> parser input conversion', () {
+      final payload = NotificationPayload(
+        packageName: 'android.sms',
+        sourceType: 'sms',
+        receivedAt: DateTime(2026, 5, 25, 10, 0),
+        sender: 'AX-SBIUPI',
+        body: 'Rs.700.00 debited from A/c for UPI payment to Rahul',
+      );
+      final input = smsService.toParserInput(payload);
+      expect(input.sourceType, 'sms');
+      expect(input.sender, 'AX-SBIUPI');
+      expect(input.rawText, contains('Rs.700.00'));
+    });
+
+    test('smsDetectionEnabled false prevents ingestion', () async {
+      final disabledService = SmsIngestionService(
+        database: db,
+        pendingIngestionService: pendingIngestion,
+        keywordFilter: NotificationKeywordFilter(),
+        fingerprint: SmsFingerprint(),
+        localNotifier: notifier,
+        isSmsDetectionEnabled: () => false,
+        isSmsPermissionGranted: () => true,
+        shouldShowDetectionNotifications: () => true,
+        appendDebug: (_) {},
+      );
+
+      final ids = await disabledService.processSmsPayload(
+        NotificationPayload(
+          packageName: 'android.sms',
+          sourceType: 'sms',
+          receivedAt: DateTime(2026, 5, 25, 10),
+          sender: 'HDFCBK',
+          body: 'INR 1499 spent at SWIGGY',
+        ),
+      );
+      expect(ids, isEmpty);
+    });
+
+    test('SMS ingestion creates pending transaction', () async {
+      final ids = await smsService.processSmsPayload(
+        NotificationPayload(
+          packageName: 'android.sms',
+          sourceType: 'sms',
+          receivedAt: DateTime(2026, 5, 25, 10),
+          sender: 'HDFCBK',
+          body:
+              'INR 1499 spent on your HDFC Bank Credit Card XX1234 at SWIGGY on 24-May.',
+        ),
+      );
+
+      expect(ids.length, 1);
+      final row = await (db.select(
+        db.pendingTransactions,
+      )..where((p) => p.id.equals(ids.first))).getSingle();
+      expect(row.sourceType, 'sms');
+      expect(row.rawText, contains('SWIGGY'));
+      expect(notifier.showCount, 1);
+    });
+
+    test('ignored SMS content is not stored', () async {
+      final ids = await smsService.processSmsPayload(
+        NotificationPayload(
+          packageName: 'android.sms',
+          sourceType: 'sms',
+          receivedAt: DateTime(2026, 5, 25, 10),
+          sender: 'VM-WHATSAPP',
+          body: 'hey are we meeting tonight',
+        ),
+      );
+      expect(ids, isEmpty);
+      final rows = await db.select(db.pendingTransactions).get();
+      expect(rows, isEmpty);
+    });
+
+    test('duplicate SMS suppression and backfill-style repeat', () async {
+      final payload = NotificationPayload(
+        packageName: 'android.sms',
+        sourceType: 'sms',
+        receivedAt: DateTime(2026, 5, 25, 10),
+        sender: 'AX-SBIUPI',
+        body:
+            'Rs.700.00 debited from A/c XX7821 for UPI payment to Rahul Kumar. UPI Ref 123456789.',
+      );
+      final first = await smsService.processSmsPayload(payload);
+      final second = await smsService.processSmsPayload(payload);
+      expect(first.length, 1);
+      expect(second, isEmpty);
+      final rows = await db.select(db.pendingTransactions).get();
+      expect(rows.length, 1);
+    });
+
+    test('backfill + receiver duplicate suppression', () async {
+      final smsIds = await smsService.processSmsPayload(
+        NotificationPayload(
+          packageName: 'android.sms',
+          sourceType: 'sms',
+          receivedAt: DateTime(2026, 5, 25, 10),
+          sender: 'HDFCBK',
+          body: 'INR 1499 spent at SWIGGY via card ending 1234',
+        ),
+      );
+      expect(smsIds.length, 1);
+
+      final duplicateViaBackfill = await smsService.processSmsPayload(
+        NotificationPayload(
+          packageName: 'com.phonepe.app',
+          sourceType: 'sms',
+          receivedAt: DateTime(2026, 5, 25, 10, 5),
+          sender: 'HDFCBK',
+          body: 'INR 1499 spent at SWIGGY via card ending 1234',
+        ),
+      );
+      expect(duplicateViaBackfill, isEmpty);
+
+      final rows = await db.select(db.pendingTransactions).get();
+      expect(rows.length, 1);
+    });
+
+    test('SMS + notification duplicate prevention where possible', () async {
+      final smsIds = await smsService.processSmsPayload(
+        NotificationPayload(
+          packageName: 'android.sms',
+          sourceType: 'sms',
+          receivedAt: DateTime(2026, 5, 25, 10),
+          sender: 'HDFCBK',
+          body: 'INR 1499 spent at SWIGGY via card ending 1234',
+        ),
+      );
+      expect(smsIds.length, 1);
+
+      final notificationService = NotificationIngestionService(
+        database: db,
+        pendingIngestionService: pendingIngestion,
+        keywordFilter: NotificationKeywordFilter(),
+        fingerprint: NotificationFingerprint(),
+        localNotifier: notifier,
+        isDetectionEnabled: () => true,
+        shouldShowDetectionNotifications: () => true,
+        appendDebug: (_) {},
+      );
+      final notificationIds = await notificationService.processPayload(
+        NotificationPayload(
+          packageName: 'com.bank.app',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 25, 10, 1),
+          title: 'Debit alert',
+          body: 'INR 1499 spent at SWIGGY via card ending 1234',
+        ),
+      );
+      expect(notificationIds, isEmpty);
+
+      final rows = await db.select(db.pendingTransactions).get();
+      expect(rows.length, 1);
+    });
+  });
+}

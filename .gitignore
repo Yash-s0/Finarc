@@ -4,6 +4,11 @@
 *.log
 *.pyc
 *.swp
+.DS_Store
+.idea/
+*.iml
+finarc app logo.png
+finarc logo.png
 .buildlog/
 .history
 
