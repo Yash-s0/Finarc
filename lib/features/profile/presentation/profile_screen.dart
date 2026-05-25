@@ -1,8 +1,14 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
+import '../../../core/database/backup/backup_models.dart';
+import '../../../core/database/backup/backup_providers.dart';
 import '../../../core/database/database_providers.dart';
 import '../../../core/database/reset_data_service.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -10,6 +16,7 @@ import '../../accounts/data/accounts_providers.dart';
 import '../../cards/data/cards_providers.dart';
 import '../../dashboard/data/dashboard_providers.dart';
 import '../../expenses/data/expenses_providers.dart';
+import '../../loans/data/loans_providers.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
 import '../../onboarding/data/onboarding_providers.dart';
 import '../../pending/data/pending_providers.dart';
@@ -314,8 +321,110 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: AppSpacing.xxs),
                 Text(
-                  'Delete all local finance data and restart setup.',
+                  'Manual local backup/export/import. No cloud sync is used.',
                   style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                FinarcSecondaryButton(
+                  onPressed: () => _confirmExportFullBackup(context, ref),
+                  label: 'Export Full Backup',
+                  icon: Icons.download_rounded,
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                FinarcSecondaryButton(
+                  onPressed: () => _pickAndImportBackup(context, ref),
+                  label: 'Import Backup',
+                  icon: Icons.upload_file_rounded,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FinarcSecondaryButton(
+                        onPressed: () => _exportCsv(
+                          context,
+                          ref,
+                          fileNamePrefix: 'finarc_transactions',
+                          label: 'Transactions CSV',
+                          exporter: () => ref
+                              .read(backupServiceProvider)
+                              .exportTransactionsCsv(),
+                        ),
+                        label: 'Export Transactions CSV',
+                        icon: Icons.receipt_long_outlined,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FinarcSecondaryButton(
+                        onPressed: () => _exportCsv(
+                          context,
+                          ref,
+                          fileNamePrefix: 'finarc_expenses',
+                          label: 'Expenses CSV',
+                          exporter: () => ref
+                              .read(backupServiceProvider)
+                              .exportExpensesCsv(),
+                        ),
+                        label: 'Export Expenses CSV',
+                        icon: Icons.trending_down_rounded,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FinarcSecondaryButton(
+                        onPressed: () => _exportCsv(
+                          context,
+                          ref,
+                          fileNamePrefix: 'finarc_accounts',
+                          label: 'Accounts CSV',
+                          exporter: () => ref
+                              .read(backupServiceProvider)
+                              .exportAccountsCsv(),
+                        ),
+                        label: 'Export Accounts CSV',
+                        icon: Icons.account_balance_outlined,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FinarcSecondaryButton(
+                        onPressed: () => _exportCsv(
+                          context,
+                          ref,
+                          fileNamePrefix: 'finarc_cards',
+                          label: 'Cards CSV',
+                          exporter: () =>
+                              ref.read(backupServiceProvider).exportCardsCsv(),
+                        ),
+                        label: 'Export Cards CSV',
+                        icon: Icons.credit_card_outlined,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                const FinarcStatusBadge(
+                  label: 'BACKUPS ARE UNENCRYPTED JSON/CSV FILES',
+                  tone: FinarcStatusTone.warning,
+                  compact: true,
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Backup files are stored wherever you save them. Anyone with file access can read your financial data.',
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 FinarcSecondaryButton(
@@ -369,6 +478,237 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
+  Future<void> _confirmExportFullBackup(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final shouldExport = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Export Unencrypted Backup?'),
+        content: const Text(
+          'This creates a readable local JSON backup file. Anyone with access to this file can read your financial data.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Export'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldExport != true || !context.mounted) return;
+
+    final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
+    final outputPath = await _buildExportPath('finarc_backup_$timestamp.json');
+    if (outputPath == null || !context.mounted) return;
+
+    try {
+      await ref
+          .read(backupServiceProvider)
+          .exportBackupToFile(filePath: outputPath);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Backup exported to: $outputPath')),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Backup export failed: $error')));
+    }
+  }
+
+  Future<void> _exportCsv(
+    BuildContext context,
+    WidgetRef ref, {
+    required String fileNamePrefix,
+    required String label,
+    required Future<String> Function() exporter,
+  }) async {
+    final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
+    final outputPath = await _buildExportPath(
+      '${fileNamePrefix}_$timestamp.csv',
+    );
+    if (outputPath == null || !context.mounted) return;
+
+    try {
+      final csv = await exporter();
+      await ref
+          .read(backupServiceProvider)
+          .writeStringToFile(filePath: outputPath, content: csv);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$label exported to: $outputPath')),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('$label export failed: $error')));
+    }
+  }
+
+  Future<void> _pickAndImportBackup(BuildContext context, WidgetRef ref) async {
+    final selectedPath = await _askImportPath(context);
+    if (selectedPath == null || !context.mounted) return;
+    String? jsonText;
+    if (await File(selectedPath).exists()) {
+      jsonText = await File(selectedPath).readAsString();
+    }
+    if (!context.mounted) return;
+    if (jsonText == null || jsonText.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to read selected backup file.')),
+      );
+      return;
+    }
+
+    final importService = ref.read(importServiceProvider);
+    final validation = importService.validateBackupJson(jsonText);
+    if (!context.mounted) return;
+    if (!validation.isValid) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Invalid backup: ${validation.message}')),
+      );
+      return;
+    }
+
+    final preview = importService.previewBackup(jsonText);
+    final shouldImport = await _showImportPreviewDialog(context, preview);
+    if (shouldImport != true || !context.mounted) return;
+
+    try {
+      final result = await importService.importBackupReplaceAll(jsonText);
+      _invalidateAfterDataChange(ref);
+
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Backup imported successfully.')),
+      );
+      context.go(result.onboardingCompleted ? '/' : '/onboarding');
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Import failed: $error')));
+    }
+  }
+
+  Future<String?> _buildExportPath(String fileName) async {
+    final baseDir = await getApplicationDocumentsDirectory();
+    final backupDir = Directory(p.join(baseDir.path, 'exports'));
+    await backupDir.create(recursive: true);
+    return p.join(backupDir.path, fileName);
+  }
+
+  Future<String?> _askImportPath(BuildContext context) async {
+    final controller = TextEditingController();
+    final baseDir = await getApplicationDocumentsDirectory();
+    if (!context.mounted) return null;
+    controller.text = p.join(baseDir.path, 'exports', 'finarc_backup.json');
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Import Backup JSON'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Paste the local JSON backup file path to import (replace all).',
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                labelText: 'Backup file path',
+                hintText: '/storage/emulated/0/Download/finarc_backup.json',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (result == null || result.isEmpty) return null;
+    return result;
+  }
+
+  Future<bool?> _showImportPreviewDialog(
+    BuildContext context,
+    BackupPreview preview,
+  ) {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Import Backup (Replace All)'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'This will permanently replace all local Finarc data on this device.',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                'Created: ${preview.createdAt?.toLocal().toString() ?? '-'}',
+              ),
+              Text('Backup version: ${preview.backupVersion}'),
+              Text('Schema version: ${preview.schemaVersion}'),
+              const SizedBox(height: AppSpacing.sm),
+              ...preview.counts.entries.map(
+                (entry) => Text('${entry.key}: ${entry.value}'),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Import & Replace'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _invalidateAfterDataChange(WidgetRef ref) {
+    ref.invalidate(dashboardProvider);
+    ref.invalidate(accountsOverviewProvider);
+    ref.invalidate(cardsOverviewProvider);
+    ref.invalidate(expenseListProvider);
+    ref.invalidate(pendingTransactionsProvider);
+    ref.invalidate(pendingCountProvider);
+    ref.invalidate(splitDashboardProvider);
+    ref.invalidate(loansDashboardProvider);
+    ref.invalidate(onboardingCompletedProvider);
+    ref.invalidate(detectionSettingsProvider);
+    ref.invalidate(_localRowsSummaryProvider);
+  }
+
   Future<void> _confirmResetAllData(BuildContext context, WidgetRef ref) async {
     final shouldReset = await showDialog<bool>(
       context: context,
@@ -398,16 +738,7 @@ class ProfileScreen extends ConsumerWidget {
       ref.read(appDatabaseProvider),
     ).wipeAllUserDataAndRestartOnboarding();
 
-    ref.invalidate(dashboardProvider);
-    ref.invalidate(accountsOverviewProvider);
-    ref.invalidate(cardsOverviewProvider);
-    ref.invalidate(expenseListProvider);
-    ref.invalidate(pendingTransactionsProvider);
-    ref.invalidate(pendingCountProvider);
-    ref.invalidate(splitDashboardProvider);
-    ref.invalidate(onboardingCompletedProvider);
-    ref.invalidate(detectionSettingsProvider);
-    ref.invalidate(_localRowsSummaryProvider);
+    _invalidateAfterDataChange(ref);
 
     if (context.mounted) {
       if (!verification.isClean) {

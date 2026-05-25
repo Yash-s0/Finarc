@@ -109,10 +109,7 @@ class BackupPreview {
 }
 
 class ImportResult {
-  const ImportResult({
-    required this.onboardingCompleted,
-    required this.counts,
-  });
+  const ImportResult({required this.onboardingCompleted, required this.counts});
 
   final bool onboardingCompleted;
   final Map<String, int> counts;

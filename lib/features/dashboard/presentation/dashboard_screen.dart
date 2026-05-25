@@ -423,6 +423,39 @@ class DashboardScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
+                const SizedBox(height: AppSpacing.xs),
+                FinarcCard(
+                  onTap: () => context.push('/analytics'),
+                  child: Row(
+                    children: [
+                      const CircleAvatar(
+                        radius: 18,
+                        backgroundColor: AppColors.darkPrimarySoft,
+                        child: Icon(Icons.insights_outlined, size: 18),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('View Reports'),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Monthly spend ${inr(data.monthlySpends)} • Open analytics dashboard',
+                            ),
+                          ],
+                        ),
+                      ),
+                      FinarcStatusBadge(
+                        label: data.monthlySpends > 0 ? 'TREND' : 'NEW',
+                        tone: data.monthlySpends > 0
+                            ? FinarcStatusTone.info
+                            : FinarcStatusTone.neutral,
+                        compact: true,
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: AppSpacing.lg),
                 const FinarcSectionHeader(title: 'Recent Transactions'),
                 const SizedBox(height: AppSpacing.xs),
