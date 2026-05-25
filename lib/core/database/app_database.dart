@@ -443,10 +443,7 @@ class AppDatabase extends _$AppDatabase {
           appSettings.recurringMerchantAlertsEnabled,
         );
         await m.addColumn(appSettings, appSettings.weeklySummaryAlertsEnabled);
-        await m.addColumn(
-          appSettings,
-          appSettings.monthlySummaryAlertsEnabled,
-        );
+        await m.addColumn(appSettings, appSettings.monthlySummaryAlertsEnabled);
       }
     },
   );

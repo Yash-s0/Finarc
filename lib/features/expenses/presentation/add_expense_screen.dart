@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' show OrderingTerm;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -217,7 +217,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                         if (value == null || value < 0) {
                           return 'Enter valid cashback';
                         }
-                        final amount = double.tryParse(_amount.text.trim()) ?? 0;
+                        final amount =
+                            double.tryParse(_amount.text.trim()) ?? 0;
                         if (value > amount && amount > 0) {
                           return 'Cashback cannot exceed amount';
                         }
@@ -248,7 +249,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                           if (value == null || value < 0) {
                             return 'Enter valid recoverable amount';
                           }
-                          final amount = double.tryParse(_amount.text.trim()) ?? 0;
+                          final amount =
+                              double.tryParse(_amount.text.trim()) ?? 0;
                           if (value > amount && amount > 0) {
                             return 'Recoverable cannot exceed amount';
                           }
@@ -377,9 +379,11 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           );
 
       final db = ref.read(appDatabaseProvider);
-      final latest = await (db.select(
-        db.transactions,
-      )..orderBy([(t) => OrderingTerm.desc(t.id)])..limit(1)).getSingleOrNull();
+      final latest =
+          await (db.select(db.transactions)
+                ..orderBy([(t) => OrderingTerm.desc(t.id)])
+                ..limit(1))
+              .getSingleOrNull();
       if (latest != null) {
         await ref
             .read(alertEvaluationActionsProvider)

@@ -9044,6 +9044,710 @@ class LoanPaymentsCompanion extends UpdateCompanion<LoanPayment> {
   }
 }
 
+class $AlertsTable extends Alerts with TableInfo<$AlertsTable, Alert> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AlertsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _alertTypeMeta = const VerificationMeta(
+    'alertType',
+  );
+  @override
+  late final GeneratedColumn<String> alertType = GeneratedColumn<String>(
+    'alert_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _bodyMeta = const VerificationMeta('body');
+  @override
+  late final GeneratedColumn<String> body = GeneratedColumn<String>(
+    'body',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _scheduledAtMeta = const VerificationMeta(
+    'scheduledAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> scheduledAt = GeneratedColumn<DateTime>(
+    'scheduled_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _priorityMeta = const VerificationMeta(
+    'priority',
+  );
+  @override
+  late final GeneratedColumn<String> priority = GeneratedColumn<String>(
+    'priority',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('info'),
+  );
+  static const VerificationMeta _readAtMeta = const VerificationMeta('readAt');
+  @override
+  late final GeneratedColumn<DateTime> readAt = GeneratedColumn<DateTime>(
+    'read_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _actionRouteMeta = const VerificationMeta(
+    'actionRoute',
+  );
+  @override
+  late final GeneratedColumn<String> actionRoute = GeneratedColumn<String>(
+    'action_route',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _payloadMeta = const VerificationMeta(
+    'payload',
+  );
+  @override
+  late final GeneratedColumn<String> payload = GeneratedColumn<String>(
+    'payload',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _dismissedAtMeta = const VerificationMeta(
+    'dismissedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> dismissedAt = GeneratedColumn<DateTime>(
+    'dismissed_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _dedupeKeyMeta = const VerificationMeta(
+    'dedupeKey',
+  );
+  @override
+  late final GeneratedColumn<String> dedupeKey = GeneratedColumn<String>(
+    'dedupe_key',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    alertType,
+    title,
+    body,
+    createdAt,
+    scheduledAt,
+    priority,
+    readAt,
+    actionRoute,
+    payload,
+    dismissedAt,
+    dedupeKey,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'alerts';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Alert> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('alert_type')) {
+      context.handle(
+        _alertTypeMeta,
+        alertType.isAcceptableOrUnknown(data['alert_type']!, _alertTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_alertTypeMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('body')) {
+      context.handle(
+        _bodyMeta,
+        body.isAcceptableOrUnknown(data['body']!, _bodyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_bodyMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('scheduled_at')) {
+      context.handle(
+        _scheduledAtMeta,
+        scheduledAt.isAcceptableOrUnknown(
+          data['scheduled_at']!,
+          _scheduledAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('priority')) {
+      context.handle(
+        _priorityMeta,
+        priority.isAcceptableOrUnknown(data['priority']!, _priorityMeta),
+      );
+    }
+    if (data.containsKey('read_at')) {
+      context.handle(
+        _readAtMeta,
+        readAt.isAcceptableOrUnknown(data['read_at']!, _readAtMeta),
+      );
+    }
+    if (data.containsKey('action_route')) {
+      context.handle(
+        _actionRouteMeta,
+        actionRoute.isAcceptableOrUnknown(
+          data['action_route']!,
+          _actionRouteMeta,
+        ),
+      );
+    }
+    if (data.containsKey('payload')) {
+      context.handle(
+        _payloadMeta,
+        payload.isAcceptableOrUnknown(data['payload']!, _payloadMeta),
+      );
+    }
+    if (data.containsKey('dismissed_at')) {
+      context.handle(
+        _dismissedAtMeta,
+        dismissedAt.isAcceptableOrUnknown(
+          data['dismissed_at']!,
+          _dismissedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('dedupe_key')) {
+      context.handle(
+        _dedupeKeyMeta,
+        dedupeKey.isAcceptableOrUnknown(data['dedupe_key']!, _dedupeKeyMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Alert map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Alert(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      alertType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}alert_type'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      body: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}body'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      scheduledAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}scheduled_at'],
+      ),
+      priority: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}priority'],
+      )!,
+      readAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}read_at'],
+      ),
+      actionRoute: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}action_route'],
+      ),
+      payload: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payload'],
+      ),
+      dismissedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}dismissed_at'],
+      ),
+      dedupeKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}dedupe_key'],
+      ),
+    );
+  }
+
+  @override
+  $AlertsTable createAlias(String alias) {
+    return $AlertsTable(attachedDatabase, alias);
+  }
+}
+
+class Alert extends DataClass implements Insertable<Alert> {
+  final int id;
+  final String alertType;
+  final String title;
+  final String body;
+  final DateTime createdAt;
+  final DateTime? scheduledAt;
+  final String priority;
+  final DateTime? readAt;
+  final String? actionRoute;
+  final String? payload;
+  final DateTime? dismissedAt;
+  final String? dedupeKey;
+  const Alert({
+    required this.id,
+    required this.alertType,
+    required this.title,
+    required this.body,
+    required this.createdAt,
+    this.scheduledAt,
+    required this.priority,
+    this.readAt,
+    this.actionRoute,
+    this.payload,
+    this.dismissedAt,
+    this.dedupeKey,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['alert_type'] = Variable<String>(alertType);
+    map['title'] = Variable<String>(title);
+    map['body'] = Variable<String>(body);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || scheduledAt != null) {
+      map['scheduled_at'] = Variable<DateTime>(scheduledAt);
+    }
+    map['priority'] = Variable<String>(priority);
+    if (!nullToAbsent || readAt != null) {
+      map['read_at'] = Variable<DateTime>(readAt);
+    }
+    if (!nullToAbsent || actionRoute != null) {
+      map['action_route'] = Variable<String>(actionRoute);
+    }
+    if (!nullToAbsent || payload != null) {
+      map['payload'] = Variable<String>(payload);
+    }
+    if (!nullToAbsent || dismissedAt != null) {
+      map['dismissed_at'] = Variable<DateTime>(dismissedAt);
+    }
+    if (!nullToAbsent || dedupeKey != null) {
+      map['dedupe_key'] = Variable<String>(dedupeKey);
+    }
+    return map;
+  }
+
+  AlertsCompanion toCompanion(bool nullToAbsent) {
+    return AlertsCompanion(
+      id: Value(id),
+      alertType: Value(alertType),
+      title: Value(title),
+      body: Value(body),
+      createdAt: Value(createdAt),
+      scheduledAt: scheduledAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(scheduledAt),
+      priority: Value(priority),
+      readAt: readAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(readAt),
+      actionRoute: actionRoute == null && nullToAbsent
+          ? const Value.absent()
+          : Value(actionRoute),
+      payload: payload == null && nullToAbsent
+          ? const Value.absent()
+          : Value(payload),
+      dismissedAt: dismissedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dismissedAt),
+      dedupeKey: dedupeKey == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dedupeKey),
+    );
+  }
+
+  factory Alert.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Alert(
+      id: serializer.fromJson<int>(json['id']),
+      alertType: serializer.fromJson<String>(json['alertType']),
+      title: serializer.fromJson<String>(json['title']),
+      body: serializer.fromJson<String>(json['body']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      scheduledAt: serializer.fromJson<DateTime?>(json['scheduledAt']),
+      priority: serializer.fromJson<String>(json['priority']),
+      readAt: serializer.fromJson<DateTime?>(json['readAt']),
+      actionRoute: serializer.fromJson<String?>(json['actionRoute']),
+      payload: serializer.fromJson<String?>(json['payload']),
+      dismissedAt: serializer.fromJson<DateTime?>(json['dismissedAt']),
+      dedupeKey: serializer.fromJson<String?>(json['dedupeKey']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'alertType': serializer.toJson<String>(alertType),
+      'title': serializer.toJson<String>(title),
+      'body': serializer.toJson<String>(body),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'scheduledAt': serializer.toJson<DateTime?>(scheduledAt),
+      'priority': serializer.toJson<String>(priority),
+      'readAt': serializer.toJson<DateTime?>(readAt),
+      'actionRoute': serializer.toJson<String?>(actionRoute),
+      'payload': serializer.toJson<String?>(payload),
+      'dismissedAt': serializer.toJson<DateTime?>(dismissedAt),
+      'dedupeKey': serializer.toJson<String?>(dedupeKey),
+    };
+  }
+
+  Alert copyWith({
+    int? id,
+    String? alertType,
+    String? title,
+    String? body,
+    DateTime? createdAt,
+    Value<DateTime?> scheduledAt = const Value.absent(),
+    String? priority,
+    Value<DateTime?> readAt = const Value.absent(),
+    Value<String?> actionRoute = const Value.absent(),
+    Value<String?> payload = const Value.absent(),
+    Value<DateTime?> dismissedAt = const Value.absent(),
+    Value<String?> dedupeKey = const Value.absent(),
+  }) => Alert(
+    id: id ?? this.id,
+    alertType: alertType ?? this.alertType,
+    title: title ?? this.title,
+    body: body ?? this.body,
+    createdAt: createdAt ?? this.createdAt,
+    scheduledAt: scheduledAt.present ? scheduledAt.value : this.scheduledAt,
+    priority: priority ?? this.priority,
+    readAt: readAt.present ? readAt.value : this.readAt,
+    actionRoute: actionRoute.present ? actionRoute.value : this.actionRoute,
+    payload: payload.present ? payload.value : this.payload,
+    dismissedAt: dismissedAt.present ? dismissedAt.value : this.dismissedAt,
+    dedupeKey: dedupeKey.present ? dedupeKey.value : this.dedupeKey,
+  );
+  Alert copyWithCompanion(AlertsCompanion data) {
+    return Alert(
+      id: data.id.present ? data.id.value : this.id,
+      alertType: data.alertType.present ? data.alertType.value : this.alertType,
+      title: data.title.present ? data.title.value : this.title,
+      body: data.body.present ? data.body.value : this.body,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      scheduledAt: data.scheduledAt.present
+          ? data.scheduledAt.value
+          : this.scheduledAt,
+      priority: data.priority.present ? data.priority.value : this.priority,
+      readAt: data.readAt.present ? data.readAt.value : this.readAt,
+      actionRoute: data.actionRoute.present
+          ? data.actionRoute.value
+          : this.actionRoute,
+      payload: data.payload.present ? data.payload.value : this.payload,
+      dismissedAt: data.dismissedAt.present
+          ? data.dismissedAt.value
+          : this.dismissedAt,
+      dedupeKey: data.dedupeKey.present ? data.dedupeKey.value : this.dedupeKey,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Alert(')
+          ..write('id: $id, ')
+          ..write('alertType: $alertType, ')
+          ..write('title: $title, ')
+          ..write('body: $body, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('scheduledAt: $scheduledAt, ')
+          ..write('priority: $priority, ')
+          ..write('readAt: $readAt, ')
+          ..write('actionRoute: $actionRoute, ')
+          ..write('payload: $payload, ')
+          ..write('dismissedAt: $dismissedAt, ')
+          ..write('dedupeKey: $dedupeKey')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    alertType,
+    title,
+    body,
+    createdAt,
+    scheduledAt,
+    priority,
+    readAt,
+    actionRoute,
+    payload,
+    dismissedAt,
+    dedupeKey,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Alert &&
+          other.id == this.id &&
+          other.alertType == this.alertType &&
+          other.title == this.title &&
+          other.body == this.body &&
+          other.createdAt == this.createdAt &&
+          other.scheduledAt == this.scheduledAt &&
+          other.priority == this.priority &&
+          other.readAt == this.readAt &&
+          other.actionRoute == this.actionRoute &&
+          other.payload == this.payload &&
+          other.dismissedAt == this.dismissedAt &&
+          other.dedupeKey == this.dedupeKey);
+}
+
+class AlertsCompanion extends UpdateCompanion<Alert> {
+  final Value<int> id;
+  final Value<String> alertType;
+  final Value<String> title;
+  final Value<String> body;
+  final Value<DateTime> createdAt;
+  final Value<DateTime?> scheduledAt;
+  final Value<String> priority;
+  final Value<DateTime?> readAt;
+  final Value<String?> actionRoute;
+  final Value<String?> payload;
+  final Value<DateTime?> dismissedAt;
+  final Value<String?> dedupeKey;
+  const AlertsCompanion({
+    this.id = const Value.absent(),
+    this.alertType = const Value.absent(),
+    this.title = const Value.absent(),
+    this.body = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.scheduledAt = const Value.absent(),
+    this.priority = const Value.absent(),
+    this.readAt = const Value.absent(),
+    this.actionRoute = const Value.absent(),
+    this.payload = const Value.absent(),
+    this.dismissedAt = const Value.absent(),
+    this.dedupeKey = const Value.absent(),
+  });
+  AlertsCompanion.insert({
+    this.id = const Value.absent(),
+    required String alertType,
+    required String title,
+    required String body,
+    this.createdAt = const Value.absent(),
+    this.scheduledAt = const Value.absent(),
+    this.priority = const Value.absent(),
+    this.readAt = const Value.absent(),
+    this.actionRoute = const Value.absent(),
+    this.payload = const Value.absent(),
+    this.dismissedAt = const Value.absent(),
+    this.dedupeKey = const Value.absent(),
+  }) : alertType = Value(alertType),
+       title = Value(title),
+       body = Value(body);
+  static Insertable<Alert> custom({
+    Expression<int>? id,
+    Expression<String>? alertType,
+    Expression<String>? title,
+    Expression<String>? body,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? scheduledAt,
+    Expression<String>? priority,
+    Expression<DateTime>? readAt,
+    Expression<String>? actionRoute,
+    Expression<String>? payload,
+    Expression<DateTime>? dismissedAt,
+    Expression<String>? dedupeKey,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (alertType != null) 'alert_type': alertType,
+      if (title != null) 'title': title,
+      if (body != null) 'body': body,
+      if (createdAt != null) 'created_at': createdAt,
+      if (scheduledAt != null) 'scheduled_at': scheduledAt,
+      if (priority != null) 'priority': priority,
+      if (readAt != null) 'read_at': readAt,
+      if (actionRoute != null) 'action_route': actionRoute,
+      if (payload != null) 'payload': payload,
+      if (dismissedAt != null) 'dismissed_at': dismissedAt,
+      if (dedupeKey != null) 'dedupe_key': dedupeKey,
+    });
+  }
+
+  AlertsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? alertType,
+    Value<String>? title,
+    Value<String>? body,
+    Value<DateTime>? createdAt,
+    Value<DateTime?>? scheduledAt,
+    Value<String>? priority,
+    Value<DateTime?>? readAt,
+    Value<String?>? actionRoute,
+    Value<String?>? payload,
+    Value<DateTime?>? dismissedAt,
+    Value<String?>? dedupeKey,
+  }) {
+    return AlertsCompanion(
+      id: id ?? this.id,
+      alertType: alertType ?? this.alertType,
+      title: title ?? this.title,
+      body: body ?? this.body,
+      createdAt: createdAt ?? this.createdAt,
+      scheduledAt: scheduledAt ?? this.scheduledAt,
+      priority: priority ?? this.priority,
+      readAt: readAt ?? this.readAt,
+      actionRoute: actionRoute ?? this.actionRoute,
+      payload: payload ?? this.payload,
+      dismissedAt: dismissedAt ?? this.dismissedAt,
+      dedupeKey: dedupeKey ?? this.dedupeKey,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (alertType.present) {
+      map['alert_type'] = Variable<String>(alertType.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (body.present) {
+      map['body'] = Variable<String>(body.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (scheduledAt.present) {
+      map['scheduled_at'] = Variable<DateTime>(scheduledAt.value);
+    }
+    if (priority.present) {
+      map['priority'] = Variable<String>(priority.value);
+    }
+    if (readAt.present) {
+      map['read_at'] = Variable<DateTime>(readAt.value);
+    }
+    if (actionRoute.present) {
+      map['action_route'] = Variable<String>(actionRoute.value);
+    }
+    if (payload.present) {
+      map['payload'] = Variable<String>(payload.value);
+    }
+    if (dismissedAt.present) {
+      map['dismissed_at'] = Variable<DateTime>(dismissedAt.value);
+    }
+    if (dedupeKey.present) {
+      map['dedupe_key'] = Variable<String>(dedupeKey.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AlertsCompanion(')
+          ..write('id: $id, ')
+          ..write('alertType: $alertType, ')
+          ..write('title: $title, ')
+          ..write('body: $body, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('scheduledAt: $scheduledAt, ')
+          ..write('priority: $priority, ')
+          ..write('readAt: $readAt, ')
+          ..write('actionRoute: $actionRoute, ')
+          ..write('payload: $payload, ')
+          ..write('dismissedAt: $dismissedAt, ')
+          ..write('dedupeKey: $dedupeKey')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $AppSettingsTable extends AppSettings
     with TableInfo<$AppSettingsTable, AppSetting> {
   @override
@@ -9336,6 +10040,191 @@ class $AppSettingsTable extends AppSettings
         ),
         defaultValue: const Constant(false),
       );
+  static const VerificationMeta _quietHoursStartHourMeta =
+      const VerificationMeta('quietHoursStartHour');
+  @override
+  late final GeneratedColumn<int> quietHoursStartHour = GeneratedColumn<int>(
+    'quiet_hours_start_hour',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(22),
+  );
+  static const VerificationMeta _quietHoursStartMinuteMeta =
+      const VerificationMeta('quietHoursStartMinute');
+  @override
+  late final GeneratedColumn<int> quietHoursStartMinute = GeneratedColumn<int>(
+    'quiet_hours_start_minute',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _quietHoursEndHourMeta = const VerificationMeta(
+    'quietHoursEndHour',
+  );
+  @override
+  late final GeneratedColumn<int> quietHoursEndHour = GeneratedColumn<int>(
+    'quiet_hours_end_hour',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(7),
+  );
+  static const VerificationMeta _quietHoursEndMinuteMeta =
+      const VerificationMeta('quietHoursEndMinute');
+  @override
+  late final GeneratedColumn<int> quietHoursEndMinute = GeneratedColumn<int>(
+    'quiet_hours_end_minute',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _smartAlertsEnabledMeta =
+      const VerificationMeta('smartAlertsEnabled');
+  @override
+  late final GeneratedColumn<bool> smartAlertsEnabled = GeneratedColumn<bool>(
+    'smart_alerts_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("smart_alerts_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _lowBalanceAlertsEnabledMeta =
+      const VerificationMeta('lowBalanceAlertsEnabled');
+  @override
+  late final GeneratedColumn<bool> lowBalanceAlertsEnabled =
+      GeneratedColumn<bool>(
+        'low_balance_alerts_enabled',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("low_balance_alerts_enabled" IN (0, 1))',
+        ),
+        defaultValue: const Constant(true),
+      );
+  static const VerificationMeta _lowBalanceThresholdMeta =
+      const VerificationMeta('lowBalanceThreshold');
+  @override
+  late final GeneratedColumn<double> lowBalanceThreshold =
+      GeneratedColumn<double>(
+        'low_balance_threshold',
+        aliasedName,
+        false,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(2000),
+      );
+  static const VerificationMeta _largeExpenseAlertsEnabledMeta =
+      const VerificationMeta('largeExpenseAlertsEnabled');
+  @override
+  late final GeneratedColumn<bool> largeExpenseAlertsEnabled =
+      GeneratedColumn<bool>(
+        'large_expense_alerts_enabled',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("large_expense_alerts_enabled" IN (0, 1))',
+        ),
+        defaultValue: const Constant(true),
+      );
+  static const VerificationMeta _largeExpenseThresholdMeta =
+      const VerificationMeta('largeExpenseThreshold');
+  @override
+  late final GeneratedColumn<double> largeExpenseThreshold =
+      GeneratedColumn<double>(
+        'large_expense_threshold',
+        aliasedName,
+        false,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(10000),
+      );
+  static const VerificationMeta _unusualSpendingAlertsEnabledMeta =
+      const VerificationMeta('unusualSpendingAlertsEnabled');
+  @override
+  late final GeneratedColumn<bool> unusualSpendingAlertsEnabled =
+      GeneratedColumn<bool>(
+        'unusual_spending_alerts_enabled',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("unusual_spending_alerts_enabled" IN (0, 1))',
+        ),
+        defaultValue: const Constant(true),
+      );
+  static const VerificationMeta _unusualSpendingMultiplierMeta =
+      const VerificationMeta('unusualSpendingMultiplier');
+  @override
+  late final GeneratedColumn<double> unusualSpendingMultiplier =
+      GeneratedColumn<double>(
+        'unusual_spending_multiplier',
+        aliasedName,
+        false,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(1.8),
+      );
+  static const VerificationMeta _recurringMerchantAlertsEnabledMeta =
+      const VerificationMeta('recurringMerchantAlertsEnabled');
+  @override
+  late final GeneratedColumn<bool> recurringMerchantAlertsEnabled =
+      GeneratedColumn<bool>(
+        'recurring_merchant_alerts_enabled',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("recurring_merchant_alerts_enabled" IN (0, 1))',
+        ),
+        defaultValue: const Constant(true),
+      );
+  static const VerificationMeta _weeklySummaryAlertsEnabledMeta =
+      const VerificationMeta('weeklySummaryAlertsEnabled');
+  @override
+  late final GeneratedColumn<bool> weeklySummaryAlertsEnabled =
+      GeneratedColumn<bool>(
+        'weekly_summary_alerts_enabled',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("weekly_summary_alerts_enabled" IN (0, 1))',
+        ),
+        defaultValue: const Constant(true),
+      );
+  static const VerificationMeta _monthlySummaryAlertsEnabledMeta =
+      const VerificationMeta('monthlySummaryAlertsEnabled');
+  @override
+  late final GeneratedColumn<bool> monthlySummaryAlertsEnabled =
+      GeneratedColumn<bool>(
+        'monthly_summary_alerts_enabled',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("monthly_summary_alerts_enabled" IN (0, 1))',
+        ),
+        defaultValue: const Constant(true),
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -9359,6 +10248,20 @@ class $AppSettingsTable extends AppSettings
     smsBackfillDays,
     smsLastScannedAt,
     hasCompletedOnboarding,
+    quietHoursStartHour,
+    quietHoursStartMinute,
+    quietHoursEndHour,
+    quietHoursEndMinute,
+    smartAlertsEnabled,
+    lowBalanceAlertsEnabled,
+    lowBalanceThreshold,
+    largeExpenseAlertsEnabled,
+    largeExpenseThreshold,
+    unusualSpendingAlertsEnabled,
+    unusualSpendingMultiplier,
+    recurringMerchantAlertsEnabled,
+    weeklySummaryAlertsEnabled,
+    monthlySummaryAlertsEnabled,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -9555,6 +10458,132 @@ class $AppSettingsTable extends AppSettings
         ),
       );
     }
+    if (data.containsKey('quiet_hours_start_hour')) {
+      context.handle(
+        _quietHoursStartHourMeta,
+        quietHoursStartHour.isAcceptableOrUnknown(
+          data['quiet_hours_start_hour']!,
+          _quietHoursStartHourMeta,
+        ),
+      );
+    }
+    if (data.containsKey('quiet_hours_start_minute')) {
+      context.handle(
+        _quietHoursStartMinuteMeta,
+        quietHoursStartMinute.isAcceptableOrUnknown(
+          data['quiet_hours_start_minute']!,
+          _quietHoursStartMinuteMeta,
+        ),
+      );
+    }
+    if (data.containsKey('quiet_hours_end_hour')) {
+      context.handle(
+        _quietHoursEndHourMeta,
+        quietHoursEndHour.isAcceptableOrUnknown(
+          data['quiet_hours_end_hour']!,
+          _quietHoursEndHourMeta,
+        ),
+      );
+    }
+    if (data.containsKey('quiet_hours_end_minute')) {
+      context.handle(
+        _quietHoursEndMinuteMeta,
+        quietHoursEndMinute.isAcceptableOrUnknown(
+          data['quiet_hours_end_minute']!,
+          _quietHoursEndMinuteMeta,
+        ),
+      );
+    }
+    if (data.containsKey('smart_alerts_enabled')) {
+      context.handle(
+        _smartAlertsEnabledMeta,
+        smartAlertsEnabled.isAcceptableOrUnknown(
+          data['smart_alerts_enabled']!,
+          _smartAlertsEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('low_balance_alerts_enabled')) {
+      context.handle(
+        _lowBalanceAlertsEnabledMeta,
+        lowBalanceAlertsEnabled.isAcceptableOrUnknown(
+          data['low_balance_alerts_enabled']!,
+          _lowBalanceAlertsEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('low_balance_threshold')) {
+      context.handle(
+        _lowBalanceThresholdMeta,
+        lowBalanceThreshold.isAcceptableOrUnknown(
+          data['low_balance_threshold']!,
+          _lowBalanceThresholdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('large_expense_alerts_enabled')) {
+      context.handle(
+        _largeExpenseAlertsEnabledMeta,
+        largeExpenseAlertsEnabled.isAcceptableOrUnknown(
+          data['large_expense_alerts_enabled']!,
+          _largeExpenseAlertsEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('large_expense_threshold')) {
+      context.handle(
+        _largeExpenseThresholdMeta,
+        largeExpenseThreshold.isAcceptableOrUnknown(
+          data['large_expense_threshold']!,
+          _largeExpenseThresholdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('unusual_spending_alerts_enabled')) {
+      context.handle(
+        _unusualSpendingAlertsEnabledMeta,
+        unusualSpendingAlertsEnabled.isAcceptableOrUnknown(
+          data['unusual_spending_alerts_enabled']!,
+          _unusualSpendingAlertsEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('unusual_spending_multiplier')) {
+      context.handle(
+        _unusualSpendingMultiplierMeta,
+        unusualSpendingMultiplier.isAcceptableOrUnknown(
+          data['unusual_spending_multiplier']!,
+          _unusualSpendingMultiplierMeta,
+        ),
+      );
+    }
+    if (data.containsKey('recurring_merchant_alerts_enabled')) {
+      context.handle(
+        _recurringMerchantAlertsEnabledMeta,
+        recurringMerchantAlertsEnabled.isAcceptableOrUnknown(
+          data['recurring_merchant_alerts_enabled']!,
+          _recurringMerchantAlertsEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('weekly_summary_alerts_enabled')) {
+      context.handle(
+        _weeklySummaryAlertsEnabledMeta,
+        weeklySummaryAlertsEnabled.isAcceptableOrUnknown(
+          data['weekly_summary_alerts_enabled']!,
+          _weeklySummaryAlertsEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('monthly_summary_alerts_enabled')) {
+      context.handle(
+        _monthlySummaryAlertsEnabledMeta,
+        monthlySummaryAlertsEnabled.isAcceptableOrUnknown(
+          data['monthly_summary_alerts_enabled']!,
+          _monthlySummaryAlertsEnabledMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -9648,6 +10677,62 @@ class $AppSettingsTable extends AppSettings
         DriftSqlType.bool,
         data['${effectivePrefix}has_completed_onboarding'],
       )!,
+      quietHoursStartHour: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}quiet_hours_start_hour'],
+      )!,
+      quietHoursStartMinute: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}quiet_hours_start_minute'],
+      )!,
+      quietHoursEndHour: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}quiet_hours_end_hour'],
+      )!,
+      quietHoursEndMinute: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}quiet_hours_end_minute'],
+      )!,
+      smartAlertsEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}smart_alerts_enabled'],
+      )!,
+      lowBalanceAlertsEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}low_balance_alerts_enabled'],
+      )!,
+      lowBalanceThreshold: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}low_balance_threshold'],
+      )!,
+      largeExpenseAlertsEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}large_expense_alerts_enabled'],
+      )!,
+      largeExpenseThreshold: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}large_expense_threshold'],
+      )!,
+      unusualSpendingAlertsEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}unusual_spending_alerts_enabled'],
+      )!,
+      unusualSpendingMultiplier: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}unusual_spending_multiplier'],
+      )!,
+      recurringMerchantAlertsEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}recurring_merchant_alerts_enabled'],
+      )!,
+      weeklySummaryAlertsEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}weekly_summary_alerts_enabled'],
+      )!,
+      monthlySummaryAlertsEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}monthly_summary_alerts_enabled'],
+      )!,
     );
   }
 
@@ -9679,6 +10764,20 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
   final int smsBackfillDays;
   final DateTime? smsLastScannedAt;
   final bool hasCompletedOnboarding;
+  final int quietHoursStartHour;
+  final int quietHoursStartMinute;
+  final int quietHoursEndHour;
+  final int quietHoursEndMinute;
+  final bool smartAlertsEnabled;
+  final bool lowBalanceAlertsEnabled;
+  final double lowBalanceThreshold;
+  final bool largeExpenseAlertsEnabled;
+  final double largeExpenseThreshold;
+  final bool unusualSpendingAlertsEnabled;
+  final double unusualSpendingMultiplier;
+  final bool recurringMerchantAlertsEnabled;
+  final bool weeklySummaryAlertsEnabled;
+  final bool monthlySummaryAlertsEnabled;
   const AppSetting({
     required this.id,
     required this.isDarkMode,
@@ -9701,6 +10800,20 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     required this.smsBackfillDays,
     this.smsLastScannedAt,
     required this.hasCompletedOnboarding,
+    required this.quietHoursStartHour,
+    required this.quietHoursStartMinute,
+    required this.quietHoursEndHour,
+    required this.quietHoursEndMinute,
+    required this.smartAlertsEnabled,
+    required this.lowBalanceAlertsEnabled,
+    required this.lowBalanceThreshold,
+    required this.largeExpenseAlertsEnabled,
+    required this.largeExpenseThreshold,
+    required this.unusualSpendingAlertsEnabled,
+    required this.unusualSpendingMultiplier,
+    required this.recurringMerchantAlertsEnabled,
+    required this.weeklySummaryAlertsEnabled,
+    required this.monthlySummaryAlertsEnabled,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -9740,6 +10853,32 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       map['sms_last_scanned_at'] = Variable<DateTime>(smsLastScannedAt);
     }
     map['has_completed_onboarding'] = Variable<bool>(hasCompletedOnboarding);
+    map['quiet_hours_start_hour'] = Variable<int>(quietHoursStartHour);
+    map['quiet_hours_start_minute'] = Variable<int>(quietHoursStartMinute);
+    map['quiet_hours_end_hour'] = Variable<int>(quietHoursEndHour);
+    map['quiet_hours_end_minute'] = Variable<int>(quietHoursEndMinute);
+    map['smart_alerts_enabled'] = Variable<bool>(smartAlertsEnabled);
+    map['low_balance_alerts_enabled'] = Variable<bool>(lowBalanceAlertsEnabled);
+    map['low_balance_threshold'] = Variable<double>(lowBalanceThreshold);
+    map['large_expense_alerts_enabled'] = Variable<bool>(
+      largeExpenseAlertsEnabled,
+    );
+    map['large_expense_threshold'] = Variable<double>(largeExpenseThreshold);
+    map['unusual_spending_alerts_enabled'] = Variable<bool>(
+      unusualSpendingAlertsEnabled,
+    );
+    map['unusual_spending_multiplier'] = Variable<double>(
+      unusualSpendingMultiplier,
+    );
+    map['recurring_merchant_alerts_enabled'] = Variable<bool>(
+      recurringMerchantAlertsEnabled,
+    );
+    map['weekly_summary_alerts_enabled'] = Variable<bool>(
+      weeklySummaryAlertsEnabled,
+    );
+    map['monthly_summary_alerts_enabled'] = Variable<bool>(
+      monthlySummaryAlertsEnabled,
+    );
     return map;
   }
 
@@ -9774,6 +10913,20 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           ? const Value.absent()
           : Value(smsLastScannedAt),
       hasCompletedOnboarding: Value(hasCompletedOnboarding),
+      quietHoursStartHour: Value(quietHoursStartHour),
+      quietHoursStartMinute: Value(quietHoursStartMinute),
+      quietHoursEndHour: Value(quietHoursEndHour),
+      quietHoursEndMinute: Value(quietHoursEndMinute),
+      smartAlertsEnabled: Value(smartAlertsEnabled),
+      lowBalanceAlertsEnabled: Value(lowBalanceAlertsEnabled),
+      lowBalanceThreshold: Value(lowBalanceThreshold),
+      largeExpenseAlertsEnabled: Value(largeExpenseAlertsEnabled),
+      largeExpenseThreshold: Value(largeExpenseThreshold),
+      unusualSpendingAlertsEnabled: Value(unusualSpendingAlertsEnabled),
+      unusualSpendingMultiplier: Value(unusualSpendingMultiplier),
+      recurringMerchantAlertsEnabled: Value(recurringMerchantAlertsEnabled),
+      weeklySummaryAlertsEnabled: Value(weeklySummaryAlertsEnabled),
+      monthlySummaryAlertsEnabled: Value(monthlySummaryAlertsEnabled),
     );
   }
 
@@ -9830,6 +10983,44 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       hasCompletedOnboarding: serializer.fromJson<bool>(
         json['hasCompletedOnboarding'],
       ),
+      quietHoursStartHour: serializer.fromJson<int>(
+        json['quietHoursStartHour'],
+      ),
+      quietHoursStartMinute: serializer.fromJson<int>(
+        json['quietHoursStartMinute'],
+      ),
+      quietHoursEndHour: serializer.fromJson<int>(json['quietHoursEndHour']),
+      quietHoursEndMinute: serializer.fromJson<int>(
+        json['quietHoursEndMinute'],
+      ),
+      smartAlertsEnabled: serializer.fromJson<bool>(json['smartAlertsEnabled']),
+      lowBalanceAlertsEnabled: serializer.fromJson<bool>(
+        json['lowBalanceAlertsEnabled'],
+      ),
+      lowBalanceThreshold: serializer.fromJson<double>(
+        json['lowBalanceThreshold'],
+      ),
+      largeExpenseAlertsEnabled: serializer.fromJson<bool>(
+        json['largeExpenseAlertsEnabled'],
+      ),
+      largeExpenseThreshold: serializer.fromJson<double>(
+        json['largeExpenseThreshold'],
+      ),
+      unusualSpendingAlertsEnabled: serializer.fromJson<bool>(
+        json['unusualSpendingAlertsEnabled'],
+      ),
+      unusualSpendingMultiplier: serializer.fromJson<double>(
+        json['unusualSpendingMultiplier'],
+      ),
+      recurringMerchantAlertsEnabled: serializer.fromJson<bool>(
+        json['recurringMerchantAlertsEnabled'],
+      ),
+      weeklySummaryAlertsEnabled: serializer.fromJson<bool>(
+        json['weeklySummaryAlertsEnabled'],
+      ),
+      monthlySummaryAlertsEnabled: serializer.fromJson<bool>(
+        json['monthlySummaryAlertsEnabled'],
+      ),
     );
   }
   @override
@@ -9867,6 +11058,34 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       'smsBackfillDays': serializer.toJson<int>(smsBackfillDays),
       'smsLastScannedAt': serializer.toJson<DateTime?>(smsLastScannedAt),
       'hasCompletedOnboarding': serializer.toJson<bool>(hasCompletedOnboarding),
+      'quietHoursStartHour': serializer.toJson<int>(quietHoursStartHour),
+      'quietHoursStartMinute': serializer.toJson<int>(quietHoursStartMinute),
+      'quietHoursEndHour': serializer.toJson<int>(quietHoursEndHour),
+      'quietHoursEndMinute': serializer.toJson<int>(quietHoursEndMinute),
+      'smartAlertsEnabled': serializer.toJson<bool>(smartAlertsEnabled),
+      'lowBalanceAlertsEnabled': serializer.toJson<bool>(
+        lowBalanceAlertsEnabled,
+      ),
+      'lowBalanceThreshold': serializer.toJson<double>(lowBalanceThreshold),
+      'largeExpenseAlertsEnabled': serializer.toJson<bool>(
+        largeExpenseAlertsEnabled,
+      ),
+      'largeExpenseThreshold': serializer.toJson<double>(largeExpenseThreshold),
+      'unusualSpendingAlertsEnabled': serializer.toJson<bool>(
+        unusualSpendingAlertsEnabled,
+      ),
+      'unusualSpendingMultiplier': serializer.toJson<double>(
+        unusualSpendingMultiplier,
+      ),
+      'recurringMerchantAlertsEnabled': serializer.toJson<bool>(
+        recurringMerchantAlertsEnabled,
+      ),
+      'weeklySummaryAlertsEnabled': serializer.toJson<bool>(
+        weeklySummaryAlertsEnabled,
+      ),
+      'monthlySummaryAlertsEnabled': serializer.toJson<bool>(
+        monthlySummaryAlertsEnabled,
+      ),
     };
   }
 
@@ -9892,6 +11111,20 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     int? smsBackfillDays,
     Value<DateTime?> smsLastScannedAt = const Value.absent(),
     bool? hasCompletedOnboarding,
+    int? quietHoursStartHour,
+    int? quietHoursStartMinute,
+    int? quietHoursEndHour,
+    int? quietHoursEndMinute,
+    bool? smartAlertsEnabled,
+    bool? lowBalanceAlertsEnabled,
+    double? lowBalanceThreshold,
+    bool? largeExpenseAlertsEnabled,
+    double? largeExpenseThreshold,
+    bool? unusualSpendingAlertsEnabled,
+    double? unusualSpendingMultiplier,
+    bool? recurringMerchantAlertsEnabled,
+    bool? weeklySummaryAlertsEnabled,
+    bool? monthlySummaryAlertsEnabled,
   }) => AppSetting(
     id: id ?? this.id,
     isDarkMode: isDarkMode ?? this.isDarkMode,
@@ -9927,6 +11160,27 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
         : this.smsLastScannedAt,
     hasCompletedOnboarding:
         hasCompletedOnboarding ?? this.hasCompletedOnboarding,
+    quietHoursStartHour: quietHoursStartHour ?? this.quietHoursStartHour,
+    quietHoursStartMinute: quietHoursStartMinute ?? this.quietHoursStartMinute,
+    quietHoursEndHour: quietHoursEndHour ?? this.quietHoursEndHour,
+    quietHoursEndMinute: quietHoursEndMinute ?? this.quietHoursEndMinute,
+    smartAlertsEnabled: smartAlertsEnabled ?? this.smartAlertsEnabled,
+    lowBalanceAlertsEnabled:
+        lowBalanceAlertsEnabled ?? this.lowBalanceAlertsEnabled,
+    lowBalanceThreshold: lowBalanceThreshold ?? this.lowBalanceThreshold,
+    largeExpenseAlertsEnabled:
+        largeExpenseAlertsEnabled ?? this.largeExpenseAlertsEnabled,
+    largeExpenseThreshold: largeExpenseThreshold ?? this.largeExpenseThreshold,
+    unusualSpendingAlertsEnabled:
+        unusualSpendingAlertsEnabled ?? this.unusualSpendingAlertsEnabled,
+    unusualSpendingMultiplier:
+        unusualSpendingMultiplier ?? this.unusualSpendingMultiplier,
+    recurringMerchantAlertsEnabled:
+        recurringMerchantAlertsEnabled ?? this.recurringMerchantAlertsEnabled,
+    weeklySummaryAlertsEnabled:
+        weeklySummaryAlertsEnabled ?? this.weeklySummaryAlertsEnabled,
+    monthlySummaryAlertsEnabled:
+        monthlySummaryAlertsEnabled ?? this.monthlySummaryAlertsEnabled,
   );
   AppSetting copyWithCompanion(AppSettingsCompanion data) {
     return AppSetting(
@@ -9992,6 +11246,49 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       hasCompletedOnboarding: data.hasCompletedOnboarding.present
           ? data.hasCompletedOnboarding.value
           : this.hasCompletedOnboarding,
+      quietHoursStartHour: data.quietHoursStartHour.present
+          ? data.quietHoursStartHour.value
+          : this.quietHoursStartHour,
+      quietHoursStartMinute: data.quietHoursStartMinute.present
+          ? data.quietHoursStartMinute.value
+          : this.quietHoursStartMinute,
+      quietHoursEndHour: data.quietHoursEndHour.present
+          ? data.quietHoursEndHour.value
+          : this.quietHoursEndHour,
+      quietHoursEndMinute: data.quietHoursEndMinute.present
+          ? data.quietHoursEndMinute.value
+          : this.quietHoursEndMinute,
+      smartAlertsEnabled: data.smartAlertsEnabled.present
+          ? data.smartAlertsEnabled.value
+          : this.smartAlertsEnabled,
+      lowBalanceAlertsEnabled: data.lowBalanceAlertsEnabled.present
+          ? data.lowBalanceAlertsEnabled.value
+          : this.lowBalanceAlertsEnabled,
+      lowBalanceThreshold: data.lowBalanceThreshold.present
+          ? data.lowBalanceThreshold.value
+          : this.lowBalanceThreshold,
+      largeExpenseAlertsEnabled: data.largeExpenseAlertsEnabled.present
+          ? data.largeExpenseAlertsEnabled.value
+          : this.largeExpenseAlertsEnabled,
+      largeExpenseThreshold: data.largeExpenseThreshold.present
+          ? data.largeExpenseThreshold.value
+          : this.largeExpenseThreshold,
+      unusualSpendingAlertsEnabled: data.unusualSpendingAlertsEnabled.present
+          ? data.unusualSpendingAlertsEnabled.value
+          : this.unusualSpendingAlertsEnabled,
+      unusualSpendingMultiplier: data.unusualSpendingMultiplier.present
+          ? data.unusualSpendingMultiplier.value
+          : this.unusualSpendingMultiplier,
+      recurringMerchantAlertsEnabled:
+          data.recurringMerchantAlertsEnabled.present
+          ? data.recurringMerchantAlertsEnabled.value
+          : this.recurringMerchantAlertsEnabled,
+      weeklySummaryAlertsEnabled: data.weeklySummaryAlertsEnabled.present
+          ? data.weeklySummaryAlertsEnabled.value
+          : this.weeklySummaryAlertsEnabled,
+      monthlySummaryAlertsEnabled: data.monthlySummaryAlertsEnabled.present
+          ? data.monthlySummaryAlertsEnabled.value
+          : this.monthlySummaryAlertsEnabled,
     );
   }
 
@@ -10022,7 +11319,25 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           ..write('smsBackfillEnabled: $smsBackfillEnabled, ')
           ..write('smsBackfillDays: $smsBackfillDays, ')
           ..write('smsLastScannedAt: $smsLastScannedAt, ')
-          ..write('hasCompletedOnboarding: $hasCompletedOnboarding')
+          ..write('hasCompletedOnboarding: $hasCompletedOnboarding, ')
+          ..write('quietHoursStartHour: $quietHoursStartHour, ')
+          ..write('quietHoursStartMinute: $quietHoursStartMinute, ')
+          ..write('quietHoursEndHour: $quietHoursEndHour, ')
+          ..write('quietHoursEndMinute: $quietHoursEndMinute, ')
+          ..write('smartAlertsEnabled: $smartAlertsEnabled, ')
+          ..write('lowBalanceAlertsEnabled: $lowBalanceAlertsEnabled, ')
+          ..write('lowBalanceThreshold: $lowBalanceThreshold, ')
+          ..write('largeExpenseAlertsEnabled: $largeExpenseAlertsEnabled, ')
+          ..write('largeExpenseThreshold: $largeExpenseThreshold, ')
+          ..write(
+            'unusualSpendingAlertsEnabled: $unusualSpendingAlertsEnabled, ',
+          )
+          ..write('unusualSpendingMultiplier: $unusualSpendingMultiplier, ')
+          ..write(
+            'recurringMerchantAlertsEnabled: $recurringMerchantAlertsEnabled, ',
+          )
+          ..write('weeklySummaryAlertsEnabled: $weeklySummaryAlertsEnabled, ')
+          ..write('monthlySummaryAlertsEnabled: $monthlySummaryAlertsEnabled')
           ..write(')'))
         .toString();
   }
@@ -10050,6 +11365,20 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     smsBackfillDays,
     smsLastScannedAt,
     hasCompletedOnboarding,
+    quietHoursStartHour,
+    quietHoursStartMinute,
+    quietHoursEndHour,
+    quietHoursEndMinute,
+    smartAlertsEnabled,
+    lowBalanceAlertsEnabled,
+    lowBalanceThreshold,
+    largeExpenseAlertsEnabled,
+    largeExpenseThreshold,
+    unusualSpendingAlertsEnabled,
+    unusualSpendingMultiplier,
+    recurringMerchantAlertsEnabled,
+    weeklySummaryAlertsEnabled,
+    monthlySummaryAlertsEnabled,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -10077,7 +11406,24 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           other.smsBackfillEnabled == this.smsBackfillEnabled &&
           other.smsBackfillDays == this.smsBackfillDays &&
           other.smsLastScannedAt == this.smsLastScannedAt &&
-          other.hasCompletedOnboarding == this.hasCompletedOnboarding);
+          other.hasCompletedOnboarding == this.hasCompletedOnboarding &&
+          other.quietHoursStartHour == this.quietHoursStartHour &&
+          other.quietHoursStartMinute == this.quietHoursStartMinute &&
+          other.quietHoursEndHour == this.quietHoursEndHour &&
+          other.quietHoursEndMinute == this.quietHoursEndMinute &&
+          other.smartAlertsEnabled == this.smartAlertsEnabled &&
+          other.lowBalanceAlertsEnabled == this.lowBalanceAlertsEnabled &&
+          other.lowBalanceThreshold == this.lowBalanceThreshold &&
+          other.largeExpenseAlertsEnabled == this.largeExpenseAlertsEnabled &&
+          other.largeExpenseThreshold == this.largeExpenseThreshold &&
+          other.unusualSpendingAlertsEnabled ==
+              this.unusualSpendingAlertsEnabled &&
+          other.unusualSpendingMultiplier == this.unusualSpendingMultiplier &&
+          other.recurringMerchantAlertsEnabled ==
+              this.recurringMerchantAlertsEnabled &&
+          other.weeklySummaryAlertsEnabled == this.weeklySummaryAlertsEnabled &&
+          other.monthlySummaryAlertsEnabled ==
+              this.monthlySummaryAlertsEnabled);
 }
 
 class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
@@ -10102,6 +11448,20 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   final Value<int> smsBackfillDays;
   final Value<DateTime?> smsLastScannedAt;
   final Value<bool> hasCompletedOnboarding;
+  final Value<int> quietHoursStartHour;
+  final Value<int> quietHoursStartMinute;
+  final Value<int> quietHoursEndHour;
+  final Value<int> quietHoursEndMinute;
+  final Value<bool> smartAlertsEnabled;
+  final Value<bool> lowBalanceAlertsEnabled;
+  final Value<double> lowBalanceThreshold;
+  final Value<bool> largeExpenseAlertsEnabled;
+  final Value<double> largeExpenseThreshold;
+  final Value<bool> unusualSpendingAlertsEnabled;
+  final Value<double> unusualSpendingMultiplier;
+  final Value<bool> recurringMerchantAlertsEnabled;
+  final Value<bool> weeklySummaryAlertsEnabled;
+  final Value<bool> monthlySummaryAlertsEnabled;
   const AppSettingsCompanion({
     this.id = const Value.absent(),
     this.isDarkMode = const Value.absent(),
@@ -10124,6 +11484,20 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.smsBackfillDays = const Value.absent(),
     this.smsLastScannedAt = const Value.absent(),
     this.hasCompletedOnboarding = const Value.absent(),
+    this.quietHoursStartHour = const Value.absent(),
+    this.quietHoursStartMinute = const Value.absent(),
+    this.quietHoursEndHour = const Value.absent(),
+    this.quietHoursEndMinute = const Value.absent(),
+    this.smartAlertsEnabled = const Value.absent(),
+    this.lowBalanceAlertsEnabled = const Value.absent(),
+    this.lowBalanceThreshold = const Value.absent(),
+    this.largeExpenseAlertsEnabled = const Value.absent(),
+    this.largeExpenseThreshold = const Value.absent(),
+    this.unusualSpendingAlertsEnabled = const Value.absent(),
+    this.unusualSpendingMultiplier = const Value.absent(),
+    this.recurringMerchantAlertsEnabled = const Value.absent(),
+    this.weeklySummaryAlertsEnabled = const Value.absent(),
+    this.monthlySummaryAlertsEnabled = const Value.absent(),
   });
   AppSettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -10147,6 +11521,20 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.smsBackfillDays = const Value.absent(),
     this.smsLastScannedAt = const Value.absent(),
     this.hasCompletedOnboarding = const Value.absent(),
+    this.quietHoursStartHour = const Value.absent(),
+    this.quietHoursStartMinute = const Value.absent(),
+    this.quietHoursEndHour = const Value.absent(),
+    this.quietHoursEndMinute = const Value.absent(),
+    this.smartAlertsEnabled = const Value.absent(),
+    this.lowBalanceAlertsEnabled = const Value.absent(),
+    this.lowBalanceThreshold = const Value.absent(),
+    this.largeExpenseAlertsEnabled = const Value.absent(),
+    this.largeExpenseThreshold = const Value.absent(),
+    this.unusualSpendingAlertsEnabled = const Value.absent(),
+    this.unusualSpendingMultiplier = const Value.absent(),
+    this.recurringMerchantAlertsEnabled = const Value.absent(),
+    this.weeklySummaryAlertsEnabled = const Value.absent(),
+    this.monthlySummaryAlertsEnabled = const Value.absent(),
   });
   static Insertable<AppSetting> custom({
     Expression<int>? id,
@@ -10170,6 +11558,20 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Expression<int>? smsBackfillDays,
     Expression<DateTime>? smsLastScannedAt,
     Expression<bool>? hasCompletedOnboarding,
+    Expression<int>? quietHoursStartHour,
+    Expression<int>? quietHoursStartMinute,
+    Expression<int>? quietHoursEndHour,
+    Expression<int>? quietHoursEndMinute,
+    Expression<bool>? smartAlertsEnabled,
+    Expression<bool>? lowBalanceAlertsEnabled,
+    Expression<double>? lowBalanceThreshold,
+    Expression<bool>? largeExpenseAlertsEnabled,
+    Expression<double>? largeExpenseThreshold,
+    Expression<bool>? unusualSpendingAlertsEnabled,
+    Expression<double>? unusualSpendingMultiplier,
+    Expression<bool>? recurringMerchantAlertsEnabled,
+    Expression<bool>? weeklySummaryAlertsEnabled,
+    Expression<bool>? monthlySummaryAlertsEnabled,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -10207,6 +11609,33 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       if (smsLastScannedAt != null) 'sms_last_scanned_at': smsLastScannedAt,
       if (hasCompletedOnboarding != null)
         'has_completed_onboarding': hasCompletedOnboarding,
+      if (quietHoursStartHour != null)
+        'quiet_hours_start_hour': quietHoursStartHour,
+      if (quietHoursStartMinute != null)
+        'quiet_hours_start_minute': quietHoursStartMinute,
+      if (quietHoursEndHour != null) 'quiet_hours_end_hour': quietHoursEndHour,
+      if (quietHoursEndMinute != null)
+        'quiet_hours_end_minute': quietHoursEndMinute,
+      if (smartAlertsEnabled != null)
+        'smart_alerts_enabled': smartAlertsEnabled,
+      if (lowBalanceAlertsEnabled != null)
+        'low_balance_alerts_enabled': lowBalanceAlertsEnabled,
+      if (lowBalanceThreshold != null)
+        'low_balance_threshold': lowBalanceThreshold,
+      if (largeExpenseAlertsEnabled != null)
+        'large_expense_alerts_enabled': largeExpenseAlertsEnabled,
+      if (largeExpenseThreshold != null)
+        'large_expense_threshold': largeExpenseThreshold,
+      if (unusualSpendingAlertsEnabled != null)
+        'unusual_spending_alerts_enabled': unusualSpendingAlertsEnabled,
+      if (unusualSpendingMultiplier != null)
+        'unusual_spending_multiplier': unusualSpendingMultiplier,
+      if (recurringMerchantAlertsEnabled != null)
+        'recurring_merchant_alerts_enabled': recurringMerchantAlertsEnabled,
+      if (weeklySummaryAlertsEnabled != null)
+        'weekly_summary_alerts_enabled': weeklySummaryAlertsEnabled,
+      if (monthlySummaryAlertsEnabled != null)
+        'monthly_summary_alerts_enabled': monthlySummaryAlertsEnabled,
     });
   }
 
@@ -10232,6 +11661,20 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Value<int>? smsBackfillDays,
     Value<DateTime?>? smsLastScannedAt,
     Value<bool>? hasCompletedOnboarding,
+    Value<int>? quietHoursStartHour,
+    Value<int>? quietHoursStartMinute,
+    Value<int>? quietHoursEndHour,
+    Value<int>? quietHoursEndMinute,
+    Value<bool>? smartAlertsEnabled,
+    Value<bool>? lowBalanceAlertsEnabled,
+    Value<double>? lowBalanceThreshold,
+    Value<bool>? largeExpenseAlertsEnabled,
+    Value<double>? largeExpenseThreshold,
+    Value<bool>? unusualSpendingAlertsEnabled,
+    Value<double>? unusualSpendingMultiplier,
+    Value<bool>? recurringMerchantAlertsEnabled,
+    Value<bool>? weeklySummaryAlertsEnabled,
+    Value<bool>? monthlySummaryAlertsEnabled,
   }) {
     return AppSettingsCompanion(
       id: id ?? this.id,
@@ -10264,6 +11707,29 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       smsLastScannedAt: smsLastScannedAt ?? this.smsLastScannedAt,
       hasCompletedOnboarding:
           hasCompletedOnboarding ?? this.hasCompletedOnboarding,
+      quietHoursStartHour: quietHoursStartHour ?? this.quietHoursStartHour,
+      quietHoursStartMinute:
+          quietHoursStartMinute ?? this.quietHoursStartMinute,
+      quietHoursEndHour: quietHoursEndHour ?? this.quietHoursEndHour,
+      quietHoursEndMinute: quietHoursEndMinute ?? this.quietHoursEndMinute,
+      smartAlertsEnabled: smartAlertsEnabled ?? this.smartAlertsEnabled,
+      lowBalanceAlertsEnabled:
+          lowBalanceAlertsEnabled ?? this.lowBalanceAlertsEnabled,
+      lowBalanceThreshold: lowBalanceThreshold ?? this.lowBalanceThreshold,
+      largeExpenseAlertsEnabled:
+          largeExpenseAlertsEnabled ?? this.largeExpenseAlertsEnabled,
+      largeExpenseThreshold:
+          largeExpenseThreshold ?? this.largeExpenseThreshold,
+      unusualSpendingAlertsEnabled:
+          unusualSpendingAlertsEnabled ?? this.unusualSpendingAlertsEnabled,
+      unusualSpendingMultiplier:
+          unusualSpendingMultiplier ?? this.unusualSpendingMultiplier,
+      recurringMerchantAlertsEnabled:
+          recurringMerchantAlertsEnabled ?? this.recurringMerchantAlertsEnabled,
+      weeklySummaryAlertsEnabled:
+          weeklySummaryAlertsEnabled ?? this.weeklySummaryAlertsEnabled,
+      monthlySummaryAlertsEnabled:
+          monthlySummaryAlertsEnabled ?? this.monthlySummaryAlertsEnabled,
     );
   }
 
@@ -10355,6 +11821,68 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
         hasCompletedOnboarding.value,
       );
     }
+    if (quietHoursStartHour.present) {
+      map['quiet_hours_start_hour'] = Variable<int>(quietHoursStartHour.value);
+    }
+    if (quietHoursStartMinute.present) {
+      map['quiet_hours_start_minute'] = Variable<int>(
+        quietHoursStartMinute.value,
+      );
+    }
+    if (quietHoursEndHour.present) {
+      map['quiet_hours_end_hour'] = Variable<int>(quietHoursEndHour.value);
+    }
+    if (quietHoursEndMinute.present) {
+      map['quiet_hours_end_minute'] = Variable<int>(quietHoursEndMinute.value);
+    }
+    if (smartAlertsEnabled.present) {
+      map['smart_alerts_enabled'] = Variable<bool>(smartAlertsEnabled.value);
+    }
+    if (lowBalanceAlertsEnabled.present) {
+      map['low_balance_alerts_enabled'] = Variable<bool>(
+        lowBalanceAlertsEnabled.value,
+      );
+    }
+    if (lowBalanceThreshold.present) {
+      map['low_balance_threshold'] = Variable<double>(
+        lowBalanceThreshold.value,
+      );
+    }
+    if (largeExpenseAlertsEnabled.present) {
+      map['large_expense_alerts_enabled'] = Variable<bool>(
+        largeExpenseAlertsEnabled.value,
+      );
+    }
+    if (largeExpenseThreshold.present) {
+      map['large_expense_threshold'] = Variable<double>(
+        largeExpenseThreshold.value,
+      );
+    }
+    if (unusualSpendingAlertsEnabled.present) {
+      map['unusual_spending_alerts_enabled'] = Variable<bool>(
+        unusualSpendingAlertsEnabled.value,
+      );
+    }
+    if (unusualSpendingMultiplier.present) {
+      map['unusual_spending_multiplier'] = Variable<double>(
+        unusualSpendingMultiplier.value,
+      );
+    }
+    if (recurringMerchantAlertsEnabled.present) {
+      map['recurring_merchant_alerts_enabled'] = Variable<bool>(
+        recurringMerchantAlertsEnabled.value,
+      );
+    }
+    if (weeklySummaryAlertsEnabled.present) {
+      map['weekly_summary_alerts_enabled'] = Variable<bool>(
+        weeklySummaryAlertsEnabled.value,
+      );
+    }
+    if (monthlySummaryAlertsEnabled.present) {
+      map['monthly_summary_alerts_enabled'] = Variable<bool>(
+        monthlySummaryAlertsEnabled.value,
+      );
+    }
     return map;
   }
 
@@ -10385,7 +11913,25 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           ..write('smsBackfillEnabled: $smsBackfillEnabled, ')
           ..write('smsBackfillDays: $smsBackfillDays, ')
           ..write('smsLastScannedAt: $smsLastScannedAt, ')
-          ..write('hasCompletedOnboarding: $hasCompletedOnboarding')
+          ..write('hasCompletedOnboarding: $hasCompletedOnboarding, ')
+          ..write('quietHoursStartHour: $quietHoursStartHour, ')
+          ..write('quietHoursStartMinute: $quietHoursStartMinute, ')
+          ..write('quietHoursEndHour: $quietHoursEndHour, ')
+          ..write('quietHoursEndMinute: $quietHoursEndMinute, ')
+          ..write('smartAlertsEnabled: $smartAlertsEnabled, ')
+          ..write('lowBalanceAlertsEnabled: $lowBalanceAlertsEnabled, ')
+          ..write('lowBalanceThreshold: $lowBalanceThreshold, ')
+          ..write('largeExpenseAlertsEnabled: $largeExpenseAlertsEnabled, ')
+          ..write('largeExpenseThreshold: $largeExpenseThreshold, ')
+          ..write(
+            'unusualSpendingAlertsEnabled: $unusualSpendingAlertsEnabled, ',
+          )
+          ..write('unusualSpendingMultiplier: $unusualSpendingMultiplier, ')
+          ..write(
+            'recurringMerchantAlertsEnabled: $recurringMerchantAlertsEnabled, ',
+          )
+          ..write('weeklySummaryAlertsEnabled: $weeklySummaryAlertsEnabled, ')
+          ..write('monthlySummaryAlertsEnabled: $monthlySummaryAlertsEnabled')
           ..write(')'))
         .toString();
   }
@@ -10411,6 +11957,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final $LoansTable loans = $LoansTable(this);
   late final $LoanPaymentsTable loanPayments = $LoanPaymentsTable(this);
+  late final $AlertsTable alerts = $AlertsTable(this);
   late final $AppSettingsTable appSettings = $AppSettingsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -10430,6 +11977,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     splitSettlements,
     loans,
     loanPayments,
+    alerts,
     appSettings,
   ];
 }
@@ -14709,6 +16257,333 @@ typedef $$LoanPaymentsTableProcessedTableManager =
       LoanPayment,
       PrefetchHooks Function()
     >;
+typedef $$AlertsTableCreateCompanionBuilder =
+    AlertsCompanion Function({
+      Value<int> id,
+      required String alertType,
+      required String title,
+      required String body,
+      Value<DateTime> createdAt,
+      Value<DateTime?> scheduledAt,
+      Value<String> priority,
+      Value<DateTime?> readAt,
+      Value<String?> actionRoute,
+      Value<String?> payload,
+      Value<DateTime?> dismissedAt,
+      Value<String?> dedupeKey,
+    });
+typedef $$AlertsTableUpdateCompanionBuilder =
+    AlertsCompanion Function({
+      Value<int> id,
+      Value<String> alertType,
+      Value<String> title,
+      Value<String> body,
+      Value<DateTime> createdAt,
+      Value<DateTime?> scheduledAt,
+      Value<String> priority,
+      Value<DateTime?> readAt,
+      Value<String?> actionRoute,
+      Value<String?> payload,
+      Value<DateTime?> dismissedAt,
+      Value<String?> dedupeKey,
+    });
+
+class $$AlertsTableFilterComposer
+    extends Composer<_$AppDatabase, $AlertsTable> {
+  $$AlertsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get alertType => $composableBuilder(
+    column: $table.alertType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get scheduledAt => $composableBuilder(
+    column: $table.scheduledAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get priority => $composableBuilder(
+    column: $table.priority,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get readAt => $composableBuilder(
+    column: $table.readAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get actionRoute => $composableBuilder(
+    column: $table.actionRoute,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get dismissedAt => $composableBuilder(
+    column: $table.dismissedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get dedupeKey => $composableBuilder(
+    column: $table.dedupeKey,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AlertsTableOrderingComposer
+    extends Composer<_$AppDatabase, $AlertsTable> {
+  $$AlertsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get alertType => $composableBuilder(
+    column: $table.alertType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get scheduledAt => $composableBuilder(
+    column: $table.scheduledAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get priority => $composableBuilder(
+    column: $table.priority,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get readAt => $composableBuilder(
+    column: $table.readAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get actionRoute => $composableBuilder(
+    column: $table.actionRoute,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payload => $composableBuilder(
+    column: $table.payload,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get dismissedAt => $composableBuilder(
+    column: $table.dismissedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get dedupeKey => $composableBuilder(
+    column: $table.dedupeKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AlertsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AlertsTable> {
+  $$AlertsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get alertType =>
+      $composableBuilder(column: $table.alertType, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get body =>
+      $composableBuilder(column: $table.body, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get scheduledAt => $composableBuilder(
+    column: $table.scheduledAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get priority =>
+      $composableBuilder(column: $table.priority, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get readAt =>
+      $composableBuilder(column: $table.readAt, builder: (column) => column);
+
+  GeneratedColumn<String> get actionRoute => $composableBuilder(
+    column: $table.actionRoute,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get payload =>
+      $composableBuilder(column: $table.payload, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get dismissedAt => $composableBuilder(
+    column: $table.dismissedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get dedupeKey =>
+      $composableBuilder(column: $table.dedupeKey, builder: (column) => column);
+}
+
+class $$AlertsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AlertsTable,
+          Alert,
+          $$AlertsTableFilterComposer,
+          $$AlertsTableOrderingComposer,
+          $$AlertsTableAnnotationComposer,
+          $$AlertsTableCreateCompanionBuilder,
+          $$AlertsTableUpdateCompanionBuilder,
+          (Alert, BaseReferences<_$AppDatabase, $AlertsTable, Alert>),
+          Alert,
+          PrefetchHooks Function()
+        > {
+  $$AlertsTableTableManager(_$AppDatabase db, $AlertsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AlertsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AlertsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AlertsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> alertType = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> body = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> scheduledAt = const Value.absent(),
+                Value<String> priority = const Value.absent(),
+                Value<DateTime?> readAt = const Value.absent(),
+                Value<String?> actionRoute = const Value.absent(),
+                Value<String?> payload = const Value.absent(),
+                Value<DateTime?> dismissedAt = const Value.absent(),
+                Value<String?> dedupeKey = const Value.absent(),
+              }) => AlertsCompanion(
+                id: id,
+                alertType: alertType,
+                title: title,
+                body: body,
+                createdAt: createdAt,
+                scheduledAt: scheduledAt,
+                priority: priority,
+                readAt: readAt,
+                actionRoute: actionRoute,
+                payload: payload,
+                dismissedAt: dismissedAt,
+                dedupeKey: dedupeKey,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String alertType,
+                required String title,
+                required String body,
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> scheduledAt = const Value.absent(),
+                Value<String> priority = const Value.absent(),
+                Value<DateTime?> readAt = const Value.absent(),
+                Value<String?> actionRoute = const Value.absent(),
+                Value<String?> payload = const Value.absent(),
+                Value<DateTime?> dismissedAt = const Value.absent(),
+                Value<String?> dedupeKey = const Value.absent(),
+              }) => AlertsCompanion.insert(
+                id: id,
+                alertType: alertType,
+                title: title,
+                body: body,
+                createdAt: createdAt,
+                scheduledAt: scheduledAt,
+                priority: priority,
+                readAt: readAt,
+                actionRoute: actionRoute,
+                payload: payload,
+                dismissedAt: dismissedAt,
+                dedupeKey: dedupeKey,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AlertsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AlertsTable,
+      Alert,
+      $$AlertsTableFilterComposer,
+      $$AlertsTableOrderingComposer,
+      $$AlertsTableAnnotationComposer,
+      $$AlertsTableCreateCompanionBuilder,
+      $$AlertsTableUpdateCompanionBuilder,
+      (Alert, BaseReferences<_$AppDatabase, $AlertsTable, Alert>),
+      Alert,
+      PrefetchHooks Function()
+    >;
 typedef $$AppSettingsTableCreateCompanionBuilder =
     AppSettingsCompanion Function({
       Value<int> id,
@@ -14732,6 +16607,20 @@ typedef $$AppSettingsTableCreateCompanionBuilder =
       Value<int> smsBackfillDays,
       Value<DateTime?> smsLastScannedAt,
       Value<bool> hasCompletedOnboarding,
+      Value<int> quietHoursStartHour,
+      Value<int> quietHoursStartMinute,
+      Value<int> quietHoursEndHour,
+      Value<int> quietHoursEndMinute,
+      Value<bool> smartAlertsEnabled,
+      Value<bool> lowBalanceAlertsEnabled,
+      Value<double> lowBalanceThreshold,
+      Value<bool> largeExpenseAlertsEnabled,
+      Value<double> largeExpenseThreshold,
+      Value<bool> unusualSpendingAlertsEnabled,
+      Value<double> unusualSpendingMultiplier,
+      Value<bool> recurringMerchantAlertsEnabled,
+      Value<bool> weeklySummaryAlertsEnabled,
+      Value<bool> monthlySummaryAlertsEnabled,
     });
 typedef $$AppSettingsTableUpdateCompanionBuilder =
     AppSettingsCompanion Function({
@@ -14756,6 +16645,20 @@ typedef $$AppSettingsTableUpdateCompanionBuilder =
       Value<int> smsBackfillDays,
       Value<DateTime?> smsLastScannedAt,
       Value<bool> hasCompletedOnboarding,
+      Value<int> quietHoursStartHour,
+      Value<int> quietHoursStartMinute,
+      Value<int> quietHoursEndHour,
+      Value<int> quietHoursEndMinute,
+      Value<bool> smartAlertsEnabled,
+      Value<bool> lowBalanceAlertsEnabled,
+      Value<double> lowBalanceThreshold,
+      Value<bool> largeExpenseAlertsEnabled,
+      Value<double> largeExpenseThreshold,
+      Value<bool> unusualSpendingAlertsEnabled,
+      Value<double> unusualSpendingMultiplier,
+      Value<bool> recurringMerchantAlertsEnabled,
+      Value<bool> weeklySummaryAlertsEnabled,
+      Value<bool> monthlySummaryAlertsEnabled,
     });
 
 class $$AppSettingsTableFilterComposer
@@ -14870,6 +16773,76 @@ class $$AppSettingsTableFilterComposer
 
   ColumnFilters<bool> get hasCompletedOnboarding => $composableBuilder(
     column: $table.hasCompletedOnboarding,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get quietHoursStartHour => $composableBuilder(
+    column: $table.quietHoursStartHour,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get quietHoursStartMinute => $composableBuilder(
+    column: $table.quietHoursStartMinute,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get quietHoursEndHour => $composableBuilder(
+    column: $table.quietHoursEndHour,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get quietHoursEndMinute => $composableBuilder(
+    column: $table.quietHoursEndMinute,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get smartAlertsEnabled => $composableBuilder(
+    column: $table.smartAlertsEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get lowBalanceAlertsEnabled => $composableBuilder(
+    column: $table.lowBalanceAlertsEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get lowBalanceThreshold => $composableBuilder(
+    column: $table.lowBalanceThreshold,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get largeExpenseAlertsEnabled => $composableBuilder(
+    column: $table.largeExpenseAlertsEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get largeExpenseThreshold => $composableBuilder(
+    column: $table.largeExpenseThreshold,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get unusualSpendingAlertsEnabled => $composableBuilder(
+    column: $table.unusualSpendingAlertsEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get unusualSpendingMultiplier => $composableBuilder(
+    column: $table.unusualSpendingMultiplier,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get recurringMerchantAlertsEnabled => $composableBuilder(
+    column: $table.recurringMerchantAlertsEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get weeklySummaryAlertsEnabled => $composableBuilder(
+    column: $table.weeklySummaryAlertsEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get monthlySummaryAlertsEnabled => $composableBuilder(
+    column: $table.monthlySummaryAlertsEnabled,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -14988,6 +16961,77 @@ class $$AppSettingsTableOrderingComposer
     column: $table.hasCompletedOnboarding,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get quietHoursStartHour => $composableBuilder(
+    column: $table.quietHoursStartHour,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get quietHoursStartMinute => $composableBuilder(
+    column: $table.quietHoursStartMinute,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get quietHoursEndHour => $composableBuilder(
+    column: $table.quietHoursEndHour,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get quietHoursEndMinute => $composableBuilder(
+    column: $table.quietHoursEndMinute,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get smartAlertsEnabled => $composableBuilder(
+    column: $table.smartAlertsEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get lowBalanceAlertsEnabled => $composableBuilder(
+    column: $table.lowBalanceAlertsEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get lowBalanceThreshold => $composableBuilder(
+    column: $table.lowBalanceThreshold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get largeExpenseAlertsEnabled => $composableBuilder(
+    column: $table.largeExpenseAlertsEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get largeExpenseThreshold => $composableBuilder(
+    column: $table.largeExpenseThreshold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get unusualSpendingAlertsEnabled => $composableBuilder(
+    column: $table.unusualSpendingAlertsEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get unusualSpendingMultiplier => $composableBuilder(
+    column: $table.unusualSpendingMultiplier,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get recurringMerchantAlertsEnabled =>
+      $composableBuilder(
+        column: $table.recurringMerchantAlertsEnabled,
+        builder: (column) => ColumnOrderings(column),
+      );
+
+  ColumnOrderings<bool> get weeklySummaryAlertsEnabled => $composableBuilder(
+    column: $table.weeklySummaryAlertsEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get monthlySummaryAlertsEnabled => $composableBuilder(
+    column: $table.monthlySummaryAlertsEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AppSettingsTableAnnotationComposer
@@ -15102,6 +17146,77 @@ class $$AppSettingsTableAnnotationComposer
     column: $table.hasCompletedOnboarding,
     builder: (column) => column,
   );
+
+  GeneratedColumn<int> get quietHoursStartHour => $composableBuilder(
+    column: $table.quietHoursStartHour,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get quietHoursStartMinute => $composableBuilder(
+    column: $table.quietHoursStartMinute,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get quietHoursEndHour => $composableBuilder(
+    column: $table.quietHoursEndHour,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get quietHoursEndMinute => $composableBuilder(
+    column: $table.quietHoursEndMinute,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get smartAlertsEnabled => $composableBuilder(
+    column: $table.smartAlertsEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get lowBalanceAlertsEnabled => $composableBuilder(
+    column: $table.lowBalanceAlertsEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get lowBalanceThreshold => $composableBuilder(
+    column: $table.lowBalanceThreshold,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get largeExpenseAlertsEnabled => $composableBuilder(
+    column: $table.largeExpenseAlertsEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get largeExpenseThreshold => $composableBuilder(
+    column: $table.largeExpenseThreshold,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get unusualSpendingAlertsEnabled => $composableBuilder(
+    column: $table.unusualSpendingAlertsEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get unusualSpendingMultiplier => $composableBuilder(
+    column: $table.unusualSpendingMultiplier,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get recurringMerchantAlertsEnabled =>
+      $composableBuilder(
+        column: $table.recurringMerchantAlertsEnabled,
+        builder: (column) => column,
+      );
+
+  GeneratedColumn<bool> get weeklySummaryAlertsEnabled => $composableBuilder(
+    column: $table.weeklySummaryAlertsEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get monthlySummaryAlertsEnabled => $composableBuilder(
+    column: $table.monthlySummaryAlertsEnabled,
+    builder: (column) => column,
+  );
 }
 
 class $$AppSettingsTableTableManager
@@ -15157,6 +17272,21 @@ class $$AppSettingsTableTableManager
                 Value<int> smsBackfillDays = const Value.absent(),
                 Value<DateTime?> smsLastScannedAt = const Value.absent(),
                 Value<bool> hasCompletedOnboarding = const Value.absent(),
+                Value<int> quietHoursStartHour = const Value.absent(),
+                Value<int> quietHoursStartMinute = const Value.absent(),
+                Value<int> quietHoursEndHour = const Value.absent(),
+                Value<int> quietHoursEndMinute = const Value.absent(),
+                Value<bool> smartAlertsEnabled = const Value.absent(),
+                Value<bool> lowBalanceAlertsEnabled = const Value.absent(),
+                Value<double> lowBalanceThreshold = const Value.absent(),
+                Value<bool> largeExpenseAlertsEnabled = const Value.absent(),
+                Value<double> largeExpenseThreshold = const Value.absent(),
+                Value<bool> unusualSpendingAlertsEnabled = const Value.absent(),
+                Value<double> unusualSpendingMultiplier = const Value.absent(),
+                Value<bool> recurringMerchantAlertsEnabled =
+                    const Value.absent(),
+                Value<bool> weeklySummaryAlertsEnabled = const Value.absent(),
+                Value<bool> monthlySummaryAlertsEnabled = const Value.absent(),
               }) => AppSettingsCompanion(
                 id: id,
                 isDarkMode: isDarkMode,
@@ -15180,6 +17310,20 @@ class $$AppSettingsTableTableManager
                 smsBackfillDays: smsBackfillDays,
                 smsLastScannedAt: smsLastScannedAt,
                 hasCompletedOnboarding: hasCompletedOnboarding,
+                quietHoursStartHour: quietHoursStartHour,
+                quietHoursStartMinute: quietHoursStartMinute,
+                quietHoursEndHour: quietHoursEndHour,
+                quietHoursEndMinute: quietHoursEndMinute,
+                smartAlertsEnabled: smartAlertsEnabled,
+                lowBalanceAlertsEnabled: lowBalanceAlertsEnabled,
+                lowBalanceThreshold: lowBalanceThreshold,
+                largeExpenseAlertsEnabled: largeExpenseAlertsEnabled,
+                largeExpenseThreshold: largeExpenseThreshold,
+                unusualSpendingAlertsEnabled: unusualSpendingAlertsEnabled,
+                unusualSpendingMultiplier: unusualSpendingMultiplier,
+                recurringMerchantAlertsEnabled: recurringMerchantAlertsEnabled,
+                weeklySummaryAlertsEnabled: weeklySummaryAlertsEnabled,
+                monthlySummaryAlertsEnabled: monthlySummaryAlertsEnabled,
               ),
           createCompanionCallback:
               ({
@@ -15205,6 +17349,21 @@ class $$AppSettingsTableTableManager
                 Value<int> smsBackfillDays = const Value.absent(),
                 Value<DateTime?> smsLastScannedAt = const Value.absent(),
                 Value<bool> hasCompletedOnboarding = const Value.absent(),
+                Value<int> quietHoursStartHour = const Value.absent(),
+                Value<int> quietHoursStartMinute = const Value.absent(),
+                Value<int> quietHoursEndHour = const Value.absent(),
+                Value<int> quietHoursEndMinute = const Value.absent(),
+                Value<bool> smartAlertsEnabled = const Value.absent(),
+                Value<bool> lowBalanceAlertsEnabled = const Value.absent(),
+                Value<double> lowBalanceThreshold = const Value.absent(),
+                Value<bool> largeExpenseAlertsEnabled = const Value.absent(),
+                Value<double> largeExpenseThreshold = const Value.absent(),
+                Value<bool> unusualSpendingAlertsEnabled = const Value.absent(),
+                Value<double> unusualSpendingMultiplier = const Value.absent(),
+                Value<bool> recurringMerchantAlertsEnabled =
+                    const Value.absent(),
+                Value<bool> weeklySummaryAlertsEnabled = const Value.absent(),
+                Value<bool> monthlySummaryAlertsEnabled = const Value.absent(),
               }) => AppSettingsCompanion.insert(
                 id: id,
                 isDarkMode: isDarkMode,
@@ -15228,6 +17387,20 @@ class $$AppSettingsTableTableManager
                 smsBackfillDays: smsBackfillDays,
                 smsLastScannedAt: smsLastScannedAt,
                 hasCompletedOnboarding: hasCompletedOnboarding,
+                quietHoursStartHour: quietHoursStartHour,
+                quietHoursStartMinute: quietHoursStartMinute,
+                quietHoursEndHour: quietHoursEndHour,
+                quietHoursEndMinute: quietHoursEndMinute,
+                smartAlertsEnabled: smartAlertsEnabled,
+                lowBalanceAlertsEnabled: lowBalanceAlertsEnabled,
+                lowBalanceThreshold: lowBalanceThreshold,
+                largeExpenseAlertsEnabled: largeExpenseAlertsEnabled,
+                largeExpenseThreshold: largeExpenseThreshold,
+                unusualSpendingAlertsEnabled: unusualSpendingAlertsEnabled,
+                unusualSpendingMultiplier: unusualSpendingMultiplier,
+                recurringMerchantAlertsEnabled: recurringMerchantAlertsEnabled,
+                weeklySummaryAlertsEnabled: weeklySummaryAlertsEnabled,
+                monthlySummaryAlertsEnabled: monthlySummaryAlertsEnabled,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
@@ -15284,6 +17457,8 @@ class $AppDatabaseManager {
       $$LoansTableTableManager(_db, _db.loans);
   $$LoanPaymentsTableTableManager get loanPayments =>
       $$LoanPaymentsTableTableManager(_db, _db.loanPayments);
+  $$AlertsTableTableManager get alerts =>
+      $$AlertsTableTableManager(_db, _db.alerts);
   $$AppSettingsTableTableManager get appSettings =>
       $$AppSettingsTableTableManager(_db, _db.appSettings);
 }

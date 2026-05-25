@@ -15,6 +15,7 @@ import 'notification_ingestion_service.dart';
 import 'notification_keyword_filter.dart';
 import 'notification_local_notifier.dart';
 import 'notification_permission_service.dart';
+import 'notification_payload.dart';
 import 'reminder_service.dart';
 import 'sms_fingerprint.dart';
 import 'sms_ingestion_service.dart';
@@ -349,8 +350,7 @@ final notificationListenerBootstrapProvider = Provider<void>((ref) {
       caseSensitive: false,
     ).firstMatch(text);
     final amount = amountMatch?.group(0)?.replaceAll('INR', '₹') ?? 'Amount';
-    final merchant =
-        payload.title?.trim().isNotEmpty == true
+    final merchant = payload.title?.trim().isNotEmpty == true
         ? payload.title!.trim()
         : (payload.sender?.trim().isNotEmpty == true
               ? payload.sender!.trim()
@@ -367,11 +367,13 @@ final notificationListenerBootstrapProvider = Provider<void>((ref) {
         if (payload.sourceType == 'sms') {
           final ids = await smsIngestion.processSmsPayload(payload);
           if (ids.isNotEmpty) {
-            await ref.read(alertEvaluationActionsProvider).onPendingDetected(
-              pendingId: ids.first,
-              title: pendingAlertTitle(payload),
-              body: 'Confirm this transaction in Finarc.',
-            );
+            await ref
+                .read(alertEvaluationActionsProvider)
+                .onPendingDetected(
+                  pendingId: ids.first,
+                  title: pendingAlertTitle(payload),
+                  body: 'Confirm this transaction in Finarc.',
+                );
           }
           ref.invalidate(pendingTransactionsProvider);
           ref.invalidate(pendingCountProvider);
@@ -379,11 +381,13 @@ final notificationListenerBootstrapProvider = Provider<void>((ref) {
         }
         final ids = await notificationIngestion.processPayload(payload);
         if (ids.isNotEmpty) {
-          await ref.read(alertEvaluationActionsProvider).onPendingDetected(
-            pendingId: ids.first,
-            title: pendingAlertTitle(payload),
-            body: 'Confirm this transaction in Finarc.',
-          );
+          await ref
+              .read(alertEvaluationActionsProvider)
+              .onPendingDetected(
+                pendingId: ids.first,
+                title: pendingAlertTitle(payload),
+                body: 'Confirm this transaction in Finarc.',
+              );
         }
         ref.invalidate(pendingTransactionsProvider);
         ref.invalidate(pendingCountProvider);

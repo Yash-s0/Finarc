@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/database/app_database.dart';
 import '../../../core/theme/app_spacing.dart';
-import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
 import '../data/alert_types.dart';
 import '../data/alerts_providers.dart';
@@ -68,9 +68,9 @@ class AlertsCenterScreen extends ConsumerWidget {
               FinarcActionChip(
                 label: 'Dismissed',
                 selected: includeDismissed,
-                onTap: () => ref
-                    .read(alertsIncludeDismissedProvider.notifier)
-                    .state = !includeDismissed,
+                onTap: () =>
+                    ref.read(alertsIncludeDismissedProvider.notifier).state =
+                        !includeDismissed,
               ),
             ],
           ),
@@ -225,7 +225,8 @@ class AlertsCenterScreen extends ConsumerWidget {
                   ),
                 const Spacer(),
                 IconButton(
-                  onPressed: () => ref.read(alertActionsProvider).dismiss(alert.id),
+                  onPressed: () =>
+                      ref.read(alertActionsProvider).dismiss(alert.id),
                   icon: const Icon(Icons.close_rounded, size: 18),
                   tooltip: 'Dismiss',
                 ),

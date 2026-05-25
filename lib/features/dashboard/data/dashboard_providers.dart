@@ -92,7 +92,8 @@ final dashboardProvider = FutureProvider<DashboardSnapshot>((ref) async {
             ..where(
               (a) =>
                   a.dismissedAt.isNull() &
-                  (a.priority.equals('critical') | a.priority.equals('warning')),
+                  (a.priority.equals('critical') |
+                      a.priority.equals('warning')),
             )
             ..orderBy([(a) => OrderingTerm.desc(a.createdAt)])
             ..limit(1))

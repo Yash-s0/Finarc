@@ -1,5 +1,3 @@
-import 'package:drift/drift.dart';
-
 import '../../../core/database/app_database.dart';
 import '../../../core/utils/formatters.dart';
 import '../../cards/data/billing_service.dart';
@@ -14,13 +12,12 @@ class AlertEngine {
   AlertEngine({
     required AppDatabase database,
     required AlertService alertService,
-    required NotificationLocalNotifier notifier,
+    required this._notifier,
     required BillingService billingService,
     required LoanService loanService,
     required SplitService splitService,
   }) : _db = database,
        _alerts = alertService,
-       _notifier = notifier,
        _billing = billingService,
        _loans = loanService,
        _split = splitService;
@@ -88,12 +85,14 @@ class AlertEngine {
       title = 'Split settlement reminder';
       body = 'You are owed ${inr(receivable)} across split groups.';
       priority = AlertPriority.warning;
-      dedupeKey = 'split_receivable_${DateTime.now().year}_${DateTime.now().month}';
+      dedupeKey =
+          'split_receivable_${DateTime.now().year}_${DateTime.now().month}';
     } else {
       title = 'Split payable reminder';
       body = 'You owe ${inr(payable)} across split groups.';
       priority = AlertPriority.warning;
-      dedupeKey = 'split_payable_${DateTime.now().year}_${DateTime.now().month}';
+      dedupeKey =
+          'split_payable_${DateTime.now().year}_${DateTime.now().month}';
     }
 
     final alert = await _alerts.createAlert(
@@ -260,12 +259,14 @@ class AlertEngine {
         continue;
       }
       if (!_isLifestyleSpend(t)) continue;
-      final key = '${t.transactionDate.year}-${t.transactionDate.month}-${t.transactionDate.day}';
+      final key =
+          '${t.transactionDate.year}-${t.transactionDate.month}-${t.transactionDate.day}';
       dailyTotals[key] = (dailyTotals[key] ?? 0) + _netSpend(t);
     }
     if (dailyTotals.isEmpty) return;
 
-    final avg = dailyTotals.values.fold<double>(0, (s, v) => s + v) /
+    final avg =
+        dailyTotals.values.fold<double>(0, (s, v) => s + v) /
         dailyTotals.length;
     final multiplier = settings.unusualSpendingMultiplier;
     if (avg <= 0 || todaySpending <= avg * multiplier) return;
@@ -313,10 +314,12 @@ class AlertEngine {
       CreateAlertInput(
         alertType: AlertType.recurringMerchant,
         title: 'Recurring merchant alert',
-        body: 'You spent at ${topEntry.key} ${topEntry.value} times this month.',
+        body:
+            'You spent at ${topEntry.key} ${topEntry.value} times this month.',
         priority: AlertPriority.info,
         actionRoute: '/analytics',
-        dedupeKey: 'recurring_${now.year}_${now.month}_${topEntry.key.toLowerCase()}',
+        dedupeKey:
+            'recurring_${now.year}_${now.month}_${topEntry.key.toLowerCase()}',
       ),
       dedupeWindow: const Duration(days: 14),
     );
@@ -389,7 +392,8 @@ class AlertEngine {
           body: body,
           priority: priority,
           actionRoute: '/loans/${schedule.loan.id}',
-          dedupeKey: 'emi_due_${schedule.loan.id}_${schedule.nextDate.toIso8601String()}',
+          dedupeKey:
+              'emi_due_${schedule.loan.id}_${schedule.nextDate.toIso8601String()}',
         ),
         dedupeWindow: const Duration(hours: 12),
       );
@@ -438,7 +442,8 @@ class AlertEngine {
     final currentMinutes = now.hour * 60 + now.minute;
     final startMinutes =
         settings.quietHoursStartHour * 60 + settings.quietHoursStartMinute;
-    final endMinutes = settings.quietHoursEndHour * 60 + settings.quietHoursEndMinute;
+    final endMinutes =
+        settings.quietHoursEndHour * 60 + settings.quietHoursEndMinute;
 
     if (startMinutes == endMinutes) return false;
 
@@ -490,7 +495,8 @@ class AlertEngine {
     final category = <String, double>{};
 
     for (final t in txns) {
-      if (t.transactionDate.isBefore(startTime) || t.transactionDate.isAfter(endTime)) {
+      if (t.transactionDate.isBefore(startTime) ||
+          t.transactionDate.isAfter(endTime)) {
         continue;
       }
       if (!_isLifestyleSpend(t)) continue;

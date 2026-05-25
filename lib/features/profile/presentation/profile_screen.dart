@@ -836,10 +836,7 @@ class ProfileScreen extends ConsumerWidget {
     return Row(
       children: [
         Expanded(
-          child: Text(
-            label,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
+          child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
         ),
         Switch.adaptive(value: value, onChanged: onChanged),
       ],
@@ -860,8 +857,8 @@ class ProfileScreen extends ConsumerWidget {
     final start = await showTimePicker(
       context: context,
       initialTime: TimeOfDay(
-        hour: settings.quietHoursStartHour as int,
-        minute: settings.quietHoursStartMinute as int,
+        hour: settings.quietHoursStartHour,
+        minute: settings.quietHoursStartMinute,
       ),
     );
     if (start == null || !context.mounted) return;
@@ -869,18 +866,20 @@ class ProfileScreen extends ConsumerWidget {
     final end = await showTimePicker(
       context: context,
       initialTime: TimeOfDay(
-        hour: settings.quietHoursEndHour as int,
-        minute: settings.quietHoursEndMinute as int,
+        hour: settings.quietHoursEndHour,
+        minute: settings.quietHoursEndMinute,
       ),
     );
     if (end == null || !context.mounted) return;
 
-    await ref.read(detectionSettingsProvider.notifier).applyChanges(
-      quietHoursStartHour: start.hour,
-      quietHoursStartMinute: start.minute,
-      quietHoursEndHour: end.hour,
-      quietHoursEndMinute: end.minute,
-    );
+    await ref
+        .read(detectionSettingsProvider.notifier)
+        .applyChanges(
+          quietHoursStartHour: start.hour,
+          quietHoursStartMinute: start.minute,
+          quietHoursEndHour: end.hour,
+          quietHoursEndMinute: end.minute,
+        );
   }
 
   Future<void> _confirmResetAllData(BuildContext context, WidgetRef ref) async {
