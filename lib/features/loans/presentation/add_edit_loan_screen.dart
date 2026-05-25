@@ -159,8 +159,16 @@ class _AddEditLoanScreenState extends ConsumerState<AddEditLoanScreen> {
                         const SizedBox(height: AppSpacing.sm),
                         FinarcTextField(
                           controller: _emiDay,
-                          label: 'EMI day (1-28 optional)',
+                          label: 'EMI day (1-31 optional)',
                           keyboardType: TextInputType.number,
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) return null;
+                            final day = int.tryParse(v.trim());
+                            if (day == null || day < 1 || day > 31) {
+                              return 'EMI day must be 1 to 31';
+                            }
+                            return null;
+                          },
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         FinarcTextField(
@@ -225,6 +233,55 @@ class _AddEditLoanScreenState extends ConsumerState<AddEditLoanScreen> {
     final interest = _parseDouble(_interest.text);
     final tenure = _parseInt(_tenure.text);
     final linkedId = _parseInt(_linkedAccountId.text);
+
+    if (principal <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Principal amount must be greater than 0')),
+      );
+      return;
+    }
+    if (outstanding < 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Outstanding amount cannot be negative')),
+      );
+      return;
+    }
+    if (emiAmount != null && emiAmount < 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('EMI amount cannot be negative')),
+      );
+      return;
+    }
+    if (emiAmount != null && emiAmount > outstanding) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('EMI amount cannot exceed current outstanding'),
+        ),
+      );
+      return;
+    }
+    if (outstanding > principal) {
+      final shouldContinue = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Outstanding exceeds principal'),
+          content: const Text(
+            'Current outstanding is greater than principal. Continue anyway?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Continue'),
+            ),
+          ],
+        ),
+      );
+      if (shouldContinue != true) return;
+    }
 
     final actions = ref.read(loanActionsProvider);
     if (widget.loanId == null) {

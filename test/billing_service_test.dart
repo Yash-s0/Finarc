@@ -122,4 +122,29 @@ void main() {
     expect(again!.id, bill!.id);
     expect(again.billedAmount, 1000);
   });
+
+  test('mark bill paid without bank account throws', () async {
+    final cardId = await createCard();
+    await db
+        .into(db.transactions)
+        .insert(
+          TransactionsCompanion.insert(
+            title: 'Included expense',
+            category: 'Food',
+            amount: 1000,
+            type: 'creditCard',
+            transactionDate: DateTime(2026, 5, 9),
+            paymentSourceType: 'creditCard',
+            paymentSourceId: cardId,
+          ),
+        );
+
+    final service = BillingService(db, now: () => DateTime(2026, 5, 15));
+    final bill = await service.generateBillForCard(cardId);
+
+    expect(
+      () => service.markBillAsPaid(bill!.id, null, 1000),
+      throwsA(isA<ArgumentError>()),
+    );
+  });
 }

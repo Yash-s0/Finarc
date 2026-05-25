@@ -125,4 +125,31 @@ void main() {
     final ratio = await service.calculateDebtRatio(totalLiquidAssets: 100000);
     expect(ratio, closeTo(0.25, 0.0001));
   });
+
+  test('loan create validation rejects invalid EMI day', () async {
+    expect(
+      () => service.createLoan(
+        title: 'Bad EMI Day',
+        lenderName: 'HDFC',
+        loanType: LoanType.personal,
+        principalAmount: 50000,
+        currentOutstanding: 40000,
+        emiDay: 40,
+      ),
+      throwsA(isA<ArgumentError>()),
+    );
+  });
+
+  test('loan create validation rejects negative outstanding', () async {
+    expect(
+      () => service.createLoan(
+        title: 'Bad Outstanding',
+        lenderName: 'HDFC',
+        loanType: LoanType.personal,
+        principalAmount: 50000,
+        currentOutstanding: -1,
+      ),
+      throwsA(isA<ArgumentError>()),
+    );
+  });
 }

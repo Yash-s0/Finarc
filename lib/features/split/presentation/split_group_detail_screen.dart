@@ -15,6 +15,28 @@ class SplitGroupDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (groupId <= 0) {
+      return FinarcScaffold(
+        appBar: const FinarcAppBar(title: 'Group'),
+        body: ListView(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          children: [
+            const FinarcEmptyState(
+              title: 'Invalid split group route',
+              subtitle: 'This group link is invalid.',
+              icon: Icons.error_outline,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            FinarcPrimaryButton(
+              onPressed: () => context.go('/split'),
+              icon: Icons.arrow_back_rounded,
+              label: 'Back to Split',
+            ),
+          ],
+        ),
+      );
+    }
+
     final state = ref.watch(splitGroupDetailProvider(groupId));
 
     return FinarcScaffold(
@@ -36,7 +58,22 @@ class SplitGroupDetailScreen extends ConsumerWidget {
             FinarcLoadingSkeleton(height: 200),
           ],
         ),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => ListView(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          children: [
+            const FinarcEmptyState(
+              title: 'Split group not found',
+              subtitle: 'This group may have been archived or deleted.',
+              icon: Icons.group_off_outlined,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            FinarcPrimaryButton(
+              onPressed: () => context.go('/split'),
+              icon: Icons.arrow_back_rounded,
+              label: 'Back to Split',
+            ),
+          ],
+        ),
         data: (data) {
           final yourBalance = data.memberBalances
               .where((m) => m.member.isCurrentUser)

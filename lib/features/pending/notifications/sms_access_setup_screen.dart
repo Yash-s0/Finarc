@@ -12,6 +12,7 @@ class SmsAccessSetupScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final smsPermission = ref.watch(smsPermissionStatusProvider);
     final settingsState = ref.watch(detectionSettingsProvider);
+    final hasSmsAccess = smsPermission.valueOrNull ?? false;
 
     return FinarcScaffold(
       appBar: const FinarcAppBar(title: 'SMS Access'),
@@ -39,6 +40,12 @@ class SmsAccessSetupScreen extends ConsumerWidget {
                     label: 'Local-only parsing. User confirmation required.',
                     tone: FinarcStatusTone.info,
                   ),
+                  const SizedBox(height: AppSpacing.xs),
+                  if (!hasSmsAccess)
+                    Text(
+                      'If SMS remains unavailable in debug/profile builds, native SMS components may be disabled for safety.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                 ],
               ),
             ),
@@ -108,9 +115,21 @@ class SmsAccessSetupScreen extends ConsumerWidget {
                     context,
                     'SMS detection enabled',
                     settings.smsDetectionEnabled,
-                    (value) => ref
-                        .read(detectionSettingsProvider.notifier)
-                        .applyChanges(smsDetectionEnabled: value),
+                    (value) async {
+                      if (value && !hasSmsAccess) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Enable SMS permission before turning on SMS detection.',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+                      await ref
+                          .read(detectionSettingsProvider.notifier)
+                          .applyChanges(smsDetectionEnabled: value);
+                    },
                   ),
                   _toggle(
                     context,
@@ -149,6 +168,17 @@ class SmsAccessSetupScreen extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.sm),
                   FinarcPrimaryButton(
                     onPressed: () async {
+                      if (!hasSmsAccess) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'SMS permission is required before backfill.',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
                       final count = await ref
                           .read(smsPermissionServiceProvider)
                           .scanRecentSms(settings.smsBackfillDays);

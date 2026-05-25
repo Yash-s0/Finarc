@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -27,12 +28,52 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.billId <= 0 || widget.cardId <= 0) {
+      return FinarcScaffold(
+        appBar: const FinarcAppBar(title: 'Bill Detail'),
+        body: ListView(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          children: [
+            const FinarcEmptyState(
+              title: 'Invalid bill route',
+              subtitle: 'This bill link is invalid.',
+              icon: Icons.error_outline,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            FinarcPrimaryButton(
+              onPressed: () => context.go('/cards'),
+              icon: Icons.arrow_back_rounded,
+              label: 'Back to Cards',
+            ),
+          ],
+        ),
+      );
+    }
+
     final state = ref.watch(billDetailProvider(widget.billId));
     return state.when(
       loading: () => const FinarcScaffold(
         body: Center(child: CircularProgressIndicator()),
       ),
-      error: (e, _) => FinarcScaffold(body: Center(child: Text('Error: $e'))),
+      error: (e, _) => FinarcScaffold(
+        appBar: const FinarcAppBar(title: 'Bill Detail'),
+        body: ListView(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          children: [
+            const FinarcEmptyState(
+              title: 'Bill not found',
+              subtitle: 'This bill may have been deleted or already cleared.',
+              icon: Icons.receipt_long_outlined,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            FinarcPrimaryButton(
+              onPressed: () => context.go('/cards'),
+              icon: Icons.arrow_back_rounded,
+              label: 'Back to Cards',
+            ),
+          ],
+        ),
+      ),
       data: (data) {
         final bill = data.bill;
         final dueDays = bill.dueDate.difference(DateTime.now()).inDays;

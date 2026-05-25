@@ -15,7 +15,7 @@ final pendingByIdProvider = FutureProvider.family((ref, int id) async {
   final db = ref.read(appDatabaseProvider);
   return (db.select(
     db.pendingTransactions,
-  )..where((p) => p.id.equals(id))).getSingle();
+  )..where((p) => p.id.equals(id))).getSingleOrNull();
 });
 
 class EditPendingTransactionScreen extends ConsumerStatefulWidget {
@@ -42,6 +42,7 @@ class _EditPendingTransactionScreenState
   bool _cashbackOn = false;
   final _cashback = TextEditingController(text: '0');
   final _recoverable = TextEditingController(text: '0');
+  final _dateController = TextEditingController();
   bool _initialized = false;
 
   @override
@@ -52,6 +53,7 @@ class _EditPendingTransactionScreenState
     _notes.dispose();
     _cashback.dispose();
     _recoverable.dispose();
+    _dateController.dispose();
     super.dispose();
   }
 
@@ -69,6 +71,24 @@ class _EditPendingTransactionScreenState
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Center(child: Text('Error: $e')),
           data: (sources) {
+            if (pending == null) {
+              return ListView(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                children: [
+                  const FinarcEmptyState(
+                    title: 'Pending transaction not found',
+                    subtitle: 'It may have been confirmed, ignored, or deleted.',
+                    icon: Icons.search_off_outlined,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  FinarcPrimaryButton(
+                    onPressed: () => context.go('/pending'),
+                    icon: Icons.arrow_back_rounded,
+                    label: 'Back to Pending List',
+                  ),
+                ],
+              );
+            }
             if (!_initialized) {
               _amount.text = pending.amount.toStringAsFixed(0);
               _merchant.text = pending.merchant;
@@ -82,6 +102,7 @@ class _EditPendingTransactionScreenState
               _recoverable.text = (pending.recoverableAmount ?? 0)
                   .toStringAsFixed(0);
               _notes.text = pending.notes ?? '';
+              _dateController.text = '${_date.toLocal()}'.split('.').first;
               _initialized = true;
             }
 
@@ -102,11 +123,24 @@ class _EditPendingTransactionScreenState
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
+                          validator: (v) {
+                            final amount = double.tryParse(v ?? '');
+                            if (amount == null || amount <= 0) {
+                              return 'Amount must be greater than 0';
+                            }
+                            return null;
+                          },
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         FinarcTextField(
                           controller: _merchant,
                           label: 'Merchant / Title',
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) {
+                              return 'Merchant/title is required';
+                            }
+                            return null;
+                          },
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         FinarcTextField(
@@ -195,12 +229,12 @@ class _EditPendingTransactionScreenState
                           decoration: const InputDecoration(
                             labelText: 'Source account/card',
                           ),
+                          validator: (v) =>
+                              v == null ? 'Payment source required' : null,
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         FinarcTextField(
-                          controller: TextEditingController(
-                            text: '${_date.toLocal()}'.split('.').first,
-                          ),
+                          controller: _dateController,
                           label: 'Date/Time',
                           readOnly: true,
                         ),
@@ -227,6 +261,18 @@ class _EditPendingTransactionScreenState
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
                             ),
+                            validator: (v) {
+                              if (!_forOthers) return null;
+                              final recoverable = double.tryParse(v ?? '');
+                              final amount = double.tryParse(_amount.text) ?? 0;
+                              if (recoverable == null || recoverable < 0) {
+                                return 'Enter valid recoverable amount';
+                              }
+                              if (recoverable > amount) {
+                                return 'Recoverable cannot exceed amount';
+                              }
+                              return null;
+                            },
                           ),
                         const SizedBox(height: AppSpacing.xs),
                         SwitchListTile.adaptive(
@@ -242,6 +288,18 @@ class _EditPendingTransactionScreenState
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
                             ),
+                            validator: (v) {
+                              if (!_cashbackOn) return null;
+                              final cashback = double.tryParse(v ?? '');
+                              final amount = double.tryParse(_amount.text) ?? 0;
+                              if (cashback == null || cashback < 0) {
+                                return 'Enter valid cashback amount';
+                              }
+                              if (cashback > amount) {
+                                return 'Cashback cannot exceed amount';
+                              }
+                              return null;
+                            },
                           ),
                         const SizedBox(height: AppSpacing.sm),
                         FinarcTextField(
@@ -269,6 +327,8 @@ class _EditPendingTransactionScreenState
                   const SizedBox(height: AppSpacing.md),
                   FinarcPrimaryButton(
                     onPressed: () async {
+                      if (!_formKey.currentState!.validate()) return;
+
                       final edited = PendingEditData(
                         amount: double.tryParse(_amount.text) ?? pending.amount,
                         merchant: _merchant.text.trim(),

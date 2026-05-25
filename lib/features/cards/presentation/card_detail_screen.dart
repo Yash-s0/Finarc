@@ -18,13 +18,53 @@ class CardDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (cardId <= 0) {
+      return FinarcScaffold(
+        appBar: const FinarcAppBar(title: 'Card Detail'),
+        body: ListView(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          children: [
+            const FinarcEmptyState(
+              title: 'Invalid card route',
+              subtitle: 'This card link is invalid.',
+              icon: Icons.error_outline,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            FinarcPrimaryButton(
+              onPressed: () => context.go('/cards'),
+              icon: Icons.arrow_back_rounded,
+              label: 'Back to Cards',
+            ),
+          ],
+        ),
+      );
+    }
+
     final state = ref.watch(cardDetailProvider(cardId));
 
     return state.when(
       loading: () => const FinarcScaffold(
         body: Center(child: CircularProgressIndicator()),
       ),
-      error: (e, _) => FinarcScaffold(body: Center(child: Text('Error: $e'))),
+      error: (e, _) => FinarcScaffold(
+        appBar: const FinarcAppBar(title: 'Card Detail'),
+        body: ListView(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          children: [
+            const FinarcEmptyState(
+              title: 'Card not found',
+              subtitle: 'This card may have been deleted after reset.',
+              icon: Icons.credit_card_off_outlined,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            FinarcPrimaryButton(
+              onPressed: () => context.go('/cards'),
+              icon: Icons.arrow_back_rounded,
+              label: 'Back to Cards',
+            ),
+          ],
+        ),
+      ),
       data: (vm) {
         final card = vm.card;
         final billedAmount = vm.currentBill?.billedAmount ?? 0.0;

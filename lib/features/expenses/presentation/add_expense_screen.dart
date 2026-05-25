@@ -28,11 +28,18 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   final _cashback = TextEditingController(text: '0');
   final _recoverable = TextEditingController(text: '0');
   final _notes = TextEditingController();
+  final _dateController = TextEditingController();
 
   String _paymentMode = PaymentSourceType.cash;
   int? _sourceId;
   bool _forOthers = false;
   DateTime _date = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    _dateController.text = _dateText(_date);
+  }
 
   @override
   void dispose() {
@@ -42,6 +49,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     _cashback.dispose();
     _recoverable.dispose();
     _notes.dispose();
+    _dateController.dispose();
     super.dispose();
   }
 
@@ -158,12 +166,14 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                       ),
                       items: _sourceItems(sources),
                       onChanged: (v) => setState(() => _sourceId = v),
-                      validator: (v) =>
-                          v == null ? 'Payment source required' : null,
+                      validator: (v) {
+                        if (v == null) return 'Payment source required';
+                        return null;
+                      },
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     FinarcTextField(
-                      controller: TextEditingController(text: _dateText(_date)),
+                      controller: _dateController,
                       label: 'Transaction date',
                       readOnly: true,
                       suffixIcon: const Icon(Icons.calendar_month_outlined),
@@ -175,7 +185,10 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                           lastDate: DateTime(2100),
                         );
                         if (picked != null) {
-                          setState(() => _date = picked);
+                          setState(() {
+                            _date = picked;
+                            _dateController.text = _dateText(_date);
+                          });
                         }
                       },
                     ),
@@ -195,6 +208,18 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return null;
+                        final value = double.tryParse(v.trim());
+                        if (value == null || value < 0) {
+                          return 'Enter valid cashback';
+                        }
+                        final amount = double.tryParse(_amount.text.trim()) ?? 0;
+                        if (value > amount && amount > 0) {
+                          return 'Cashback cannot exceed amount';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: AppSpacing.xs),
                     SwitchListTile.adaptive(
@@ -211,6 +236,21 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
+                        validator: (v) {
+                          if (!_forOthers) return null;
+                          if (v == null || v.trim().isEmpty) {
+                            return 'Recoverable amount required';
+                          }
+                          final value = double.tryParse(v.trim());
+                          if (value == null || value < 0) {
+                            return 'Enter valid recoverable amount';
+                          }
+                          final amount = double.tryParse(_amount.text.trim()) ?? 0;
+                          if (value > amount && amount > 0) {
+                            return 'Recoverable cannot exceed amount';
+                          }
+                          return null;
+                        },
                       ),
                     ],
                     const SizedBox(height: AppSpacing.sm),
@@ -293,6 +333,20 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     final recoverable = _forOthers
         ? double.tryParse(_recoverable.text.trim()) ?? 0
         : null;
+    if (cashback > amount) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cashback cannot exceed amount')),
+      );
+      return;
+    }
+    if (_forOthers && recoverable != null && recoverable > amount) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Recoverable cannot exceed amount')),
+      );
+      return;
+    }
 
     final type = widget.isIncome
         ? TransactionType.income
@@ -300,23 +354,31 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         ? TransactionType.creditCard
         : _paymentMode;
 
-    await ref
-        .read(transactionEngineProvider)
-        .addTransaction(
-          AddTransactionInput(
-            type: type,
-            amount: amount,
-            title: _title.text.trim(),
-            category: _category.text.trim(),
-            notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
-            transactionDate: _date,
-            paymentSourceType: _paymentMode,
-            paymentSourceId: _sourceId,
-            cashbackAmount: cashback,
-            isForOthers: _forOthers,
-            recoverableAmount: recoverable,
-          ),
-        );
+    try {
+      await ref
+          .read(transactionEngineProvider)
+          .addTransaction(
+            AddTransactionInput(
+              type: type,
+              amount: amount,
+              title: _title.text.trim(),
+              category: _category.text.trim(),
+              notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+              transactionDate: _date,
+              paymentSourceType: _paymentMode,
+              paymentSourceId: _sourceId,
+              cashbackAmount: cashback,
+              isForOthers: _forOthers,
+              recoverableAmount: recoverable,
+            ),
+          );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Unable to save transaction: $e')));
+      return;
+    }
 
     ref.invalidate(expenseListProvider);
     ref.invalidate(cardsOverviewProvider);

@@ -24,37 +24,34 @@ class BillingService {
   final DateTime Function() _now;
 
   DateTime _atDay(DateTime anchor, int day) {
-    final safeDay = day.clamp(1, 28);
-    return DateTime(anchor.year, anchor.month, safeDay);
+    return _safeDay(anchor.year, anchor.month, day);
+  }
+
+  DateTime _safeDay(int year, int month, int day) {
+    final maxDay = DateTime(year, month + 1, 0).day;
+    final safeDay = day.clamp(1, maxDay);
+    return DateTime(year, month, safeDay);
   }
 
   BillingCycle getCurrentCycle(CreditCard card, DateTime date) {
     final billingThisMonth = _atDay(date, card.billingDay);
     final billingDate = date.isBefore(billingThisMonth)
-        ? DateTime(date.year, date.month - 1, card.billingDay.clamp(1, 28))
+        ? _safeDay(date.year, date.month - 1, card.billingDay)
         : billingThisMonth;
-    final dueDate =
-        DateTime(
-          billingDate.year,
-          billingDate.month,
-          card.dueDay.clamp(1, 28),
-        ).isAfter(billingDate)
-        ? DateTime(
-            billingDate.year,
-            billingDate.month,
-            card.dueDay.clamp(1, 28),
-          )
-        : DateTime(
-            billingDate.year,
-            billingDate.month + 1,
-            card.dueDay.clamp(1, 28),
-          );
+    final dueThisMonth = _safeDay(
+      billingDate.year,
+      billingDate.month,
+      card.dueDay,
+    );
+    final dueDate = dueThisMonth.isAfter(billingDate)
+        ? dueThisMonth
+        : _safeDay(billingDate.year, billingDate.month + 1, card.dueDay);
 
     return BillingCycle(
-      cycleStartDate: DateTime(
+      cycleStartDate: _safeDay(
         billingDate.year,
         billingDate.month - 1,
-        card.billingDay.clamp(1, 28),
+        card.billingDay,
       ),
       cycleEndDate: billingDate,
       billingDate: billingDate,

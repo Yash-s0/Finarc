@@ -58,6 +58,18 @@ class LoanService {
     int? linkedAccountId,
     String? notes,
   }) {
+    if (principalAmount <= 0) {
+      throw ArgumentError('Principal amount must be greater than 0');
+    }
+    if (currentOutstanding < 0) {
+      throw ArgumentError('Current outstanding cannot be negative');
+    }
+    if (emiAmount != null && emiAmount < 0) {
+      throw ArgumentError('EMI amount cannot be negative');
+    }
+    if (emiDay != null && (emiDay < 1 || emiDay > 31)) {
+      throw ArgumentError('EMI day must be between 1 and 31');
+    }
     return _db
         .into(_db.loans)
         .insert(
@@ -96,6 +108,18 @@ class LoanService {
     int? linkedAccountId,
     String? notes,
   }) {
+    if (principalAmount != null && principalAmount <= 0) {
+      throw ArgumentError('Principal amount must be greater than 0');
+    }
+    if (currentOutstanding != null && currentOutstanding < 0) {
+      throw ArgumentError('Current outstanding cannot be negative');
+    }
+    if (emiAmount != null && emiAmount < 0) {
+      throw ArgumentError('EMI amount cannot be negative');
+    }
+    if (emiDay != null && (emiDay < 1 || emiDay > 31)) {
+      throw ArgumentError('EMI day must be between 1 and 31');
+    }
     return (_db.update(_db.loans)..where((l) => l.id.equals(id))).write(
       LoansCompanion(
         title: title == null ? const Value.absent() : Value(title),
@@ -360,7 +384,7 @@ class LoanService {
   }
 
   DateTime _withSafeDay(int year, int month, int day) {
-    final safeDay = day.clamp(1, 28);
+    final safeDay = day.clamp(1, DateTime(year, month + 1, 0).day);
     return DateTime(year, month, safeDay);
   }
 

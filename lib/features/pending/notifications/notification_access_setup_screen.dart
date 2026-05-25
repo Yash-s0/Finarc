@@ -15,6 +15,8 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
     final smsAccessState = ref.watch(smsPermissionStatusProvider);
     final settingsState = ref.watch(detectionSettingsProvider);
     final debugEntries = ref.watch(notificationDebugLogProvider);
+    final hasNotificationAccess = accessState.valueOrNull ?? false;
+    final hasSmsAccess = smsAccessState.valueOrNull ?? false;
 
     return FinarcScaffold(
       appBar: const FinarcAppBar(title: 'Notification Access'),
@@ -42,6 +44,12 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                     label: 'No cloud sync. Data stays on device.',
                     tone: FinarcStatusTone.info,
                   ),
+                  const SizedBox(height: AppSpacing.xs),
+                  if (!hasNotificationAccess)
+                    Text(
+                      'If access remains unavailable in debug/profile builds, native listeners may be intentionally disabled.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                 ],
               ),
             ),
@@ -134,9 +142,21 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                     context: context,
                     label: 'SMS detection enabled',
                     value: settings.smsDetectionEnabled,
-                    onChanged: (v) => ref
-                        .read(detectionSettingsProvider.notifier)
-                        .applyChanges(smsDetectionEnabled: v),
+                    onChanged: (v) async {
+                      if (v && !hasSmsAccess) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Enable SMS permission before turning on SMS detection.',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+                      await ref
+                          .read(detectionSettingsProvider.notifier)
+                          .applyChanges(smsDetectionEnabled: v);
+                    },
                   ),
                   Row(
                     children: [
@@ -155,6 +175,17 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                       Expanded(
                         child: FinarcPrimaryButton(
                           onPressed: () async {
+                            if (!hasSmsAccess) {
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'SMS permission is required for backfill.',
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
                             final days = settings.smsBackfillDays;
                             final count = await ref
                                 .read(smsPermissionServiceProvider)
@@ -192,9 +223,21 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                     context: context,
                     label: 'Detection enabled',
                     value: settings.notificationDetectionEnabled,
-                    onChanged: (v) => ref
-                        .read(detectionSettingsProvider.notifier)
-                        .applyChanges(notificationDetectionEnabled: v),
+                    onChanged: (v) async {
+                      if (v && !hasNotificationAccess) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Enable notification access before turning on detection.',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+                      await ref
+                          .read(detectionSettingsProvider.notifier)
+                          .applyChanges(notificationDetectionEnabled: v);
+                    },
                   ),
                   _toggleRow(
                     context: context,

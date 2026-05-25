@@ -42,6 +42,28 @@ class _EmiPaymentScreenState extends ConsumerState<EmiPaymentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.loanId <= 0) {
+      return FinarcScaffold(
+        appBar: const FinarcAppBar(title: 'Pay EMI'),
+        body: ListView(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          children: [
+            const FinarcEmptyState(
+              title: 'Invalid loan route',
+              subtitle: 'This payment link is invalid.',
+              icon: Icons.error_outline,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            FinarcPrimaryButton(
+              onPressed: () => context.go('/loans'),
+              icon: Icons.arrow_back_rounded,
+              label: 'Back to Loans',
+            ),
+          ],
+        ),
+      );
+    }
+
     final detail = ref.watch(loanDetailProvider(widget.loanId));
     final sources = ref.watch(paymentSourcesProvider);
 
@@ -49,7 +71,25 @@ class _EmiPaymentScreenState extends ConsumerState<EmiPaymentScreen> {
       loading: () => const FinarcScaffold(
         body: Center(child: CircularProgressIndicator()),
       ),
-      error: (e, _) => FinarcScaffold(body: Center(child: Text('Error: $e'))),
+      error: (e, _) => FinarcScaffold(
+        appBar: const FinarcAppBar(title: 'Pay EMI'),
+        body: ListView(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          children: [
+            const FinarcEmptyState(
+              title: 'Loan not found',
+              subtitle: 'This loan may have been deleted after reset.',
+              icon: Icons.account_balance_wallet_outlined,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            FinarcPrimaryButton(
+              onPressed: () => context.go('/loans'),
+              icon: Icons.arrow_back_rounded,
+              label: 'Back to Loans',
+            ),
+          ],
+        ),
+      ),
       data: (loanData) {
         if (_amount.text.isEmpty) {
           _amount.text = (loanData.loan.emiAmount ?? 0).toStringAsFixed(0);
@@ -95,6 +135,9 @@ class _EmiPaymentScreenState extends ConsumerState<EmiPaymentScreen> {
                           if (value == null || value <= 0) {
                             return 'Enter valid amount';
                           }
+                          if (value > loanData.loan.currentOutstanding) {
+                            return 'Amount cannot exceed outstanding balance';
+                          }
                           return null;
                         },
                       ),
@@ -128,7 +171,10 @@ class _EmiPaymentScreenState extends ConsumerState<EmiPaymentScreen> {
                       const SizedBox(height: AppSpacing.sm),
                       sources.when(
                         loading: () => const FinarcLoadingSkeleton(height: 56),
-                        error: (e, _) => Text('Error loading sources: $e'),
+                        error: (e, _) => Text(
+                          'Unable to load payment sources.',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
                         data: (sourceData) {
                           final items = _sourceType == 'cash'
                               ? sourceData.cashWallets

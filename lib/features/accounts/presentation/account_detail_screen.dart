@@ -17,6 +17,28 @@ class AccountDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (id <= 0) {
+      return FinarcScaffold(
+        appBar: const FinarcAppBar(title: 'Account Detail'),
+        body: ListView(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          children: [
+            const FinarcEmptyState(
+              title: 'Invalid account route',
+              subtitle: 'This account link is invalid.',
+              icon: Icons.error_outline,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            FinarcPrimaryButton(
+              onPressed: () => context.go('/accounts'),
+              icon: Icons.arrow_back_rounded,
+              label: 'Back to Accounts',
+            ),
+          ],
+        ),
+      );
+    }
+
     final state = ref.watch(accountDetailProvider((type, id)));
 
     return FinarcScaffold(
@@ -39,7 +61,22 @@ class AccountDetailScreen extends ConsumerWidget {
             FinarcLoadingSkeleton(height: 126),
           ],
         ),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => ListView(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          children: [
+            const FinarcEmptyState(
+              title: 'Account not found',
+              subtitle: 'This account may have been deleted after reset.',
+              icon: Icons.account_balance_wallet_outlined,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            FinarcPrimaryButton(
+              onPressed: () => context.go('/accounts'),
+              icon: Icons.arrow_back_rounded,
+              label: 'Back to Accounts',
+            ),
+          ],
+        ),
         data: (data) {
           final incoming = data.txns
               .where((t) => !t.title.contains('Out'))

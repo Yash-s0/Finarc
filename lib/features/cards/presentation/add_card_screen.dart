@@ -38,6 +38,16 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    final creditLimit = double.parse(_limit.text.trim());
+    final outstanding = double.parse(_outstanding.text.trim());
+    if (outstanding > creditLimit) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Current outstanding cannot exceed credit limit'),
+        ),
+      );
+      return;
+    }
 
     await ref.read(addCardProvider)(
       AddCardPayload(
@@ -46,8 +56,8 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
         last4: _last4.text.trim(),
         billingDay: int.parse(_billing.text.trim()),
         dueDay: int.parse(_due.text.trim()),
-        creditLimit: double.parse(_limit.text.trim()),
-        currentOutstanding: double.parse(_outstanding.text.trim()),
+        creditLimit: creditLimit,
+        currentOutstanding: outstanding,
       ),
     );
     if (mounted) context.pop();
@@ -216,7 +226,7 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
   String? _dayValidator(String? value) {
     if (value == null || value.trim().isEmpty) return 'Required';
     final day = int.tryParse(value.trim());
-    if (day == null || day < 1 || day > 28) return 'Use 1 to 28';
+    if (day == null || day < 1 || day > 31) return 'Use 1 to 31';
     return null;
   }
 

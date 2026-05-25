@@ -17,6 +17,28 @@ class LoanDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (loanId <= 0) {
+      return FinarcScaffold(
+        appBar: const FinarcAppBar(title: 'Loan Detail'),
+        body: ListView(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          children: [
+            const FinarcEmptyState(
+              title: 'Invalid loan route',
+              subtitle: 'This loan link is invalid.',
+              icon: Icons.error_outline,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            FinarcPrimaryButton(
+              onPressed: () => context.go('/loans'),
+              icon: Icons.arrow_back_rounded,
+              label: 'Back to Loans',
+            ),
+          ],
+        ),
+      );
+    }
+
     final state = ref.watch(loanDetailProvider(loanId));
 
     return FinarcScaffold(
@@ -38,7 +60,22 @@ class LoanDetailScreen extends ConsumerWidget {
             FinarcLoadingSkeleton(height: 120),
           ],
         ),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => ListView(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          children: [
+            const FinarcEmptyState(
+              title: 'Loan not found',
+              subtitle: 'This loan may have been deleted after reset.',
+              icon: Icons.account_balance_wallet_outlined,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            FinarcPrimaryButton(
+              onPressed: () => context.go('/loans'),
+              icon: Icons.arrow_back_rounded,
+              label: 'Back to Loans',
+            ),
+          ],
+        ),
         data: (data) {
           final utilization = data.loan.principalAmount <= 0
               ? 0.0
