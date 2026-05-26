@@ -18,7 +18,15 @@ class GenericBankSmsParser implements TransactionParser {
         t.contains('a/c') ||
         t.contains('card') ||
         t.contains('debited') ||
+        t.contains('credited') ||
         t.contains('spent') ||
+        t.contains('paid') ||
+        t.contains('used') ||
+        t.contains('txn') ||
+        t.contains('transaction') ||
+        t.contains('upi') ||
+        t.contains('imps') ||
+        t.contains('neft') ||
         t.contains('purchase');
   }
 
@@ -38,6 +46,7 @@ class GenericBankSmsParser implements TransactionParser {
     final merchantRaw = ParserTextUtils.extractMerchantAfterKeyword(text, [
       'at',
       'to',
+      'via',
       'info:',
       'info',
       'on',

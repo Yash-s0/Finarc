@@ -8,6 +8,7 @@ import 'notification_keyword_filter.dart';
 import 'notification_local_notifier.dart';
 import 'notification_payload.dart';
 import 'sms_fingerprint.dart';
+import 'sms_sender_filter.dart';
 
 class SmsIngestionService {
   SmsIngestionService({
@@ -20,6 +21,7 @@ class SmsIngestionService {
     required this._isSmsPermissionGranted,
     required this._shouldShowDetectionNotifications,
     required this._appendDebug,
+    required this._senderFilter,
   }) : _db = database;
 
   final AppDatabase _db;
@@ -31,20 +33,33 @@ class SmsIngestionService {
   final bool Function() _isSmsPermissionGranted;
   final bool Function() _shouldShowDetectionNotifications;
   final void Function(NotificationDebugEntry entry) _appendDebug;
+  final SmsSenderFilter _senderFilter;
 
-  Future<List<int>> processSmsPayload(NotificationPayload payload) async {
+  Future<List<int>> processSmsPayload(
+    NotificationPayload payload, {
+    bool bypassSenderFilter = false,
+  }) async {
     if (!_isSmsDetectionEnabled()) {
-      _log(payload, 'ignored-sms-disabled');
+      _log(payload, 'blocked-sms-detection-disabled');
       return const [];
     }
     if (!_isSmsPermissionGranted()) {
-      _log(payload, 'ignored-sms-permission-missing');
+      _log(payload, 'blocked-sms-permission-missing');
       return const [];
+    }
+
+    if (!bypassSenderFilter) {
+      final senderResult = _senderFilter.evaluate(payload.sender);
+      if (!senderResult.accepted) {
+        _log(payload, senderResult.reason);
+        return const [];
+      }
+      _log(payload, senderResult.reason);
     }
 
     final filterResult = _keywordFilter.evaluate(payload);
     if (!filterResult.accepted) {
-      _log(payload, filterResult.reason);
+      _log(payload, 'blocked-non-transaction-text');
       return const [];
     }
 
@@ -56,14 +71,14 @@ class SmsIngestionService {
       receivedAt: payload.receivedAt,
     );
     if (_fingerprint.isDuplicate(fingerprint, payload.receivedAt)) {
-      _log(payload, 'ignored-sms-fingerprint-duplicate');
+      _log(payload, 'duplicate-suppressed');
       return const [];
     }
 
     final parserInput = toParserInput(payload);
     final ids = await _pendingIngestionService.ingestParserInput(parserInput);
     if (ids.isEmpty) {
-      _log(payload, 'ignored-no-candidate');
+      _log(payload, 'parser-failed');
       return const [];
     }
 
@@ -73,7 +88,7 @@ class SmsIngestionService {
     )..where((p) => p.id.equals(pendingId))).getSingleOrNull();
 
     if (pending == null || await _hasSimilarPending(pending)) {
-      _log(payload, 'ignored-sms-pending-duplicate');
+      _log(payload, 'duplicate-suppressed');
       return const [];
     }
 
@@ -87,7 +102,7 @@ class SmsIngestionService {
       );
     }
 
-    _log(payload, 'parsed-created-${ids.length}');
+    _log(payload, 'parsed-pending-created');
     return ids;
   }
 
@@ -147,12 +162,11 @@ class SmsIngestionService {
   }
 
   void _log(NotificationPayload payload, String result) {
+    final sender = (payload.sender ?? payload.appName ?? 'sms').trim();
     _appendDebug(
       NotificationDebugEntry(
         receivedAt: payload.receivedAt,
-        packageName: payload.packageName.isEmpty
-            ? (payload.sender ?? 'sms')
-            : payload.packageName,
+        packageName: sender.isEmpty ? 'sms' : sender,
         preview: payload.combinedText.length > 80
             ? '${payload.combinedText.substring(0, 80)}...'
             : payload.combinedText,

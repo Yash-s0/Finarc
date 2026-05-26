@@ -7,6 +7,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.ComponentName
 import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
@@ -43,11 +44,13 @@ class MainActivity : FlutterActivity() {
         private const val SUMMARIES_CHANNEL_NAME = "Summaries"
         private const val EXTRA_ROUTE = "finarc_route"
         private const val SMS_PERMISSION_REQUEST_CODE = 7307
+        private const val POST_NOTIFICATIONS_PERMISSION_REQUEST_CODE = 7308
 
         private val launchRouteQueue: ArrayDeque<String> = ArrayDeque()
     }
 
     private var smsPermissionResult: MethodChannel.Result? = null
+    private var postNotificationsPermissionResult: MethodChannel.Result? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -77,6 +80,10 @@ class MainActivity : FlutterActivity() {
                     result.success(isNotificationAccessEnabled())
                 }
 
+                "isNotificationListenerComponentAvailable" -> {
+                    result.success(isNotificationListenerComponentAvailable())
+                }
+
                 "openNotificationAccessSettings" -> {
                     startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
                     result.success(true)
@@ -86,8 +93,20 @@ class MainActivity : FlutterActivity() {
                     result.success(isSmsPermissionGranted())
                 }
 
+                "isSmsReceiverComponentAvailable" -> {
+                    result.success(isSmsReceiverComponentAvailable())
+                }
+
+                "isPostNotificationsGranted" -> {
+                    result.success(isPostNotificationsGranted())
+                }
+
                 "requestSmsPermission" -> {
                     requestSmsPermission(result)
+                }
+
+                "requestPostNotificationsPermission" -> {
+                    requestPostNotificationsPermission(result)
                 }
 
                 "openAppPermissionSettings" -> {
@@ -180,11 +199,18 @@ class MainActivity : FlutterActivity() {
         grantResults: IntArray,
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode != SMS_PERMISSION_REQUEST_CODE) return
+        if (requestCode == SMS_PERMISSION_REQUEST_CODE) {
+            val granted = grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }
+            smsPermissionResult?.success(granted)
+            smsPermissionResult = null
+            return
+        }
 
-        val granted = grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }
-        smsPermissionResult?.success(granted)
-        smsPermissionResult = null
+        if (requestCode == POST_NOTIFICATIONS_PERMISSION_REQUEST_CODE) {
+            val granted = grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
+            postNotificationsPermissionResult?.success(granted)
+            postNotificationsPermissionResult = null
+        }
     }
 
     private fun enqueueRouteFromIntent(intent: Intent?) {
@@ -205,6 +231,36 @@ class MainActivity : FlutterActivity() {
         )
 
         return enabledListeners?.contains(packageName) == true
+    }
+
+    private fun isNotificationListenerComponentAvailable(): Boolean {
+        return try {
+            val component = ComponentName(this, FinarcNotificationListenerService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                packageManager.getServiceInfo(component, PackageManager.ComponentInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                packageManager.getServiceInfo(component, 0)
+            }
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun isSmsReceiverComponentAvailable(): Boolean {
+        return try {
+            val component = ComponentName(this, FinarcSmsReceiver::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                packageManager.getReceiverInfo(component, PackageManager.ComponentInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                packageManager.getReceiverInfo(component, 0)
+            }
+            true
+        } catch (_: Exception) {
+            false
+        }
     }
 
     private fun isSmsPermissionGranted(): Boolean {
@@ -229,6 +285,34 @@ class MainActivity : FlutterActivity() {
         requestPermissions(
             arrayOf(Manifest.permission.READ_SMS, Manifest.permission.RECEIVE_SMS),
             SMS_PERMISSION_REQUEST_CODE,
+        )
+    }
+
+    private fun isPostNotificationsGranted(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
+        return ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.POST_NOTIFICATIONS,
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun requestPostNotificationsPermission(result: MethodChannel.Result) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            result.success(true)
+            return
+        }
+        if (isPostNotificationsGranted()) {
+            result.success(true)
+            return
+        }
+        if (postNotificationsPermissionResult != null) {
+            result.error("permission_in_progress", "Post notifications permission request already in progress", null)
+            return
+        }
+        postNotificationsPermissionResult = result
+        requestPermissions(
+            arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+            POST_NOTIFICATIONS_PERMISSION_REQUEST_CODE,
         )
     }
 
@@ -293,6 +377,7 @@ class MainActivity : FlutterActivity() {
         pendingId: Int?,
         showActions: Boolean,
     ) {
+        if (!isPostNotificationsGranted()) return
         createChannelsIfNeeded()
 
         val builder = NotificationCompat.Builder(this, DETECTED_CHANNEL_ID)
@@ -338,6 +423,7 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun showReminderNotification(title: String, body: String, route: String) {
+        if (!isPostNotificationsGranted()) return
         createChannelsIfNeeded()
         val notification = NotificationCompat.Builder(this, REMINDER_CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
@@ -352,6 +438,7 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun showAlertNotification(title: String, body: String, route: String, channelType: String) {
+        if (!isPostNotificationsGranted()) return
         createChannelsIfNeeded()
         val channelId = when (channelType) {
             "transactions" -> TRANSACTIONS_CHANNEL_ID

@@ -70,13 +70,13 @@ class NotificationIngestionService {
 
     final fingerprintValue = fingerprint.build(payload: payload);
     if (fingerprint.isDuplicate(fingerprintValue, payload.receivedAt)) {
-      _log(payload, 'ignored-fingerprint-duplicate');
+      _log(payload, 'duplicate-suppressed');
       return const [];
     }
 
     final ids = await pendingIngestionService.ingestParserInput(parserInput);
     if (ids.isEmpty) {
-      _log(payload, 'ignored-no-candidate');
+      _log(payload, 'parser-failed');
       return const [];
     }
 
@@ -85,7 +85,7 @@ class NotificationIngestionService {
       database.pendingTransactions,
     )..where((p) => p.id.equals(pendingId))).getSingleOrNull();
     if (pending == null || await _hasSimilarPending(pending)) {
-      _log(payload, 'ignored-pending-duplicate');
+      _log(payload, 'duplicate-suppressed');
       return const [];
     }
 
@@ -101,7 +101,7 @@ class NotificationIngestionService {
       );
     }
 
-    _log(payload, 'parsed-created-${ids.length}');
+    _log(payload, 'parsed-pending-created');
     return ids;
   }
 

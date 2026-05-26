@@ -12,12 +12,22 @@ import '../data/cards_providers.dart';
 class CardsOverviewScreen extends ConsumerWidget {
   const CardsOverviewScreen({super.key});
 
+  EdgeInsets _pagePadding(BuildContext context) {
+    final topInset = MediaQuery.paddingOf(context).top;
+    return EdgeInsets.fromLTRB(
+      AppSpacing.md,
+      AppSpacing.md + topInset,
+      AppSpacing.md,
+      AppSpacing.md,
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(cardsOverviewProvider);
     return state.when(
       loading: () => ListView(
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: _pagePadding(context),
         children: const [
           FinarcLoadingSkeleton(height: 36, width: 120),
           SizedBox(height: AppSpacing.md),
@@ -32,7 +42,7 @@ class CardsOverviewScreen extends ConsumerWidget {
       data: (data) {
         if (data.cards.isEmpty) {
           return ListView(
-            padding: const EdgeInsets.all(AppSpacing.md),
+            padding: _pagePadding(context),
             children: [
               const FinarcEmptyState(
                 title: 'No cards added yet',
@@ -63,13 +73,37 @@ class CardsOverviewScreen extends ConsumerWidget {
             .toList();
 
         return ListView(
-          padding: const EdgeInsets.all(AppSpacing.md),
+          padding: _pagePadding(context),
           children: [
-            Text('Cards', style: Theme.of(context).textTheme.headlineSmall),
-            const SizedBox(height: AppSpacing.xxs),
-            Text(
-              'Track dues, limits and statements in one place.',
-              style: Theme.of(context).textTheme.bodyMedium,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Cards',
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                      const SizedBox(height: AppSpacing.xxs),
+                      Text(
+                        'Track dues, limits and statements in one place.',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.xxs),
+                  child: FinarcSecondaryButton(
+                    onPressed: () => context.push('/cards/add'),
+                    icon: Icons.add_card_rounded,
+                    label: 'Add New',
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: AppSpacing.md),
             FinarcBalanceCard(

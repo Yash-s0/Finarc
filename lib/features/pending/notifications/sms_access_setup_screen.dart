@@ -11,7 +11,9 @@ class SmsAccessSetupScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final smsPermission = ref.watch(smsPermissionStatusProvider);
+    final receiverAvailable = ref.watch(smsReceiverAvailableProvider);
     final settingsState = ref.watch(detectionSettingsProvider);
+    final diagnostics = ref.watch(ingestionDiagnosticsProvider);
     final hasSmsAccess = smsPermission.valueOrNull ?? false;
 
     return FinarcScaffold(
@@ -80,6 +82,21 @@ class SmsAccessSetupScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.sm),
+                  receiverAvailable.when(
+                    loading: () => const SizedBox.shrink(),
+                    error: (e, _) => Text('Receiver status error: $e'),
+                    data: (available) {
+                      if (available) return const SizedBox.shrink();
+                      return const Padding(
+                        padding: EdgeInsets.only(bottom: AppSpacing.xs),
+                        child: FinarcStatusBadge(
+                          label: 'Unavailable in this build',
+                          tone: FinarcStatusTone.warning,
+                          compact: true,
+                        ),
+                      );
+                    },
+                  ),
                   FinarcPrimaryButton(
                     onPressed: () async {
                       final granted = await ref
@@ -200,6 +217,33 @@ class SmsAccessSetupScreen extends ConsumerWidget {
                     },
                     icon: Icons.history_toggle_off_outlined,
                     label: 'Backfill Last ${settings.smsBackfillDays} Days',
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            FinarcCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const FinarcSectionHeader(title: 'SMS Diagnostics'),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'Last event: ${diagnostics.lastSmsEventAt == null ? '—' : diagnostics.lastSmsEventAt!.toLocal().toIso8601String()}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  Text(
+                    'Last sender: ${diagnostics.lastSmsSender ?? '—'}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  Text(
+                    'Last result: ${diagnostics.lastSmsResult ?? '—'}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'Received ${diagnostics.smsReceived} • Allowed ${diagnostics.smsAllowed} • Promotional blocked ${diagnostics.smsBlockedPromotional} • Unknown blocked ${diagnostics.smsBlockedUnknownSender} • Non-transaction blocked ${diagnostics.smsBlockedNonTransaction} • Parsed ${diagnostics.smsParsedPending} • Duplicates ${diagnostics.smsDuplicateSuppressed}',
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
               ),

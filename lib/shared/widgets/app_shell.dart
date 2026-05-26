@@ -17,6 +17,9 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
+  static const double _bottomNavHeight = 68;
+  static const double _fabSize = 54;
+
   void _openQuickActions() {
     FinarcBottomSheet.show<void>(
       context,
@@ -79,63 +82,73 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    final safeBottom = MediaQuery.viewPaddingOf(context).bottom;
+    final fabBottomInset =
+        (_bottomNavHeight + safeBottom) - (_fabSize / 2) + AppSpacing.xs;
+
     return FinarcScaffold(
       body: widget.navigationShell,
-      floatingActionButton: DecoratedBox(
-        decoration: const BoxDecoration(
-          boxShadow: AppShadows.fab,
-          shape: BoxShape.circle,
-        ),
-        child: SizedBox(
-          height: 54,
-          width: 54,
-          child: FloatingActionButton(
-            onPressed: _openQuickActions,
-            backgroundColor: AppColors.darkPrimary,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.pill),
+      floatingActionButton: Padding(
+        padding: EdgeInsets.only(right: AppSpacing.sm, bottom: fabBottomInset),
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            boxShadow: AppShadows.fab,
+            shape: BoxShape.circle,
+          ),
+          child: SizedBox(
+            height: _fabSize,
+            width: _fabSize,
+            child: FloatingActionButton(
+              onPressed: _openQuickActions,
+              backgroundColor: AppColors.darkPrimary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+              ),
+              child: const Icon(Icons.bolt_rounded, size: 22),
             ),
-            child: const Icon(Icons.bolt_rounded, size: 22),
           ),
         ),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: AppColors.darkSurfaceLow,
-          border: Border(top: BorderSide(color: AppColors.darkBorder)),
-        ),
-        child: NavigationBar(
-          height: 68,
-          selectedIndex: widget.navigationShell.currentIndex,
-          onDestinationSelected: (index) {
-            widget.navigationShell.goBranch(
-              index,
-              initialLocation: index == widget.navigationShell.currentIndex,
-            );
-          },
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.home_outlined),
-              label: 'Home',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.receipt_long_outlined),
-              label: 'Expenses',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.credit_card),
-              label: 'Cards',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.call_split_outlined),
-              label: 'Split',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.person_outline),
-              label: 'Profile',
-            ),
-          ],
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Container(
+          decoration: const BoxDecoration(
+            color: AppColors.darkSurfaceLow,
+            border: Border(top: BorderSide(color: AppColors.darkBorder)),
+          ),
+          child: NavigationBar(
+            height: _bottomNavHeight,
+            selectedIndex: widget.navigationShell.currentIndex,
+            onDestinationSelected: (index) {
+              widget.navigationShell.goBranch(
+                index,
+                initialLocation: index == widget.navigationShell.currentIndex,
+              );
+            },
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.home_outlined),
+                label: 'Home',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.receipt_long_outlined),
+                label: 'Expenses',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.credit_card),
+                label: 'Cards',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.call_split_outlined),
+                label: 'Split',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.person_outline),
+                label: 'Profile',
+              ),
+            ],
+          ),
         ),
       ),
     );

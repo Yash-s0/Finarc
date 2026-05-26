@@ -11,6 +11,7 @@ import 'package:finarc/features/pending/notifications/notification_fingerprint.d
 import 'package:finarc/features/pending/notifications/notification_ingestion_service.dart';
 import 'package:finarc/features/pending/notifications/sms_fingerprint.dart';
 import 'package:finarc/features/pending/notifications/sms_ingestion_service.dart';
+import 'package:finarc/features/pending/notifications/sms_sender_filter.dart';
 import 'package:finarc/features/pending/parsing/parsers/card_notification_parser.dart';
 import 'package:finarc/features/pending/parsing/parsers/generic_bank_sms_parser.dart';
 import 'package:finarc/features/pending/parsing/parsers/generic_fallback_parser.dart';
@@ -41,11 +42,43 @@ void main() {
         packageName: 'android.sms',
         sourceType: 'sms',
         receivedAt: DateTime(2026, 5, 25, 9),
-        sender: 'HDFCBK',
+        sender: 'JD-HDFCBK-S',
         body: 'INR 1200 debited from your A/c. Avl Bal INR 5000',
       );
       final result = filter.evaluate(payload);
       expect(result.accepted, isTrue);
+    });
+  });
+
+  group('sms sender filter', () {
+    const filter = SmsSenderFilter();
+
+    test('JD-PAYZAP-S allowed', () {
+      expect(filter.evaluate('JD-PAYZAP-S').accepted, isTrue);
+    });
+
+    test('JD-HDFCBK-S allowed', () {
+      expect(filter.evaluate('JD-HDFCBK-S').accepted, isTrue);
+    });
+
+    test('AD-INDUSB-T allowed', () {
+      expect(filter.evaluate('AD-INDUSB-T').accepted, isTrue);
+    });
+
+    test('BT-YESBNK-P blocked', () {
+      final result = filter.evaluate('BT-YESBNK-P');
+      expect(result.accepted, isFalse);
+      expect(result.reason, 'blocked-promotional-sender');
+    });
+
+    test('lowercase normalization works', () {
+      expect(filter.evaluate('jd-hdfcbk-s').accepted, isTrue);
+    });
+
+    test('phone number sender blocked for auto-ingestion', () {
+      final result = filter.evaluate('+919876543210');
+      expect(result.accepted, isFalse);
+      expect(result.reason, 'blocked-unknown-sender');
     });
   });
 
@@ -91,6 +124,7 @@ void main() {
         isSmsPermissionGranted: () => true,
         shouldShowDetectionNotifications: () => true,
         appendDebug: (_) {},
+        senderFilter: const SmsSenderFilter(),
       );
     });
 
@@ -103,12 +137,12 @@ void main() {
         packageName: 'android.sms',
         sourceType: 'sms',
         receivedAt: DateTime(2026, 5, 25, 10, 0),
-        sender: 'AX-SBIUPI',
+        sender: 'AX-SBIUPI-S',
         body: 'Rs.700.00 debited from A/c for UPI payment to Rahul',
       );
       final input = smsService.toParserInput(payload);
       expect(input.sourceType, 'sms');
-      expect(input.sender, 'AX-SBIUPI');
+      expect(input.sender, 'AX-SBIUPI-S');
       expect(input.rawText, contains('Rs.700.00'));
     });
 
@@ -123,6 +157,7 @@ void main() {
         isSmsPermissionGranted: () => true,
         shouldShowDetectionNotifications: () => true,
         appendDebug: (_) {},
+        senderFilter: const SmsSenderFilter(),
       );
 
       final ids = await disabledService.processSmsPayload(
@@ -130,7 +165,7 @@ void main() {
           packageName: 'android.sms',
           sourceType: 'sms',
           receivedAt: DateTime(2026, 5, 25, 10),
-          sender: 'HDFCBK',
+          sender: 'JD-HDFCBK-S',
           body: 'INR 1499 spent at SWIGGY',
         ),
       );
@@ -143,7 +178,7 @@ void main() {
           packageName: 'android.sms',
           sourceType: 'sms',
           receivedAt: DateTime(2026, 5, 25, 10),
-          sender: 'HDFCBK',
+          sender: 'JD-HDFCBK-S',
           body:
               'INR 1499 spent on your HDFC Bank Credit Card XX1234 at SWIGGY on 24-May.',
         ),
@@ -164,7 +199,7 @@ void main() {
           packageName: 'android.sms',
           sourceType: 'sms',
           receivedAt: DateTime(2026, 5, 25, 10),
-          sender: 'VM-WHATSAPP',
+          sender: 'JD-HDFCBK-S',
           body: 'hey are we meeting tonight',
         ),
       );
@@ -178,7 +213,7 @@ void main() {
         packageName: 'android.sms',
         sourceType: 'sms',
         receivedAt: DateTime(2026, 5, 25, 10),
-        sender: 'AX-SBIUPI',
+        sender: 'AX-SBIUPI-S',
         body:
             'Rs.700.00 debited from A/c XX7821 for UPI payment to Rahul Kumar. UPI Ref 123456789.',
       );
@@ -196,7 +231,7 @@ void main() {
           packageName: 'android.sms',
           sourceType: 'sms',
           receivedAt: DateTime(2026, 5, 25, 10),
-          sender: 'HDFCBK',
+          sender: 'JD-HDFCBK-S',
           body: 'INR 1499 spent at SWIGGY via card ending 1234',
         ),
       );
@@ -204,10 +239,10 @@ void main() {
 
       final duplicateViaBackfill = await smsService.processSmsPayload(
         NotificationPayload(
-          packageName: 'com.phonepe.app',
+          packageName: 'android.sms',
           sourceType: 'sms',
           receivedAt: DateTime(2026, 5, 25, 10, 5),
-          sender: 'HDFCBK',
+          sender: 'JD-HDFCBK-S',
           body: 'INR 1499 spent at SWIGGY via card ending 1234',
         ),
       );
@@ -223,7 +258,7 @@ void main() {
           packageName: 'android.sms',
           sourceType: 'sms',
           receivedAt: DateTime(2026, 5, 25, 10),
-          sender: 'HDFCBK',
+          sender: 'JD-HDFCBK-S',
           body: 'INR 1499 spent at SWIGGY via card ending 1234',
         ),
       );
@@ -252,6 +287,33 @@ void main() {
 
       final rows = await db.select(db.pendingTransactions).get();
       expect(rows.length, 1);
+    });
+
+    test('phone-number sender ignored for auto ingestion', () async {
+      final ids = await smsService.processSmsPayload(
+        NotificationPayload(
+          packageName: 'android.sms',
+          sourceType: 'sms',
+          receivedAt: DateTime(2026, 5, 25, 10),
+          sender: '+919999999999',
+          body: 'INR 1499 spent at SWIGGY',
+        ),
+      );
+      expect(ids, isEmpty);
+    });
+
+    test('manual mock bypasses sender filter', () async {
+      final ids = await smsService.processSmsPayload(
+        NotificationPayload(
+          packageName: 'android.sms',
+          sourceType: 'sms',
+          receivedAt: DateTime(2026, 5, 25, 10),
+          sender: '+919999999999',
+          body: 'INR 1499 spent at SWIGGY',
+        ),
+        bypassSenderFilter: true,
+      );
+      expect(ids, isNotEmpty);
     });
   });
 }

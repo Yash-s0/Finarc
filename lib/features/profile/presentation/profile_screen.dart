@@ -77,10 +77,14 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final accessState = ref.watch(notificationAccessStatusProvider);
     final smsAccessState = ref.watch(smsPermissionStatusProvider);
+    final postNotificationState = ref.watch(
+      postNotificationsPermissionProvider,
+    );
     final settings = ref.watch(detectionSettingsProvider).valueOrNull;
     final onboardingDone = ref.watch(onboardingCompletedProvider).valueOrNull;
     final detectionEnabled = settings?.notificationDetectionEnabled ?? true;
     final smsDetectionEnabled = settings?.smsDetectionEnabled ?? false;
+    final diagnostics = ref.watch(ingestionDiagnosticsProvider);
     final localRowsSummary = kDebugMode
         ? ref.watch(_localRowsSummaryProvider).valueOrNull
         : null;
@@ -142,6 +146,313 @@ class ProfileScreen extends ConsumerWidget {
                     ],
                   ),
                 ],
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          FinarcCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Notification Testing',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: AppSpacing.xxs),
+                Text(
+                  'Verify local notification posting, alert storage, mock notification/SMS ingestion, and routing.',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    accessState.when(
+                      loading: () => const FinarcStatusBadge(
+                        label: 'Notification access: Checking',
+                        tone: FinarcStatusTone.neutral,
+                        compact: true,
+                      ),
+                      error: (_, _) => const FinarcStatusBadge(
+                        label: 'Notification access: Error',
+                        tone: FinarcStatusTone.warning,
+                        compact: true,
+                      ),
+                      data: (enabled) => FinarcStatusBadge(
+                        label: enabled
+                            ? 'Notification access: Enabled'
+                            : 'Notification access: Disabled',
+                        tone: enabled
+                            ? FinarcStatusTone.success
+                            : FinarcStatusTone.warning,
+                        compact: true,
+                      ),
+                    ),
+                    smsAccessState.when(
+                      loading: () => const FinarcStatusBadge(
+                        label: 'SMS permission: Checking',
+                        tone: FinarcStatusTone.neutral,
+                        compact: true,
+                      ),
+                      error: (_, _) => const FinarcStatusBadge(
+                        label: 'SMS permission: Error',
+                        tone: FinarcStatusTone.warning,
+                        compact: true,
+                      ),
+                      data: (enabled) => FinarcStatusBadge(
+                        label: enabled
+                            ? 'SMS permission: Granted'
+                            : 'SMS permission: Not granted',
+                        tone: enabled
+                            ? FinarcStatusTone.success
+                            : FinarcStatusTone.warning,
+                        compact: true,
+                      ),
+                    ),
+                    postNotificationState.when(
+                      loading: () => const FinarcStatusBadge(
+                        label: 'Local notification permission: Checking',
+                        tone: FinarcStatusTone.neutral,
+                        compact: true,
+                      ),
+                      error: (_, _) => const FinarcStatusBadge(
+                        label: 'Local notification permission: Error',
+                        tone: FinarcStatusTone.warning,
+                        compact: true,
+                      ),
+                      data: (enabled) => FinarcStatusBadge(
+                        label: enabled
+                            ? 'Local notification permission: Granted'
+                            : 'Local notification permission: Not granted',
+                        tone: enabled
+                            ? FinarcStatusTone.success
+                            : FinarcStatusTone.warning,
+                        compact: true,
+                      ),
+                    ),
+                    FinarcStatusBadge(
+                      label: detectionEnabled
+                          ? 'Detection enabled: On'
+                          : 'Detection enabled: Off',
+                      tone: detectionEnabled
+                          ? FinarcStatusTone.success
+                          : FinarcStatusTone.warning,
+                      compact: true,
+                    ),
+                    FinarcStatusBadge(
+                      label: smsDetectionEnabled
+                          ? 'SMS detection: On'
+                          : 'SMS detection: Off',
+                      tone: smsDetectionEnabled
+                          ? FinarcStatusTone.success
+                          : FinarcStatusTone.warning,
+                      compact: true,
+                    ),
+                    FinarcStatusBadge(
+                      label: (settings?.reminderEnabled ?? false)
+                          ? 'Reminders: On'
+                          : 'Reminders: Off',
+                      tone: (settings?.reminderEnabled ?? false)
+                          ? FinarcStatusTone.success
+                          : FinarcStatusTone.neutral,
+                      compact: true,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FinarcSecondaryButton(
+                        onPressed: () async {
+                          final granted = await ref
+                              .read(notificationPermissionServiceProvider)
+                              .requestPostNotificationsPermission();
+                          ref.invalidate(postNotificationsPermissionProvider);
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                granted
+                                    ? 'Notification permission granted.'
+                                    : 'Notification permission denied.',
+                              ),
+                            ),
+                          );
+                        },
+                        icon: Icons.notifications_active_outlined,
+                        label: 'Request Notification Permission',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FinarcPrimaryButton(
+                        onPressed: () async {
+                          await ref
+                              .read(notificationTestToolsServiceProvider)
+                              .sendTestNotification();
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Test notification sent. Check your notification tray.',
+                              ),
+                            ),
+                          );
+                        },
+                        icon: Icons.send_rounded,
+                        label: 'Send Test Notification',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FinarcSecondaryButton(
+                        onPressed: () async {
+                          final id = await ref
+                              .read(notificationTestToolsServiceProvider)
+                              .createTestAlert();
+                          ref.invalidate(alertsInboxProvider);
+                          ref.invalidate(alertsUnreadCountProvider);
+                          ref.invalidate(latestImportantAlertProvider);
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                id == null
+                                    ? 'Test alert was not created.'
+                                    : 'Test alert created (id: $id).',
+                              ),
+                            ),
+                          );
+                        },
+                        icon: Icons.add_alert_rounded,
+                        label: 'Create Test Alert',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FinarcSecondaryButton(
+                        onPressed: () async {
+                          final ids = await ref
+                              .read(notificationTestToolsServiceProvider)
+                              .mockTransactionNotification();
+                          ref.invalidate(pendingTransactionsProvider);
+                          ref.invalidate(pendingCountProvider);
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                ids.isEmpty
+                                    ? 'No pending created from mock notification.'
+                                    : 'Mock notification created ${ids.length} pending transaction(s).',
+                              ),
+                            ),
+                          );
+                        },
+                        icon: Icons.notifications_outlined,
+                        label: 'Mock Transaction Notification',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FinarcSecondaryButton(
+                        onPressed: () async {
+                          final ids = await ref
+                              .read(notificationTestToolsServiceProvider)
+                              .mockSmsTransaction();
+                          ref.invalidate(pendingTransactionsProvider);
+                          ref.invalidate(pendingCountProvider);
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                ids.isEmpty
+                                    ? 'No pending created from mock SMS.'
+                                    : 'Mock SMS created ${ids.length} pending transaction(s).',
+                              ),
+                            ),
+                          );
+                        },
+                        icon: Icons.sms_outlined,
+                        label: 'Mock SMS Transaction',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FinarcSecondaryButton(
+                        onPressed: () => context.push('/alerts'),
+                        icon: Icons.open_in_new_rounded,
+                        label: 'Open Alerts Center',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'SMS received ${diagnostics.smsReceived} • allowed ${diagnostics.smsAllowed} • promo blocked ${diagnostics.smsBlockedPromotional} • unknown blocked ${diagnostics.smsBlockedUnknownSender} • parsed ${diagnostics.smsParsedPending} • dupes ${diagnostics.smsDuplicateSuppressed}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                Text(
+                  'Notifications received ${diagnostics.notificationsReceived} • parsed ${diagnostics.notificationsParsedPending} • ignored ${diagnostics.notificationsIgnored} • dupes ${diagnostics.notificationsDuplicateSuppressed}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FinarcSecondaryButton(
+                        onPressed: () => context.push('/notification/setup'),
+                        icon: Icons.analytics_outlined,
+                        label: 'Show Ingestion Diagnostics',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FinarcSecondaryButton(
+                        onPressed: () {
+                          ref
+                              .read(ingestionDiagnosticsProvider.notifier)
+                              .clear();
+                          ref
+                              .read(notificationDebugLogProvider.notifier)
+                              .clear();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Ingestion diagnostics cleared.'),
+                            ),
+                          );
+                        },
+                        icon: Icons.delete_sweep_outlined,
+                        label: 'Clear Ingestion Diagnostics',
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),

@@ -12,9 +12,11 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final accessState = ref.watch(notificationAccessStatusProvider);
+    final listenerAvailable = ref.watch(notificationListenerAvailableProvider);
     final smsAccessState = ref.watch(smsPermissionStatusProvider);
     final settingsState = ref.watch(detectionSettingsProvider);
     final debugEntries = ref.watch(notificationDebugLogProvider);
+    final diagnostics = ref.watch(ingestionDiagnosticsProvider);
     final hasNotificationAccess = accessState.valueOrNull ?? false;
     final hasSmsAccess = smsAccessState.valueOrNull ?? false;
 
@@ -84,6 +86,21 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.xs),
+                  listenerAvailable.when(
+                    loading: () => const SizedBox.shrink(),
+                    error: (e, _) => Text('Listener status error: $e'),
+                    data: (available) {
+                      if (available) return const SizedBox.shrink();
+                      return const Padding(
+                        padding: EdgeInsets.only(bottom: AppSpacing.xs),
+                        child: FinarcStatusBadge(
+                          label: 'Unavailable in this build',
+                          tone: FinarcStatusTone.warning,
+                          compact: true,
+                        ),
+                      );
+                    },
+                  ),
                   FinarcPrimaryButton(
                     onPressed: () async {
                       await ref
@@ -404,6 +421,60 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const FinarcSectionHeader(title: 'Ingestion Diagnostics'),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'Notifications received ${diagnostics.notificationsReceived} • Parsed ${diagnostics.notificationsParsedPending} • Ignored ${diagnostics.notificationsIgnored} • Duplicates ${diagnostics.notificationsDuplicateSuppressed}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  Text(
+                    'SMS received ${diagnostics.smsReceived} • Parsed ${diagnostics.smsParsedPending} • Duplicates ${diagnostics.smsDuplicateSuppressed}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  Text(
+                    'Last notification: ${diagnostics.lastNotificationEventAt == null ? '—' : diagnostics.lastNotificationEventAt!.toLocal().toIso8601String()}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  Text(
+                    'Last package: ${diagnostics.lastNotificationPackage ?? '—'}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  Text(
+                    'Last result: ${diagnostics.lastNotificationResult ?? '—'}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FinarcSecondaryButton(
+                          onPressed: () => context.push('/profile'),
+                          icon: Icons.analytics_outlined,
+                          label: 'Show Ingestion Diagnostics',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FinarcSecondaryButton(
+                          onPressed: () {
+                            ref
+                                .read(ingestionDiagnosticsProvider.notifier)
+                                .clear();
+                            ref
+                                .read(notificationDebugLogProvider.notifier)
+                                .clear();
+                          },
+                          icon: Icons.delete_sweep_outlined,
+                          label: 'Clear Ingestion Diagnostics',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
                   const FinarcSectionHeader(title: 'Debug Log (Last 20)'),
                   const SizedBox(height: AppSpacing.xs),
                   if (debugEntries.isEmpty)

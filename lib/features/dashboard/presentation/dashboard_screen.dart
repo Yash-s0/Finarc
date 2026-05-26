@@ -12,12 +12,22 @@ import '../data/dashboard_providers.dart';
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
+  EdgeInsets _pagePadding(BuildContext context) {
+    final topInset = MediaQuery.paddingOf(context).top;
+    return EdgeInsets.fromLTRB(
+      AppSpacing.md,
+      AppSpacing.md + topInset,
+      AppSpacing.md,
+      AppSpacing.md,
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final onboardingState = ref.watch(onboardingCompletedProvider);
     return onboardingState.when(
       loading: () => ListView(
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: _pagePadding(context),
         children: const [
           FinarcLoadingSkeleton(height: 36, width: 180),
           SizedBox(height: AppSpacing.md),
@@ -28,7 +38,7 @@ class DashboardScreen extends ConsumerWidget {
       data: (completed) {
         if (!completed) {
           return ListView(
-            padding: const EdgeInsets.all(AppSpacing.md),
+            padding: _pagePadding(context),
             children: [
               Text(
                 'Welcome to Finarc',
@@ -65,7 +75,7 @@ class DashboardScreen extends ConsumerWidget {
         final state = ref.watch(dashboardProvider);
         return state.when(
           loading: () => ListView(
-            padding: const EdgeInsets.all(AppSpacing.md),
+            padding: _pagePadding(context),
             children: const [
               FinarcLoadingSkeleton(height: 36, width: 180),
               SizedBox(height: AppSpacing.xs),
@@ -87,7 +97,7 @@ class DashboardScreen extends ConsumerWidget {
 
             if (freshInstall) {
               return ListView(
-                padding: const EdgeInsets.all(AppSpacing.md),
+                padding: _pagePadding(context),
                 children: [
                   Text(
                     'Welcome to Finarc',
@@ -189,7 +199,7 @@ class DashboardScreen extends ConsumerWidget {
             }
 
             return ListView(
-              padding: const EdgeInsets.all(AppSpacing.md),
+              padding: _pagePadding(context),
               children: [
                 Text(
                   'Hello, Yash',

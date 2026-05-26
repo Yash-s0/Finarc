@@ -20,6 +20,20 @@ class SmsPermissionService {
     }
   }
 
+  Future<bool> isReceiverComponentAvailable() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return false;
+    try {
+      final available = await _channel.invokeMethod<bool>(
+        'isSmsReceiverComponentAvailable',
+      );
+      return available ?? false;
+    } on MissingPluginException {
+      return false;
+    } on PlatformException {
+      return false;
+    }
+  }
+
   Future<bool> requestPermission() async {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return false;
     try {

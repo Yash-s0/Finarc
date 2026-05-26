@@ -20,6 +20,20 @@ class NotificationPermissionService {
     }
   }
 
+  Future<bool> isListenerComponentAvailable() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return false;
+    try {
+      final available = await _channel.invokeMethod<bool>(
+        'isNotificationListenerComponentAvailable',
+      );
+      return available ?? false;
+    } on MissingPluginException {
+      return false;
+    } on PlatformException {
+      return false;
+    }
+  }
+
   Future<void> openAccessSettings() async {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
     try {
@@ -28,6 +42,34 @@ class NotificationPermissionService {
       return;
     } on PlatformException {
       return;
+    }
+  }
+
+  Future<bool> isPostNotificationsGranted() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return false;
+    try {
+      final granted = await _channel.invokeMethod<bool>(
+        'isPostNotificationsGranted',
+      );
+      return granted ?? false;
+    } on MissingPluginException {
+      return false;
+    } on PlatformException {
+      return false;
+    }
+  }
+
+  Future<bool> requestPostNotificationsPermission() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return false;
+    try {
+      final granted = await _channel.invokeMethod<bool>(
+        'requestPostNotificationsPermission',
+      );
+      return granted ?? false;
+    } on MissingPluginException {
+      return false;
+    } on PlatformException {
+      return false;
     }
   }
 }
