@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/profile/presentation/debug_log_viewer_screen.dart';
+import '../../features/profile/presentation/release_checklist_screen.dart';
 import '../../features/analytics/presentation/analytics_screen.dart';
 import '../../features/alerts/presentation/alerts_center_screen.dart';
 import '../../features/cards/presentation/add_card_screen.dart';
@@ -40,11 +42,18 @@ import '../../features/loans/presentation/emi_payment_screen.dart';
 import '../../features/loans/presentation/loan_detail_screen.dart';
 import '../../features/loans/presentation/loans_dashboard_screen.dart';
 import '../../shared/widgets/app_shell.dart';
+import 'app_routes.dart';
+import 'route_fallback_screen.dart';
+import 'route_parsers.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 
 final appRouter = GoRouter(
   navigatorKey: rootNavigatorKey,
+  errorBuilder: (context, state) => const RouteFallbackScreen(
+    title: 'Invalid route',
+    message: 'The link is invalid or no longer exists.',
+  ),
   routes: [
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) =>
@@ -52,7 +61,10 @@ final appRouter = GoRouter(
       branches: [
         StatefulShellBranch(
           routes: [
-            GoRoute(path: '/', builder: (_, _) => const DashboardScreen()),
+            GoRoute(
+              path: AppRoutes.home,
+              builder: (_, _) => const DashboardScreen(),
+            ),
           ],
         ),
         StatefulShellBranch(
@@ -87,15 +99,29 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/cards/:id',
       builder: (_, state) {
-        final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+        final id = RouteParsers.pathInt(state.pathParameters, 'id');
+        if (id == null) {
+          return const RouteFallbackScreen(
+            title: 'Invalid card link',
+            message: 'Card id is missing or malformed.',
+            backRoute: AppRoutes.cards,
+          );
+        }
         return CardDetailScreen(cardId: id);
       },
     ),
     GoRoute(
       path: '/cards/:cardId/bills/:billId',
       builder: (_, state) {
-        final cardId = int.tryParse(state.pathParameters['cardId'] ?? '') ?? 0;
-        final billId = int.tryParse(state.pathParameters['billId'] ?? '') ?? 0;
+        final cardId = RouteParsers.pathInt(state.pathParameters, 'cardId');
+        final billId = RouteParsers.pathInt(state.pathParameters, 'billId');
+        if (cardId == null || billId == null) {
+          return const RouteFallbackScreen(
+            title: 'Invalid bill link',
+            message: 'Card or bill id is missing or malformed.',
+            backRoute: AppRoutes.cards,
+          );
+        }
         return BillDetailScreen(cardId: cardId, billId: billId);
       },
     ),
@@ -103,7 +129,14 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/expenses/transaction/:id',
       builder: (_, state) {
-        final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+        final id = RouteParsers.pathInt(state.pathParameters, 'id');
+        if (id == null) {
+          return const RouteFallbackScreen(
+            title: 'Invalid transaction link',
+            message: 'Transaction id is missing or malformed.',
+            backRoute: '/expenses',
+          );
+        }
         return TransactionDetailScreen(transactionId: id);
       },
     ),
@@ -128,7 +161,14 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/pending/edit/:id',
       builder: (_, state) {
-        final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+        final id = RouteParsers.pathInt(state.pathParameters, 'id');
+        if (id == null) {
+          return const RouteFallbackScreen(
+            title: 'Invalid pending transaction link',
+            message: 'Pending id is missing or malformed.',
+            backRoute: AppRoutes.pending,
+          );
+        }
         return EditPendingTransactionScreen(pendingId: id);
       },
     ),
@@ -162,8 +202,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/accounts/transfer/success',
       builder: (_, state) {
-        final amount =
-            double.tryParse(state.uri.queryParameters['amount'] ?? '0') ?? 0;
+        final amount = RouteParsers.queryDouble(
+          state.uri.queryParameters,
+          'amount',
+        );
         final from = state.uri.queryParameters['from'] ?? 'bank';
         final to = state.uri.queryParameters['to'] ?? 'cash';
         return TransferSuccessScreen(
@@ -177,7 +219,14 @@ final appRouter = GoRouter(
       path: '/accounts/detail/:type/:id',
       builder: (_, state) {
         final type = state.pathParameters['type'] ?? 'bank';
-        final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+        final id = RouteParsers.pathInt(state.pathParameters, 'id');
+        if (id == null) {
+          return const RouteFallbackScreen(
+            title: 'Invalid account link',
+            message: 'Account id is missing or malformed.',
+            backRoute: AppRoutes.accounts,
+          );
+        }
         return AccountDetailScreen(type: type, id: id);
       },
     ),
@@ -185,7 +234,14 @@ final appRouter = GoRouter(
       path: '/accounts/reconcile/:type/:id',
       builder: (_, state) {
         final type = state.pathParameters['type'] ?? 'bank';
-        final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+        final id = RouteParsers.pathInt(state.pathParameters, 'id');
+        if (id == null) {
+          return const RouteFallbackScreen(
+            title: 'Invalid reconcile link',
+            message: 'Account id is missing or malformed.',
+            backRoute: AppRoutes.accounts,
+          );
+        }
         return ReconcileScreen(type: type, id: id);
       },
     ),
@@ -194,21 +250,42 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/loans/:id',
       builder: (_, state) {
-        final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+        final id = RouteParsers.pathInt(state.pathParameters, 'id');
+        if (id == null) {
+          return const RouteFallbackScreen(
+            title: 'Invalid loan link',
+            message: 'Loan id is missing or malformed.',
+            backRoute: '/loans',
+          );
+        }
         return LoanDetailScreen(loanId: id);
       },
     ),
     GoRoute(
       path: '/loans/:id/edit',
       builder: (_, state) {
-        final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+        final id = RouteParsers.pathInt(state.pathParameters, 'id');
+        if (id == null) {
+          return const RouteFallbackScreen(
+            title: 'Invalid loan link',
+            message: 'Loan id is missing or malformed.',
+            backRoute: '/loans',
+          );
+        }
         return AddEditLoanScreen(loanId: id);
       },
     ),
     GoRoute(
       path: '/loans/:id/pay',
       builder: (_, state) {
-        final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+        final id = RouteParsers.pathInt(state.pathParameters, 'id');
+        if (id == null) {
+          return const RouteFallbackScreen(
+            title: 'Invalid payment link',
+            message: 'Loan id is missing or malformed.',
+            backRoute: '/loans',
+          );
+        }
         return EmiPaymentScreen(loanId: id);
       },
     ),
@@ -229,44 +306,78 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/split/groups/:groupId',
       builder: (_, state) {
-        final groupId =
-            int.tryParse(state.pathParameters['groupId'] ?? '') ?? 0;
+        final groupId = RouteParsers.pathInt(state.pathParameters, 'groupId');
+        if (groupId == null) {
+          return const RouteFallbackScreen(
+            title: 'Invalid split group link',
+            message: 'Group id is missing or malformed.',
+            backRoute: AppRoutes.split,
+          );
+        }
         return SplitGroupDetailScreen(groupId: groupId);
       },
     ),
     GoRoute(
       path: '/split/groups/:groupId/add-expense',
       builder: (_, state) {
-        final groupId =
-            int.tryParse(state.pathParameters['groupId'] ?? '') ?? 0;
+        final groupId = RouteParsers.pathInt(state.pathParameters, 'groupId');
+        if (groupId == null) {
+          return const RouteFallbackScreen(
+            title: 'Invalid split group link',
+            message: 'Group id is missing or malformed.',
+            backRoute: AppRoutes.split,
+          );
+        }
         return AddSplitExpenseScreen(groupId: groupId);
       },
     ),
     GoRoute(
       path: '/split/groups/:groupId/balances',
       builder: (_, state) {
-        final groupId =
-            int.tryParse(state.pathParameters['groupId'] ?? '') ?? 0;
+        final groupId = RouteParsers.pathInt(state.pathParameters, 'groupId');
+        if (groupId == null) {
+          return const RouteFallbackScreen(
+            title: 'Invalid split group link',
+            message: 'Group id is missing or malformed.',
+            backRoute: AppRoutes.split,
+          );
+        }
         return SplitBalanceDetailScreen(groupId: groupId);
       },
     ),
     GoRoute(
       path: '/split/groups/:groupId/settle',
       builder: (_, state) {
-        final groupId =
-            int.tryParse(state.pathParameters['groupId'] ?? '') ?? 0;
+        final groupId = RouteParsers.pathInt(state.pathParameters, 'groupId');
+        if (groupId == null) {
+          return const RouteFallbackScreen(
+            title: 'Invalid split group link',
+            message: 'Group id is missing or malformed.',
+            backRoute: AppRoutes.split,
+          );
+        }
         return AddSplitSettlementScreen(groupId: groupId);
       },
     ),
     GoRoute(
       path: '/split/settlement/success',
       builder: (_, state) {
-        final amount =
-            double.tryParse(state.uri.queryParameters['amount'] ?? '0') ?? 0;
+        final amount = RouteParsers.queryDouble(
+          state.uri.queryParameters,
+          'amount',
+        );
         final groupId =
-            int.tryParse(state.uri.queryParameters['groupId'] ?? '') ?? 0;
+            RouteParsers.queryInt(state.uri.queryParameters, 'groupId') ?? 0;
         return SplitSettlementSuccessScreen(amount: amount, groupId: groupId);
       },
+    ),
+    GoRoute(
+      path: AppRoutes.logs,
+      builder: (_, _) => const DebugLogViewerScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.releaseChecklist,
+      builder: (_, _) => const ReleaseChecklistScreen(),
     ),
   ],
 );

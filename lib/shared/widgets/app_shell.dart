@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/config/app_mode.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_shadows.dart';
@@ -87,7 +88,35 @@ class _AppShellState extends State<AppShell> {
         (_bottomNavHeight + safeBottom) - (_fabSize / 2) + AppSpacing.xs;
 
     return FinarcScaffold(
-      body: widget.navigationShell,
+      body: Stack(
+        children: [
+          widget.navigationShell,
+          if (AppModeConfig.showModeBadge)
+            Positioned(
+              top: MediaQuery.paddingOf(context).top + 8,
+              right: 12,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AppColors.darkSurfaceHigh,
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  border: const Border.fromBorderSide(
+                    BorderSide(color: AppColors.darkBorder),
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xs,
+                    vertical: 4,
+                  ),
+                  child: Text(
+                    AppModeConfig.label,
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
       floatingActionButton: Padding(
         padding: EdgeInsets.only(right: AppSpacing.sm, bottom: fabBottomInset),
         child: DecoratedBox(

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/database_providers.dart';
+import '../../../core/logging/logging_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../alerts/data/alerts_providers.dart';
 import '../data/pending_providers.dart';
@@ -328,6 +329,18 @@ final notificationIngestionServiceProvider =
       void append(NotificationDebugEntry entry) {
         ref.read(notificationDebugLogProvider.notifier).append(entry);
         ref.read(ingestionDiagnosticsProvider.notifier).append(entry);
+        unawaited(
+          ref
+              .read(appLogServiceProvider)
+              .log(
+                category: 'ingestion',
+                message: entry.result,
+                meta: <String, Object?>{
+                  'source': entry.packageName,
+                  'receivedAt': entry.receivedAt.toIso8601String(),
+                },
+              ),
+        );
       }
 
       return NotificationIngestionService(
@@ -348,6 +361,19 @@ final smsIngestionServiceProvider = Provider<SmsIngestionService>((ref) {
   void append(NotificationDebugEntry entry) {
     ref.read(notificationDebugLogProvider.notifier).append(entry);
     ref.read(ingestionDiagnosticsProvider.notifier).append(entry);
+    unawaited(
+      ref
+          .read(appLogServiceProvider)
+          .log(
+            category: 'ingestion',
+            message: entry.result,
+            meta: <String, Object?>{
+              'source': 'sms',
+              'sender': entry.packageName,
+              'receivedAt': entry.receivedAt.toIso8601String(),
+            },
+          ),
+    );
   }
 
   return SmsIngestionService(

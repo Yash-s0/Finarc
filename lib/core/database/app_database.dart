@@ -5,6 +5,8 @@ import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../logging/app_log_service.dart';
+
 part 'app_database.g.dart';
 
 class BankAccounts extends Table {
@@ -311,6 +313,11 @@ class AppDatabase extends _$AppDatabase {
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async => m.createAll(),
     onUpgrade: (m, from, to) async {
+      await globalAppLogService.log(
+        category: 'migration',
+        message: 'starting-upgrade',
+        meta: <String, Object?>{'from': from, 'to': to},
+      );
       if (from < 2) {
         await m.addColumn(transactions, transactions.cardBillId);
         await m.addColumn(cardBills, cardBills.cycleStartDate);
@@ -455,16 +462,45 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(appSettings, appSettings.salaryCreditDay);
         await m.addColumn(appSettings, appSettings.companyName);
       }
+      await globalAppLogService.log(
+        category: 'migration',
+        message: 'upgrade-complete',
+        meta: <String, Object?>{'from': from, 'to': to},
+      );
+    },
+    beforeOpen: (details) async {
+      await _healAppSettingsRows();
     },
   );
 
   Future<void> seedIfEmpty() async {
+    await _healAppSettingsRows();
     final settings = await (select(appSettings)..limit(1)).getSingleOrNull();
     if (settings == null) {
       await into(
         appSettings,
       ).insert(AppSettingsCompanion.insert(isDarkMode: const Value(true)));
     }
+  }
+
+  Future<void> _healAppSettingsRows() async {
+    final rows = await (select(appSettings)).get();
+    if (rows.length <= 1) return;
+    final sorted = [...rows]..sort((a, b) => a.id.compareTo(b.id));
+    final survivor = sorted.first;
+    final idsToDelete = sorted
+        .skip(1)
+        .map((row) => row.id)
+        .toList(growable: false);
+    await (delete(appSettings)..where((t) => t.id.isIn(idsToDelete))).go();
+    await globalAppLogService.log(
+      category: 'migration',
+      message: 'healed-duplicate-settings',
+      meta: <String, Object?>{
+        'keptId': survivor.id,
+        'deletedCount': idsToDelete.length,
+      },
+    );
   }
 }
 

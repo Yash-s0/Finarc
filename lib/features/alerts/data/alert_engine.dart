@@ -1,4 +1,5 @@
 import '../../../core/database/app_database.dart';
+import '../../../core/logging/app_log_service.dart';
 import '../../../core/utils/formatters.dart';
 import '../../cards/data/billing_service.dart';
 import '../../expenses/models/transaction_types.dart';
@@ -404,12 +405,26 @@ class AlertEngine {
   Future<void> _showLocalAlertIfAllowed(Alert alert) async {
     final settings = await _currentSettings();
     if (settings == null) return;
+    await globalAppLogService.log(
+      category: 'alert-engine',
+      message: 'alert-created',
+      meta: <String, Object?>{
+        'type': alert.alertType,
+        'priority': alert.priority,
+        'route': alert.actionRoute ?? '/alerts',
+      },
+    );
     if (!_isWithinQuietHours(DateTime.now(), settings)) {
       await _notifier.showAlert(
         title: alert.title,
         body: alert.body,
         route: alert.actionRoute ?? '/alerts',
         channelType: _channelTypeForAlert(alert.alertType),
+      );
+      await globalAppLogService.log(
+        category: 'alert-engine',
+        message: 'alert-notified',
+        meta: <String, Object?>{'type': alert.alertType},
       );
     }
   }

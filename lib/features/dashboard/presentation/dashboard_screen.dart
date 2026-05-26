@@ -4,11 +4,12 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
-import '../../onboarding/data/onboarding_providers.dart';
-import '../../profile/data/profile_settings_providers.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
+import '../../onboarding/data/onboarding_providers.dart';
+import '../../profile/data/profile_settings_providers.dart';
 import '../data/dashboard_providers.dart';
+import 'widgets/dashboard_sections.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -100,120 +101,14 @@ class DashboardScreen extends ConsumerWidget {
             if (freshInstall) {
               return ListView(
                 padding: _pagePadding(context),
-                children: [
-                  Text(
-                    'Welcome to Finarc',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: AppSpacing.xxs),
-                  Text(
-                    'Start by adding your first bank account or credit card.',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  FinarcCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const FinarcSectionHeader(title: 'Setup Progress'),
-                        const SizedBox(height: AppSpacing.sm),
-                        _progressRow(
-                          context,
-                          'Bank account added',
-                          done: data.bankAccountCount > 0,
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        _progressRow(
-                          context,
-                          'Cash wallet added',
-                          done: data.cashWalletCount > 0,
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        _progressRow(
-                          context,
-                          'Credit card added',
-                          done: data.cardCount > 0,
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        _progressRow(
-                          context,
-                          'Notification detection enabled',
-                          done: data.notificationDetectionEnabled,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  FinarcCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const FinarcSectionHeader(title: 'Next Best Actions'),
-                        const SizedBox(height: AppSpacing.sm),
-                        FinarcPrimaryButton(
-                          onPressed: () =>
-                              context.push('/accounts/add?type=bank'),
-                          icon: Icons.account_balance_outlined,
-                          label: 'Add Bank Account',
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        FinarcSecondaryButton(
-                          onPressed: () =>
-                              context.push('/accounts/add?type=cash'),
-                          icon: Icons.account_balance_wallet_outlined,
-                          label: 'Add Cash Wallet',
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        FinarcSecondaryButton(
-                          onPressed: () => context.push('/cards/add'),
-                          icon: Icons.credit_card_outlined,
-                          label: 'Add Card',
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        FinarcSecondaryButton(
-                          onPressed: () => context.push('/expenses/add'),
-                          icon: Icons.add_circle_outline,
-                          label: 'Add Expense',
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  const FinarcCard(
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 18,
-                          backgroundColor: AppColors.darkPrimarySoft,
-                          child: Icon(Icons.offline_bolt_rounded, size: 18),
-                        ),
-                        SizedBox(width: AppSpacing.sm),
-                        Expanded(
-                          child: Text(
-                            'Offline-first and local-only. No cloud sync. Data stays on this device.',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                children: [DashboardFreshStartGate(data: data)],
               );
             }
 
             return ListView(
               padding: _pagePadding(context),
               children: [
-                Text(
-                  profile?.name?.trim().isNotEmpty == true
-                      ? 'Hello, ${profile!.name!.trim()}'
-                      : 'Welcome',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                const SizedBox(height: AppSpacing.xxs),
-                Text(
-                  'Track money confidently, offline.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
+                DashboardGreetingHeader(name: profile?.name),
                 const SizedBox(height: AppSpacing.sm),
                 FinarcCard(
                   onTap: () => context.push('/alerts'),
@@ -254,15 +149,7 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                GestureDetector(
-                  onTap: () => context.push('/dashboard/net-worth-breakdown'),
-                  child: FinarcBalanceCard(
-                    label: 'Net Worth',
-                    value: inr(data.netWorth),
-                    subtitle: 'Liquid + recoverable - dues/loans',
-                    statusLabel: data.netWorth >= 0 ? 'Healthy' : 'Attention',
-                  ),
-                ),
+                NetWorthHeroCard(data: data),
                 if (profile?.salaryCreditDay != null) ...[
                   const SizedBox(height: AppSpacing.xs),
                   FinarcCard(
@@ -270,40 +157,7 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                 ],
                 const SizedBox(height: AppSpacing.md),
-                GridView.count(
-                  crossAxisCount: 2,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  childAspectRatio: 1.75,
-                  crossAxisSpacing: AppSpacing.xs,
-                  mainAxisSpacing: AppSpacing.xs,
-                  children: [
-                    FinarcMetricCard(
-                      title: 'Bank Balance',
-                      value: inr(data.bankBalance),
-                    ),
-                    FinarcMetricCard(
-                      title: 'Card Dues',
-                      value: inr(data.cardDues),
-                    ),
-                    FinarcMetricCard(
-                      title: 'Cash In Hand',
-                      value: inr(data.cashInHand),
-                    ),
-                    FinarcMetricCard(
-                      title: 'Monthly Spends',
-                      value: inr(data.monthlySpends),
-                    ),
-                    FinarcMetricCard(
-                      title: 'Loans Outstanding',
-                      value: inr(data.loansOutstanding),
-                    ),
-                    FinarcMetricCard(
-                      title: 'Recoverable Amount',
-                      value: inr(data.recoverableAmount),
-                    ),
-                  ],
-                ),
+                DashboardMetricGrid(data: data),
                 const SizedBox(height: AppSpacing.sm),
                 FinarcCard(
                   onTap: () => context.push('/loans'),
@@ -362,68 +216,12 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                if (data.pendingCount > 0) ...[
-                  FinarcCard(
-                    onTap: () => context.push('/pending'),
-                    child: Row(
-                      children: [
-                        const CircleAvatar(
-                          radius: 18,
-                          backgroundColor: AppColors.darkPrimarySoft,
-                          child: Icon(
-                            Icons.notification_important_outlined,
-                            size: 18,
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Pending Confirmations'),
-                              SizedBox(height: 2),
-                              Text(
-                                'Detected spends waiting for your confirmation',
-                                style: TextStyle(fontSize: 12),
-                              ),
-                            ],
-                          ),
-                        ),
-                        FinarcStatusBadge(
-                          label: '${data.pendingCount}',
-                          tone: FinarcStatusTone.warning,
-                        ),
-                      ],
-                    ),
-                  ),
+                PendingConfirmationsCard(pendingCount: data.pendingCount),
+                if (data.pendingCount > 0)
                   const SizedBox(height: AppSpacing.xs),
-                ],
-                if (data.dueSoonBillsCount > 0) ...[
-                  FinarcCard(
-                    onTap: () => context.push('/cards'),
-                    child: Row(
-                      children: [
-                        const CircleAvatar(
-                          radius: 18,
-                          backgroundColor: AppColors.darkPrimarySoft,
-                          child: Icon(Icons.event_busy_outlined, size: 18),
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Expanded(
-                          child: Text(
-                            '${data.dueSoonBillsCount} card bill(s) due soon',
-                            style: Theme.of(context).textTheme.titleSmall,
-                          ),
-                        ),
-                        const FinarcStatusBadge(
-                          label: 'DUE',
-                          tone: FinarcStatusTone.warning,
-                        ),
-                      ],
-                    ),
-                  ),
+                DueSoonCard(count: data.dueSoonBillsCount),
+                if (data.dueSoonBillsCount > 0)
                   const SizedBox(height: AppSpacing.xs),
-                ],
                 if (data.splitReceivableAmount != 0 ||
                     data.splitPayableAmount != 0) ...[
                   FinarcCard(
@@ -486,66 +284,9 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xs),
-                FinarcCard(
-                  onTap: () => context.push('/analytics'),
-                  child: Row(
-                    children: [
-                      const CircleAvatar(
-                        radius: 18,
-                        backgroundColor: AppColors.darkPrimarySoft,
-                        child: Icon(Icons.insights_outlined, size: 18),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('View Reports'),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Monthly spend ${inr(data.monthlySpends)} • Open analytics dashboard',
-                            ),
-                          ],
-                        ),
-                      ),
-                      FinarcStatusBadge(
-                        label: data.monthlySpends > 0 ? 'TREND' : 'NEW',
-                        tone: data.monthlySpends > 0
-                            ? FinarcStatusTone.info
-                            : FinarcStatusTone.neutral,
-                        compact: true,
-                      ),
-                    ],
-                  ),
-                ),
+                AnalyticsCtaCard(monthlySpends: data.monthlySpends),
                 const SizedBox(height: AppSpacing.lg),
-                const FinarcSectionHeader(title: 'Recent Transactions'),
-                const SizedBox(height: AppSpacing.xs),
-                if (data.recentTransactions.isEmpty)
-                  const FinarcEmptyState(
-                    title: 'No transactions yet',
-                    subtitle: 'Add your first expense from quick actions.',
-                  )
-                else
-                  ...data.recentTransactions.map(
-                    (t) => FinarcTransactionTile(
-                      title: t.title,
-                      subtitle: t.category,
-                      prefix: CircleAvatar(
-                        radius: 16,
-                        backgroundColor: AppColors.darkPrimarySoft,
-                        child: Text(
-                          t.category[0].toUpperCase(),
-                          style: Theme.of(context).textTheme.labelMedium,
-                        ),
-                      ),
-                      amount:
-                          '${t.type == 'income' || t.type == 'refund' ? '+' : '-'}${inr(t.amount)}',
-                      amountColor: t.type == 'income' || t.type == 'refund'
-                          ? AppColors.darkSuccess
-                          : AppColors.darkError,
-                    ),
-                  ),
+                RecentTransactionsSection(data: data),
               ],
             );
           },
@@ -560,7 +301,11 @@ class DashboardScreen extends ConsumerWidget {
     var expected = DateTime(now.year, now.month, salaryCreditDay);
     if (salaryCreditDay > 28) {
       final monthEnd = DateTime(now.year, now.month + 1, 0).day;
-      expected = DateTime(now.year, now.month, salaryCreditDay.clamp(1, monthEnd));
+      expected = DateTime(
+        now.year,
+        now.month,
+        salaryCreditDay.clamp(1, monthEnd),
+      );
     }
     if (expected.isBefore(today)) {
       final nextMonthEnd = DateTime(now.year, now.month + 2, 0).day;
@@ -574,24 +319,5 @@ class DashboardScreen extends ConsumerWidget {
     if (days <= 0) return 'Salary expected today';
     if (days == 1) return 'Salary expected in 1 day';
     return 'Salary expected in $days days';
-  }
-
-  static Widget _progressRow(
-    BuildContext context,
-    String label, {
-    required bool done,
-  }) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
-        ),
-        FinarcStatusBadge(
-          label: done ? 'YES' : 'NO',
-          tone: done ? FinarcStatusTone.success : FinarcStatusTone.neutral,
-          compact: true,
-        ),
-      ],
-    );
   }
 }

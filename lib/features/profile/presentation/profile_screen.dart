@@ -9,8 +9,10 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../../core/database/backup/backup_models.dart';
 import '../../../core/database/backup/backup_providers.dart';
+import '../../../core/config/app_info_provider.dart';
 import '../../../core/database/database_providers.dart';
 import '../../../core/database/reset_data_service.dart';
+import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../accounts/data/accounts_providers.dart';
 import '../../alerts/data/alerts_providers.dart';
@@ -26,26 +28,9 @@ import '../../pending/data/pending_providers.dart';
 import '../../pending/notifications/detection_settings.dart';
 import '../../pending/notifications/notification_providers.dart';
 import '../../split/data/split_providers.dart';
+import 'widgets/profile_sections.dart';
 
-class _LocalRowsSummary {
-  const _LocalRowsSummary({
-    required this.accounts,
-    required this.cards,
-    required this.transactions,
-    required this.pending,
-    required this.splits,
-  });
-
-  final int accounts;
-  final int cards;
-  final int transactions;
-  final int pending;
-  final int splits;
-}
-
-final _localRowsSummaryProvider = FutureProvider<_LocalRowsSummary>((
-  ref,
-) async {
+final _localRowsSummaryProvider = FutureProvider<LocalRowsSummary>((ref) async {
   final db = ref.read(appDatabaseProvider);
   final banks = await db.select(db.bankAccounts).get();
   final wallets = await db.select(db.cashWallets).get();
@@ -58,7 +43,7 @@ final _localRowsSummaryProvider = FutureProvider<_LocalRowsSummary>((
   final splitShares = await db.select(db.splitExpenseShares).get();
   final splitSettlements = await db.select(db.splitSettlements).get();
 
-  return _LocalRowsSummary(
+  return LocalRowsSummary(
     accounts: banks.length + wallets.length,
     cards: cards.length,
     transactions: txns.length,
@@ -105,7 +90,9 @@ Future<void> _showProfileEditSheet(
             FinarcTextField(
               controller: salary,
               label: 'Monthly Salary',
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
             ),
             const SizedBox(height: AppSpacing.xs),
             FinarcTextField(
@@ -118,7 +105,9 @@ Future<void> _showProfileEditSheet(
             const SizedBox(height: AppSpacing.sm),
             FinarcPrimaryButton(
               onPressed: () async {
-                await ref.read(profileSettingsServiceProvider).save(
+                await ref
+                    .read(profileSettingsServiceProvider)
+                    .save(
                       UserProfileSettings(
                         name: name.text.trim(),
                         monthlySalary: double.tryParse(salary.text.trim()),
@@ -158,842 +147,334 @@ class ProfileScreen extends ConsumerWidget {
         ? ref.watch(_localRowsSummaryProvider).valueOrNull
         : null;
     final profile = ref.watch(userProfileSettingsProvider).valueOrNull;
+    final appVersion = ref.watch(appVersionProvider).valueOrNull ?? 'unknown';
+    final notificationBadge = accessState.when(
+      loading: () => const FinarcStatusBadge(
+        label: 'Notification access: Checking',
+        tone: FinarcStatusTone.neutral,
+        compact: true,
+      ),
+      error: (_, _) => const FinarcStatusBadge(
+        label: 'Notification access: Error',
+        tone: FinarcStatusTone.warning,
+        compact: true,
+      ),
+      data: (enabled) => FinarcStatusBadge(
+        label: enabled
+            ? 'Notification access: Enabled'
+            : 'Notification access: Disabled',
+        tone: enabled ? FinarcStatusTone.success : FinarcStatusTone.warning,
+        compact: true,
+      ),
+    );
+    final smsBadge = smsAccessState.when(
+      loading: () => const FinarcStatusBadge(
+        label: 'SMS permission: Checking',
+        tone: FinarcStatusTone.neutral,
+        compact: true,
+      ),
+      error: (_, _) => const FinarcStatusBadge(
+        label: 'SMS permission: Error',
+        tone: FinarcStatusTone.warning,
+        compact: true,
+      ),
+      data: (enabled) => FinarcStatusBadge(
+        label: enabled
+            ? 'SMS permission: Granted'
+            : 'SMS permission: Not granted',
+        tone: enabled ? FinarcStatusTone.success : FinarcStatusTone.warning,
+        compact: true,
+      ),
+    );
+    final localNotifBadge = postNotificationState.when(
+      loading: () => const FinarcStatusBadge(
+        label: 'Local notification permission: Checking',
+        tone: FinarcStatusTone.neutral,
+        compact: true,
+      ),
+      error: (_, _) => const FinarcStatusBadge(
+        label: 'Local notification permission: Error',
+        tone: FinarcStatusTone.warning,
+        compact: true,
+      ),
+      data: (enabled) => FinarcStatusBadge(
+        label: enabled
+            ? 'Local notification permission: Granted'
+            : 'Local notification permission: Not granted',
+        tone: enabled ? FinarcStatusTone.success : FinarcStatusTone.warning,
+        compact: true,
+      ),
+    );
+    final detectionAccessBadge = accessState.when(
+      loading: () => const FinarcStatusBadge(
+        label: 'Checking access...',
+        tone: FinarcStatusTone.neutral,
+        compact: true,
+      ),
+      error: (_, _) => const FinarcStatusBadge(
+        label: 'Access check failed',
+        tone: FinarcStatusTone.warning,
+        compact: true,
+      ),
+      data: (enabled) => FinarcStatusBadge(
+        label: enabled
+            ? 'NOTIFICATION ACCESS ENABLED'
+            : 'NOTIFICATION ACCESS DISABLED',
+        tone: enabled ? FinarcStatusTone.success : FinarcStatusTone.warning,
+        compact: true,
+      ),
+    );
+    final smsAccessBadge = smsAccessState.when(
+      loading: () => const FinarcStatusBadge(
+        label: 'Checking SMS access...',
+        tone: FinarcStatusTone.neutral,
+        compact: true,
+      ),
+      error: (_, _) => const FinarcStatusBadge(
+        label: 'SMS access check failed',
+        tone: FinarcStatusTone.warning,
+        compact: true,
+      ),
+      data: (enabled) => FinarcStatusBadge(
+        label: enabled ? 'SMS ACCESS ENABLED' : 'SMS ACCESS DISABLED',
+        tone: enabled ? FinarcStatusTone.success : FinarcStatusTone.warning,
+        compact: true,
+      ),
+    );
 
     return FinarcScaffold(
       appBar: const FinarcAppBar(title: 'Profile'),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.md),
         children: [
-          FinarcCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Profile & Salary',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text('Name: ${profile?.name ?? '—'}'),
-                Text(
-                  'Monthly salary: ${profile?.monthlySalary == null ? '—' : profile!.monthlySalary!.toStringAsFixed(2)}',
-                ),
-                Text('Salary credit day: ${profile?.salaryCreditDay ?? '—'}'),
-                Text('Company: ${profile?.companyName ?? '—'}'),
-                const SizedBox(height: AppSpacing.sm),
-                FinarcSecondaryButton(
-                  onPressed: () => _showProfileEditSheet(context, ref, profile),
-                  icon: Icons.edit_outlined,
-                  label: 'Edit Profile & Salary',
-                ),
-              ],
-            ),
+          ProfileHeaderCard(
+            name: profile?.name,
+            monthlySalary: profile?.monthlySalary,
+            salaryCreditDay: profile?.salaryCreditDay,
+            companyName: profile?.companyName,
+            onEdit: () => _showProfileEditSheet(context, ref, profile),
           ),
           const SizedBox(height: AppSpacing.sm),
-          FinarcCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Setup Status',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: AppSpacing.xxs),
-                Text(
-                  'First-run onboarding and local setup progress.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                FinarcStatusBadge(
-                  label: onboardingDone == true
-                      ? 'ONBOARDING COMPLETED'
-                      : 'ONBOARDING PENDING',
-                  tone: onboardingDone == true
-                      ? FinarcStatusTone.success
-                      : FinarcStatusTone.warning,
-                  compact: true,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FinarcSecondaryButton(
-                        onPressed: () => context.push('/onboarding'),
-                        label: 'Open Onboarding',
-                        icon: Icons.flag_outlined,
-                      ),
-                    ),
-                  ],
-                ),
-                if (kDebugMode) ...[
-                  const SizedBox(height: AppSpacing.xs),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: FinarcSecondaryButton(
-                          onPressed: () async {
-                            await ref.read(onboardingActionsProvider).reset();
-                            if (context.mounted) context.go('/onboarding');
-                          },
-                          label: 'Reset Onboarding (Debug)',
-                          icon: Icons.restart_alt_rounded,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ],
-            ),
+          ProfileSalarySection(
+            appVersion: appVersion,
+            onOpenReleaseChecklist: () =>
+                context.push(AppRoutes.releaseChecklist),
+            onOpenLogs: () => context.push(AppRoutes.logs),
           ),
           const SizedBox(height: AppSpacing.sm),
-          FinarcCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Notification Testing',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: AppSpacing.xxs),
-                Text(
-                  'Verify local notification posting, alert storage, mock notification/SMS ingestion, and routing.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    accessState.when(
-                      loading: () => const FinarcStatusBadge(
-                        label: 'Notification access: Checking',
-                        tone: FinarcStatusTone.neutral,
-                        compact: true,
-                      ),
-                      error: (_, _) => const FinarcStatusBadge(
-                        label: 'Notification access: Error',
-                        tone: FinarcStatusTone.warning,
-                        compact: true,
-                      ),
-                      data: (enabled) => FinarcStatusBadge(
-                        label: enabled
-                            ? 'Notification access: Enabled'
-                            : 'Notification access: Disabled',
-                        tone: enabled
-                            ? FinarcStatusTone.success
-                            : FinarcStatusTone.warning,
-                        compact: true,
-                      ),
-                    ),
-                    smsAccessState.when(
-                      loading: () => const FinarcStatusBadge(
-                        label: 'SMS permission: Checking',
-                        tone: FinarcStatusTone.neutral,
-                        compact: true,
-                      ),
-                      error: (_, _) => const FinarcStatusBadge(
-                        label: 'SMS permission: Error',
-                        tone: FinarcStatusTone.warning,
-                        compact: true,
-                      ),
-                      data: (enabled) => FinarcStatusBadge(
-                        label: enabled
-                            ? 'SMS permission: Granted'
-                            : 'SMS permission: Not granted',
-                        tone: enabled
-                            ? FinarcStatusTone.success
-                            : FinarcStatusTone.warning,
-                        compact: true,
-                      ),
-                    ),
-                    postNotificationState.when(
-                      loading: () => const FinarcStatusBadge(
-                        label: 'Local notification permission: Checking',
-                        tone: FinarcStatusTone.neutral,
-                        compact: true,
-                      ),
-                      error: (_, _) => const FinarcStatusBadge(
-                        label: 'Local notification permission: Error',
-                        tone: FinarcStatusTone.warning,
-                        compact: true,
-                      ),
-                      data: (enabled) => FinarcStatusBadge(
-                        label: enabled
-                            ? 'Local notification permission: Granted'
-                            : 'Local notification permission: Not granted',
-                        tone: enabled
-                            ? FinarcStatusTone.success
-                            : FinarcStatusTone.warning,
-                        compact: true,
-                      ),
-                    ),
-                    FinarcStatusBadge(
-                      label: detectionEnabled
-                          ? 'Detection enabled: On'
-                          : 'Detection enabled: Off',
-                      tone: detectionEnabled
-                          ? FinarcStatusTone.success
-                          : FinarcStatusTone.warning,
-                      compact: true,
-                    ),
-                    FinarcStatusBadge(
-                      label: smsDetectionEnabled
-                          ? 'SMS detection: On'
-                          : 'SMS detection: Off',
-                      tone: smsDetectionEnabled
-                          ? FinarcStatusTone.success
-                          : FinarcStatusTone.warning,
-                      compact: true,
-                    ),
-                    FinarcStatusBadge(
-                      label: (settings?.reminderEnabled ?? false)
-                          ? 'Reminders: On'
-                          : 'Reminders: Off',
-                      tone: (settings?.reminderEnabled ?? false)
-                          ? FinarcStatusTone.success
-                          : FinarcStatusTone.neutral,
-                      compact: true,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FinarcSecondaryButton(
-                        onPressed: () async {
-                          final granted = await ref
-                              .read(notificationPermissionServiceProvider)
-                              .requestPostNotificationsPermission();
-                          ref.invalidate(postNotificationsPermissionProvider);
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                granted
-                                    ? 'Notification permission granted.'
-                                    : 'Notification permission denied.',
-                              ),
-                            ),
-                          );
-                        },
-                        icon: Icons.notifications_active_outlined,
-                        label: 'Request Notification Permission',
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FinarcPrimaryButton(
-                        onPressed: () async {
-                          await ref
-                              .read(notificationTestToolsServiceProvider)
-                              .sendTestNotification();
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Test notification sent. Check your notification tray.',
-                              ),
-                            ),
-                          );
-                        },
-                        icon: Icons.send_rounded,
-                        label: 'Send Test Notification',
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FinarcSecondaryButton(
-                        onPressed: () async {
-                          final id = await ref
-                              .read(notificationTestToolsServiceProvider)
-                              .createTestAlert();
-                          ref.invalidate(alertsInboxProvider);
-                          ref.invalidate(alertsUnreadCountProvider);
-                          ref.invalidate(latestImportantAlertProvider);
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                id == null
-                                    ? 'Test alert was not created.'
-                                    : 'Test alert created (id: $id).',
-                              ),
-                            ),
-                          );
-                        },
-                        icon: Icons.add_alert_rounded,
-                        label: 'Create Test Alert',
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FinarcSecondaryButton(
-                        onPressed: () async {
-                          final ids = await ref
-                              .read(notificationTestToolsServiceProvider)
-                              .mockTransactionNotification();
-                          ref.invalidate(pendingTransactionsProvider);
-                          ref.invalidate(pendingCountProvider);
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                ids.isEmpty
-                                    ? 'No pending created from mock notification.'
-                                    : 'Mock notification created ${ids.length} pending transaction(s).',
-                              ),
-                            ),
-                          );
-                        },
-                        icon: Icons.notifications_outlined,
-                        label: 'Mock Transaction Notification',
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FinarcSecondaryButton(
-                        onPressed: () async {
-                          final ids = await ref
-                              .read(notificationTestToolsServiceProvider)
-                              .mockSmsTransaction();
-                          ref.invalidate(pendingTransactionsProvider);
-                          ref.invalidate(pendingCountProvider);
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                ids.isEmpty
-                                    ? 'No pending created from mock SMS.'
-                                    : 'Mock SMS created ${ids.length} pending transaction(s).',
-                              ),
-                            ),
-                          );
-                        },
-                        icon: Icons.sms_outlined,
-                        label: 'Mock SMS Transaction',
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FinarcSecondaryButton(
-                        onPressed: () => context.push('/alerts'),
-                        icon: Icons.open_in_new_rounded,
-                        label: 'Open Alerts Center',
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'SMS received ${diagnostics.smsReceived} • allowed ${diagnostics.smsAllowed} • promo blocked ${diagnostics.smsBlockedPromotional} • unknown blocked ${diagnostics.smsBlockedUnknownSender} • parsed ${diagnostics.smsParsedPending} • dupes ${diagnostics.smsDuplicateSuppressed}',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                Text(
-                  'Notifications received ${diagnostics.notificationsReceived} • parsed ${diagnostics.notificationsParsedPending} • ignored ${diagnostics.notificationsIgnored} • dupes ${diagnostics.notificationsDuplicateSuppressed}',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FinarcSecondaryButton(
-                        onPressed: () => context.push('/notification/setup'),
-                        icon: Icons.analytics_outlined,
-                        label: 'Show Ingestion Diagnostics',
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FinarcSecondaryButton(
-                        onPressed: () {
-                          ref
-                              .read(ingestionDiagnosticsProvider.notifier)
-                              .clear();
-                          ref
-                              .read(notificationDebugLogProvider.notifier)
-                              .clear();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Ingestion diagnostics cleared.'),
-                            ),
-                          );
-                        },
-                        icon: Icons.delete_sweep_outlined,
-                        label: 'Clear Ingestion Diagnostics',
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+          DebugToolsSection(
+            onboardingDone: onboardingDone,
+            onOpenOnboarding: () => context.push('/onboarding'),
+            onResetOnboarding: () async {
+              await ref.read(onboardingActionsProvider).reset();
+              if (context.mounted) context.go('/onboarding');
+            },
           ),
           const SizedBox(height: AppSpacing.sm),
-          FinarcCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Alerts & Quiet Hours',
-                  style: Theme.of(context).textTheme.titleMedium,
+          NotificationTestingSection(
+            notificationAccessBadge: notificationBadge,
+            smsAccessBadge: smsBadge,
+            postNotifBadge: localNotifBadge,
+            detectionEnabled: detectionEnabled,
+            smsDetectionEnabled: smsDetectionEnabled,
+            reminderEnabled: settings?.reminderEnabled ?? false,
+            diagnostics: diagnostics,
+            onRequestNotificationPermission: () async {
+              final granted = await ref
+                  .read(notificationPermissionServiceProvider)
+                  .requestPostNotificationsPermission();
+              ref.invalidate(postNotificationsPermissionProvider);
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    granted
+                        ? 'Notification permission granted.'
+                        : 'Notification permission denied.',
+                  ),
                 ),
-                const SizedBox(height: AppSpacing.xxs),
-                Text(
-                  'Control smart local alerts, summaries, and quiet-hour suppression.',
-                  style: Theme.of(context).textTheme.bodyMedium,
+              );
+            },
+            onSendTestNotification: () async {
+              await ref
+                  .read(notificationTestToolsServiceProvider)
+                  .sendTestNotification();
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'Test notification sent. Check your notification tray.',
+                  ),
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FinarcSecondaryButton(
-                        onPressed: () => context.push('/alerts'),
-                        label: 'Open Alerts Center',
-                        icon: Icons.notifications_none_rounded,
-                      ),
-                    ),
-                  ],
+              );
+            },
+            onCreateTestAlert: () async {
+              final id = await ref
+                  .read(notificationTestToolsServiceProvider)
+                  .createTestAlert();
+              ref.invalidate(alertsInboxProvider);
+              ref.invalidate(alertsUnreadCountProvider);
+              ref.invalidate(latestImportantAlertProvider);
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    id == null
+                        ? 'Test alert was not created.'
+                        : 'Test alert created (id: $id).',
+                  ),
                 ),
-                if (settings != null) ...[
-                  const SizedBox(height: AppSpacing.xs),
-                  _settingToggle(
-                    context,
-                    label: 'Smart alerts enabled',
-                    value: settings.smartAlertsEnabled,
-                    onChanged: (value) {
-                      ref
-                          .read(detectionSettingsProvider.notifier)
-                          .applyChanges(smartAlertsEnabled: value);
-                    },
+              );
+            },
+            onMockTransactionNotification: () async {
+              final ids = await ref
+                  .read(notificationTestToolsServiceProvider)
+                  .mockTransactionNotification();
+              ref.invalidate(pendingTransactionsProvider);
+              ref.invalidate(pendingCountProvider);
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    ids.isEmpty
+                        ? 'No pending created from mock notification.'
+                        : 'Mock notification created ${ids.length} pending transaction(s).',
                   ),
-                  _settingToggle(
-                    context,
-                    label: 'Low balance alerts',
-                    value: settings.lowBalanceAlertsEnabled,
-                    onChanged: (value) {
-                      ref
-                          .read(detectionSettingsProvider.notifier)
-                          .applyChanges(lowBalanceAlertsEnabled: value);
-                    },
+                ),
+              );
+            },
+            onMockSmsTransaction: () async {
+              final ids = await ref
+                  .read(notificationTestToolsServiceProvider)
+                  .mockSmsTransaction();
+              ref.invalidate(pendingTransactionsProvider);
+              ref.invalidate(pendingCountProvider);
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    ids.isEmpty
+                        ? 'No pending created from mock SMS.'
+                        : 'Mock SMS created ${ids.length} pending transaction(s).',
                   ),
-                  _settingToggle(
-                    context,
-                    label: 'Large expense alerts',
-                    value: settings.largeExpenseAlertsEnabled,
-                    onChanged: (value) {
-                      ref
-                          .read(detectionSettingsProvider.notifier)
-                          .applyChanges(largeExpenseAlertsEnabled: value);
-                    },
-                  ),
-                  _settingToggle(
-                    context,
-                    label: 'Unusual spending alerts',
-                    value: settings.unusualSpendingAlertsEnabled,
-                    onChanged: (value) {
-                      ref
-                          .read(detectionSettingsProvider.notifier)
-                          .applyChanges(unusualSpendingAlertsEnabled: value);
-                    },
-                  ),
-                  _settingToggle(
-                    context,
-                    label: 'Recurring merchant alerts',
-                    value: settings.recurringMerchantAlertsEnabled,
-                    onChanged: (value) {
-                      ref
-                          .read(detectionSettingsProvider.notifier)
-                          .applyChanges(recurringMerchantAlertsEnabled: value);
-                    },
-                  ),
-                  _settingToggle(
-                    context,
-                    label: 'Weekly summary alerts',
-                    value: settings.weeklySummaryAlertsEnabled,
-                    onChanged: (value) {
-                      ref
-                          .read(detectionSettingsProvider.notifier)
-                          .applyChanges(weeklySummaryAlertsEnabled: value);
-                    },
-                  ),
-                  _settingToggle(
-                    context,
-                    label: 'Monthly summary alerts',
-                    value: settings.monthlySummaryAlertsEnabled,
-                    onChanged: (value) {
-                      ref
-                          .read(detectionSettingsProvider.notifier)
-                          .applyChanges(monthlySummaryAlertsEnabled: value);
-                    },
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    'Quiet hours: ${_timeFmt(settings.quietHoursStartHour, settings.quietHoursStartMinute)} - ${_timeFmt(settings.quietHoursEndHour, settings.quietHoursEndMinute)}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  FinarcSecondaryButton(
-                    onPressed: () => _pickQuietHours(context, ref, settings),
-                    icon: Icons.nightlight_round,
-                    label: 'Configure Quiet Hours',
-                  ),
-                ],
-              ],
-            ),
+                ),
+              );
+            },
+            onOpenAlerts: () => context.push('/alerts'),
+            onShowDiagnostics: () => context.push('/notification/setup'),
+            onClearDiagnostics: () {
+              ref.read(ingestionDiagnosticsProvider.notifier).clear();
+              ref.read(notificationDebugLogProvider.notifier).clear();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Ingestion diagnostics cleared.')),
+              );
+            },
           ),
           const SizedBox(height: AppSpacing.sm),
-          FinarcCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Loans & EMIs',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: AppSpacing.xxs),
-                Text(
-                  'Track loan outstanding, upcoming EMIs and payment history.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FinarcSecondaryButton(
-                        onPressed: () => context.push('/loans'),
-                        label: 'Open Loans Dashboard',
-                        icon: Icons.account_balance_outlined,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+          BackupExportSection(
+            onOpenLoans: () => context.push('/loans'),
+            onOpenAlerts: () => context.push('/alerts'),
+            settings: settings,
+            onToggle: (key, value) {
+              switch (key) {
+                case 'smartAlertsEnabled':
+                  return ref
+                      .read(detectionSettingsProvider.notifier)
+                      .applyChanges(smartAlertsEnabled: value);
+                case 'lowBalanceAlertsEnabled':
+                  return ref
+                      .read(detectionSettingsProvider.notifier)
+                      .applyChanges(lowBalanceAlertsEnabled: value);
+                case 'largeExpenseAlertsEnabled':
+                  return ref
+                      .read(detectionSettingsProvider.notifier)
+                      .applyChanges(largeExpenseAlertsEnabled: value);
+                case 'unusualSpendingAlertsEnabled':
+                  return ref
+                      .read(detectionSettingsProvider.notifier)
+                      .applyChanges(unusualSpendingAlertsEnabled: value);
+                case 'recurringMerchantAlertsEnabled':
+                  return ref
+                      .read(detectionSettingsProvider.notifier)
+                      .applyChanges(recurringMerchantAlertsEnabled: value);
+                case 'weeklySummaryAlertsEnabled':
+                  return ref
+                      .read(detectionSettingsProvider.notifier)
+                      .applyChanges(weeklySummaryAlertsEnabled: value);
+                case 'monthlySummaryAlertsEnabled':
+                  return ref
+                      .read(detectionSettingsProvider.notifier)
+                      .applyChanges(monthlySummaryAlertsEnabled: value);
+                default:
+                  return Future.value();
+              }
+            },
+            timeFmt: _timeFmt,
+            onConfigureQuietHours: () {
+              if (settings != null) {
+                _pickQuietHours(context, ref, settings);
+              }
+            },
           ),
           const SizedBox(height: AppSpacing.sm),
-          FinarcCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Notification Detection',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: AppSpacing.xxs),
-                Text(
-                  'Reads transaction-like notifications locally and creates pending transactions for review.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                accessState.when(
-                  loading: () => const FinarcStatusBadge(
-                    label: 'Checking access...',
-                    tone: FinarcStatusTone.neutral,
-                    compact: true,
-                  ),
-                  error: (error, stackTrace) => const FinarcStatusBadge(
-                    label: 'Access check failed',
-                    tone: FinarcStatusTone.warning,
-                    compact: true,
-                  ),
-                  data: (enabled) => FinarcStatusBadge(
-                    label: enabled
-                        ? 'NOTIFICATION ACCESS ENABLED'
-                        : 'NOTIFICATION ACCESS DISABLED',
-                    tone: enabled
-                        ? FinarcStatusTone.success
-                        : FinarcStatusTone.warning,
-                    compact: true,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FinarcSecondaryButton(
-                        onPressed: () => context.push('/notifications/setup'),
-                        label: 'Open Setup',
-                        icon: Icons.settings_outlined,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Row(
-                  children: [
-                    Text(
-                      'Detection enabled',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    const Spacer(),
-                    Switch.adaptive(
-                      value: detectionEnabled,
-                      onChanged: (value) {
-                        ref
-                            .read(detectionSettingsProvider.notifier)
-                            .applyChanges(notificationDetectionEnabled: value);
-                      },
-                    ),
-                  ],
-                ),
-              ],
-            ),
+          DetectionSettingsSection(
+            accessBadge: detectionAccessBadge,
+            smsAccessBadge: smsAccessBadge,
+            detectionEnabled: detectionEnabled,
+            smsDetectionEnabled: smsDetectionEnabled,
+            onOpenNotificationSetup: () => context.push('/notifications/setup'),
+            onOpenSmsSetup: () => context.push('/sms/setup'),
+            onDetectionToggle: (value) {
+              ref
+                  .read(detectionSettingsProvider.notifier)
+                  .applyChanges(notificationDetectionEnabled: value);
+            },
+            onSmsDetectionToggle: (value) {
+              ref
+                  .read(detectionSettingsProvider.notifier)
+                  .applyChanges(smsDetectionEnabled: value);
+            },
           ),
           const SizedBox(height: AppSpacing.sm),
-          FinarcCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'SMS Detection',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: AppSpacing.xxs),
-                Text(
-                  'Reads transaction-like SMS locally and creates pending entries for review.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                smsAccessState.when(
-                  loading: () => const FinarcStatusBadge(
-                    label: 'Checking SMS access...',
-                    tone: FinarcStatusTone.neutral,
-                    compact: true,
-                  ),
-                  error: (error, stackTrace) => const FinarcStatusBadge(
-                    label: 'SMS access check failed',
-                    tone: FinarcStatusTone.warning,
-                    compact: true,
-                  ),
-                  data: (enabled) => FinarcStatusBadge(
-                    label: enabled
-                        ? 'SMS ACCESS ENABLED'
-                        : 'SMS ACCESS DISABLED',
-                    tone: enabled
-                        ? FinarcStatusTone.success
-                        : FinarcStatusTone.warning,
-                    compact: true,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FinarcSecondaryButton(
-                        onPressed: () => context.push('/sms/setup'),
-                        label: 'Open SMS Setup',
-                        icon: Icons.sms_outlined,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Row(
-                  children: [
-                    Text(
-                      'SMS detection enabled',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    const Spacer(),
-                    Switch.adaptive(
-                      value: smsDetectionEnabled,
-                      onChanged: (value) {
-                        ref
-                            .read(detectionSettingsProvider.notifier)
-                            .applyChanges(smsDetectionEnabled: value);
-                      },
-                    ),
-                  ],
-                ),
-              ],
+          DataControlsSection(
+            onExportBackup: () => _confirmExportFullBackup(context, ref),
+            onImportBackup: () => _pickAndImportBackup(context, ref),
+            onExportTransactions: () => _exportCsv(
+              context,
+              ref,
+              fileNamePrefix: 'finarc_transactions',
+              label: 'Transactions CSV',
+              exporter: () =>
+                  ref.read(backupServiceProvider).exportTransactionsCsv(),
             ),
+            onExportExpenses: () => _exportCsv(
+              context,
+              ref,
+              fileNamePrefix: 'finarc_expenses',
+              label: 'Expenses CSV',
+              exporter: () =>
+                  ref.read(backupServiceProvider).exportExpensesCsv(),
+            ),
+            onExportAccounts: () => _exportCsv(
+              context,
+              ref,
+              fileNamePrefix: 'finarc_accounts',
+              label: 'Accounts CSV',
+              exporter: () =>
+                  ref.read(backupServiceProvider).exportAccountsCsv(),
+            ),
+            onExportCards: () => _exportCsv(
+              context,
+              ref,
+              fileNamePrefix: 'finarc_cards',
+              label: 'Cards CSV',
+              exporter: () => ref.read(backupServiceProvider).exportCardsCsv(),
+            ),
+            onResetAll: () => _confirmResetAllData(context, ref),
+            localRowsSummary: localRowsSummary,
           ),
           const SizedBox(height: AppSpacing.sm),
-          FinarcCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Data Controls',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: AppSpacing.xxs),
-                Text(
-                  'Manual local backup/export/import. No cloud sync is used.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                FinarcSecondaryButton(
-                  onPressed: () => _confirmExportFullBackup(context, ref),
-                  label: 'Export Full Backup',
-                  icon: Icons.download_rounded,
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                FinarcSecondaryButton(
-                  onPressed: () => _pickAndImportBackup(context, ref),
-                  label: 'Import Backup',
-                  icon: Icons.upload_file_rounded,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FinarcSecondaryButton(
-                        onPressed: () => _exportCsv(
-                          context,
-                          ref,
-                          fileNamePrefix: 'finarc_transactions',
-                          label: 'Transactions CSV',
-                          exporter: () => ref
-                              .read(backupServiceProvider)
-                              .exportTransactionsCsv(),
-                        ),
-                        label: 'Export Transactions CSV',
-                        icon: Icons.receipt_long_outlined,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FinarcSecondaryButton(
-                        onPressed: () => _exportCsv(
-                          context,
-                          ref,
-                          fileNamePrefix: 'finarc_expenses',
-                          label: 'Expenses CSV',
-                          exporter: () => ref
-                              .read(backupServiceProvider)
-                              .exportExpensesCsv(),
-                        ),
-                        label: 'Export Expenses CSV',
-                        icon: Icons.trending_down_rounded,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FinarcSecondaryButton(
-                        onPressed: () => _exportCsv(
-                          context,
-                          ref,
-                          fileNamePrefix: 'finarc_accounts',
-                          label: 'Accounts CSV',
-                          exporter: () => ref
-                              .read(backupServiceProvider)
-                              .exportAccountsCsv(),
-                        ),
-                        label: 'Export Accounts CSV',
-                        icon: Icons.account_balance_outlined,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Row(
-                  children: [
-                    Expanded(
-                      child: FinarcSecondaryButton(
-                        onPressed: () => _exportCsv(
-                          context,
-                          ref,
-                          fileNamePrefix: 'finarc_cards',
-                          label: 'Cards CSV',
-                          exporter: () =>
-                              ref.read(backupServiceProvider).exportCardsCsv(),
-                        ),
-                        label: 'Export Cards CSV',
-                        icon: Icons.credit_card_outlined,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                const FinarcStatusBadge(
-                  label: 'BACKUPS ARE UNENCRYPTED JSON/CSV FILES',
-                  tone: FinarcStatusTone.warning,
-                  compact: true,
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'Backup files are stored wherever you save them. Anyone with file access can read your financial data.',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                FinarcSecondaryButton(
-                  onPressed: () => _confirmResetAllData(context, ref),
-                  label: 'Delete All Data & Start Fresh',
-                  icon: Icons.delete_forever_outlined,
-                ),
-                if (kDebugMode && localRowsSummary != null) ...[
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    'Local rows: accounts ${localRowsSummary.accounts}, cards ${localRowsSummary.cards}, txns ${localRowsSummary.transactions}, pending ${localRowsSummary.pending}, splits ${localRowsSummary.splits}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          const FinarcCard(
-            child: ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(Icons.dark_mode_outlined),
-              title: Text('Theme toggle (placeholder)'),
-              subtitle: Text(
-                'Dark mode default is active. Full theme persistence controls are planned next.',
-              ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          const FinarcCard(
-            child: ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(Icons.offline_bolt_rounded),
-              title: Text('Offline-first mode'),
-              subtitle: Text('All data is stored locally on device only.'),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          const FinarcCard(
-            child: ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(Icons.privacy_tip_outlined),
-              title: Text('Privacy rules'),
-              subtitle: Text(
-                'No CVV, no expiry date storage, masked card numbers only, no cloud sync.',
-              ),
-            ),
-          ),
+          const ReleaseDiagnosticsSection(),
         ],
       ),
     );
@@ -1231,22 +712,6 @@ class ProfileScreen extends ConsumerWidget {
     ref.invalidate(onboardingCompletedProvider);
     ref.invalidate(detectionSettingsProvider);
     ref.invalidate(_localRowsSummaryProvider);
-  }
-
-  Widget _settingToggle(
-    BuildContext context, {
-    required String label,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
-        ),
-        Switch.adaptive(value: value, onChanged: onChanged),
-      ],
-    );
   }
 
   String _timeFmt(int hour, int minute) {

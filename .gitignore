@@ -11,6 +11,9 @@ finarc app logo.png
 finarc logo.png
 .buildlog/
 .history
+*.tmp
+*.bak
+*.orig
 
 
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/constants/app_constants.dart';
+import 'core/router/app_routes.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_controller.dart';
@@ -22,14 +23,14 @@ class FinarcApp extends ConsumerWidget {
     final onboardingState = ref.watch(onboardingCompletedProvider);
     onboardingState.whenData((completed) {
       final path = appRouter.routeInformationProvider.value.uri.path;
-      if (!completed && path != '/onboarding') {
+      if (!completed && path != AppRoutes.onboarding) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          appRouter.go('/onboarding');
+          appRouter.go(AppRoutes.onboarding);
         });
       }
-      if (completed && path == '/onboarding') {
+      if (completed && path == AppRoutes.onboarding) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          appRouter.go('/');
+          appRouter.go(AppRoutes.home);
         });
       }
     });
