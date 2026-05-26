@@ -8,9 +8,11 @@ import '../../features/cards/presentation/bill_detail_screen.dart';
 import '../../features/cards/presentation/card_detail_screen.dart';
 import '../../features/cards/presentation/cards_overview_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
+import '../../features/dashboard/presentation/net_worth_breakdown_screen.dart';
 import '../../features/expenses/presentation/expenses_screen.dart';
 import '../../features/expenses/presentation/add_expense_screen.dart';
 import '../../features/expenses/presentation/add_income_screen.dart';
+import '../../features/expenses/presentation/transaction_detail_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/split/presentation/split_screen.dart';
 import '../../features/split/presentation/add_split_group_screen.dart';
@@ -98,6 +100,13 @@ final appRouter = GoRouter(
       },
     ),
     GoRoute(path: '/expenses/add', builder: (_, _) => const AddExpenseScreen()),
+    GoRoute(
+      path: '/expenses/transaction/:id',
+      builder: (_, state) {
+        final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+        return TransactionDetailScreen(transactionId: id);
+      },
+    ),
     GoRoute(path: '/income/add', builder: (_, _) => const AddIncomeScreen()),
     GoRoute(
       path: '/pending',
@@ -204,6 +213,10 @@ final appRouter = GoRouter(
       },
     ),
     GoRoute(path: '/analytics', builder: (_, _) => const AnalyticsScreen()),
+    GoRoute(
+      path: '/dashboard/net-worth-breakdown',
+      builder: (_, _) => const NetWorthBreakdownScreen(),
+    ),
     GoRoute(path: '/alerts', builder: (_, _) => const AlertsCenterScreen()),
     GoRoute(
       path: '/onboarding',

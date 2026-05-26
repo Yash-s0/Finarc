@@ -12,10 +12,30 @@ class OnboardingService {
     return row.hasCompletedOnboarding;
   }
 
-  Future<void> setCompleted(bool completed) async {
+  Future<void> setCompleted(
+    bool completed, {
+    String? userName,
+    double? monthlySalary,
+    int? salaryCreditDay,
+    String? companyName,
+  }) async {
     final row = await _ensureSettingsRow();
     await (_db.update(_db.appSettings)..where((t) => t.id.equals(row.id)))
-        .write(AppSettingsCompanion(hasCompletedOnboarding: Value(completed)));
+        .write(
+          AppSettingsCompanion(
+            hasCompletedOnboarding: Value(completed),
+            userName: Value(_normalize(userName)),
+            monthlySalary: Value(monthlySalary),
+            salaryCreditDay: Value(salaryCreditDay),
+            companyName: Value(_normalize(companyName)),
+          ),
+        );
+  }
+
+  String? _normalize(String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) return null;
+    return trimmed;
   }
 
   Future<AppSetting> _ensureSettingsRow() async {

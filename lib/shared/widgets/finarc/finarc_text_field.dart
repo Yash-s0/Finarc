@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class FinarcTextField extends StatelessWidget {
   const FinarcTextField({
@@ -15,6 +16,7 @@ class FinarcTextField extends StatelessWidget {
     this.onChanged,
     this.suffixIcon,
     this.prefixIcon,
+    this.inputFormatters,
   });
 
   final TextEditingController? controller;
@@ -29,6 +31,7 @@ class FinarcTextField extends StatelessWidget {
   final ValueChanged<String>? onChanged;
   final Widget? suffixIcon;
   final Widget? prefixIcon;
+  final List<TextInputFormatter>? inputFormatters;
 
   @override
   Widget build(BuildContext context) {
@@ -41,6 +44,7 @@ class FinarcTextField extends StatelessWidget {
       validator: validator,
       onTap: onTap,
       onChanged: onChanged,
+      inputFormatters: inputFormatters,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,

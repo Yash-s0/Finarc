@@ -7,6 +7,7 @@ import '../../../core/database/database_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/numeric_input_formatters.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
 import '../../alerts/data/alerts_providers.dart';
 import '../../analytics/data/analytics_providers.dart';
@@ -109,6 +110,7 @@ class _AddIncomeScreenState extends ConsumerState<AddIncomeScreen> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
+                      inputFormatters: [StripLeadingZeroFormatter()],
                       validator: (v) {
                         final amount = double.tryParse((v ?? '').trim());
                         if (amount == null || amount <= 0) {

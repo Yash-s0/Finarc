@@ -10225,6 +10225,50 @@ class $AppSettingsTable extends AppSettings
         ),
         defaultValue: const Constant(true),
       );
+  static const VerificationMeta _userNameMeta = const VerificationMeta(
+    'userName',
+  );
+  @override
+  late final GeneratedColumn<String> userName = GeneratedColumn<String>(
+    'user_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _monthlySalaryMeta = const VerificationMeta(
+    'monthlySalary',
+  );
+  @override
+  late final GeneratedColumn<double> monthlySalary = GeneratedColumn<double>(
+    'monthly_salary',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _salaryCreditDayMeta = const VerificationMeta(
+    'salaryCreditDay',
+  );
+  @override
+  late final GeneratedColumn<int> salaryCreditDay = GeneratedColumn<int>(
+    'salary_credit_day',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _companyNameMeta = const VerificationMeta(
+    'companyName',
+  );
+  @override
+  late final GeneratedColumn<String> companyName = GeneratedColumn<String>(
+    'company_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -10262,6 +10306,10 @@ class $AppSettingsTable extends AppSettings
     recurringMerchantAlertsEnabled,
     weeklySummaryAlertsEnabled,
     monthlySummaryAlertsEnabled,
+    userName,
+    monthlySalary,
+    salaryCreditDay,
+    companyName,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -10584,6 +10632,39 @@ class $AppSettingsTable extends AppSettings
         ),
       );
     }
+    if (data.containsKey('user_name')) {
+      context.handle(
+        _userNameMeta,
+        userName.isAcceptableOrUnknown(data['user_name']!, _userNameMeta),
+      );
+    }
+    if (data.containsKey('monthly_salary')) {
+      context.handle(
+        _monthlySalaryMeta,
+        monthlySalary.isAcceptableOrUnknown(
+          data['monthly_salary']!,
+          _monthlySalaryMeta,
+        ),
+      );
+    }
+    if (data.containsKey('salary_credit_day')) {
+      context.handle(
+        _salaryCreditDayMeta,
+        salaryCreditDay.isAcceptableOrUnknown(
+          data['salary_credit_day']!,
+          _salaryCreditDayMeta,
+        ),
+      );
+    }
+    if (data.containsKey('company_name')) {
+      context.handle(
+        _companyNameMeta,
+        companyName.isAcceptableOrUnknown(
+          data['company_name']!,
+          _companyNameMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -10733,6 +10814,22 @@ class $AppSettingsTable extends AppSettings
         DriftSqlType.bool,
         data['${effectivePrefix}monthly_summary_alerts_enabled'],
       )!,
+      userName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_name'],
+      ),
+      monthlySalary: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}monthly_salary'],
+      ),
+      salaryCreditDay: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}salary_credit_day'],
+      ),
+      companyName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}company_name'],
+      ),
     );
   }
 
@@ -10778,6 +10875,10 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
   final bool recurringMerchantAlertsEnabled;
   final bool weeklySummaryAlertsEnabled;
   final bool monthlySummaryAlertsEnabled;
+  final String? userName;
+  final double? monthlySalary;
+  final int? salaryCreditDay;
+  final String? companyName;
   const AppSetting({
     required this.id,
     required this.isDarkMode,
@@ -10814,6 +10915,10 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     required this.recurringMerchantAlertsEnabled,
     required this.weeklySummaryAlertsEnabled,
     required this.monthlySummaryAlertsEnabled,
+    this.userName,
+    this.monthlySalary,
+    this.salaryCreditDay,
+    this.companyName,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -10879,6 +10984,18 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     map['monthly_summary_alerts_enabled'] = Variable<bool>(
       monthlySummaryAlertsEnabled,
     );
+    if (!nullToAbsent || userName != null) {
+      map['user_name'] = Variable<String>(userName);
+    }
+    if (!nullToAbsent || monthlySalary != null) {
+      map['monthly_salary'] = Variable<double>(monthlySalary);
+    }
+    if (!nullToAbsent || salaryCreditDay != null) {
+      map['salary_credit_day'] = Variable<int>(salaryCreditDay);
+    }
+    if (!nullToAbsent || companyName != null) {
+      map['company_name'] = Variable<String>(companyName);
+    }
     return map;
   }
 
@@ -10927,6 +11044,18 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       recurringMerchantAlertsEnabled: Value(recurringMerchantAlertsEnabled),
       weeklySummaryAlertsEnabled: Value(weeklySummaryAlertsEnabled),
       monthlySummaryAlertsEnabled: Value(monthlySummaryAlertsEnabled),
+      userName: userName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(userName),
+      monthlySalary: monthlySalary == null && nullToAbsent
+          ? const Value.absent()
+          : Value(monthlySalary),
+      salaryCreditDay: salaryCreditDay == null && nullToAbsent
+          ? const Value.absent()
+          : Value(salaryCreditDay),
+      companyName: companyName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(companyName),
     );
   }
 
@@ -11021,6 +11150,10 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       monthlySummaryAlertsEnabled: serializer.fromJson<bool>(
         json['monthlySummaryAlertsEnabled'],
       ),
+      userName: serializer.fromJson<String?>(json['userName']),
+      monthlySalary: serializer.fromJson<double?>(json['monthlySalary']),
+      salaryCreditDay: serializer.fromJson<int?>(json['salaryCreditDay']),
+      companyName: serializer.fromJson<String?>(json['companyName']),
     );
   }
   @override
@@ -11086,6 +11219,10 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       'monthlySummaryAlertsEnabled': serializer.toJson<bool>(
         monthlySummaryAlertsEnabled,
       ),
+      'userName': serializer.toJson<String?>(userName),
+      'monthlySalary': serializer.toJson<double?>(monthlySalary),
+      'salaryCreditDay': serializer.toJson<int?>(salaryCreditDay),
+      'companyName': serializer.toJson<String?>(companyName),
     };
   }
 
@@ -11125,6 +11262,10 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     bool? recurringMerchantAlertsEnabled,
     bool? weeklySummaryAlertsEnabled,
     bool? monthlySummaryAlertsEnabled,
+    Value<String?> userName = const Value.absent(),
+    Value<double?> monthlySalary = const Value.absent(),
+    Value<int?> salaryCreditDay = const Value.absent(),
+    Value<String?> companyName = const Value.absent(),
   }) => AppSetting(
     id: id ?? this.id,
     isDarkMode: isDarkMode ?? this.isDarkMode,
@@ -11181,6 +11322,14 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
         weeklySummaryAlertsEnabled ?? this.weeklySummaryAlertsEnabled,
     monthlySummaryAlertsEnabled:
         monthlySummaryAlertsEnabled ?? this.monthlySummaryAlertsEnabled,
+    userName: userName.present ? userName.value : this.userName,
+    monthlySalary: monthlySalary.present
+        ? monthlySalary.value
+        : this.monthlySalary,
+    salaryCreditDay: salaryCreditDay.present
+        ? salaryCreditDay.value
+        : this.salaryCreditDay,
+    companyName: companyName.present ? companyName.value : this.companyName,
   );
   AppSetting copyWithCompanion(AppSettingsCompanion data) {
     return AppSetting(
@@ -11289,6 +11438,16 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       monthlySummaryAlertsEnabled: data.monthlySummaryAlertsEnabled.present
           ? data.monthlySummaryAlertsEnabled.value
           : this.monthlySummaryAlertsEnabled,
+      userName: data.userName.present ? data.userName.value : this.userName,
+      monthlySalary: data.monthlySalary.present
+          ? data.monthlySalary.value
+          : this.monthlySalary,
+      salaryCreditDay: data.salaryCreditDay.present
+          ? data.salaryCreditDay.value
+          : this.salaryCreditDay,
+      companyName: data.companyName.present
+          ? data.companyName.value
+          : this.companyName,
     );
   }
 
@@ -11337,7 +11496,11 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
             'recurringMerchantAlertsEnabled: $recurringMerchantAlertsEnabled, ',
           )
           ..write('weeklySummaryAlertsEnabled: $weeklySummaryAlertsEnabled, ')
-          ..write('monthlySummaryAlertsEnabled: $monthlySummaryAlertsEnabled')
+          ..write('monthlySummaryAlertsEnabled: $monthlySummaryAlertsEnabled, ')
+          ..write('userName: $userName, ')
+          ..write('monthlySalary: $monthlySalary, ')
+          ..write('salaryCreditDay: $salaryCreditDay, ')
+          ..write('companyName: $companyName')
           ..write(')'))
         .toString();
   }
@@ -11379,6 +11542,10 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     recurringMerchantAlertsEnabled,
     weeklySummaryAlertsEnabled,
     monthlySummaryAlertsEnabled,
+    userName,
+    monthlySalary,
+    salaryCreditDay,
+    companyName,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -11423,7 +11590,11 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
               this.recurringMerchantAlertsEnabled &&
           other.weeklySummaryAlertsEnabled == this.weeklySummaryAlertsEnabled &&
           other.monthlySummaryAlertsEnabled ==
-              this.monthlySummaryAlertsEnabled);
+              this.monthlySummaryAlertsEnabled &&
+          other.userName == this.userName &&
+          other.monthlySalary == this.monthlySalary &&
+          other.salaryCreditDay == this.salaryCreditDay &&
+          other.companyName == this.companyName);
 }
 
 class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
@@ -11462,6 +11633,10 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   final Value<bool> recurringMerchantAlertsEnabled;
   final Value<bool> weeklySummaryAlertsEnabled;
   final Value<bool> monthlySummaryAlertsEnabled;
+  final Value<String?> userName;
+  final Value<double?> monthlySalary;
+  final Value<int?> salaryCreditDay;
+  final Value<String?> companyName;
   const AppSettingsCompanion({
     this.id = const Value.absent(),
     this.isDarkMode = const Value.absent(),
@@ -11498,6 +11673,10 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.recurringMerchantAlertsEnabled = const Value.absent(),
     this.weeklySummaryAlertsEnabled = const Value.absent(),
     this.monthlySummaryAlertsEnabled = const Value.absent(),
+    this.userName = const Value.absent(),
+    this.monthlySalary = const Value.absent(),
+    this.salaryCreditDay = const Value.absent(),
+    this.companyName = const Value.absent(),
   });
   AppSettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -11535,6 +11714,10 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.recurringMerchantAlertsEnabled = const Value.absent(),
     this.weeklySummaryAlertsEnabled = const Value.absent(),
     this.monthlySummaryAlertsEnabled = const Value.absent(),
+    this.userName = const Value.absent(),
+    this.monthlySalary = const Value.absent(),
+    this.salaryCreditDay = const Value.absent(),
+    this.companyName = const Value.absent(),
   });
   static Insertable<AppSetting> custom({
     Expression<int>? id,
@@ -11572,6 +11755,10 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Expression<bool>? recurringMerchantAlertsEnabled,
     Expression<bool>? weeklySummaryAlertsEnabled,
     Expression<bool>? monthlySummaryAlertsEnabled,
+    Expression<String>? userName,
+    Expression<double>? monthlySalary,
+    Expression<int>? salaryCreditDay,
+    Expression<String>? companyName,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -11636,6 +11823,10 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
         'weekly_summary_alerts_enabled': weeklySummaryAlertsEnabled,
       if (monthlySummaryAlertsEnabled != null)
         'monthly_summary_alerts_enabled': monthlySummaryAlertsEnabled,
+      if (userName != null) 'user_name': userName,
+      if (monthlySalary != null) 'monthly_salary': monthlySalary,
+      if (salaryCreditDay != null) 'salary_credit_day': salaryCreditDay,
+      if (companyName != null) 'company_name': companyName,
     });
   }
 
@@ -11675,6 +11866,10 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Value<bool>? recurringMerchantAlertsEnabled,
     Value<bool>? weeklySummaryAlertsEnabled,
     Value<bool>? monthlySummaryAlertsEnabled,
+    Value<String?>? userName,
+    Value<double?>? monthlySalary,
+    Value<int?>? salaryCreditDay,
+    Value<String?>? companyName,
   }) {
     return AppSettingsCompanion(
       id: id ?? this.id,
@@ -11730,6 +11925,10 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           weeklySummaryAlertsEnabled ?? this.weeklySummaryAlertsEnabled,
       monthlySummaryAlertsEnabled:
           monthlySummaryAlertsEnabled ?? this.monthlySummaryAlertsEnabled,
+      userName: userName ?? this.userName,
+      monthlySalary: monthlySalary ?? this.monthlySalary,
+      salaryCreditDay: salaryCreditDay ?? this.salaryCreditDay,
+      companyName: companyName ?? this.companyName,
     );
   }
 
@@ -11883,6 +12082,18 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
         monthlySummaryAlertsEnabled.value,
       );
     }
+    if (userName.present) {
+      map['user_name'] = Variable<String>(userName.value);
+    }
+    if (monthlySalary.present) {
+      map['monthly_salary'] = Variable<double>(monthlySalary.value);
+    }
+    if (salaryCreditDay.present) {
+      map['salary_credit_day'] = Variable<int>(salaryCreditDay.value);
+    }
+    if (companyName.present) {
+      map['company_name'] = Variable<String>(companyName.value);
+    }
     return map;
   }
 
@@ -11931,7 +12142,11 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
             'recurringMerchantAlertsEnabled: $recurringMerchantAlertsEnabled, ',
           )
           ..write('weeklySummaryAlertsEnabled: $weeklySummaryAlertsEnabled, ')
-          ..write('monthlySummaryAlertsEnabled: $monthlySummaryAlertsEnabled')
+          ..write('monthlySummaryAlertsEnabled: $monthlySummaryAlertsEnabled, ')
+          ..write('userName: $userName, ')
+          ..write('monthlySalary: $monthlySalary, ')
+          ..write('salaryCreditDay: $salaryCreditDay, ')
+          ..write('companyName: $companyName')
           ..write(')'))
         .toString();
   }
@@ -16621,6 +16836,10 @@ typedef $$AppSettingsTableCreateCompanionBuilder =
       Value<bool> recurringMerchantAlertsEnabled,
       Value<bool> weeklySummaryAlertsEnabled,
       Value<bool> monthlySummaryAlertsEnabled,
+      Value<String?> userName,
+      Value<double?> monthlySalary,
+      Value<int?> salaryCreditDay,
+      Value<String?> companyName,
     });
 typedef $$AppSettingsTableUpdateCompanionBuilder =
     AppSettingsCompanion Function({
@@ -16659,6 +16878,10 @@ typedef $$AppSettingsTableUpdateCompanionBuilder =
       Value<bool> recurringMerchantAlertsEnabled,
       Value<bool> weeklySummaryAlertsEnabled,
       Value<bool> monthlySummaryAlertsEnabled,
+      Value<String?> userName,
+      Value<double?> monthlySalary,
+      Value<int?> salaryCreditDay,
+      Value<String?> companyName,
     });
 
 class $$AppSettingsTableFilterComposer
@@ -16843,6 +17066,26 @@ class $$AppSettingsTableFilterComposer
 
   ColumnFilters<bool> get monthlySummaryAlertsEnabled => $composableBuilder(
     column: $table.monthlySummaryAlertsEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get userName => $composableBuilder(
+    column: $table.userName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get monthlySalary => $composableBuilder(
+    column: $table.monthlySalary,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get salaryCreditDay => $composableBuilder(
+    column: $table.salaryCreditDay,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get companyName => $composableBuilder(
+    column: $table.companyName,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -17032,6 +17275,26 @@ class $$AppSettingsTableOrderingComposer
     column: $table.monthlySummaryAlertsEnabled,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get userName => $composableBuilder(
+    column: $table.userName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get monthlySalary => $composableBuilder(
+    column: $table.monthlySalary,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get salaryCreditDay => $composableBuilder(
+    column: $table.salaryCreditDay,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get companyName => $composableBuilder(
+    column: $table.companyName,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AppSettingsTableAnnotationComposer
@@ -17217,6 +17480,24 @@ class $$AppSettingsTableAnnotationComposer
     column: $table.monthlySummaryAlertsEnabled,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get userName =>
+      $composableBuilder(column: $table.userName, builder: (column) => column);
+
+  GeneratedColumn<double> get monthlySalary => $composableBuilder(
+    column: $table.monthlySalary,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get salaryCreditDay => $composableBuilder(
+    column: $table.salaryCreditDay,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get companyName => $composableBuilder(
+    column: $table.companyName,
+    builder: (column) => column,
+  );
 }
 
 class $$AppSettingsTableTableManager
@@ -17287,6 +17568,10 @@ class $$AppSettingsTableTableManager
                     const Value.absent(),
                 Value<bool> weeklySummaryAlertsEnabled = const Value.absent(),
                 Value<bool> monthlySummaryAlertsEnabled = const Value.absent(),
+                Value<String?> userName = const Value.absent(),
+                Value<double?> monthlySalary = const Value.absent(),
+                Value<int?> salaryCreditDay = const Value.absent(),
+                Value<String?> companyName = const Value.absent(),
               }) => AppSettingsCompanion(
                 id: id,
                 isDarkMode: isDarkMode,
@@ -17324,6 +17609,10 @@ class $$AppSettingsTableTableManager
                 recurringMerchantAlertsEnabled: recurringMerchantAlertsEnabled,
                 weeklySummaryAlertsEnabled: weeklySummaryAlertsEnabled,
                 monthlySummaryAlertsEnabled: monthlySummaryAlertsEnabled,
+                userName: userName,
+                monthlySalary: monthlySalary,
+                salaryCreditDay: salaryCreditDay,
+                companyName: companyName,
               ),
           createCompanionCallback:
               ({
@@ -17364,6 +17653,10 @@ class $$AppSettingsTableTableManager
                     const Value.absent(),
                 Value<bool> weeklySummaryAlertsEnabled = const Value.absent(),
                 Value<bool> monthlySummaryAlertsEnabled = const Value.absent(),
+                Value<String?> userName = const Value.absent(),
+                Value<double?> monthlySalary = const Value.absent(),
+                Value<int?> salaryCreditDay = const Value.absent(),
+                Value<String?> companyName = const Value.absent(),
               }) => AppSettingsCompanion.insert(
                 id: id,
                 isDarkMode: isDarkMode,
@@ -17401,6 +17694,10 @@ class $$AppSettingsTableTableManager
                 recurringMerchantAlertsEnabled: recurringMerchantAlertsEnabled,
                 weeklySummaryAlertsEnabled: weeklySummaryAlertsEnabled,
                 monthlySummaryAlertsEnabled: monthlySummaryAlertsEnabled,
+                userName: userName,
+                monthlySalary: monthlySalary,
+                salaryCreditDay: salaryCreditDay,
+                companyName: companyName,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

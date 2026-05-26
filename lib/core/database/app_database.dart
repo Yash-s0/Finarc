@@ -276,6 +276,10 @@ class AppSettings extends Table {
       boolean().withDefault(const Constant(true))();
   BoolColumn get monthlySummaryAlertsEnabled =>
       boolean().withDefault(const Constant(true))();
+  TextColumn get userName => text().nullable()();
+  RealColumn get monthlySalary => real().nullable()();
+  IntColumn get salaryCreditDay => integer().nullable()();
+  TextColumn get companyName => text().nullable()();
 }
 
 @DriftDatabase(
@@ -301,7 +305,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -444,6 +448,12 @@ class AppDatabase extends _$AppDatabase {
         );
         await m.addColumn(appSettings, appSettings.weeklySummaryAlertsEnabled);
         await m.addColumn(appSettings, appSettings.monthlySummaryAlertsEnabled);
+      }
+      if (from < 12) {
+        await m.addColumn(appSettings, appSettings.userName);
+        await m.addColumn(appSettings, appSettings.monthlySalary);
+        await m.addColumn(appSettings, appSettings.salaryCreditDay);
+        await m.addColumn(appSettings, appSettings.companyName);
       }
     },
   );

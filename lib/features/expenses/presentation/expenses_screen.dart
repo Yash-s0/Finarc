@@ -8,11 +8,28 @@ import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
 import '../data/expenses_providers.dart';
 
-class ExpensesScreen extends ConsumerWidget {
+class ExpensesScreen extends ConsumerStatefulWidget {
   const ExpensesScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ExpensesScreen> createState() => _ExpensesScreenState();
+}
+
+class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
+  final _search = TextEditingController();
+  String _typeFilter = 'all';
+  String _sourceFilter = 'all';
+  String _categoryFilter = 'all';
+  DateTimeRange? _dateRange;
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(expenseListProvider);
 
     return FinarcScaffold(
@@ -38,8 +55,43 @@ class ExpensesScreen extends ConsumerWidget {
         ),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (txns) {
+          final filtered = txns.where((txn) {
+            if (_typeFilter == 'income' &&
+                txn.type != 'income' &&
+                txn.type != 'refund') {
+              return false;
+            }
+            if (_typeFilter == 'expense' &&
+                (txn.type == 'income' || txn.type == 'refund')) {
+              return false;
+            }
+            if (_sourceFilter != 'all' && txn.paymentSourceType != _sourceFilter) {
+              return false;
+            }
+            if (_categoryFilter != 'all' &&
+                txn.category.toLowerCase() != _categoryFilter.toLowerCase()) {
+              return false;
+            }
+            if (_dateRange != null &&
+                !_dateRange!.start.isBefore(txn.transactionDate) &&
+                _dateRange!.start.day != txn.transactionDate.day) {
+              return false;
+            }
+            if (_dateRange != null &&
+                !_dateRange!.end.add(const Duration(days: 1)).isAfter(txn.transactionDate)) {
+              return false;
+            }
+            final query = _search.text.trim().toLowerCase();
+            if (query.isNotEmpty) {
+              final haystack =
+                  '${txn.title} ${txn.category} ${txn.notes ?? ''}'.toLowerCase();
+              if (!haystack.contains(query)) return false;
+            }
+            return true;
+          }).toList(growable: false);
+
           final grouped = <String, List<dynamic>>{};
-          for (final txn in txns) {
+          for (final txn in filtered) {
             final key =
                 '${txn.transactionDate.year}-${txn.transactionDate.month.toString().padLeft(2, '0')}-${txn.transactionDate.day.toString().padLeft(2, '0')}';
             grouped.putIfAbsent(key, () => []).add(txn);
@@ -58,13 +110,29 @@ class ExpensesScreen extends ConsumerWidget {
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: AppSpacing.md),
-              const FinarcCard(
+              FinarcCard(
                 child: Row(
                   children: [
-                    Icon(Icons.search, size: 18),
-                    SizedBox(width: AppSpacing.xs),
-                    Expanded(child: Text('Search / filter (placeholder)')),
-                    Icon(Icons.tune_rounded, size: 18),
+                    const Icon(Icons.search, size: 18),
+                    const SizedBox(width: AppSpacing.xs),
+                    Expanded(
+                      child: TextField(
+                        controller: _search,
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          border: InputBorder.none,
+                          hintText: 'Search title/category/notes',
+                        ),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.clear, size: 18),
+                      onPressed: () {
+                        _search.clear();
+                        setState(() {});
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -72,16 +140,77 @@ class ExpensesScreen extends ConsumerWidget {
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: const [
-                  _StaticFilterChip(label: 'All'),
-                  _StaticFilterChip(label: 'Expense'),
-                  _StaticFilterChip(label: 'Income'),
-                  _StaticFilterChip(label: 'Card'),
-                  _StaticFilterChip(label: 'UPI'),
+                children: [
+                  _filterChip('All', _typeFilter == 'all', () => setState(() => _typeFilter = 'all')),
+                  _filterChip('Expense', _typeFilter == 'expense', () => setState(() => _typeFilter = 'expense')),
+                  _filterChip('Income', _typeFilter == 'income', () => setState(() => _typeFilter = 'income')),
+                  _filterChip('Card', _sourceFilter == 'creditCard', () => setState(() => _sourceFilter = 'creditCard')),
+                  _filterChip('UPI', _sourceFilter == 'upi', () => setState(() => _sourceFilter = 'upi')),
+                  _filterChip('Reset', false, () {
+                    setState(() {
+                      _typeFilter = 'all';
+                      _sourceFilter = 'all';
+                      _categoryFilter = 'all';
+                      _dateRange = null;
+                      _search.clear();
+                    });
+                  }),
                 ],
               ),
+              const SizedBox(height: AppSpacing.xs),
+              Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      initialValue: _categoryFilter,
+                      decoration: const InputDecoration(labelText: 'Category'),
+                      items: [
+                        const DropdownMenuItem(value: 'all', child: Text('All')),
+                        ...txns
+                            .map((t) => t.category)
+                            .toSet()
+                            .map((c) => DropdownMenuItem(value: c, child: Text(c))),
+                      ],
+                      onChanged: (v) => setState(() => _categoryFilter = v ?? 'all'),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      initialValue: _sourceFilter,
+                      decoration: const InputDecoration(labelText: 'Source'),
+                      items: const [
+                        DropdownMenuItem(value: 'all', child: Text('All')),
+                        DropdownMenuItem(value: 'bank', child: Text('Bank')),
+                        DropdownMenuItem(value: 'upi', child: Text('UPI')),
+                        DropdownMenuItem(value: 'cash', child: Text('Cash')),
+                        DropdownMenuItem(value: 'creditCard', child: Text('Card')),
+                      ],
+                      onChanged: (v) => setState(() => _sourceFilter = v ?? 'all'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              FinarcSecondaryButton(
+                onPressed: () async {
+                  final now = DateTime.now();
+                  final picked = await showDateRangePicker(
+                    context: context,
+                    firstDate: DateTime(now.year - 5),
+                    lastDate: DateTime(now.year + 5),
+                    initialDateRange: _dateRange,
+                  );
+                  if (picked == null) return;
+                  setState(() => _dateRange = picked);
+                },
+                icon: Icons.date_range_outlined,
+                label: _dateRange == null
+                    ? 'Pick Date Range'
+                    : '${_dateRange!.start.toIso8601String().split('T').first} to ${_dateRange!.end.toIso8601String().split('T').first}',
+              ),
               const SizedBox(height: AppSpacing.md),
-              if (txns.isEmpty)
+              if (filtered.isEmpty)
                 Column(
                   children: [
                     const FinarcEmptyState(
@@ -129,6 +258,7 @@ class ExpensesScreen extends ConsumerWidget {
                               bottom: AppSpacing.xs,
                             ),
                             child: FinarcTransactionTile(
+                              onTap: () => context.push('/expenses/transaction/${t.id}'),
                               title: t.title,
                               subtitle: t.category,
                               meta:
@@ -276,19 +406,9 @@ class ExpensesScreen extends ConsumerWidget {
     if (source == 'bank') return Icons.account_balance;
     return Icons.payments_outlined;
   }
-}
 
-class _StaticFilterChip extends StatelessWidget {
-  const _StaticFilterChip({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return FinarcActionChip(
-      label: label,
-      selected: label == 'All',
-      onTap: () {},
-    );
+  Widget _filterChip(String label, bool selected, VoidCallback onTap) {
+    return FinarcActionChip(label: label, selected: selected, onTap: onTap);
   }
 }
+ 

@@ -20,6 +20,8 @@ import '../../expenses/data/expenses_providers.dart';
 import '../../loans/data/loans_providers.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
 import '../../onboarding/data/onboarding_providers.dart';
+import '../data/profile_settings_providers.dart';
+import '../data/profile_settings_service.dart';
 import '../../pending/data/pending_providers.dart';
 import '../../pending/notifications/detection_settings.dart';
 import '../../pending/notifications/notification_providers.dart';
@@ -70,6 +72,73 @@ final _localRowsSummaryProvider = FutureProvider<_LocalRowsSummary>((
   );
 });
 
+Future<void> _showProfileEditSheet(
+  BuildContext context,
+  WidgetRef ref,
+  UserProfileSettings? profile,
+) async {
+  final name = TextEditingController(text: profile?.name ?? '');
+  final salary = TextEditingController(
+    text: profile?.monthlySalary?.toString() ?? '',
+  );
+  final salaryDay = TextEditingController(
+    text: profile?.salaryCreditDay?.toString() ?? '',
+  );
+  final company = TextEditingController(text: profile?.companyName ?? '');
+
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    builder: (ctx) {
+      return Padding(
+        padding: EdgeInsets.only(
+          left: AppSpacing.md,
+          right: AppSpacing.md,
+          top: AppSpacing.md,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + AppSpacing.md,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FinarcTextField(controller: name, label: 'Name'),
+            const SizedBox(height: AppSpacing.xs),
+            FinarcTextField(
+              controller: salary,
+              label: 'Monthly Salary',
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            FinarcTextField(
+              controller: salaryDay,
+              label: 'Salary Credit Day',
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            FinarcTextField(controller: company, label: 'Company Name'),
+            const SizedBox(height: AppSpacing.sm),
+            FinarcPrimaryButton(
+              onPressed: () async {
+                await ref.read(profileSettingsServiceProvider).save(
+                      UserProfileSettings(
+                        name: name.text.trim(),
+                        monthlySalary: double.tryParse(salary.text.trim()),
+                        salaryCreditDay: int.tryParse(salaryDay.text.trim()),
+                        companyName: company.text.trim(),
+                      ),
+                    );
+                ref.invalidate(userProfileSettingsProvider);
+                if (ctx.mounted) Navigator.of(ctx).pop();
+              },
+              label: 'Save Profile',
+              icon: Icons.check_circle_outline,
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -88,12 +157,38 @@ class ProfileScreen extends ConsumerWidget {
     final localRowsSummary = kDebugMode
         ? ref.watch(_localRowsSummaryProvider).valueOrNull
         : null;
+    final profile = ref.watch(userProfileSettingsProvider).valueOrNull;
 
     return FinarcScaffold(
       appBar: const FinarcAppBar(title: 'Profile'),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.md),
         children: [
+          FinarcCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Profile & Salary',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text('Name: ${profile?.name ?? '—'}'),
+                Text(
+                  'Monthly salary: ${profile?.monthlySalary == null ? '—' : profile!.monthlySalary!.toStringAsFixed(2)}',
+                ),
+                Text('Salary credit day: ${profile?.salaryCreditDay ?? '—'}'),
+                Text('Company: ${profile?.companyName ?? '—'}'),
+                const SizedBox(height: AppSpacing.sm),
+                FinarcSecondaryButton(
+                  onPressed: () => _showProfileEditSheet(context, ref, profile),
+                  icon: Icons.edit_outlined,
+                  label: 'Edit Profile & Salary',
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
           FinarcCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

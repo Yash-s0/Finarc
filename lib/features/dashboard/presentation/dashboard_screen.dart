@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../onboarding/data/onboarding_providers.dart';
+import '../../profile/data/profile_settings_providers.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
 import '../data/dashboard_providers.dart';
@@ -25,6 +26,7 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final onboardingState = ref.watch(onboardingCompletedProvider);
+    final profile = ref.watch(userProfileSettingsProvider).valueOrNull;
     return onboardingState.when(
       loading: () => ListView(
         padding: _pagePadding(context),
@@ -202,7 +204,9 @@ class DashboardScreen extends ConsumerWidget {
               padding: _pagePadding(context),
               children: [
                 Text(
-                  'Hello, Yash',
+                  profile?.name?.trim().isNotEmpty == true
+                      ? 'Hello, ${profile!.name!.trim()}'
+                      : 'Welcome',
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const SizedBox(height: AppSpacing.xxs),
@@ -250,12 +254,21 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                FinarcBalanceCard(
-                  label: 'Net Worth',
-                  value: inr(data.netWorth),
-                  subtitle: 'Liquid + recoverable - dues/loans',
-                  statusLabel: data.netWorth >= 0 ? 'Healthy' : 'Attention',
+                GestureDetector(
+                  onTap: () => context.push('/dashboard/net-worth-breakdown'),
+                  child: FinarcBalanceCard(
+                    label: 'Net Worth',
+                    value: inr(data.netWorth),
+                    subtitle: 'Liquid + recoverable - dues/loans',
+                    statusLabel: data.netWorth >= 0 ? 'Healthy' : 'Attention',
+                  ),
                 ),
+                if (profile?.salaryCreditDay != null) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  FinarcCard(
+                    child: Text(_salaryInsight(profile!.salaryCreditDay!)),
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.md),
                 GridView.count(
                   crossAxisCount: 2,
@@ -539,6 +552,28 @@ class DashboardScreen extends ConsumerWidget {
         );
       },
     );
+  }
+
+  String _salaryInsight(int salaryCreditDay) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    var expected = DateTime(now.year, now.month, salaryCreditDay);
+    if (salaryCreditDay > 28) {
+      final monthEnd = DateTime(now.year, now.month + 1, 0).day;
+      expected = DateTime(now.year, now.month, salaryCreditDay.clamp(1, monthEnd));
+    }
+    if (expected.isBefore(today)) {
+      final nextMonthEnd = DateTime(now.year, now.month + 2, 0).day;
+      expected = DateTime(
+        now.year,
+        now.month + 1,
+        salaryCreditDay.clamp(1, nextMonthEnd),
+      );
+    }
+    final days = expected.difference(today).inDays;
+    if (days <= 0) return 'Salary expected today';
+    if (days == 1) return 'Salary expected in 1 day';
+    return 'Salary expected in $days days';
   }
 
   static Widget _progressRow(

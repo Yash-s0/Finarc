@@ -88,6 +88,69 @@ class TransactionEngine {
     });
   }
 
+  bool isEditable(Transaction txn) {
+    if (txn.type == TransactionType.transfer ||
+        txn.type == TransactionType.cardPayment ||
+        txn.type == TransactionType.loanEmi) {
+      return false;
+    }
+    if (txn.linkedSplitExpenseId != null || txn.splitGroupId != null) {
+      return false;
+    }
+    return true;
+  }
+
+  Future<void> updateTransaction(int transactionId, AddTransactionInput input) async {
+    _validate(input);
+    final existing = await (_db.select(_db.transactions)
+          ..where((t) => t.id.equals(transactionId)))
+        .getSingleOrNull();
+    if (existing == null) {
+      throw ArgumentError('Transaction not found');
+    }
+    if (!isEditable(existing)) {
+      throw ArgumentError('This transaction type cannot be edited safely');
+    }
+
+    await _db.transaction(() async {
+      await _reverseTransactionEffect(existing);
+      await _applyTransactionEffect(input);
+      final sourceId = input.paymentSourceId!;
+      await (_db.update(_db.transactions)..where((t) => t.id.equals(transactionId)))
+          .write(
+            TransactionsCompanion(
+              type: Value(input.type),
+              amount: Value(input.amount),
+              title: Value(input.title),
+              category: Value(input.category),
+              notes: Value(input.notes),
+              transactionDate: Value(input.transactionDate),
+              paymentSourceType: Value(input.paymentSourceType),
+              paymentSourceId: Value(sourceId),
+              cashbackAmount: Value(input.cashbackAmount),
+              isForOthers: Value(input.isForOthers),
+              recoverableAmount: Value(input.recoverableAmount),
+              updatedAt: Value(DateTime.now()),
+            ),
+          );
+    });
+  }
+
+  Future<void> deleteTransaction(int transactionId) async {
+    final existing = await (_db.select(_db.transactions)
+          ..where((t) => t.id.equals(transactionId)))
+        .getSingleOrNull();
+    if (existing == null) return;
+    if (!isEditable(existing)) {
+      throw ArgumentError('This transaction type cannot be deleted safely');
+    }
+
+    await _db.transaction(() async {
+      await _reverseTransactionEffect(existing);
+      await (_db.delete(_db.transactions)..where((t) => t.id.equals(transactionId))).go();
+    });
+  }
+
   double netExpense(Transaction txn) {
     return (txn.amount - txn.cashbackAmount).clamp(0, txn.amount);
   }
@@ -120,6 +183,34 @@ class TransactionEngine {
         input.paymentSourceId == null) {
       throw ArgumentError('Bank account required');
     }
+  }
+
+  Future<void> _applyTransactionEffect(AddTransactionInput input) async {
+    final sourceId = input.paymentSourceId!;
+    if (input.type == TransactionType.income) {
+      await _applyIncome(input.paymentSourceType, sourceId, input.amount);
+    } else if (input.type == TransactionType.refund) {
+      await _applyRefund(input.paymentSourceType, sourceId, input.amount);
+    } else {
+      await _applyExpense(input.paymentSourceType, sourceId, input.amount);
+    }
+  }
+
+  Future<void> _reverseTransactionEffect(Transaction txn) async {
+    final sourceId = txn.paymentSourceId;
+    if (txn.type == TransactionType.income) {
+      await _applyExpense(txn.paymentSourceType, sourceId, txn.amount);
+      return;
+    }
+    if (txn.type == TransactionType.refund) {
+      if (txn.paymentSourceType == PaymentSourceType.creditCard) {
+        await _applyExpense(PaymentSourceType.creditCard, sourceId, txn.amount);
+      } else {
+        await _applyExpense(txn.paymentSourceType, sourceId, txn.amount);
+      }
+      return;
+    }
+    await _applyIncome(txn.paymentSourceType, sourceId, txn.amount);
   }
 
   Future<void> _applyExpense(

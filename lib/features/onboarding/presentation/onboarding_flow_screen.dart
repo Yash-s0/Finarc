@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
+import '../../../core/utils/numeric_input_formatters.dart';
 import '../data/onboarding_providers.dart';
 
 class OnboardingFlowScreen extends ConsumerStatefulWidget {
@@ -16,11 +17,19 @@ class OnboardingFlowScreen extends ConsumerStatefulWidget {
 
 class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
   final _controller = PageController();
+  final _name = TextEditingController();
+  final _salary = TextEditingController();
+  final _salaryDay = TextEditingController();
+  final _company = TextEditingController();
   int _index = 0;
 
   @override
   void dispose() {
     _controller.dispose();
+    _name.dispose();
+    _salary.dispose();
+    _salaryDay.dispose();
+    _company.dispose();
     super.dispose();
   }
 
@@ -62,6 +71,12 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
             label: 'SMS Setup',
           ),
         ],
+      ),
+      _ProfileSetupStep(
+        nameController: _name,
+        salaryController: _salary,
+        salaryDayController: _salaryDay,
+        companyController: _company,
       ),
       _StepTemplate(
         title: 'Setup complete',
@@ -154,7 +169,16 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
   }
 
   Future<void> _finish() async {
-    await ref.read(onboardingActionsProvider).complete();
+    final salary = double.tryParse(_salary.text.trim());
+    final salaryDay = int.tryParse(_salaryDay.text.trim());
+    await ref
+        .read(onboardingActionsProvider)
+        .complete(
+          userName: _name.text.trim(),
+          monthlySalary: salary,
+          salaryCreditDay: salaryDay,
+          companyName: _company.text.trim(),
+        );
     if (!mounted) return;
     context.go('/');
   }
@@ -248,6 +272,60 @@ class _SetupChoicesStep extends StatelessWidget {
           onPressed: onAddCard,
           icon: Icons.credit_card_outlined,
           label: 'Add Credit Card',
+        ),
+      ],
+    );
+  }
+}
+
+class _ProfileSetupStep extends StatelessWidget {
+  const _ProfileSetupStep({
+    required this.nameController,
+    required this.salaryController,
+    required this.salaryDayController,
+    required this.companyController,
+  });
+
+  final TextEditingController nameController;
+  final TextEditingController salaryController;
+  final TextEditingController salaryDayController;
+  final TextEditingController companyController;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      children: [
+        const FinarcCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              FinarcSectionHeader(title: 'Your Profile (Optional)'),
+              SizedBox(height: AppSpacing.xs),
+              Text('Add personal salary details for smarter local insights.'),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        FinarcTextField(controller: nameController, label: 'Your Name'),
+        const SizedBox(height: AppSpacing.sm),
+        FinarcTextField(
+          controller: salaryController,
+          label: 'Monthly Salary (optional)',
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [StripLeadingZeroFormatter()],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        FinarcTextField(
+          controller: salaryDayController,
+          label: 'Salary Credit Day (1-31, optional)',
+          keyboardType: TextInputType.number,
+          inputFormatters: [StripLeadingZeroFormatter(allowDecimal: false)],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        FinarcTextField(
+          controller: companyController,
+          label: 'Company Name (optional)',
         ),
       ],
     );

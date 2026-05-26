@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/numeric_input_formatters.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
 import '../../alerts/data/alerts_providers.dart';
 import '../../cards/data/cards_providers.dart';
@@ -84,6 +85,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
+                      inputFormatters: [StripLeadingZeroFormatter()],
                       validator: (v) {
                         final amt = double.tryParse(v ?? '');
                         if (amt == null || amt <= 0) {
@@ -162,18 +164,25 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                       },
                     ),
                     const SizedBox(height: AppSpacing.sm),
-                    DropdownButtonFormField<int>(
-                      initialValue: _sourceId,
-                      decoration: const InputDecoration(
-                        labelText: 'Source selector',
+                    if (_paymentMode != PaymentSourceType.cash)
+                      DropdownButtonFormField<int>(
+                        initialValue: _sourceId,
+                        decoration: const InputDecoration(
+                          labelText: 'Source selector',
+                        ),
+                        items: _sourceItems(sources),
+                        onChanged: (v) => setState(() => _sourceId = v),
+                        validator: (v) {
+                          if (v == null) return 'Payment source required';
+                          return null;
+                        },
+                      )
+                    else
+                      Text(
+                        sources.cashWallets.isEmpty
+                            ? 'No cash wallet found. Add one from Accounts.'
+                            : 'Using cash wallet: ${sources.cashWallets.first.walletName}',
                       ),
-                      items: _sourceItems(sources),
-                      onChanged: (v) => setState(() => _sourceId = v),
-                      validator: (v) {
-                        if (v == null) return 'Payment source required';
-                        return null;
-                      },
-                    ),
                     const SizedBox(height: AppSpacing.sm),
                     FinarcTextField(
                       controller: _dateController,
@@ -199,7 +208,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),
-              FinarcCard(
+              if (_paymentMode != PaymentSourceType.cash)
+                FinarcCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -211,6 +221,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
+                      inputFormatters: [StripLeadingZeroFormatter()],
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) return null;
                         final value = double.tryParse(v.trim());
@@ -240,6 +251,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
+                        inputFormatters: [StripLeadingZeroFormatter()],
                         validator: (v) {
                           if (!_forOthers) return null;
                           if (v == null || v.trim().isEmpty) {
@@ -333,8 +345,24 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final sources = ref.read(paymentSourcesProvider).valueOrNull;
+    if (_paymentMode == PaymentSourceType.cash) {
+      final wallets = sources?.cashWallets ?? const [];
+      final cashId = wallets.isEmpty ? null : wallets.first.id;
+      if (cashId == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Add a cash wallet before recording cash payments.')),
+        );
+        return;
+      }
+      _sourceId = cashId;
+    }
+
     final amount = double.parse(_amount.text.trim());
-    final cashback = double.tryParse(_cashback.text.trim()) ?? 0;
+    final cashback = _paymentMode == PaymentSourceType.cash
+        ? 0.0
+        : (double.tryParse(_cashback.text.trim()) ?? 0);
     final recoverable = _forOthers
         ? double.tryParse(_recoverable.text.trim()) ?? 0
         : null;

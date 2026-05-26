@@ -13,8 +13,19 @@ final onboardingCompletedProvider = FutureProvider<bool>((ref) async {
 });
 
 final onboardingActionsProvider = Provider((ref) {
-  Future<void> complete() async {
-    await ref.read(onboardingServiceProvider).setCompleted(true);
+  Future<void> complete({
+    String? userName,
+    double? monthlySalary,
+    int? salaryCreditDay,
+    String? companyName,
+  }) async {
+    await ref.read(onboardingServiceProvider).setCompleted(
+      true,
+      userName: userName,
+      monthlySalary: monthlySalary,
+      salaryCreditDay: salaryCreditDay,
+      companyName: companyName,
+    );
     ref.invalidate(onboardingCompletedProvider);
   }
 
