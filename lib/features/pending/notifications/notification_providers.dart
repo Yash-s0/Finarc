@@ -23,6 +23,7 @@ import 'sms_fingerprint.dart';
 import 'sms_ingestion_service.dart';
 import 'sms_permission_service.dart';
 import 'sms_sender_filter.dart';
+import 'real_ingestion_mode_service.dart';
 
 export 'notification_access_setup_screen.dart';
 
@@ -32,6 +33,10 @@ final notificationPermissionServiceProvider =
     });
 
 final notificationAccessStatusProvider = FutureProvider<bool>((ref) async {
+  final ingestionEnabled = await ref.read(
+    realIngestionAvailableProvider.future,
+  );
+  if (!ingestionEnabled) return false;
   return ref.read(notificationPermissionServiceProvider).isAccessEnabled();
 });
 
@@ -52,11 +57,39 @@ final smsPermissionServiceProvider = Provider<SmsPermissionService>((ref) {
 });
 
 final smsPermissionStatusProvider = FutureProvider<bool>((ref) async {
+  final ingestionEnabled = await ref.read(
+    realIngestionAvailableProvider.future,
+  );
+  if (!ingestionEnabled) return false;
   return ref.read(smsPermissionServiceProvider).isPermissionGranted();
 });
 
 final smsReceiverAvailableProvider = FutureProvider<bool>((ref) async {
   return ref.read(smsPermissionServiceProvider).isReceiverComponentAvailable();
+});
+
+final smsReceiverEnabledProvider = FutureProvider<bool>((ref) async {
+  return ref.read(smsPermissionServiceProvider).isReceiverComponentEnabled();
+});
+
+final smsPermissionRationaleProvider = FutureProvider<bool>((ref) async {
+  return ref.read(smsPermissionServiceProvider).shouldShowPermissionRationale();
+});
+
+final smsRuntimeDiagnosticsProvider = FutureProvider<SmsRuntimeDiagnostics>((
+  ref,
+) async {
+  return ref.read(smsPermissionServiceProvider).getRuntimeDiagnostics();
+});
+
+final realIngestionModeServiceProvider = Provider<RealIngestionModeService>((
+  ref,
+) {
+  return RealIngestionModeService();
+});
+
+final realIngestionAvailableProvider = FutureProvider<bool>((ref) async {
+  return ref.read(realIngestionModeServiceProvider).isAvailable();
 });
 
 final smsPermissionCachedProvider = StateProvider<bool>((ref) => false);
@@ -438,12 +471,18 @@ class NotificationRouteAction {
 }
 
 final notificationListenerBootstrapProvider = Provider<void>((ref) {
+  final realIngestionAvailable =
+      ref.watch(realIngestionAvailableProvider).valueOrNull ?? false;
   final bridge = ref.read(notificationBridgeProvider);
   final notificationIngestion = ref.read(notificationIngestionServiceProvider);
   final smsIngestion = ref.read(smsIngestionServiceProvider);
   ref.watch(reminderBootstrapProvider);
 
   Future<void> refreshSmsPermission() async {
+    if (!realIngestionAvailable) {
+      ref.read(smsPermissionCachedProvider.notifier).state = false;
+      return;
+    }
     final granted = await ref
         .read(smsPermissionServiceProvider)
         .isPermissionGranted();
@@ -486,11 +525,26 @@ final notificationListenerBootstrapProvider = Provider<void>((ref) {
   unawaited(refreshSmsPermission());
   unawaited(runAlertEvaluation());
 
-  unawaited(
-    bridge.initialize(
-      onPayload: (payload) async {
-        if (payload.sourceType == 'sms') {
-          final ids = await smsIngestion.processSmsPayload(payload);
+  if (realIngestionAvailable) {
+    unawaited(
+      bridge.initialize(
+        onPayload: (payload) async {
+          if (payload.sourceType == 'sms') {
+            final ids = await smsIngestion.processSmsPayload(payload);
+            if (ids.isNotEmpty) {
+              await ref
+                  .read(alertEvaluationActionsProvider)
+                  .onPendingDetected(
+                    pendingId: ids.first,
+                    title: pendingAlertTitle(payload),
+                    body: 'Confirm this transaction in Finarc.',
+                  );
+            }
+            ref.invalidate(pendingTransactionsProvider);
+            ref.invalidate(pendingCountProvider);
+            return;
+          }
+          final ids = await notificationIngestion.processPayload(payload);
           if (ids.isNotEmpty) {
             await ref
                 .read(alertEvaluationActionsProvider)
@@ -502,24 +556,11 @@ final notificationListenerBootstrapProvider = Provider<void>((ref) {
           }
           ref.invalidate(pendingTransactionsProvider);
           ref.invalidate(pendingCountProvider);
-          return;
-        }
-        final ids = await notificationIngestion.processPayload(payload);
-        if (ids.isNotEmpty) {
-          await ref
-              .read(alertEvaluationActionsProvider)
-              .onPendingDetected(
-                pendingId: ids.first,
-                title: pendingAlertTitle(payload),
-                body: 'Confirm this transaction in Finarc.',
-              );
-        }
-        ref.invalidate(pendingTransactionsProvider);
-        ref.invalidate(pendingCountProvider);
-      },
-      onRoute: handleRoute,
-    ),
-  );
+        },
+        onRoute: handleRoute,
+      ),
+    );
+  }
 
   ref.onDispose(() {
     unawaited(bridge.dispose());

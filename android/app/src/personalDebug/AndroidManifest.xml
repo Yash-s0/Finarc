@@ -1,0 +1,27 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission
+        android:name="android.permission.READ_SMS"
+        tools:node="replace" />
+    <uses-permission
+        android:name="android.permission.RECEIVE_SMS"
+        tools:node="replace" />
+
+    <application>
+        <service
+            android:name=".FinarcNotificationListenerService"
+            tools:node="merge" />
+
+        <receiver
+            android:name=".FinarcSmsReceiver"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="android.permission.BROADCAST_SMS"
+            tools:node="replace">
+            <intent-filter android:priority="1000">
+                <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

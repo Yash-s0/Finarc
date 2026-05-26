@@ -39,7 +39,7 @@ class _AppShellState extends State<AppShell> {
             }),
             _actionTile(Icons.add_circle_outline, 'Add Income', () {
               Navigator.pop(context);
-              context.push('/expenses/add-income');
+              context.push('/income/add');
             }),
             _actionTile(Icons.credit_card, 'Add Card', () {
               Navigator.pop(context);

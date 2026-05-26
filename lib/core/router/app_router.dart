@@ -10,6 +10,7 @@ import '../../features/cards/presentation/cards_overview_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/expenses/presentation/expenses_screen.dart';
 import '../../features/expenses/presentation/add_expense_screen.dart';
+import '../../features/expenses/presentation/add_income_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/split/presentation/split_screen.dart';
 import '../../features/split/presentation/add_split_group_screen.dart';
@@ -97,10 +98,7 @@ final appRouter = GoRouter(
       },
     ),
     GoRoute(path: '/expenses/add', builder: (_, _) => const AddExpenseScreen()),
-    GoRoute(
-      path: '/expenses/add-income',
-      builder: (_, _) => const AddExpenseScreen(isIncome: true),
-    ),
+    GoRoute(path: '/income/add', builder: (_, _) => const AddIncomeScreen()),
     GoRoute(
       path: '/pending',
       builder: (_, state) {

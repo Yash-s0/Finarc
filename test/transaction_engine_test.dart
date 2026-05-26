@@ -180,4 +180,61 @@ void main() {
       throwsArgumentError,
     );
   });
+
+  test('income increases selected bank account', () async {
+    await engine.addTransaction(
+      AddTransactionInput(
+        type: TransactionType.income,
+        amount: 2000,
+        title: 'Salary',
+        category: 'Salary',
+        transactionDate: DateTime(2026, 5, 24),
+        paymentSourceType: PaymentSourceType.bank,
+        paymentSourceId: bankId,
+      ),
+    );
+
+    final bank = await (db.select(
+      db.bankAccounts,
+    )..where((b) => b.id.equals(bankId))).getSingle();
+    expect(bank.currentBalance, 12000);
+  });
+
+  test('income increases selected cash wallet', () async {
+    await engine.addTransaction(
+      AddTransactionInput(
+        type: TransactionType.income,
+        amount: 1000,
+        title: 'Cash gift',
+        category: 'Gift',
+        transactionDate: DateTime(2026, 5, 24),
+        paymentSourceType: PaymentSourceType.cash,
+        paymentSourceId: cashId,
+      ),
+    );
+
+    final wallet = await (db.select(
+      db.cashWallets,
+    )..where((w) => w.id.equals(cashId))).getSingle();
+    expect(wallet.currentBalance, 4000);
+  });
+
+  test('income does not affect card outstanding', () async {
+    await engine.addTransaction(
+      AddTransactionInput(
+        type: TransactionType.income,
+        amount: 1500,
+        title: 'Refund',
+        category: 'Refund',
+        transactionDate: DateTime(2026, 5, 24),
+        paymentSourceType: PaymentSourceType.bank,
+        paymentSourceId: bankId,
+      ),
+    );
+
+    final card = await (db.select(
+      db.creditCards,
+    )..where((c) => c.id.equals(cardId))).getSingle();
+    expect(card.currentOutstanding, 5000);
+  });
 }

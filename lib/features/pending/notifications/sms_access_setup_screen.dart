@@ -12,6 +12,11 @@ class SmsAccessSetupScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final smsPermission = ref.watch(smsPermissionStatusProvider);
     final receiverAvailable = ref.watch(smsReceiverAvailableProvider);
+    final receiverEnabled = ref.watch(smsReceiverEnabledProvider);
+    final permissionRationale = ref.watch(smsPermissionRationaleProvider);
+    final runtimeDiagnostics = ref.watch(smsRuntimeDiagnosticsProvider);
+    final realIngestionAvailable =
+        ref.watch(realIngestionAvailableProvider).valueOrNull ?? false;
     final settingsState = ref.watch(detectionSettingsProvider);
     final diagnostics = ref.watch(ingestionDiagnosticsProvider);
     final hasSmsAccess = smsPermission.valueOrNull ?? false;
@@ -45,8 +50,20 @@ class SmsAccessSetupScreen extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.xs),
                   if (!hasSmsAccess)
                     Text(
-                      'If SMS remains unavailable in debug/profile builds, native SMS components may be disabled for safety.',
+                      realIngestionAvailable
+                          ? 'SMS permission is currently disabled.'
+                          : 'Unavailable in this build (safe mode).',
                       style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  if (!hasSmsAccess &&
+                      settings.smsPermissionAskedAt != null &&
+                      permissionRationale.valueOrNull == false)
+                    Padding(
+                      padding: const EdgeInsets.only(top: AppSpacing.xs),
+                      child: Text(
+                        'SMS permission appears permanently denied. Open app settings and allow SMS access.',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                     ),
                 ],
               ),
@@ -97,26 +114,52 @@ class SmsAccessSetupScreen extends ConsumerWidget {
                       );
                     },
                   ),
+                  receiverEnabled.when(
+                    loading: () => const SizedBox.shrink(),
+                    error: (e, _) => Text('Receiver enablement error: $e'),
+                    data: (enabled) => Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                      child: FinarcStatusBadge(
+                        label: enabled
+                            ? 'SMS receiver enabled'
+                            : 'SMS receiver disabled',
+                        tone: enabled
+                            ? FinarcStatusTone.success
+                            : FinarcStatusTone.warning,
+                        compact: true,
+                      ),
+                    ),
+                  ),
                   FinarcPrimaryButton(
-                    onPressed: () async {
-                      final granted = await ref
-                          .read(smsPermissionServiceProvider)
-                          .requestPermission();
-                      await ref
-                          .read(detectionSettingsProvider.notifier)
-                          .applyChanges(smsPermissionAskedAt: DateTime.now());
-                      ref.read(smsPermissionCachedProvider.notifier).state =
-                          granted;
-                      ref.invalidate(smsPermissionStatusProvider);
-                    },
+                    onPressed: !realIngestionAvailable
+                        ? null
+                        : () async {
+                            final granted = await ref
+                                .read(smsPermissionServiceProvider)
+                                .requestPermission();
+                            await ref
+                                .read(detectionSettingsProvider.notifier)
+                                .applyChanges(
+                                  smsPermissionAskedAt: DateTime.now(),
+                                );
+                            ref
+                                    .read(smsPermissionCachedProvider.notifier)
+                                    .state =
+                                granted;
+                            ref.invalidate(smsPermissionStatusProvider);
+                            ref.invalidate(smsPermissionRationaleProvider);
+                            ref.invalidate(smsRuntimeDiagnosticsProvider);
+                          },
                     icon: Icons.sms_outlined,
                     label: 'Enable SMS Access',
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   FinarcSecondaryButton(
-                    onPressed: () => ref
-                        .read(smsPermissionServiceProvider)
-                        .openAppPermissionSettings(),
+                    onPressed: !realIngestionAvailable
+                        ? null
+                        : () => ref
+                              .read(smsPermissionServiceProvider)
+                              .openAppPermissionSettings(),
                     icon: Icons.settings_outlined,
                     label: 'Open App Permission Settings',
                   ),
@@ -132,29 +175,34 @@ class SmsAccessSetupScreen extends ConsumerWidget {
                     context,
                     'SMS detection enabled',
                     settings.smsDetectionEnabled,
-                    (value) async {
-                      if (value && !hasSmsAccess) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Enable SMS permission before turning on SMS detection.',
-                            ),
-                          ),
-                        );
-                        return;
-                      }
-                      await ref
-                          .read(detectionSettingsProvider.notifier)
-                          .applyChanges(smsDetectionEnabled: value);
-                    },
+                    realIngestionAvailable
+                        ? (value) async {
+                            if (!realIngestionAvailable) return;
+                            if (value && !hasSmsAccess) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Enable SMS permission before turning on SMS detection.',
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
+                            await ref
+                                .read(detectionSettingsProvider.notifier)
+                                .applyChanges(smsDetectionEnabled: value);
+                          }
+                        : null,
                   ),
                   _toggle(
                     context,
                     'SMS backfill enabled',
                     settings.smsBackfillEnabled,
-                    (value) => ref
-                        .read(detectionSettingsProvider.notifier)
-                        .applyChanges(smsBackfillEnabled: value),
+                    realIngestionAvailable
+                        ? (value) => ref
+                              .read(detectionSettingsProvider.notifier)
+                              .applyChanges(smsBackfillEnabled: value)
+                        : null,
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Row(
@@ -185,6 +233,7 @@ class SmsAccessSetupScreen extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.sm),
                   FinarcPrimaryButton(
                     onPressed: () async {
+                      if (!realIngestionAvailable) return;
                       if (!hasSmsAccess) {
                         if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -228,6 +277,56 @@ class SmsAccessSetupScreen extends ConsumerWidget {
                 children: [
                   const FinarcSectionHeader(title: 'SMS Diagnostics'),
                   const SizedBox(height: AppSpacing.xs),
+                  runtimeDiagnostics.when(
+                    loading: () =>
+                        const Text('Checking Android runtime status...'),
+                    error: (e, _) => Text('Runtime diagnostics error: $e'),
+                    data: (native) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'READ_SMS: ${native.readSmsGranted ? 'granted' : 'not granted'}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        Text(
+                          'RECEIVE_SMS: ${native.receiveSmsGranted ? 'granted' : 'not granted'}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        Text(
+                          'Receiver declared: ${native.receiverDeclared ? 'yes' : 'no'}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        Text(
+                          'Receiver enabled: ${native.receiverEnabled ? 'yes' : 'no'}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        Text(
+                          'Last Android SMS received: ${native.lastReceivedAt == null ? '—' : native.lastReceivedAt!.toLocal().toIso8601String()}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        Text(
+                          'Last actual sender: ${native.lastSender ?? '—'}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        Text(
+                          'Last receiver callback success: ${native.lastCallbackSuccessAt == null ? '—' : native.lastCallbackSuccessAt!.toLocal().toIso8601String()}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        if (native.lastError != null &&
+                            native.lastError!.isNotEmpty)
+                          Text(
+                            'Last receiver error: ${native.lastError}',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        if (native.lastReceivedAt == null)
+                          Text(
+                            'SMS receiver has not received any Android SMS broadcasts yet.',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        const SizedBox(height: AppSpacing.xs),
+                      ],
+                    ),
+                  ),
                   Text(
                     'Last event: ${diagnostics.lastSmsEventAt == null ? '—' : diagnostics.lastSmsEventAt!.toLocal().toIso8601String()}',
                     style: Theme.of(context).textTheme.bodySmall,
@@ -263,7 +362,7 @@ class SmsAccessSetupScreen extends ConsumerWidget {
     BuildContext context,
     String label,
     bool value,
-    ValueChanged<bool> onChanged,
+    ValueChanged<bool>? onChanged,
   ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.xs),

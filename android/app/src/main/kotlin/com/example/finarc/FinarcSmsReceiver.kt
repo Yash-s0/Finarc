@@ -4,30 +4,35 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.provider.Telephony
+import android.util.Log
 import android.telephony.SmsMessage
 
 class FinarcSmsReceiver : BroadcastReceiver() {
+    companion object {
+        const val DIAGNOSTICS_PREFS = "finarc_sms_diagnostics"
+        const val KEY_LAST_RECEIVED_AT_MILLIS = "last_received_at_millis"
+        const val KEY_LAST_SENDER = "last_sender"
+        const val KEY_LAST_CALLBACK_SUCCESS_AT_MILLIS = "last_callback_success_at_millis"
+        const val KEY_LAST_ERROR = "last_error"
+    }
+
     override fun onReceive(context: Context?, intent: Intent?) {
         if (intent == null || intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
-        val bundle = intent.extras ?: return
+        val appContext = context?.applicationContext ?: return
 
-        val pdus = bundle.get("pdus") as? Array<*> ?: return
-        val format = bundle.getString("format")
-        val receivedAt = System.currentTimeMillis()
+        try {
+            val messages: Array<SmsMessage> = Telephony.Sms.Intents.getMessagesFromIntent(intent)
+            if (messages.isEmpty()) return
 
-        for (pdu in pdus) {
-            val bytes = pdu as? ByteArray ?: continue
-            val message = if (format != null) {
-                SmsMessage.createFromPdu(bytes, format)
-            } else {
-                @Suppress("DEPRECATION")
-                SmsMessage.createFromPdu(bytes)
-            }
+            val sender = messages.firstOrNull()?.displayOriginatingAddress?.trim().orEmpty()
+            val body = buildString {
+                messages.forEach { sms ->
+                    append(sms.displayMessageBody.orEmpty())
+                }
+            }.trim()
+            if (body.isBlank()) return
 
-            val sender = message.displayOriginatingAddress?.trim().orEmpty()
-            val body = message.displayMessageBody?.trim().orEmpty()
-            if (body.isBlank()) continue
-
+            val receivedAt = System.currentTimeMillis()
             val payload = mapOf(
                 "packageName" to "android.sms",
                 "appName" to "SMS",
@@ -42,6 +47,26 @@ class FinarcSmsReceiver : BroadcastReceiver() {
                 "category" to "sms",
             )
             NotificationBridge.publish(payload)
+            persistDiagnostics(appContext, receivedAt, sender, null)
+            Log.d("FinarcSmsReceiver", "SMS_RECEIVED sender=$sender bodyLen=${body.length}")
+        } catch (t: Throwable) {
+            persistDiagnostics(appContext, System.currentTimeMillis(), null, t.message ?: t.javaClass.simpleName)
+            Log.e("FinarcSmsReceiver", "Failed to process SMS broadcast", t)
         }
+    }
+
+    private fun persistDiagnostics(
+        context: Context,
+        receivedAtMillis: Long,
+        sender: String?,
+        error: String?,
+    ) {
+        context.getSharedPreferences(DIAGNOSTICS_PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putLong(KEY_LAST_RECEIVED_AT_MILLIS, receivedAtMillis)
+            .putLong(KEY_LAST_CALLBACK_SUCCESS_AT_MILLIS, if (error == null) receivedAtMillis else 0L)
+            .putString(KEY_LAST_SENDER, sender)
+            .putString(KEY_LAST_ERROR, error)
+            .apply()
     }
 }

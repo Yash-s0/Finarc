@@ -163,7 +163,7 @@ class AccountDetailScreen extends ConsumerWidget {
               if (type == 'cash') ...[
                 const SizedBox(height: AppSpacing.xs),
                 FinarcSecondaryButton(
-                  onPressed: () => context.push('/expenses/add-income'),
+                  onPressed: () => context.push('/income/add'),
                   icon: Icons.add_circle_outline,
                   label: 'Quick Add Cash',
                 ),

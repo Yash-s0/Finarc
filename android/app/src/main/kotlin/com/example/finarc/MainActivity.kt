@@ -12,6 +12,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
 import android.provider.Telephony
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -83,6 +84,9 @@ class MainActivity : FlutterActivity() {
                 "isNotificationListenerComponentAvailable" -> {
                     result.success(isNotificationListenerComponentAvailable())
                 }
+                "isRealIngestionAvailable" -> {
+                    result.success(isRealIngestionAvailable())
+                }
 
                 "openNotificationAccessSettings" -> {
                     startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
@@ -92,9 +96,24 @@ class MainActivity : FlutterActivity() {
                 "isSmsPermissionGranted" -> {
                     result.success(isSmsPermissionGranted())
                 }
+                "isReadSmsPermissionGranted" -> {
+                    result.success(isReadSmsPermissionGranted())
+                }
+                "isReceiveSmsPermissionGranted" -> {
+                    result.success(isReceiveSmsPermissionGranted())
+                }
+                "shouldShowSmsPermissionRationale" -> {
+                    result.success(shouldShowSmsPermissionRationale())
+                }
 
                 "isSmsReceiverComponentAvailable" -> {
                     result.success(isSmsReceiverComponentAvailable())
+                }
+                "isSmsReceiverComponentEnabled" -> {
+                    result.success(isSmsReceiverComponentEnabled())
+                }
+                "getSmsReceiverDiagnostics" -> {
+                    result.success(getSmsReceiverDiagnostics())
                 }
 
                 "isPostNotificationsGranted" -> {
@@ -201,6 +220,7 @@ class MainActivity : FlutterActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == SMS_PERMISSION_REQUEST_CODE) {
             val granted = grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }
+            Log.d("FinarcMainActivity", "SMS permission result granted=$granted")
             smsPermissionResult?.success(granted)
             smsPermissionResult = null
             return
@@ -225,6 +245,7 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun isNotificationAccessEnabled(): Boolean {
+        if (!isRealIngestionAvailable()) return false
         val enabledListeners = Settings.Secure.getString(
             contentResolver,
             "enabled_notification_listeners",
@@ -234,6 +255,11 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun isNotificationListenerComponentAvailable(): Boolean {
+        if (!isRealIngestionAvailable()) return false
+        return rawNotificationListenerComponentAvailable()
+    }
+
+    private fun rawNotificationListenerComponentAvailable(): Boolean {
         return try {
             val component = ComponentName(this, FinarcNotificationListenerService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -249,6 +275,11 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun isSmsReceiverComponentAvailable(): Boolean {
+        if (!isRealIngestionAvailable()) return false
+        return rawSmsReceiverComponentAvailable()
+    }
+
+    private fun rawSmsReceiverComponentAvailable(): Boolean {
         return try {
             val component = ComponentName(this, FinarcSmsReceiver::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -264,14 +295,65 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun isSmsPermissionGranted(): Boolean {
-        val readGranted = ContextCompat.checkSelfPermission(
+        if (!isRealIngestionAvailable()) return false
+        return isReadSmsPermissionGranted() && isReceiveSmsPermissionGranted()
+    }
+
+    private fun isReadSmsPermissionGranted(): Boolean {
+        if (!isRealIngestionAvailable()) return false
+        return ContextCompat.checkSelfPermission(
             this,
             Manifest.permission.READ_SMS,
         ) == PackageManager.PERMISSION_GRANTED
-        return readGranted
+    }
+
+    private fun isReceiveSmsPermissionGranted(): Boolean {
+        if (!isRealIngestionAvailable()) return false
+        return ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.RECEIVE_SMS,
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun shouldShowSmsPermissionRationale(): Boolean {
+        if (!isRealIngestionAvailable()) return false
+        return shouldShowRequestPermissionRationale(Manifest.permission.READ_SMS) ||
+            shouldShowRequestPermissionRationale(Manifest.permission.RECEIVE_SMS)
+    }
+
+    private fun isSmsReceiverComponentEnabled(): Boolean {
+        if (!isRealIngestionAvailable()) return false
+        return try {
+            val component = ComponentName(this, FinarcSmsReceiver::class.java)
+            val state = packageManager.getComponentEnabledSetting(component)
+            state == PackageManager.COMPONENT_ENABLED_STATE_DEFAULT ||
+                state == PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun getSmsReceiverDiagnostics(): Map<String, Any?> {
+        val prefs = getSharedPreferences(FinarcSmsReceiver.DIAGNOSTICS_PREFS, Context.MODE_PRIVATE)
+        return mapOf(
+            "readSmsGranted" to isReadSmsPermissionGranted(),
+            "receiveSmsGranted" to isReceiveSmsPermissionGranted(),
+            "smsPermissionGranted" to isSmsPermissionGranted(),
+            "receiverDeclared" to isSmsReceiverComponentAvailable(),
+            "receiverEnabled" to isSmsReceiverComponentEnabled(),
+            "lastReceivedAtMillis" to prefs.getLong(FinarcSmsReceiver.KEY_LAST_RECEIVED_AT_MILLIS, 0L),
+            "lastSender" to prefs.getString(FinarcSmsReceiver.KEY_LAST_SENDER, null),
+            "lastCallbackSuccessAtMillis" to prefs.getLong(FinarcSmsReceiver.KEY_LAST_CALLBACK_SUCCESS_AT_MILLIS, 0L),
+            "lastError" to prefs.getString(FinarcSmsReceiver.KEY_LAST_ERROR, null),
+            "realIngestionAvailable" to isRealIngestionAvailable(),
+        )
     }
 
     private fun requestSmsPermission(result: MethodChannel.Result) {
+        if (!isRealIngestionAvailable()) {
+            result.success(false)
+            return
+        }
         if (isSmsPermissionGranted()) {
             result.success(true)
             return
@@ -325,6 +407,7 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun scanRecentSms(days: Int): Int {
+        if (!isRealIngestionAvailable()) return 0
         if (!isSmsPermissionGranted()) return 0
         val boundedDays = days.coerceIn(1, 30)
         val sinceMillis = System.currentTimeMillis() - boundedDays * 24L * 60L * 60L * 1000L
@@ -368,6 +451,10 @@ class MainActivity : FlutterActivity() {
             }
         }
         return count
+    }
+
+    private fun isRealIngestionAvailable(): Boolean {
+        return rawNotificationListenerComponentAvailable() || rawSmsReceiverComponentAvailable()
     }
 
     private fun showDetectionNotification(

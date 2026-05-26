@@ -17,6 +17,8 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
     final settingsState = ref.watch(detectionSettingsProvider);
     final debugEntries = ref.watch(notificationDebugLogProvider);
     final diagnostics = ref.watch(ingestionDiagnosticsProvider);
+    final realIngestionAvailable =
+        ref.watch(realIngestionAvailableProvider).valueOrNull ?? false;
     final hasNotificationAccess = accessState.valueOrNull ?? false;
     final hasSmsAccess = smsAccessState.valueOrNull ?? false;
 
@@ -49,7 +51,9 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.xs),
                   if (!hasNotificationAccess)
                     Text(
-                      'If access remains unavailable in debug/profile builds, native listeners may be intentionally disabled.',
+                      realIngestionAvailable
+                          ? 'Notification access is currently disabled.'
+                          : 'Unavailable in this build (safe mode).',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                 ],
@@ -102,12 +106,14 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                     },
                   ),
                   FinarcPrimaryButton(
-                    onPressed: () async {
-                      await ref
-                          .read(notificationPermissionServiceProvider)
-                          .openAccessSettings();
-                      ref.invalidate(notificationAccessStatusProvider);
-                    },
+                    onPressed: !realIngestionAvailable
+                        ? null
+                        : () async {
+                            await ref
+                                .read(notificationPermissionServiceProvider)
+                                .openAccessSettings();
+                            ref.invalidate(notificationAccessStatusProvider);
+                          },
                     icon: Icons.settings_outlined,
                     label: 'Open Android Notification Access',
                   ),
@@ -159,21 +165,23 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                     context: context,
                     label: 'SMS detection enabled',
                     value: settings.smsDetectionEnabled,
-                    onChanged: (v) async {
-                      if (v && !hasSmsAccess) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Enable SMS permission before turning on SMS detection.',
-                            ),
-                          ),
-                        );
-                        return;
-                      }
-                      await ref
-                          .read(detectionSettingsProvider.notifier)
-                          .applyChanges(smsDetectionEnabled: v);
-                    },
+                    onChanged: realIngestionAvailable
+                        ? (v) async {
+                            if (v && !hasSmsAccess) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Enable SMS permission before turning on SMS detection.',
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
+                            await ref
+                                .read(detectionSettingsProvider.notifier)
+                                .applyChanges(smsDetectionEnabled: v);
+                          }
+                        : null,
                   ),
                   Row(
                     children: [
@@ -192,6 +200,7 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                       Expanded(
                         child: FinarcPrimaryButton(
                           onPressed: () async {
+                            if (!realIngestionAvailable) return;
                             if (!hasSmsAccess) {
                               if (!context.mounted) return;
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -240,21 +249,23 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                     context: context,
                     label: 'Detection enabled',
                     value: settings.notificationDetectionEnabled,
-                    onChanged: (v) async {
-                      if (v && !hasNotificationAccess) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Enable notification access before turning on detection.',
-                            ),
-                          ),
-                        );
-                        return;
-                      }
-                      await ref
-                          .read(detectionSettingsProvider.notifier)
-                          .applyChanges(notificationDetectionEnabled: v);
-                    },
+                    onChanged: realIngestionAvailable
+                        ? (v) async {
+                            if (v && !hasNotificationAccess) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Enable notification access before turning on detection.',
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
+                            await ref
+                                .read(detectionSettingsProvider.notifier)
+                                .applyChanges(notificationDetectionEnabled: v);
+                          }
+                        : null,
                   ),
                   _toggleRow(
                     context: context,
@@ -527,7 +538,7 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
     required BuildContext context,
     required String label,
     required bool value,
-    required ValueChanged<bool> onChanged,
+    required ValueChanged<bool>? onChanged,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.xs),

@@ -365,6 +365,19 @@ void main() {
     },
   );
 
+  test(
+    'income is included in income analytics and excluded from spending',
+    () async {
+      final snapshot = await service.buildSnapshot(
+        period: AnalyticsPeriod.thisMonth,
+        now: DateTime(2026, 5, 25),
+      );
+
+      expect(snapshot.income.totalIncome, closeTo(50000, 0.001));
+      expect(snapshot.spending.totalSpending, closeTo(2400, 0.001));
+    },
+  );
+
   test('card utilization and billed calculations are correct', () async {
     final snapshot = await service.buildSnapshot(
       period: AnalyticsPeriod.thisMonth,
