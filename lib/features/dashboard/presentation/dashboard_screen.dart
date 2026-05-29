@@ -97,197 +97,111 @@ class DashboardScreen extends ConsumerWidget {
                 data.cardCount == 0 &&
                 data.loansOutstanding == 0 &&
                 data.recentTransactions.isEmpty;
+            final salaryCreditDay = profile?.salaryCreditDay;
 
             if (freshInstall) {
-              return ListView(
-                padding: _pagePadding(context),
-                children: [DashboardFreshStartGate(data: data)],
+              return RefreshIndicator(
+                onRefresh: () => ref.read(dashboardRefreshActionsProvider)(),
+                child: ListView(
+                  padding: _pagePadding(context),
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [DashboardFreshStartGate(data: data)],
+                ),
               );
             }
 
-            return ListView(
-              padding: _pagePadding(context),
-              children: [
-                DashboardGreetingHeader(name: profile?.name),
-                const SizedBox(height: AppSpacing.sm),
-                FinarcCard(
-                  onTap: () => context.push('/alerts'),
-                  child: Row(
-                    children: [
-                      const CircleAvatar(
-                        radius: 18,
-                        backgroundColor: AppColors.darkPrimarySoft,
-                        child: Icon(Icons.notifications_none_rounded, size: 18),
+            return RefreshIndicator(
+              onRefresh: () => ref.read(dashboardRefreshActionsProvider)(),
+              child: ListView(
+                padding: _pagePadding(context),
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  DashboardGreetingHeader(
+                    name: profile?.name,
+                    unreadAlertsCount: data.unreadAlertsCount,
+                    onAlertsTap: () => context.push('/alerts'),
+                    onSettingsTap: () => context.push('/profile'),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  NetWorthHeroCard(data: data),
+                  if (salaryCreditDay != null) ...[
+                    const SizedBox(height: AppSpacing.xs),
+                    FinarcCard(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                        vertical: AppSpacing.xs,
                       ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('View Alerts'),
-                            const SizedBox(height: 2),
-                            Text(
-                              data.latestImportantAlert?.body ??
-                                  'Open alerts center to review reminders and warnings.',
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.event_available_rounded,
+                            color: AppColors.darkMint,
+                            size: 14,
+                          ),
+                          const SizedBox(width: AppSpacing.xs),
+                          Expanded(
+                            child: Text(
+                              _salaryInsight(salaryCreditDay),
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
-                          ],
-                        ),
-                      ),
-                      FinarcStatusBadge(
-                        label: data.unreadAlertsCount > 0
-                            ? '${data.unreadAlertsCount} NEW'
-                            : 'NO NEW',
-                        tone: data.unreadAlertsCount > 0
-                            ? FinarcStatusTone.warning
-                            : FinarcStatusTone.neutral,
-                        compact: true,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                NetWorthHeroCard(data: data),
-                if (profile?.salaryCreditDay != null) ...[
-                  const SizedBox(height: AppSpacing.xs),
-                  FinarcCard(
-                    child: Text(_salaryInsight(profile!.salaryCreditDay!)),
-                  ),
-                ],
-                const SizedBox(height: AppSpacing.md),
-                DashboardMetricGrid(data: data),
-                const SizedBox(height: AppSpacing.sm),
-                FinarcCard(
-                  onTap: () => context.push('/loans'),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      FinarcSectionHeader(
-                        title: 'Liabilities',
-                        trailing: FinarcStatusBadge(
-                          label:
-                              'Debt ratio ${(data.debtRatio * 100).toStringAsFixed(1)}%',
-                          tone: data.debtRatio >= 0.6
-                              ? FinarcStatusTone.error
-                              : (data.debtRatio >= 0.3
-                                    ? FinarcStatusTone.warning
-                                    : FinarcStatusTone.success),
-                          compact: true,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Total Liabilities',
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  inr(data.totalLiabilities),
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.titleMedium,
-                                ),
-                              ],
-                            ),
                           ),
-                          const SizedBox(width: AppSpacing.sm),
-                          if (data.monthlyEmiBurden > 0)
-                            FinarcStatusBadge(
-                              label: 'EMI ${inr(data.monthlyEmiBurden)}',
-                              tone: FinarcStatusTone.info,
-                              compact: true,
-                            ),
                         ],
                       ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        'Tap to manage loans and EMI payments',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
+                    ),
+                  ],
+                  const SizedBox(height: AppSpacing.sm),
+                  DashboardMetricGrid(data: data),
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    children: [
+                      if (data.pendingCount > 0)
+                        Expanded(
+                          child: PendingConfirmationsCard(
+                            pendingCount: data.pendingCount,
+                          ),
+                        ),
+                      if (data.pendingCount > 0 && data.dueSoonBillsCount > 0)
+                        const SizedBox(width: AppSpacing.xs),
+                      if (data.dueSoonBillsCount > 0)
+                        Expanded(
+                          child: DueSoonCard(count: data.dueSoonBillsCount),
+                        ),
                     ],
                   ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                PendingConfirmationsCard(pendingCount: data.pendingCount),
-                if (data.pendingCount > 0)
-                  const SizedBox(height: AppSpacing.xs),
-                DueSoonCard(count: data.dueSoonBillsCount),
-                if (data.dueSoonBillsCount > 0)
-                  const SizedBox(height: AppSpacing.xs),
-                if (data.splitReceivableAmount != 0 ||
-                    data.splitPayableAmount != 0) ...[
+                  if (data.pendingCount > 0 || data.dueSoonBillsCount > 0)
+                    const SizedBox(height: AppSpacing.sm),
                   FinarcCard(
-                    onTap: () => context.push('/split'),
+                    onTap: () => context.push('/accounts'),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                      vertical: AppSpacing.sm,
+                    ),
                     child: Row(
                       children: [
                         const CircleAvatar(
-                          radius: 18,
+                          radius: 14,
                           backgroundColor: AppColors.darkPrimarySoft,
-                          child: Icon(Icons.call_split_outlined, size: 18),
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Split Balance'),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Owed ${inr(data.splitReceivableAmount)} • Owe ${inr(data.splitPayableAmount)}',
-                              ),
-                            ],
+                          child: Icon(
+                            Icons.account_balance_wallet_outlined,
+                            size: 14,
+                            color: AppColors.darkBlue,
                           ),
                         ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Expanded(
+                          child: Text(
+                            'Bank ${inr(data.bankBalance)} • Cash ${inr(data.cashInHand)}',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right_rounded, size: 16),
                       ],
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.xs),
+                  const SizedBox(height: AppSpacing.sm),
+                  RecentTransactionsSection(data: data),
                 ],
-                FinarcCard(
-                  onTap: () => context.push('/accounts'),
-                  child: Row(
-                    children: [
-                      const CircleAvatar(
-                        radius: 18,
-                        backgroundColor: AppColors.darkPrimarySoft,
-                        child: Icon(
-                          Icons.account_balance_wallet_outlined,
-                          size: 18,
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Accounts Overview'),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Bank ${inr(data.bankBalance)} • Cash ${inr(data.cashInHand)}',
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => context.push('/accounts/transfer'),
-                        icon: const Icon(Icons.swap_horiz),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                AnalyticsCtaCard(monthlySpends: data.monthlySpends),
-                const SizedBox(height: AppSpacing.lg),
-                RecentTransactionsSection(data: data),
-              ],
+              ),
             );
           },
         );

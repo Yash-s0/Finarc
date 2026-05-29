@@ -20,24 +20,43 @@ class FinarcActionChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fg = selected
-        ? Theme.of(context).colorScheme.onSurface
-        : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.78);
+        ? Colors.white
+        : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.82);
 
     return ActionChip(
       onPressed: onTap,
-      avatar: icon == null ? null : Icon(icon, size: 15, color: fg),
+      avatar: icon == null
+          ? null
+          : Container(
+              height: 18,
+              width: 18,
+              decoration: BoxDecoration(
+                color: selected
+                    ? Colors.white.withValues(alpha: 0.2)
+                    : AppColors.darkPrimarySoft.withValues(alpha: 0.95),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Icon(
+                icon,
+                size: 12,
+                color: selected ? Colors.white : AppColors.darkAccent,
+              ),
+            ),
       label: Text(label),
       labelStyle: Theme.of(
         context,
       ).textTheme.labelMedium?.copyWith(color: fg, fontWeight: FontWeight.w700),
       backgroundColor: selected
-          ? AppColors.darkPrimarySoft
+          ? AppColors.darkPrimary
           : AppColors.darkSurfaceLow,
       side: BorderSide(
         color: selected
-            ? AppColors.darkAccent.withValues(alpha: 0.45)
+            ? AppColors.darkAccent.withValues(alpha: 0.9)
             : AppColors.darkBorder,
       ),
+      elevation: 0,
+      pressElevation: 0,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.pill),
       ),

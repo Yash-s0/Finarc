@@ -28,9 +28,14 @@ class NetWorthBreakdownScreen extends ConsumerWidget {
                   children: [
                     const FinarcSectionHeader(title: 'Formula'),
                     const SizedBox(height: AppSpacing.xs),
-                    Text('Net Worth = Assets - Liabilities', style: Theme.of(context).textTheme.bodyMedium),
+                    Text(
+                      'Net Worth = Assets - Liabilities',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
                     const SizedBox(height: AppSpacing.xs),
-                    Text('${inr(data.totalAssets)} - ${inr(data.totalLiabilities)} = ${inr(data.netWorth)}'),
+                    Text(
+                      '${inr(data.totalAssets)} - ${inr(data.totalLiabilities)} = ${inr(data.netWorth)}',
+                    ),
                   ],
                 ),
               ),
@@ -38,11 +43,22 @@ class NetWorthBreakdownScreen extends ConsumerWidget {
               ExpansionTile(
                 title: const Text('Assets'),
                 initiallyExpanded: true,
-                childrenPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+                childrenPadding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.xs,
+                ),
                 children: [
                   _row('Bank balances', inr(data.bankBalance)),
                   _row('Cash', inr(data.cashInHand)),
-                  _row('Recoverables', inr(data.recoverableAmount - data.splitReceivableAmount)),
+                  _row(
+                    'Recoverables',
+                    inr(
+                      data.totalAssets -
+                          (data.bankBalance +
+                              data.cashInHand +
+                              data.splitReceivableAmount),
+                    ),
+                  ),
                   _row('Split receivables', inr(data.splitReceivableAmount)),
                   const Divider(),
                   _row('Total assets', inr(data.totalAssets)),
@@ -51,9 +67,12 @@ class NetWorthBreakdownScreen extends ConsumerWidget {
               ExpansionTile(
                 title: const Text('Liabilities'),
                 initiallyExpanded: true,
-                childrenPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+                childrenPadding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.xs,
+                ),
                 children: [
-                  _row('Card dues', inr(data.cardDues)),
+                  _row('Card outstanding', inr(data.cardOutstanding)),
                   _row('Loans outstanding', inr(data.loansOutstanding)),
                   _row('Split payables', inr(data.splitPayableAmount)),
                   const Divider(),
@@ -67,8 +86,14 @@ class NetWorthBreakdownScreen extends ConsumerWidget {
                   children: [
                     const FinarcSectionHeader(title: 'Additional Insights'),
                     const SizedBox(height: AppSpacing.xs),
-                    _row('Liquid assets', inr(data.bankBalance + data.cashInHand)),
-                    _row('Debt ratio', '${(data.debtRatio * 100).toStringAsFixed(1)}%'),
+                    _row(
+                      'Liquid assets',
+                      inr(data.bankBalance + data.cashInHand),
+                    ),
+                    _row(
+                      'Debt ratio',
+                      '${(data.debtRatio * 100).toStringAsFixed(1)}%',
+                    ),
                     _row('Monthly EMI burden', inr(data.monthlyEmiBurden)),
                   ],
                 ),

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -11,6 +12,7 @@ import '../../features/cards/presentation/card_detail_screen.dart';
 import '../../features/cards/presentation/cards_overview_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/dashboard/presentation/net_worth_breakdown_screen.dart';
+import '../../features/recoverables/presentation/recoverables_breakdown_screen.dart';
 import '../../features/expenses/presentation/expenses_screen.dart';
 import '../../features/expenses/presentation/add_expense_screen.dart';
 import '../../features/expenses/presentation/add_income_screen.dart';
@@ -294,6 +296,10 @@ final appRouter = GoRouter(
       path: '/dashboard/net-worth-breakdown',
       builder: (_, _) => const NetWorthBreakdownScreen(),
     ),
+    GoRoute(
+      path: '/recoverables',
+      builder: (_, _) => const RecoverablesBreakdownScreen(),
+    ),
     GoRoute(path: '/alerts', builder: (_, _) => const AlertsCenterScreen()),
     GoRoute(
       path: '/onboarding',
@@ -373,11 +379,29 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: AppRoutes.logs,
-      builder: (_, _) => const DebugLogViewerScreen(),
+      builder: (_, _) {
+        if (kReleaseMode) {
+          return const RouteFallbackScreen(
+            title: 'Route unavailable',
+            message: 'This screen is only available in debug/profile modes.',
+            backRoute: AppRoutes.home,
+          );
+        }
+        return const DebugLogViewerScreen();
+      },
     ),
     GoRoute(
       path: AppRoutes.releaseChecklist,
-      builder: (_, _) => const ReleaseChecklistScreen(),
+      builder: (_, _) {
+        if (kReleaseMode) {
+          return const RouteFallbackScreen(
+            title: 'Route unavailable',
+            message: 'This screen is only available in debug/profile modes.',
+            backRoute: AppRoutes.home,
+          );
+        }
+        return const ReleaseChecklistScreen();
+      },
     ),
   ],
 );

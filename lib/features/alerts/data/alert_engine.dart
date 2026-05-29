@@ -350,12 +350,15 @@ class AlertEngine {
       final priority = status == 'overdue'
           ? AlertPriority.critical
           : AlertPriority.warning;
+      final pendingAmount = (bill.billedAmount - bill.paidAmount)
+          .clamp(0, bill.billedAmount)
+          .toDouble();
       final title = status == 'overdue'
           ? '${card.bankName} bill overdue'
           : '${card.bankName} bill due soon';
       final body = status == 'overdue'
-          ? '${inr(bill.billedAmount)} overdue for payment.'
-          : '${inr(bill.billedAmount)} due in ${days <= 0 ? 'today' : '$days day(s)'}.';
+          ? '${inr(pendingAmount)} overdue for payment.'
+          : '${inr(pendingAmount)} due in ${days <= 0 ? 'today' : '$days day(s)'}.';
 
       final alert = await _alerts.createAlert(
         CreateAlertInput(

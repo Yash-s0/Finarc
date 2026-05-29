@@ -29,6 +29,7 @@ class AnalyticsService {
 
     final cards = await _db.select(_db.creditCards).get();
     final bills = await _db.select(_db.cardBills).get();
+    final billingSnapshots = await _billing.getAllCardBillingSnapshots();
     final loans = await _db.select(_db.loans).get();
     final loanPayments = await _db.select(_db.loanPayments).get();
     final splitGroups = await (_db.select(
@@ -46,7 +47,13 @@ class AnalyticsService {
 
     final spending = _buildSpending(rangeTxns, range);
     final income = _buildIncome(rangeTxns, range);
-    final cardsSnap = _buildCards(rangeTxns, cards, bills, range);
+    final cardsSnap = _buildCards(
+      rangeTxns,
+      cards,
+      bills,
+      billingSnapshots,
+      range,
+    );
     final loansSnap = await _buildLoans(
       loans: loans,
       loanPayments: loanPayments,
@@ -206,6 +213,7 @@ class AnalyticsService {
     List<Transaction> rangeTxns,
     List<CreditCard> cards,
     List<CardBill> bills,
+    List<CardBillingSnapshot> billingSnapshots,
     AnalyticsDateRange range,
   ) {
     final cardTxns = rangeTxns
@@ -218,21 +226,27 @@ class AnalyticsService {
           (spendByCard[t.paymentSourceId] ?? 0) + _netLifestyleSpend(t);
     }
 
+    final snapshotByCardId = <int, CardBillingSnapshot>{
+      for (final snapshot in billingSnapshots) snapshot.cardId: snapshot,
+    };
     final usage =
         cards
             .map((c) {
               final amount = spendByCard[c.id] ?? 0;
-              final utilization = c.creditLimit <= 0
-                  ? 0.0
-                  : (c.currentOutstanding / c.creditLimit)
-                        .clamp(0, 1)
-                        .toDouble();
+              final snapshot = snapshotByCardId[c.id];
+              final utilization =
+                  snapshot?.utilizationPercent ??
+                  (c.creditLimit <= 0
+                      ? 0.0
+                      : ((snapshot?.totalOutstanding ?? 0) / c.creditLimit)
+                            .clamp(0, 1)
+                            .toDouble());
               return CardUsageBreakdown(
                 cardId: c.id,
                 cardName: c.nickname,
                 last4: c.last4,
                 amount: amount,
-                outstanding: c.currentOutstanding,
+                outstanding: snapshot?.totalOutstanding ?? 0,
                 creditLimit: c.creditLimit,
                 utilization: utilization,
               );
@@ -240,9 +254,9 @@ class AnalyticsService {
             .toList(growable: false)
           ..sort((a, b) => b.amount.compareTo(a.amount));
 
-    final totalOutstanding = cards.fold<double>(
+    final totalOutstanding = billingSnapshots.fold<double>(
       0,
-      (s, c) => s + c.currentOutstanding,
+      (s, snapshot) => s + snapshot.totalOutstanding,
     );
     final totalLimit = cards.fold<double>(0, (s, c) => s + c.creditLimit);
     final utilization = totalLimit <= 0
@@ -476,10 +490,15 @@ class AnalyticsService {
   }
 
   double _netLifestyleSpend(Transaction t) {
+    final recoverableBase =
+        t.recoverableBaseAmount ??
+        (t.isForOthers
+            ? (t.amount - t.cashbackAmount).clamp(0, t.amount).toDouble()
+            : 0.0);
     final base =
         t.personalShareAmount ??
-        (t.isForOthers && t.recoverableAmount != null
-            ? (t.amount - t.recoverableAmount!).clamp(0, t.amount).toDouble()
+        (t.isForOthers
+            ? (t.amount - recoverableBase).clamp(0, t.amount).toDouble()
             : t.amount);
     return (base - t.cashbackAmount).clamp(0, double.infinity).toDouble();
   }

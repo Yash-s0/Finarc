@@ -612,6 +612,8 @@ class _ConfirmTransactionSheet extends ConsumerWidget {
                         cashbackAmount: item.cashbackAmount,
                         isForOthers: item.isForOthers,
                         recoverableAmount: item.recoverableAmount,
+                        recoveredAmount: item.recoveredAmount,
+                        recoverablePartyName: item.recoverablePartyName,
                         notes: item.notes,
                       ),
                     );
@@ -839,6 +841,8 @@ class _DuplicateWarningSheet extends ConsumerWidget {
                             cashbackAmount: pending.cashbackAmount,
                             isForOthers: pending.isForOthers,
                             recoverableAmount: pending.recoverableAmount,
+                            recoveredAmount: pending.recoveredAmount,
+                            recoverablePartyName: pending.recoverablePartyName,
                             notes: pending.notes,
                           ),
                         );

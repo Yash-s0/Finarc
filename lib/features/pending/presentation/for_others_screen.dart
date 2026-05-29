@@ -14,17 +14,14 @@ class ForOthersScreen extends StatefulWidget {
 class _ForOthersScreenState extends State<ForOthersScreen> {
   final _name = TextEditingController();
   final _total = TextEditingController();
-  final _myShare = TextEditingController();
-  final _recoverable = TextEditingController();
+  final _cashback = TextEditingController(text: '0');
   final _notes = TextEditingController();
-  bool _recoverableToggle = true;
 
   @override
   void dispose() {
     _name.dispose();
     _total.dispose();
-    _myShare.dispose();
-    _recoverable.dispose();
+    _cashback.dispose();
     _notes.dispose();
     super.dispose();
   }
@@ -32,11 +29,8 @@ class _ForOthersScreenState extends State<ForOthersScreen> {
   @override
   Widget build(BuildContext context) {
     final total = double.tryParse(_total.text) ?? 0;
-    final myShare = double.tryParse(_myShare.text) ?? 0;
-    final recoverable = _recoverableToggle
-        ? (double.tryParse(_recoverable.text) ??
-              (total - myShare).clamp(0, total))
-        : 0;
+    final cashback = double.tryParse(_cashback.text) ?? 0;
+    final recoverable = (total - cashback).clamp(0, total);
 
     return FinarcScaffold(
       appBar: const FinarcAppBar(title: 'For Others'),
@@ -47,11 +41,12 @@ class _ForOthersScreenState extends State<ForOthersScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const FinarcSectionHeader(title: 'People & Split'),
+                const FinarcSectionHeader(title: 'Who owes this?'),
                 const SizedBox(height: AppSpacing.sm),
                 FinarcTextField(
                   controller: _name,
-                  label: 'Person/Contact Name',
+                  label: 'Paid for whom?',
+                  onChanged: (_) => setState(() {}),
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Wrap(
@@ -76,33 +71,17 @@ class _ForOthersScreenState extends State<ForOthersScreen> {
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
-                  onTap: () => setState(() {}),
+                  onChanged: (_) => setState(() {}),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 FinarcTextField(
-                  controller: _myShare,
-                  label: 'My share',
+                  controller: _cashback,
+                  label: 'Cashback received',
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
-                  onTap: () => setState(() {}),
+                  onChanged: (_) => setState(() {}),
                 ),
-                const SizedBox(height: AppSpacing.xs),
-                SwitchListTile.adaptive(
-                  contentPadding: EdgeInsets.zero,
-                  value: _recoverableToggle,
-                  onChanged: (v) => setState(() => _recoverableToggle = v),
-                  title: const Text('Recoverable'),
-                ),
-                if (_recoverableToggle)
-                  FinarcTextField(
-                    controller: _recoverable,
-                    label: 'Recoverable amount',
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    onTap: () => setState(() {}),
-                  ),
                 const SizedBox(height: AppSpacing.sm),
                 FinarcTextField(
                   controller: _notes,
@@ -119,9 +98,10 @@ class _ForOthersScreenState extends State<ForOthersScreen> {
               children: [
                 const FinarcSectionHeader(title: 'Summary'),
                 const SizedBox(height: AppSpacing.sm),
+                _summaryLine(context, 'Paid for', _name.text.isEmpty ? '-' : _name.text),
                 _summaryLine(context, 'Total Paid', inr(total)),
-                _summaryLine(context, 'My Expense', inr(myShare)),
-                _summaryLine(context, 'Recoverable Amount', inr(recoverable)),
+                _summaryLine(context, 'Cashback', inr(cashback)),
+                _summaryLine(context, 'Recoverable', inr(recoverable)),
               ],
             ),
           ),

@@ -60,7 +60,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           side: BorderSide(
             color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-            width: 1,
+            width: 0.9,
           ),
           borderRadius: BorderRadius.circular(AppRadius.card),
         ),
@@ -69,8 +69,8 @@ class AppTheme {
         filled: true,
         fillColor: isDark ? AppColors.darkSurface : AppColors.lightSurfaceHigh,
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.sm,
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
@@ -88,7 +88,7 @@ class AppTheme {
           borderRadius: BorderRadius.circular(AppRadius.md),
           borderSide: BorderSide(
             color: isDark ? AppColors.darkPrimary : AppColors.lightPrimary,
-            width: 1.5,
+            width: 1.4,
           ),
         ),
       ),
@@ -111,7 +111,11 @@ class AppTheme {
         style: FilledButton.styleFrom(
           backgroundColor: scheme.primary,
           foregroundColor: scheme.onPrimary,
-          minimumSize: const Size.fromHeight(46),
+          minimumSize: const Size.fromHeight(48),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),
           ),
@@ -120,7 +124,11 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size.fromHeight(46),
+          minimumSize: const Size.fromHeight(44),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
           side: BorderSide(
             color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
           ),
@@ -150,24 +158,26 @@ class AppTheme {
             ? AppColors.darkSurfaceLow
             : AppColors.lightSurface,
         elevation: 0,
+        height: 58,
         indicatorColor: isDark
             ? AppColors.darkPrimarySoft
             : AppColors.lightPrimarySoft,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final isSelected = states.contains(WidgetState.selected);
           return textTheme.labelMedium?.copyWith(
             color: isSelected
                 ? scheme.onSurface
-                : scheme.onSurface.withValues(alpha: 0.56),
+                : scheme.onSurface.withValues(alpha: 0.5),
           );
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final isSelected = states.contains(WidgetState.selected);
           return IconThemeData(
             color: isSelected
-                ? scheme.onSurface
-                : scheme.onSurface.withValues(alpha: 0.62),
-            size: 22,
+                ? scheme.primary
+                : scheme.onSurface.withValues(alpha: 0.56),
+            size: 21,
           );
         }),
       ),

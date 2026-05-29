@@ -217,7 +217,9 @@ class LoanDetailScreen extends ConsumerWidget {
                             const SizedBox(width: AppSpacing.xs),
                             Expanded(
                               child: Text(
-                                '${data.payments[i].paymentDate.day}/${data.payments[i].paymentDate.month}/${data.payments[i].paymentDate.year}',
+                                transactionDateLabel(
+                                  data.payments[i].paymentDate,
+                                ),
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                             ),
@@ -255,7 +257,7 @@ class LoanDetailScreen extends ConsumerWidget {
                           amount: '-${inr(data.relatedTransactions[i].amount)}',
                           amountColor: AppColors.darkError,
                           meta:
-                              '${data.relatedTransactions[i].paymentSourceType.toUpperCase()} • ${data.relatedTransactions[i].transactionDate.day}/${data.relatedTransactions[i].transactionDate.month}',
+                              '${data.relatedTransactions[i].paymentSourceType.toUpperCase()} • ${transactionDateLabel(data.relatedTransactions[i].transactionDate)}',
                         ),
                         if (i != data.relatedTransactions.length - 1)
                           const SizedBox(height: AppSpacing.xs),

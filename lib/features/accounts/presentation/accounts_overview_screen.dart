@@ -206,7 +206,7 @@ class AccountsOverviewScreen extends ConsumerWidget {
                             title: data.recent[i].title,
                             subtitle: data.recent[i].category,
                             meta:
-                                '${_sourceLabel(data.recent[i].paymentSourceType)} • ${_shortDateTime(data.recent[i].transactionDate)}',
+                                '${_sourceLabel(data.recent[i].paymentSourceType)} • ${transactionDateLabel(data.recent[i].transactionDate)}',
                             amount:
                                 '${_activitySign(data.recent[i].title)}${inr(data.recent[i].amount)}',
                             amountColor:
@@ -275,14 +275,6 @@ class AccountsOverviewScreen extends ConsumerWidget {
   static String _shortDate(DateTime dt) {
     final d = dt.toLocal();
     return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}';
-  }
-
-  static String _shortDateTime(DateTime dt) {
-    final d = dt.toLocal();
-    final h = d.hour % 12 == 0 ? 12 : d.hour % 12;
-    final m = d.minute.toString().padLeft(2, '0');
-    final meridiem = d.hour >= 12 ? 'PM' : 'AM';
-    return '${d.day}/${d.month} $h:$m $meridiem';
   }
 
   static String _activitySign(String title) {

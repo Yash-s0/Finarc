@@ -258,7 +258,7 @@ class SplitGroupDetailScreen extends ConsumerWidget {
                       title: expense.title,
                       subtitle: expense.category,
                       meta:
-                          'Paid by $payer • ${expense.splitType.toUpperCase()}',
+                          'Paid by $payer • ${expense.splitType.toUpperCase()} • ${transactionDateLabel(expense.expenseDate)}',
                       amount: inr(expense.totalAmount),
                       amountColor: AppColors.darkError,
                       badges: [
@@ -288,11 +288,7 @@ class SplitGroupDetailScreen extends ConsumerWidget {
                     child: FinarcTransactionTile(
                       title: 'Settlement',
                       subtitle: '$fromName → $toName',
-                      meta: settlement.settlementDate
-                          .toLocal()
-                          .toString()
-                          .split('.')
-                          .first,
+                      meta: transactionDateLabel(settlement.settlementDate),
                       amount: inr(settlement.amount),
                       amountColor: AppColors.darkSuccess,
                       badges: const [

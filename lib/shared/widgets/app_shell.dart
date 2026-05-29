@@ -18,8 +18,8 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
-  static const double _bottomNavHeight = 68;
-  static const double _fabSize = 54;
+  static const double _bottomNavHeight = 60;
+  static const double _fabSize = 58;
 
   void _openQuickActions() {
     FinarcBottomSheet.show<void>(
@@ -67,9 +67,9 @@ class _AppShellState extends State<AppShell> {
       child: Row(
         children: [
           CircleAvatar(
-            radius: 18,
-            backgroundColor: AppColors.darkPrimarySoft,
-            child: Icon(icon, size: 18, color: AppColors.darkAccent),
+            radius: 17,
+            backgroundColor: AppColors.darkPrimarySoft.withValues(alpha: 0.95),
+            child: Icon(icon, size: 17, color: AppColors.darkAccent),
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
@@ -83,10 +83,6 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    final safeBottom = MediaQuery.viewPaddingOf(context).bottom;
-    final fabBottomInset =
-        (_bottomNavHeight + safeBottom) - (_fabSize / 2) + AppSpacing.xs;
-
     return FinarcScaffold(
       body: Stack(
         children: [
@@ -117,31 +113,31 @@ class _AppShellState extends State<AppShell> {
             ),
         ],
       ),
-      floatingActionButton: Padding(
-        padding: EdgeInsets.only(right: AppSpacing.sm, bottom: fabBottomInset),
-        child: DecoratedBox(
-          decoration: const BoxDecoration(
-            boxShadow: AppShadows.fab,
-            shape: BoxShape.circle,
-          ),
-          child: SizedBox(
-            height: _fabSize,
-            width: _fabSize,
-            child: FloatingActionButton(
-              onPressed: _openQuickActions,
-              backgroundColor: AppColors.darkPrimary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.pill),
-              ),
-              child: const Icon(Icons.bolt_rounded, size: 22),
+      floatingActionButton: DecoratedBox(
+        decoration: const BoxDecoration(
+          boxShadow: AppShadows.fab,
+          shape: BoxShape.circle,
+        ),
+        child: SizedBox(
+          height: _fabSize,
+          width: _fabSize,
+          child: FloatingActionButton(
+            onPressed: _openQuickActions,
+            backgroundColor: AppColors.darkPrimary,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+              side: const BorderSide(color: AppColors.darkAccent, width: 1),
             ),
+            child: const Icon(Icons.bolt_rounded, size: 24),
           ),
         ),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: SafeArea(
         top: false,
-        child: Container(
+        child: DecoratedBox(
           decoration: const BoxDecoration(
             color: AppColors.darkSurfaceLow,
             border: Border(top: BorderSide(color: AppColors.darkBorder)),

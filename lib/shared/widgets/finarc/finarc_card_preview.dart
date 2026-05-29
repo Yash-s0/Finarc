@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import 'finarc_card.dart';
@@ -37,19 +38,28 @@ class FinarcCardPreview extends StatelessWidget {
     return FinarcCard(
       onTap: onTap,
       padding: const EdgeInsets.all(AppSpacing.lg),
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          AppColors.darkPrimarySoft.withValues(alpha: 0.95),
+          AppColors.darkSurfaceHigh,
+        ],
+      ),
+      borderColor: AppColors.darkAccent.withValues(alpha: 0.42),
       child: Stack(
         children: [
           Positioned(
-            right: -28,
-            top: -34,
+            right: -24,
+            top: -20,
             child: Container(
-              height: 120,
-              width: 120,
+              height: 104,
+              width: 104,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    AppColors.darkAccent.withValues(alpha: 0.22),
+                    AppColors.darkAccent.withValues(alpha: 0.28),
                     Colors.transparent,
                   ],
                 ),
@@ -89,8 +99,8 @@ class FinarcCardPreview extends StatelessWidget {
                 outstanding,
                 style: AppTextStyles.amountStyle(
                   color: Colors.white,
-                  size: 22,
-                  weight: FontWeight.w700,
+                  size: 20,
+                  weight: FontWeight.w800,
                 ),
               ),
               const SizedBox(height: AppSpacing.xs),
@@ -98,7 +108,7 @@ class FinarcCardPreview extends StatelessWidget {
                 children: [
                   Expanded(
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(999),
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
                       child: LinearProgressIndicator(
                         value: utilizationPct,
                         minHeight: 6,
@@ -111,7 +121,7 @@ class FinarcCardPreview extends StatelessWidget {
                   ),
                   const SizedBox(width: AppSpacing.xs),
                   Text(
-                    '${(utilizationPct * 100).toStringAsFixed(0)}%',
+                    'Utilized ${(utilizationPct * 100).toStringAsFixed(0)}%',
                     style: Theme.of(context).textTheme.labelMedium,
                   ),
                 ],

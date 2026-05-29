@@ -1,19 +1,23 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  static const darkBg = Color(0xFF070707);
-  static const darkSurface = Color(0xFF111111);
-  static const darkSurfaceHigh = Color(0xFF151515);
-  static const darkSurfaceLow = Color(0xFF0D0D0D);
-  static const darkBorder = Color(0xFF2A2A2A);
-  static const darkPrimary = Color(0xFF5A6BFF);
-  static const darkPrimarySoft = Color(0xFF20264D);
-  static const darkAccent = Color(0xFF6E7BFF);
+  static const darkBg = Color(0xFF07111D);
+  static const darkSurface = Color(0xFF0D1B2D);
+  static const darkSurfaceHigh = Color(0xFF13263B);
+  static const darkSurfaceLow = Color(0xFF08111C);
+  static const darkBorder = Color(0xFF24364F);
+  static const darkPrimary = Color(0xFF6366F1);
+  static const darkPrimarySoft = Color(0xFF1B2550);
+  static const darkAccent = Color(0xFF7B7FFF);
+  static const darkBlue = Color(0xFF4BB5FF);
+  static const darkMint = Color(0xFF22C9A5);
+  static const darkOrange = Color(0xFFFFA44F);
+  static const darkPink = Color(0xFFFF6A9A);
   static const darkSuccess = Color(0xFF33C77C);
   static const darkWarning = Color(0xFFE3B248);
   static const darkError = Color(0xFFEF5B6D);
-  static const darkText = Color(0xFFF7F7F8);
-  static const darkTextMuted = Color(0xFF959595);
+  static const darkText = Color(0xFFF2F6FF);
+  static const darkTextMuted = Color(0xFF91A3BE);
 
   static const lightBg = Color(0xFFF4F7FF);
   static const lightSurface = Color(0xFFFFFFFF);

@@ -3,9 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_providers.dart';
+import '../../alerts/data/alerts_providers.dart';
 import '../../cards/data/billing_service.dart';
+import '../../analytics/data/analytics_providers.dart';
 import '../../expenses/data/expenses_providers.dart';
 import '../../loans/data/loan_service.dart';
+import '../../pending/data/pending_providers.dart';
+import '../../recoverables/data/recoverables_service.dart';
 import '../../split/data/split_service.dart';
 import 'net_worth_service.dart';
 
@@ -14,6 +18,7 @@ class DashboardSnapshot {
     required this.netWorth,
     required this.bankBalance,
     required this.cardDues,
+    required this.cardOutstanding,
     required this.cashInHand,
     required this.monthlySpends,
     required this.pendingCount,
@@ -39,6 +44,7 @@ class DashboardSnapshot {
   final double netWorth;
   final double bankBalance;
   final double cardDues;
+  final double cardOutstanding;
   final double cashInHand;
   final double monthlySpends;
   final int pendingCount;
@@ -102,15 +108,32 @@ final dashboardProvider = FutureProvider<DashboardSnapshot>((ref) async {
     db.appSettings,
   )..limit(1)).getSingleOrNull();
   final billing = BillingService(db);
+  final cardSnapshots = await billing.getAllCardBillingSnapshots();
+  final cardOutstanding = cardSnapshots.fold<double>(
+    0,
+    (sum, snapshot) => sum + snapshot.totalOutstanding,
+  );
+  final cardDueAmount = cardSnapshots.fold<double>(
+    0,
+    (sum, snapshot) => sum + snapshot.billedDue,
+  );
   final dueSoonBillsCount = bills.where((bill) {
     final status = billing.getDueStatus(bill);
     return status == 'dueSoon' || status == 'overdue';
   }).length;
+  final splitService = SplitService(db, ref.read(transactionEngineProvider));
+  final recoverablesService = RecoverablesService(
+    db,
+    splitService,
+    ref.read(transactionEngineProvider),
+  );
+  final recoverableSnapshot = await recoverablesService.buildSnapshot();
 
   final netWorthService = NetWorthService(
     db,
     LoanService(db),
-    SplitService(db, ref.read(transactionEngineProvider)),
+    splitService,
+    billing,
   );
   final breakdown = await netWorthService.calculate();
 
@@ -139,13 +162,14 @@ final dashboardProvider = FutureProvider<DashboardSnapshot>((ref) async {
   return DashboardSnapshot(
     netWorth: breakdown.netWorth,
     bankBalance: breakdown.bankBalance,
-    cardDues: breakdown.cardDues,
+    cardDues: cardDueAmount,
+    cardOutstanding: cardOutstanding,
     cashInHand: breakdown.cashBalance,
     monthlySpends: monthlySpends,
     pendingCount: pendingCount,
     loansOutstanding: breakdown.loanOutstanding,
-    recoverableAmount: breakdown.recoverables + breakdown.splitReceivables,
-    splitReceivableAmount: breakdown.splitReceivables,
+    recoverableAmount: recoverableSnapshot.actionableRecoverables,
+    splitReceivableAmount: recoverableSnapshot.splitReceivables,
     splitPayableAmount: breakdown.splitPayables,
     recentTransactions: txns,
     dueSoonBillsCount: dueSoonBillsCount,
@@ -162,4 +186,20 @@ final dashboardProvider = FutureProvider<DashboardSnapshot>((ref) async {
     unreadAlertsCount: unreadAlertsCount,
     latestImportantAlert: latestImportantAlert,
   );
+});
+
+final dashboardRefreshActionsProvider = Provider<Future<void> Function()>((
+  ref,
+) {
+  return () async {
+    await Future.wait([
+      ref.refresh(dashboardProvider.future),
+      ref.refresh(alertsInboxProvider.future),
+      ref.refresh(alertsUnreadCountProvider.future),
+      ref.refresh(latestImportantAlertProvider.future),
+      ref.refresh(pendingTransactionsProvider.future),
+      ref.refresh(pendingCountProvider.future),
+      ref.refresh(analyticsSnapshotProvider.future),
+    ]);
+  };
 });

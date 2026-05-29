@@ -41,3 +41,23 @@ final paymentSourcesProvider = FutureProvider((ref) async {
     cashWallets: cashWallets,
   );
 });
+
+final recoverablePartySuggestionsProvider = FutureProvider<List<String>>((
+  ref,
+) async {
+  await ref.watch(seedProvider.future);
+  final db = ref.read(appDatabaseProvider);
+  final txnNames = (await db.select(db.transactions).get())
+      .map((t) => t.recoverablePartyName?.trim())
+      .whereType<String>()
+      .where((name) => name.isNotEmpty)
+      .toSet();
+  final pendingNames = (await db.select(db.pendingTransactions).get())
+      .map((t) => t.recoverablePartyName?.trim())
+      .whereType<String>()
+      .where((name) => name.isNotEmpty)
+      .toSet();
+  final names = {...txnNames, ...pendingNames}.toList(growable: false)
+    ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+  return names;
+});

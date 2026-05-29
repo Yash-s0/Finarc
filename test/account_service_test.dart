@@ -141,7 +141,7 @@ void main() {
     expect(bank.currentBalance, 10500);
   });
 
-  test('card payment deductions reduce bank and card outstanding', () async {
+  test('card payment deductions reduce bank and settle billed cycle', () async {
     final billId = await db
         .into(db.cardBills)
         .insert(
@@ -168,8 +168,15 @@ void main() {
     final card = await (db.select(
       db.creditCards,
     )..where((c) => c.id.equals(1))).getSingle();
+    final bill = await (db.select(
+      db.cardBills,
+    )..where((b) => b.id.equals(billId))).getSingle();
 
     expect(bank.currentBalance, 8800);
-    expect(card.currentOutstanding, 3800);
+    // Canonical outstanding is statement-driven; legacy card.currentOutstanding
+    // is preserved for migration/backward compatibility.
+    expect(card.currentOutstanding, 5000);
+    expect(bill.status, 'paid');
+    expect(bill.paidAmount, 1200);
   });
 }

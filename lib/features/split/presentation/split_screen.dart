@@ -143,7 +143,7 @@ class SplitScreen extends ConsumerWidget {
                           title: e.title,
                           subtitle: e.category,
                           meta:
-                              'Group #${e.groupId} • ${e.splitType.toUpperCase()}',
+                              'Group #${e.groupId} • ${e.splitType.toUpperCase()} • ${transactionDateLabel(e.expenseDate)}',
                           amount: inr(e.totalAmount),
                           amountColor: AppColors.darkError,
                         ),
@@ -158,7 +158,8 @@ class SplitScreen extends ConsumerWidget {
                           title: 'Settlement',
                           subtitle:
                               'Member ${s.fromMemberId} → ${s.toMemberId}',
-                          meta: 'Group #${s.groupId}',
+                          meta:
+                              'Group #${s.groupId} • ${transactionDateLabel(s.settlementDate)}',
                           amount: inr(s.amount),
                           amountColor: AppColors.darkSuccess,
                         ),

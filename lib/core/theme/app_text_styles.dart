@@ -8,66 +8,72 @@ class AppTextStyles {
     return TextTheme(
       displayMedium: TextStyle(
         fontFamily: fontFamily,
-        fontSize: 30,
+        fontSize: 32,
+        fontWeight: FontWeight.w800,
+        color: colorScheme.onSurface,
+        height: 1.1,
+      ),
+      headlineSmall: TextStyle(
+        fontFamily: fontFamily,
+        fontSize: 22,
         fontWeight: FontWeight.w700,
         color: colorScheme.onSurface,
         height: 1.15,
       ),
-      headlineSmall: TextStyle(
-        fontFamily: fontFamily,
-        fontSize: 24,
-        fontWeight: FontWeight.w700,
-        color: colorScheme.onSurface,
-        height: 1.2,
-      ),
       titleLarge: TextStyle(
         fontFamily: fontFamily,
-        fontSize: 20,
+        fontSize: 19,
         fontWeight: FontWeight.w700,
         color: colorScheme.onSurface,
       ),
       titleMedium: TextStyle(
         fontFamily: fontFamily,
-        fontSize: 16,
-        fontWeight: FontWeight.w600,
+        fontSize: 15,
+        fontWeight: FontWeight.w700,
         color: colorScheme.onSurface,
       ),
       titleSmall: TextStyle(
         fontFamily: fontFamily,
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: FontWeight.w600,
         color: colorScheme.onSurface,
       ),
       bodyLarge: TextStyle(
         fontFamily: fontFamily,
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: FontWeight.w500,
         color: colorScheme.onSurface,
       ),
       bodyMedium: TextStyle(
         fontFamily: fontFamily,
-        fontSize: 13,
+        fontSize: 12.5,
         fontWeight: FontWeight.w500,
-        color: colorScheme.onSurface.withValues(alpha: 0.78),
+        color: colorScheme.onSurface.withValues(alpha: 0.8),
+      ),
+      bodySmall: TextStyle(
+        fontFamily: fontFamily,
+        fontSize: 11.5,
+        fontWeight: FontWeight.w500,
+        color: colorScheme.onSurface.withValues(alpha: 0.68),
       ),
       labelLarge: TextStyle(
         fontFamily: fontFamily,
-        fontSize: 13,
+        fontSize: 12.5,
         fontWeight: FontWeight.w600,
         color: colorScheme.onSurface,
       ),
       labelMedium: TextStyle(
         fontFamily: fontFamily,
-        fontSize: 11,
+        fontSize: 10.5,
         fontWeight: FontWeight.w600,
-        color: colorScheme.onSurface.withValues(alpha: 0.64),
+        color: colorScheme.onSurface.withValues(alpha: 0.67),
       ),
       labelSmall: TextStyle(
         fontFamily: fontFamily,
-        fontSize: 10,
+        fontSize: 9.5,
         fontWeight: FontWeight.w600,
-        letterSpacing: 1.2,
-        color: colorScheme.onSurface.withValues(alpha: 0.58),
+        letterSpacing: 1.0,
+        color: colorScheme.onSurface.withValues(alpha: 0.54),
       ),
     );
   }
@@ -83,7 +89,7 @@ class AppTextStyles {
       fontWeight: weight,
       color: color,
       height: 1.12,
-      letterSpacing: -0.2,
+      letterSpacing: -0.15,
     );
   }
 }

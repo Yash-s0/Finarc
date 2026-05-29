@@ -9,6 +9,8 @@ class PendingEditData {
     this.cashbackAmount,
     this.isForOthers = false,
     this.recoverableAmount,
+    this.recoveredAmount,
+    this.recoverablePartyName,
     this.notes,
   });
 
@@ -21,5 +23,7 @@ class PendingEditData {
   final double? cashbackAmount;
   final bool isForOthers;
   final double? recoverableAmount;
+  final double? recoveredAmount;
+  final String? recoverablePartyName;
   final String? notes;
 }

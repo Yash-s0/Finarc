@@ -76,6 +76,29 @@ class _AddIncomeScreenState extends ConsumerState<AddIncomeScreen> {
             padding: const EdgeInsets.all(AppSpacing.md),
             children: [
               FinarcCard(
+                padding: const EdgeInsets.all(AppSpacing.xs),
+                child: SegmentedButton<String>(
+                  showSelectedIcon: false,
+                  segments: const [
+                    ButtonSegment<String>(
+                      value: 'expense',
+                      label: Text('Expense'),
+                    ),
+                    ButtonSegment<String>(
+                      value: 'income',
+                      label: Text('Income'),
+                    ),
+                  ],
+                  selected: const {'income'},
+                  onSelectionChanged: (selection) {
+                    if (selection.first == 'expense') {
+                      context.go('/expenses/add');
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              FinarcCard(
                 child: Row(
                   children: [
                     const CircleAvatar(

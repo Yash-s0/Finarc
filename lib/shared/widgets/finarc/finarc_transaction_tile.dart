@@ -4,6 +4,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
+import 'finarc_status_badge.dart';
 
 class FinarcTransactionTile extends StatelessWidget {
   const FinarcTransactionTile({
@@ -16,6 +17,10 @@ class FinarcTransactionTile extends StatelessWidget {
     this.amountColor,
     this.onTap,
     this.meta,
+    this.amountMeta,
+    this.statusLabel,
+    this.statusTone = FinarcStatusTone.neutral,
+    this.compact = false,
   });
 
   final String title;
@@ -26,13 +31,21 @@ class FinarcTransactionTile extends StatelessWidget {
   final Color? amountColor;
   final VoidCallback? onTap;
   final String? meta;
+  final String? amountMeta;
+  final String? statusLabel;
+  final FinarcStatusTone statusTone;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
+    final iconGap = compact ? AppSpacing.xs : AppSpacing.sm;
+    final titleStyle = compact
+        ? Theme.of(context).textTheme.labelLarge
+        : Theme.of(context).textTheme.titleSmall;
     final content = Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.sm,
-        vertical: AppSpacing.sm,
+        vertical: AppSpacing.xs,
       ),
       decoration: BoxDecoration(
         color: AppColors.darkSurfaceLow,
@@ -40,21 +53,19 @@ class FinarcTransactionTile extends StatelessWidget {
         border: Border.all(color: AppColors.darkBorder),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (prefix != null) ...[
-            prefix!,
-            const SizedBox(width: AppSpacing.sm),
-          ],
+          if (prefix != null) ...[prefix!, SizedBox(width: iconGap)],
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: Theme.of(context).textTheme.titleSmall),
+                Text(title, style: titleStyle),
                 const SizedBox(height: 2),
                 Text(subtitle, style: Theme.of(context).textTheme.labelMedium),
                 if (meta != null) ...[
                   const SizedBox(height: 2),
-                  Text(meta!, style: Theme.of(context).textTheme.labelMedium),
+                  Text(meta!, style: Theme.of(context).textTheme.bodySmall),
                 ],
                 if (badges.isNotEmpty)
                   Padding(
@@ -64,16 +75,43 @@ class FinarcTransactionTile extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: AppSpacing.sm),
-          Text(
-            amount,
-            textAlign: TextAlign.end,
-            style: AppTextStyles.amountStyle(
-              color: amountColor ?? Theme.of(context).colorScheme.onSurface,
-              size: 15,
-              weight: FontWeight.w700,
-            ),
+          const SizedBox(width: AppSpacing.xs),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                amount,
+                textAlign: TextAlign.end,
+                style: AppTextStyles.amountStyle(
+                  color: amountColor ?? Theme.of(context).colorScheme.onSurface,
+                  size: compact ? 13.5 : 14.5,
+                  weight: FontWeight.w700,
+                ),
+              ),
+              if (amountMeta != null) ...[
+                const SizedBox(height: 2),
+                Text(amountMeta!, style: Theme.of(context).textTheme.bodySmall),
+              ],
+              if (statusLabel != null) ...[
+                const SizedBox(height: 4),
+                FinarcStatusBadge(
+                  label: statusLabel!,
+                  tone: statusTone,
+                  compact: true,
+                ),
+              ],
+            ],
           ),
+          if (onTap != null) ...[
+            const SizedBox(width: AppSpacing.xs),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 16,
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.5),
+            ),
+          ],
         ],
       ),
     );

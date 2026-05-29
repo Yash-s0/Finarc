@@ -145,7 +145,7 @@ void main() {
     expect(engine.netExpense(txn), 900);
   });
 
-  test('for-others transaction tracks recoverable amount', () async {
+  test('for-others transaction auto-calculates recoverable amount', () async {
     await engine.addTransaction(
       AddTransactionInput(
         type: TransactionType.bank,
@@ -155,13 +155,112 @@ void main() {
         transactionDate: DateTime(2026, 5, 24),
         paymentSourceType: PaymentSourceType.bank,
         paymentSourceId: bankId,
+        cashbackAmount: 50,
         isForOthers: true,
-        recoverableAmount: 500,
+        recoverablePartyName: 'Rahul',
       ),
     );
     final txn = await (db.select(db.transactions)..limit(1)).getSingle();
     expect(txn.isForOthers, true);
-    expect(txn.recoverableAmount, 500);
+    expect(txn.recoverableAmount, 750);
+    expect(txn.recoverablePartyName, 'Rahul');
+    expect(txn.recoverableStatus, 'unpaid');
+    expect(txn.recoverableBaseAmount, 750);
+    expect(txn.recoveredAmount, 0);
+  });
+
+  test('editing recoverable transaction recalculates amount', () async {
+    await engine.addTransaction(
+      AddTransactionInput(
+        type: TransactionType.bank,
+        amount: 1000,
+        title: 'Team lunch',
+        category: 'Food',
+        transactionDate: DateTime(2026, 5, 24),
+        paymentSourceType: PaymentSourceType.bank,
+        paymentSourceId: bankId,
+        cashbackAmount: 100,
+        isForOthers: true,
+        recoverablePartyName: 'Neha',
+      ),
+    );
+    final txn = await (db.select(db.transactions)..limit(1)).getSingle();
+
+    await engine.updateTransaction(
+      txn.id,
+      AddTransactionInput(
+        type: TransactionType.bank,
+        amount: 1200,
+        title: 'Team lunch updated',
+        category: 'Food',
+        transactionDate: DateTime(2026, 5, 24),
+        paymentSourceType: PaymentSourceType.bank,
+        paymentSourceId: bankId,
+        cashbackAmount: 200,
+        isForOthers: true,
+        recoverablePartyName: 'Neha',
+      ),
+    );
+
+    final updated = await (db.select(db.transactions)..limit(1)).getSingle();
+    expect(updated.amount, 1200);
+    expect(updated.cashbackAmount, 200);
+    expect(updated.recoverableAmount, 1000);
+    expect(updated.recoverablePartyName, 'Neha');
+  });
+
+  test('mark recovered updates settlement status', () async {
+    await engine.addTransaction(
+      AddTransactionInput(
+        type: TransactionType.bank,
+        amount: 600,
+        title: 'Shared dinner',
+        category: 'Food',
+        transactionDate: DateTime(2026, 5, 24),
+        paymentSourceType: PaymentSourceType.bank,
+        paymentSourceId: bankId,
+        isForOthers: true,
+        recoverablePartyName: 'Aman',
+      ),
+    );
+    final txn = await (db.select(db.transactions)..limit(1)).getSingle();
+
+    await engine.markRecovered(txn.id);
+
+    final recovered = await (db.select(db.transactions)..limit(1)).getSingle();
+    expect(recovered.recoverableStatus, 'recovered');
+    expect(recovered.recoveredAt != null, true);
+  });
+
+  test('deleting recoverable transaction reverses impact safely', () async {
+    await engine.addTransaction(
+      AddTransactionInput(
+        type: TransactionType.bank,
+        amount: 900,
+        title: 'Shared ride',
+        category: 'Travel',
+        transactionDate: DateTime(2026, 5, 24),
+        paymentSourceType: PaymentSourceType.bank,
+        paymentSourceId: bankId,
+        cashbackAmount: 100,
+        isForOthers: true,
+        recoverablePartyName: 'Roommate',
+      ),
+    );
+
+    final bankBeforeDelete = await (db.select(
+      db.bankAccounts,
+    )..where((b) => b.id.equals(bankId))).getSingle();
+    expect(bankBeforeDelete.currentBalance, 9100);
+
+    final txn = await (db.select(db.transactions)..limit(1)).getSingle();
+    await engine.deleteTransaction(txn.id);
+
+    final bankAfterDelete = await (db.select(
+      db.bankAccounts,
+    )..where((b) => b.id.equals(bankId))).getSingle();
+    expect(bankAfterDelete.currentBalance, 10000);
+    expect(await (db.select(db.transactions)).get(), isEmpty);
   });
 
   test('invalid amount fails', () async {

@@ -6,6 +6,27 @@ import '../../../core/database/database_providers.dart';
 import '../../alerts/data/alerts_providers.dart';
 import 'billing_service.dart';
 
+DateTime _dateOnly(DateTime value) =>
+    DateTime(value.year, value.month, value.day);
+
+class CardOverviewSummary {
+  const CardOverviewSummary({
+    required this.card,
+    required this.billedDue,
+    required this.unbilledSpends,
+    required this.totalOutstanding,
+    required this.availableLimit,
+    required this.utilization,
+  });
+
+  final CreditCard card;
+  final double billedDue;
+  final double unbilledSpends;
+  final double totalOutstanding;
+  final double availableLimit;
+  final double utilization;
+}
+
 final billingServiceProvider = Provider<BillingService>((ref) {
   return BillingService(ref.read(appDatabaseProvider));
 });
@@ -14,25 +35,41 @@ final cardsOverviewProvider = FutureProvider((ref) async {
   await ref.watch(seedProvider.future);
   final db = ref.read(appDatabaseProvider);
   final cards = await db.select(db.creditCards).get();
+  final billing = ref.read(billingServiceProvider);
 
-  final totalDues = cards.fold<double>(0, (s, c) => s + c.currentOutstanding);
-  final totalLimit = cards.fold<double>(0, (s, c) => s + c.creditLimit);
-  final utilization = totalLimit == 0 ? 0.0 : totalDues / totalLimit;
-
+  var billedDue = 0.0;
   var unbilled = 0.0;
+  var totalOutstanding = 0.0;
+  var totalLimit = 0.0;
+  final summaries = <CardOverviewSummary>[];
   for (final card in cards) {
-    final cardUnbilled = await ref
-        .read(billingServiceProvider)
-        .getUnbilledTransactions(card.id);
-    unbilled += cardUnbilled.fold<double>(0, (s, t) => s + t.amount);
+    final snapshot = await billing.getCardBillingSnapshot(card);
+
+    billedDue += snapshot.billedDue;
+    unbilled += snapshot.unbilledSpends;
+    totalOutstanding += snapshot.totalOutstanding;
+    totalLimit += card.creditLimit;
+    summaries.add(
+      CardOverviewSummary(
+        card: card,
+        billedDue: snapshot.billedDue,
+        unbilledSpends: snapshot.unbilledSpends,
+        totalOutstanding: snapshot.totalOutstanding,
+        availableLimit: snapshot.availableLimit,
+        utilization: snapshot.utilizationPercent,
+      ),
+    );
   }
+  final utilization = totalLimit == 0 ? 0.0 : totalOutstanding / totalLimit;
 
   return (
     cards: cards,
-    totalDues: totalDues,
+    billedDue: billedDue,
+    totalOutstanding: totalOutstanding,
     totalLimit: totalLimit,
     utilization: utilization,
     unbilled: unbilled,
+    cardSummaries: summaries,
   );
 });
 
@@ -41,8 +78,11 @@ class CardDetailViewModel {
     required this.card,
     required this.recentTransactions,
     required this.currentBill,
+    required this.currentDueAmount,
+    required this.unbilledAmount,
     required this.unbilledTransactions,
     required this.billedTransactions,
+    required this.totalOutstanding,
     required this.availableLimit,
     required this.utilization,
     required this.billStatus,
@@ -52,8 +92,11 @@ class CardDetailViewModel {
   final CreditCard card;
   final List<Transaction> recentTransactions;
   final CardBill? currentBill;
+  final double currentDueAmount;
+  final double unbilledAmount;
   final List<Transaction> unbilledTransactions;
   final List<Transaction> billedTransactions;
+  final double totalOutstanding;
   final double availableLimit;
   final double utilization;
   final String billStatus;
@@ -71,35 +114,31 @@ final cardDetailProvider = FutureProvider.family<CardDetailViewModel, int>((
   final card = await (db.select(
     db.creditCards,
   )..where((c) => c.id.equals(cardId))).getSingle();
-  final currentBill = await billing.generateBillForCard(cardId);
-  final unbilledTransactions = await billing.getUnbilledTransactions(cardId);
-  final billedTransactions = currentBill == null
-      ? <Transaction>[]
-      : await billing.getBilledTransactions(cardId, currentBill.id);
-  final recentTransactions =
-      await (db.select(db.transactions)
-            ..where(
-              (t) =>
-                  t.paymentSourceType.equals('creditCard') &
-                  t.paymentSourceId.equals(cardId),
-            )
-            ..orderBy([(t) => OrderingTerm.desc(t.transactionDate)])
-            ..limit(10))
-          .get();
-  final availableLimit = await billing.calculateAvailableLimit(cardId);
-  final utilization = await billing.calculateUtilization(cardId);
+  final snapshot = await billing.getCardBillingSnapshot(card);
+  final currentBill = snapshot.latestUnpaidBill;
+  final currentDueAmount = snapshot.billedDue;
+  final unbilledTransactions = snapshot.unbilledTransactions;
+  final unbilledAmount = snapshot.unbilledSpends;
+  final billedTransactions = snapshot.billedTransactions;
+  final recentTransactions = snapshot.recentTransactions;
+  final availableLimit = snapshot.availableLimit;
+  final utilization = snapshot.utilizationPercent;
+  final totalOutstanding = snapshot.totalOutstanding;
 
   final dueDate = currentBill?.dueDate;
   final dueDays = dueDate == null
       ? 0
-      : dueDate.difference(DateTime.now()).inDays;
+      : _dateOnly(dueDate).difference(_dateOnly(DateTime.now())).inDays;
 
   return CardDetailViewModel(
     card: card,
     recentTransactions: recentTransactions,
     currentBill: currentBill,
+    currentDueAmount: currentDueAmount,
+    unbilledAmount: unbilledAmount,
     unbilledTransactions: unbilledTransactions,
     billedTransactions: billedTransactions,
+    totalOutstanding: totalOutstanding,
     availableLimit: availableLimit,
     utilization: utilization,
     billStatus: currentBill == null

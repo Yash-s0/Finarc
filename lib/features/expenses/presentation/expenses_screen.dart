@@ -55,40 +55,47 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
         ),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (txns) {
-          final filtered = txns.where((txn) {
-            if (_typeFilter == 'income' &&
-                txn.type != 'income' &&
-                txn.type != 'refund') {
-              return false;
-            }
-            if (_typeFilter == 'expense' &&
-                (txn.type == 'income' || txn.type == 'refund')) {
-              return false;
-            }
-            if (_sourceFilter != 'all' && txn.paymentSourceType != _sourceFilter) {
-              return false;
-            }
-            if (_categoryFilter != 'all' &&
-                txn.category.toLowerCase() != _categoryFilter.toLowerCase()) {
-              return false;
-            }
-            if (_dateRange != null &&
-                !_dateRange!.start.isBefore(txn.transactionDate) &&
-                _dateRange!.start.day != txn.transactionDate.day) {
-              return false;
-            }
-            if (_dateRange != null &&
-                !_dateRange!.end.add(const Duration(days: 1)).isAfter(txn.transactionDate)) {
-              return false;
-            }
-            final query = _search.text.trim().toLowerCase();
-            if (query.isNotEmpty) {
-              final haystack =
-                  '${txn.title} ${txn.category} ${txn.notes ?? ''}'.toLowerCase();
-              if (!haystack.contains(query)) return false;
-            }
-            return true;
-          }).toList(growable: false);
+          final filtered = txns
+              .where((txn) {
+                if (_typeFilter == 'income' &&
+                    txn.type != 'income' &&
+                    txn.type != 'refund') {
+                  return false;
+                }
+                if (_typeFilter == 'expense' &&
+                    (txn.type == 'income' || txn.type == 'refund')) {
+                  return false;
+                }
+                if (_sourceFilter != 'all' &&
+                    txn.paymentSourceType != _sourceFilter) {
+                  return false;
+                }
+                if (_categoryFilter != 'all' &&
+                    txn.category.toLowerCase() !=
+                        _categoryFilter.toLowerCase()) {
+                  return false;
+                }
+                if (_dateRange != null &&
+                    !_dateRange!.start.isBefore(txn.transactionDate) &&
+                    _dateRange!.start.day != txn.transactionDate.day) {
+                  return false;
+                }
+                if (_dateRange != null &&
+                    !_dateRange!.end
+                        .add(const Duration(days: 1))
+                        .isAfter(txn.transactionDate)) {
+                  return false;
+                }
+                final query = _search.text.trim().toLowerCase();
+                if (query.isNotEmpty) {
+                  final haystack =
+                      '${txn.title} ${txn.category} ${txn.notes ?? ''}'
+                          .toLowerCase();
+                  if (!haystack.contains(query)) return false;
+                }
+                return true;
+              })
+              .toList(growable: false);
 
           final grouped = <String, List<dynamic>>{};
           for (final txn in filtered) {
@@ -141,11 +148,31 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  _filterChip('All', _typeFilter == 'all', () => setState(() => _typeFilter = 'all')),
-                  _filterChip('Expense', _typeFilter == 'expense', () => setState(() => _typeFilter = 'expense')),
-                  _filterChip('Income', _typeFilter == 'income', () => setState(() => _typeFilter = 'income')),
-                  _filterChip('Card', _sourceFilter == 'creditCard', () => setState(() => _sourceFilter = 'creditCard')),
-                  _filterChip('UPI', _sourceFilter == 'upi', () => setState(() => _sourceFilter = 'upi')),
+                  _filterChip(
+                    'All',
+                    _typeFilter == 'all',
+                    () => setState(() => _typeFilter = 'all'),
+                  ),
+                  _filterChip(
+                    'Expense',
+                    _typeFilter == 'expense',
+                    () => setState(() => _typeFilter = 'expense'),
+                  ),
+                  _filterChip(
+                    'Income',
+                    _typeFilter == 'income',
+                    () => setState(() => _typeFilter = 'income'),
+                  ),
+                  _filterChip(
+                    'Card',
+                    _sourceFilter == 'creditCard',
+                    () => setState(() => _sourceFilter = 'creditCard'),
+                  ),
+                  _filterChip(
+                    'UPI',
+                    _sourceFilter == 'upi',
+                    () => setState(() => _sourceFilter = 'upi'),
+                  ),
                   _filterChip('Reset', false, () {
                     setState(() {
                       _typeFilter = 'all';
@@ -165,13 +192,19 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                       initialValue: _categoryFilter,
                       decoration: const InputDecoration(labelText: 'Category'),
                       items: [
-                        const DropdownMenuItem(value: 'all', child: Text('All')),
+                        const DropdownMenuItem(
+                          value: 'all',
+                          child: Text('All'),
+                        ),
                         ...txns
                             .map((t) => t.category)
                             .toSet()
-                            .map((c) => DropdownMenuItem(value: c, child: Text(c))),
+                            .map(
+                              (c) => DropdownMenuItem(value: c, child: Text(c)),
+                            ),
                       ],
-                      onChanged: (v) => setState(() => _categoryFilter = v ?? 'all'),
+                      onChanged: (v) =>
+                          setState(() => _categoryFilter = v ?? 'all'),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.xs),
@@ -184,9 +217,13 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                         DropdownMenuItem(value: 'bank', child: Text('Bank')),
                         DropdownMenuItem(value: 'upi', child: Text('UPI')),
                         DropdownMenuItem(value: 'cash', child: Text('Cash')),
-                        DropdownMenuItem(value: 'creditCard', child: Text('Card')),
+                        DropdownMenuItem(
+                          value: 'creditCard',
+                          child: Text('Card'),
+                        ),
                       ],
-                      onChanged: (v) => setState(() => _sourceFilter = v ?? 'all'),
+                      onChanged: (v) =>
+                          setState(() => _sourceFilter = v ?? 'all'),
                     ),
                   ),
                 ],
@@ -258,11 +295,12 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                               bottom: AppSpacing.xs,
                             ),
                             child: FinarcTransactionTile(
-                              onTap: () => context.push('/expenses/transaction/${t.id}'),
+                              onTap: () =>
+                                  context.push('/expenses/transaction/${t.id}'),
                               title: t.title,
                               subtitle: t.category,
                               meta:
-                                  '${_sourceLabel(t.paymentSourceType)} • ${_timeLabel(t.transactionDate)}',
+                                  '${_sourceLabel(t.paymentSourceType)} • ${transactionDateLabel(t.transactionDate)}',
                               amount:
                                   '${isPositive ? '+' : '-'}${inr(t.amount)}',
                               amountColor: isPositive
@@ -303,8 +341,22 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                                 if (t.isForOthers)
                                   _badge(
                                     context,
-                                    'Recoverable ${inr(t.recoverableAmount ?? 0)}',
+                                    '${t.recoverablePartyName ?? 'Recoverable'} ${inr(t.recoverableAmount ?? 0)}',
                                     FinarcStatusTone.warning,
+                                  ),
+                                if (t.isForOthers)
+                                  _badge(
+                                    context,
+                                    t.recoverableStatus == 'recovered'
+                                        ? 'Recovered'
+                                        : t.recoverableStatus == 'partial'
+                                        ? 'Partial'
+                                        : 'Unpaid',
+                                    t.recoverableStatus == 'recovered'
+                                        ? FinarcStatusTone.success
+                                        : t.recoverableStatus == 'partial'
+                                        ? FinarcStatusTone.info
+                                        : FinarcStatusTone.warning,
                                   ),
                                 if (t.linkedSplitExpenseId != null ||
                                     t.splitGroupId != null)
@@ -390,14 +442,6 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     return '${target.day.toString().padLeft(2, '0')}/${target.month.toString().padLeft(2, '0')}/${target.year}';
   }
 
-  static String _timeLabel(DateTime date) {
-    final d = date.toLocal();
-    final hour = d.hour % 12 == 0 ? 12 : d.hour % 12;
-    final min = d.minute.toString().padLeft(2, '0');
-    final meridiem = d.hour >= 12 ? 'PM' : 'AM';
-    return '$hour:$min $meridiem';
-  }
-
   static IconData _iconForType(String type, String source) {
     if (type == 'loanEmi') return Icons.account_balance_outlined;
     if (type == 'income' || type == 'refund') return Icons.south_west_rounded;
@@ -411,4 +455,3 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     return FinarcActionChip(label: label, selected: selected, onTap: onTap);
   }
 }
- 

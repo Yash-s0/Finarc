@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../cards/data/billing_service.dart';
 import '../models/transaction_types.dart';
 
 class AddTransactionInput {
@@ -16,6 +17,12 @@ class AddTransactionInput {
     this.cashbackAmount = 0,
     this.isForOthers = false,
     this.recoverableAmount,
+    this.recoveredAmount,
+    this.recoverablePartyName,
+    this.recoverablePartyNotes,
+    this.recoverablePartyPhone,
+    this.recoverableStatus,
+    this.recoveredAt,
     this.confirmed = true,
     this.detectedSourceType,
     this.linkedSplitExpenseId,
@@ -35,6 +42,12 @@ class AddTransactionInput {
   final double cashbackAmount;
   final bool isForOthers;
   final double? recoverableAmount;
+  final double? recoveredAmount;
+  final String? recoverablePartyName;
+  final String? recoverablePartyNotes;
+  final String? recoverablePartyPhone;
+  final String? recoverableStatus;
+  final DateTime? recoveredAt;
   final bool confirmed;
   final String? detectedSourceType;
   final int? linkedSplitExpenseId;
@@ -48,10 +61,13 @@ class TransactionEngine {
 
   final AppDatabase _db;
 
+  BillingService get _billing => BillingService(_db);
+
   Future<void> addTransaction(AddTransactionInput input) async {
     _validate(input);
     final sourceId = input.paymentSourceId!;
 
+    int? insertedId;
     await _db.transaction(() async {
       if (input.type == TransactionType.income) {
         await _applyIncome(input.paymentSourceType, sourceId, input.amount);
@@ -61,7 +77,18 @@ class TransactionEngine {
         await _applyExpense(input.paymentSourceType, sourceId, input.amount);
       }
 
-      await _db
+      final recoverableBase = _resolveRecoverableBase(input);
+      final recoveredAmount = _resolveRecoveredAmount(input, recoverableBase);
+      final remainingRecoverable = _resolveRemainingRecoverable(
+        recoverableBase,
+        recoveredAmount,
+      );
+      final recoverableStatus = _resolveRecoverableStatus(
+        isForOthers: input.isForOthers,
+        recoverableBase: recoverableBase,
+        recoveredAmount: recoveredAmount,
+      );
+      insertedId = await _db
           .into(_db.transactions)
           .insert(
             TransactionsCompanion.insert(
@@ -75,7 +102,22 @@ class TransactionEngine {
               paymentSourceId: sourceId,
               cashbackAmount: Value(input.cashbackAmount),
               isForOthers: Value(input.isForOthers),
-              recoverableAmount: Value(input.recoverableAmount),
+              recoverableAmount: Value(
+                input.isForOthers ? remainingRecoverable : null,
+              ),
+              recoverableBaseAmount: Value(
+                input.isForOthers ? recoverableBase : null,
+              ),
+              recoveredAmount: Value(recoveredAmount),
+              recoverablePartyName: Value(input.recoverablePartyName),
+              recoverablePartyNotes: Value(input.recoverablePartyNotes),
+              recoverablePartyPhone: Value(input.recoverablePartyPhone),
+              recoverableStatus: Value(recoverableStatus),
+              recoveredAt: Value(
+                recoveredAmount > 0
+                    ? (input.recoveredAt ?? DateTime.now())
+                    : null,
+              ),
               confirmed: Value(input.confirmed),
               detectedSourceType: Value(input.detectedSourceType),
               linkedSplitExpenseId: Value(input.linkedSplitExpenseId),
@@ -86,6 +128,15 @@ class TransactionEngine {
             ),
           );
     });
+
+    if (insertedId != null) {
+      final inserted = await (_db.select(
+        _db.transactions,
+      )..where((t) => t.id.equals(insertedId!))).getSingleOrNull();
+      if (inserted != null) {
+        await _billing.reconcileCardAfterMutation(current: inserted);
+      }
+    }
   }
 
   bool isEditable(Transaction txn) {
@@ -100,11 +151,14 @@ class TransactionEngine {
     return true;
   }
 
-  Future<void> updateTransaction(int transactionId, AddTransactionInput input) async {
+  Future<void> updateTransaction(
+    int transactionId,
+    AddTransactionInput input,
+  ) async {
     _validate(input);
-    final existing = await (_db.select(_db.transactions)
-          ..where((t) => t.id.equals(transactionId)))
-        .getSingleOrNull();
+    final existing = await (_db.select(
+      _db.transactions,
+    )..where((t) => t.id.equals(transactionId))).getSingleOrNull();
     if (existing == null) {
       throw ArgumentError('Transaction not found');
     }
@@ -116,30 +170,69 @@ class TransactionEngine {
       await _reverseTransactionEffect(existing);
       await _applyTransactionEffect(input);
       final sourceId = input.paymentSourceId!;
-      await (_db.update(_db.transactions)..where((t) => t.id.equals(transactionId)))
-          .write(
-            TransactionsCompanion(
-              type: Value(input.type),
-              amount: Value(input.amount),
-              title: Value(input.title),
-              category: Value(input.category),
-              notes: Value(input.notes),
-              transactionDate: Value(input.transactionDate),
-              paymentSourceType: Value(input.paymentSourceType),
-              paymentSourceId: Value(sourceId),
-              cashbackAmount: Value(input.cashbackAmount),
-              isForOthers: Value(input.isForOthers),
-              recoverableAmount: Value(input.recoverableAmount),
-              updatedAt: Value(DateTime.now()),
-            ),
-          );
+      final recoverableBase = _resolveRecoverableBase(input);
+      final recoveredAmount = _resolveRecoveredAmount(
+        input,
+        recoverableBase,
+        fallbackRecovered: existing.recoveredAmount,
+      );
+      final remainingRecoverable = _resolveRemainingRecoverable(
+        recoverableBase,
+        recoveredAmount,
+      );
+      final recoverableStatus = _resolveRecoverableStatus(
+        isForOthers: input.isForOthers,
+        recoverableBase: recoverableBase,
+        recoveredAmount: recoveredAmount,
+      );
+      await (_db.update(
+        _db.transactions,
+      )..where((t) => t.id.equals(transactionId))).write(
+        TransactionsCompanion(
+          type: Value(input.type),
+          amount: Value(input.amount),
+          title: Value(input.title),
+          category: Value(input.category),
+          notes: Value(input.notes),
+          transactionDate: Value(input.transactionDate),
+          paymentSourceType: Value(input.paymentSourceType),
+          paymentSourceId: Value(sourceId),
+          cashbackAmount: Value(input.cashbackAmount),
+          isForOthers: Value(input.isForOthers),
+          recoverableAmount: Value(
+            input.isForOthers ? remainingRecoverable : null,
+          ),
+          recoverableBaseAmount: Value(
+            input.isForOthers ? recoverableBase : null,
+          ),
+          recoveredAmount: Value(recoveredAmount),
+          recoverablePartyName: Value(input.recoverablePartyName),
+          recoverablePartyNotes: Value(input.recoverablePartyNotes),
+          recoverablePartyPhone: Value(input.recoverablePartyPhone),
+          recoverableStatus: Value(recoverableStatus),
+          recoveredAt: Value(
+            recoveredAmount > 0
+                ? (input.recoveredAt ?? existing.recoveredAt ?? DateTime.now())
+                : null,
+          ),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
     });
+
+    final updated = await (_db.select(
+      _db.transactions,
+    )..where((t) => t.id.equals(transactionId))).getSingleOrNull();
+    await _billing.reconcileCardAfterMutation(
+      previous: existing,
+      current: updated,
+    );
   }
 
   Future<void> deleteTransaction(int transactionId) async {
-    final existing = await (_db.select(_db.transactions)
-          ..where((t) => t.id.equals(transactionId)))
-        .getSingleOrNull();
+    final existing = await (_db.select(
+      _db.transactions,
+    )..where((t) => t.id.equals(transactionId))).getSingleOrNull();
     if (existing == null) return;
     if (!isEditable(existing)) {
       throw ArgumentError('This transaction type cannot be deleted safely');
@@ -147,12 +240,43 @@ class TransactionEngine {
 
     await _db.transaction(() async {
       await _reverseTransactionEffect(existing);
-      await (_db.delete(_db.transactions)..where((t) => t.id.equals(transactionId))).go();
+      await (_db.delete(
+        _db.transactions,
+      )..where((t) => t.id.equals(transactionId))).go();
     });
+
+    await _billing.reconcileCardAfterMutation(previous: existing);
   }
 
   double netExpense(Transaction txn) {
     return (txn.amount - txn.cashbackAmount).clamp(0, txn.amount);
+  }
+
+  Future<void> markRecovered(int transactionId) async {
+    final existing = await (_db.select(
+      _db.transactions,
+    )..where((t) => t.id.equals(transactionId))).getSingleOrNull();
+    if (existing == null) {
+      throw ArgumentError('Transaction not found');
+    }
+    final recoverableBase =
+        existing.recoverableBaseAmount ??
+        (existing.amount - existing.cashbackAmount).clamp(0, existing.amount);
+    if (!existing.isForOthers || recoverableBase <= 0) {
+      throw ArgumentError('Transaction is not recoverable');
+    }
+
+    await (_db.update(
+      _db.transactions,
+    )..where((t) => t.id.equals(transactionId))).write(
+      TransactionsCompanion(
+        recoverableAmount: const Value(0),
+        recoveredAmount: Value(recoverableBase.toDouble()),
+        recoverableStatus: const Value('recovered'),
+        recoveredAt: Value(DateTime.now()),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
   }
 
   void _validate(AddTransactionInput input) {
@@ -162,9 +286,10 @@ class TransactionEngine {
     if (input.paymentSourceId == null) {
       throw ArgumentError('Payment source is required');
     }
-    if (input.recoverableAmount != null &&
-        input.recoverableAmount! > input.amount) {
-      throw ArgumentError('Recoverable amount cannot exceed total amount');
+    final recoverableBase = _resolveRecoverableBase(input);
+    final recoveredAmount = _resolveRecoveredAmount(input, recoverableBase);
+    if (recoveredAmount > recoverableBase) {
+      throw ArgumentError('Recovered amount cannot exceed recoverable base');
     }
     if (input.cashbackAmount > input.amount) {
       throw ArgumentError('Cashback cannot exceed total amount');
@@ -194,6 +319,48 @@ class TransactionEngine {
     } else {
       await _applyExpense(input.paymentSourceType, sourceId, input.amount);
     }
+  }
+
+  double _resolveRecoverableBase(AddTransactionInput input) {
+    if (!input.isForOthers) return 0;
+    // Split expenses carry an explicit receivable (others' share only).
+    if (input.transactionImpactType == 'splitPersonalShare' &&
+        input.recoverableAmount != null) {
+      return input.recoverableAmount!.clamp(0, input.amount).toDouble();
+    }
+    return (input.amount - input.cashbackAmount)
+        .clamp(0, input.amount)
+        .toDouble();
+  }
+
+  double _resolveRecoveredAmount(
+    AddTransactionInput input,
+    double recoverableBase, {
+    double? fallbackRecovered,
+  }) {
+    if (!input.isForOthers) return 0;
+    final recovered = input.recoveredAmount ?? fallbackRecovered ?? 0;
+    return recovered.clamp(0, recoverableBase).toDouble();
+  }
+
+  double _resolveRemainingRecoverable(
+    double recoverableBase,
+    double recoveredAmount,
+  ) {
+    return (recoverableBase - recoveredAmount)
+        .clamp(0, recoverableBase)
+        .toDouble();
+  }
+
+  String _resolveRecoverableStatus({
+    required bool isForOthers,
+    required double recoverableBase,
+    required double recoveredAmount,
+  }) {
+    if (!isForOthers || recoverableBase <= 0) return 'unpaid';
+    if (recoveredAmount <= 0.009) return 'unpaid';
+    if (recoveredAmount >= recoverableBase - 0.009) return 'recovered';
+    return 'partial';
   }
 
   Future<void> _reverseTransactionEffect(Transaction txn) async {

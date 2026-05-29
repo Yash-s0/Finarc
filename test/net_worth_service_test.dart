@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:finarc/core/database/app_database.dart';
 import 'package:finarc/features/dashboard/data/net_worth_service.dart';
+import 'package:finarc/features/cards/data/billing_service.dart';
 import 'package:finarc/features/expenses/data/transaction_engine.dart';
 import 'package:finarc/features/expenses/models/transaction_types.dart';
 import 'package:finarc/features/loans/data/loan_service.dart';
@@ -14,6 +15,7 @@ void main() {
   late TransactionEngine engine;
   late SplitService splitService;
   late LoanService loanService;
+  late BillingService billingService;
   late NetWorthService netWorthService;
 
   late int bankId;
@@ -26,7 +28,13 @@ void main() {
     engine = TransactionEngine(db);
     splitService = SplitService(db, engine);
     loanService = LoanService(db, now: () => DateTime(2026, 5, 25));
-    netWorthService = NetWorthService(db, loanService, splitService);
+    billingService = BillingService(db, now: () => DateTime(2026, 5, 25));
+    netWorthService = NetWorthService(
+      db,
+      loanService,
+      splitService,
+      billingService,
+    );
 
     bankId = await db
         .into(db.bankAccounts)
@@ -60,6 +68,16 @@ void main() {
             billingDay: 5,
             dueDay: 20,
             currentOutstanding: const Value(20000),
+          ),
+        );
+    await db
+        .into(db.cardBills)
+        .insert(
+          CardBillsCompanion.insert(
+            cardId: 1,
+            billedAmount: 20000,
+            billingDate: Value(DateTime(2026, 5, 5)),
+            dueDate: Value(DateTime(2026, 5, 20)),
           ),
         );
 
@@ -139,28 +157,28 @@ void main() {
 
     // Banks: 100000 - 1000 - 1000 = 98000
     // Cash: 5000
-    // Recoverables: 300
+    // Recoverables: 1000
     // Split receivable/payable net from group: receivable 500, payable 0
-    // Assets = 98000 + 5000 + 300 + 500 = 103800
+    // Assets = 98000 + 5000 + 1000 + 500 = 104500
     // Liabilities = card 20000 + loans 120000 + split payables 0 = 140000
-    // Net worth = -36200
+    // Net worth = -35500
     expect(breakdown.bankBalance, closeTo(98000, 0.01));
     expect(breakdown.cashBalance, closeTo(5000, 0.01));
-    expect(breakdown.recoverables, closeTo(300, 0.01));
+    expect(breakdown.recoverables, closeTo(1000, 0.01));
     expect(breakdown.splitReceivables, closeTo(500, 0.01));
     expect(breakdown.splitPayables, closeTo(0, 0.01));
     expect(breakdown.cardDues, closeTo(20000, 0.01));
     expect(breakdown.loanOutstanding, closeTo(120000, 0.01));
-    expect(breakdown.totalAssets, closeTo(103800, 0.01));
+    expect(breakdown.totalAssets, closeTo(104500, 0.01));
     expect(breakdown.totalLiabilities, closeTo(140000, 0.01));
-    expect(breakdown.netWorth, closeTo(-36200, 0.01));
+    expect(breakdown.netWorth, closeTo(-35500, 0.01));
   });
 
   test('debt ratio and monthly EMI burden are calculated', () async {
     final breakdown = await netWorthService.calculate();
 
     expect(breakdown.monthlyEmiBurden, closeTo(8500, 0.01));
-    expect(breakdown.debtRatio, closeTo(140000 / 103800, 0.0001));
+    expect(breakdown.debtRatio, closeTo(140000 / 104500, 0.0001));
   });
 
   test(

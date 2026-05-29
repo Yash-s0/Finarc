@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import 'finarc_card.dart';
@@ -12,28 +13,53 @@ class FinarcBalanceCard extends StatelessWidget {
     required this.value,
     this.subtitle,
     this.statusLabel,
+    this.trendLabel,
+    this.isHero = false,
+    this.leading,
   });
 
   final String label;
   final String value;
   final String? subtitle;
   final String? statusLabel;
+  final String? trendLabel;
+  final bool isHero;
+  final Widget? leading;
 
   @override
   Widget build(BuildContext context) {
     return FinarcCard(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: EdgeInsets.all(isHero ? AppSpacing.lg : AppSpacing.md),
+      gradient: isHero
+          ? LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppColors.darkPrimarySoft.withValues(alpha: 0.95),
+                AppColors.darkSurfaceHigh,
+              ],
+            )
+          : null,
+      borderColor: isHero
+          ? AppColors.darkAccent.withValues(alpha: 0.35)
+          : AppColors.darkBorder,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
+              if (leading != null) ...[
+                leading!,
+                const SizedBox(width: AppSpacing.xs),
+              ],
               Text(label, style: Theme.of(context).textTheme.labelMedium),
               const Spacer(),
               if (statusLabel != null)
                 FinarcStatusBadge(
                   label: statusLabel!,
-                  tone: FinarcStatusTone.success,
+                  tone: isHero
+                      ? FinarcStatusTone.info
+                      : FinarcStatusTone.success,
                 ),
             ],
           ),
@@ -42,13 +68,37 @@ class FinarcBalanceCard extends StatelessWidget {
             value,
             style: AppTextStyles.amountStyle(
               color: Theme.of(context).colorScheme.onSurface,
-              size: 30,
-              weight: FontWeight.w700,
+              size: isHero ? 28 : 24,
+              weight: FontWeight.w800,
             ),
           ),
           if (subtitle != null) ...[
             const SizedBox(height: AppSpacing.xs),
             Text(subtitle!, style: Theme.of(context).textTheme.labelMedium),
+          ],
+          if (trendLabel != null) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Row(
+              children: [
+                Icon(
+                  Icons.trending_up_rounded,
+                  size: 14,
+                  color: AppColors.darkSuccess,
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    trendLabel!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.darkSuccess,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ],
         ],
       ),

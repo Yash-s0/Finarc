@@ -202,7 +202,7 @@ class AccountDetailScreen extends ConsumerWidget {
                     child: FinarcTransactionTile(
                       title: t.title,
                       subtitle: t.category,
-                      meta: _shortDateTime(t.transactionDate),
+                      meta: transactionDateLabel(t.transactionDate),
                       amount: '$sign${inr(t.amount)}',
                       amountColor: color,
                       prefix: CircleAvatar(
@@ -250,13 +250,5 @@ class AccountDetailScreen extends ConsumerWidget {
         ),
       ],
     );
-  }
-
-  static String _shortDateTime(DateTime dt) {
-    final d = dt.toLocal();
-    final h = d.hour % 12 == 0 ? 12 : d.hour % 12;
-    final m = d.minute.toString().padLeft(2, '0');
-    final meridiem = d.hour >= 12 ? 'PM' : 'AM';
-    return '${d.day}/${d.month} $h:$m $meridiem';
   }
 }

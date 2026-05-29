@@ -333,7 +333,7 @@ void main() {
       now: DateTime(2026, 5, 25),
     );
 
-    expect(thisMonth.spending.totalSpending, closeTo(2400, 0.001));
+    expect(thisMonth.spending.totalSpending, closeTo(2100, 0.001));
     expect(lastMonth.spending.totalSpending, closeTo(2000, 0.001));
   });
 
@@ -374,7 +374,7 @@ void main() {
       );
 
       expect(snapshot.income.totalIncome, closeTo(50000, 0.001));
-      expect(snapshot.spending.totalSpending, closeTo(2400, 0.001));
+      expect(snapshot.spending.totalSpending, closeTo(2100, 0.001));
     },
   );
 
@@ -384,7 +384,7 @@ void main() {
       now: DateTime(2026, 5, 25),
     );
 
-    expect(snapshot.cards.totalUtilization, closeTo(40000 / 150000, 0.0001));
+    expect(snapshot.cards.totalUtilization, closeTo(34000 / 150000, 0.0001));
     expect(snapshot.cards.billSummary.billedTotal, 10000);
     expect(snapshot.cards.billSummary.pendingTotal, 5000);
   });
@@ -414,4 +414,31 @@ void main() {
       expect(snapshot.splits.owesYou.first.amount, closeTo(500, 0.001));
     },
   );
+
+  test('recoverable transactions are excluded from monthly spending', () async {
+    await db
+        .into(db.transactions)
+        .insert(
+          TransactionsCompanion.insert(
+            type: TransactionType.bank,
+            amount: 1000,
+            title: 'Group dinner',
+            category: 'Food',
+            transactionDate: DateTime(2026, 5, 20),
+            paymentSourceType: PaymentSourceType.bank,
+            paymentSourceId: bankId,
+            cashbackAmount: const Value(100),
+            isForOthers: const Value(true),
+            recoverableAmount: const Value(900),
+            recoverablePartyName: const Value('Rahul'),
+          ),
+        );
+
+    final snapshot = await service.buildSnapshot(
+      period: AnalyticsPeriod.thisMonth,
+      now: DateTime(2026, 5, 25),
+    );
+
+    expect(snapshot.spending.totalSpending, closeTo(2100, 0.001));
+  });
 }

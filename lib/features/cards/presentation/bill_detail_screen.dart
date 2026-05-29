@@ -232,7 +232,8 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
                 ...data.txns.map(
                   (t) => FinarcTransactionTile(
                     title: t.title,
-                    subtitle: '${t.category} • ${_dateText(t.transactionDate)}',
+                    subtitle: t.category,
+                    meta: transactionDateLabel(t.transactionDate),
                     amount: '-${inr(t.amount)}',
                     amountColor: AppColors.darkError,
                     prefix: const CircleAvatar(

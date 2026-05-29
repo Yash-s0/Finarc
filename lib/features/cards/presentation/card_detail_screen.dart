@@ -67,11 +67,6 @@ class CardDetailScreen extends ConsumerWidget {
       ),
       data: (vm) {
         final card = vm.card;
-        final billedAmount = vm.currentBill?.billedAmount ?? 0.0;
-        final unbilledAmount = vm.unbilledTransactions.fold<double>(
-          0,
-          (s, t) => s + t.amount,
-        );
         final dueLabel = _dueLabel(vm.dueCountdownDays);
         final tone = _toneForStatus(vm.billStatus);
 
@@ -133,7 +128,7 @@ class CardDetailScreen extends ConsumerWidget {
                       bank: card.bankName,
                       nickname: card.nickname,
                       maskedNumber: card.maskedNumber,
-                      outstanding: inr(card.currentOutstanding),
+                      outstanding: inr(vm.totalOutstanding),
                       utilization: vm.utilization,
                       dueLabel: dueLabel,
                       dueTone: tone,
@@ -167,8 +162,8 @@ class CardDetailScreen extends ConsumerWidget {
                           value: inr(vm.availableLimit),
                         ),
                         FinarcMetricCard(
-                          title: 'Credit Limit',
-                          value: inr(card.creditLimit),
+                          title: 'Total Outstanding',
+                          value: inr(vm.totalOutstanding),
                         ),
                         FinarcMetricCard(
                           title: 'Utilization',
@@ -212,8 +207,8 @@ class CardDetailScreen extends ConsumerWidget {
                               Expanded(
                                 child: _amountBlock(
                                   context,
-                                  'Billed Amount',
-                                  inr(billedAmount),
+                                  'Current Due',
+                                  inr(vm.currentDueAmount),
                                   AppColors.darkWarning,
                                 ),
                               ),
@@ -222,11 +217,16 @@ class CardDetailScreen extends ConsumerWidget {
                                 child: _amountBlock(
                                   context,
                                   'Unbilled Spends',
-                                  inr(unbilledAmount),
+                                  inr(vm.unbilledAmount),
                                   AppColors.darkAccent,
                                 ),
                               ),
                             ],
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          Text(
+                            'Total Outstanding: ${inr(vm.totalOutstanding)}',
+                            style: Theme.of(context).textTheme.bodyMedium,
                           ),
                           const SizedBox(height: AppSpacing.sm),
                           Row(
@@ -266,6 +266,7 @@ class CardDetailScreen extends ConsumerWidget {
                         (t) => FinarcTransactionTile(
                           title: t.title,
                           subtitle: t.category,
+                          meta: transactionDateLabel(t.transactionDate),
                           amount: '-${inr(t.amount)}',
                           amountColor: AppColors.darkError,
                           prefix: const CircleAvatar(
@@ -359,6 +360,7 @@ class CardDetailScreen extends ConsumerWidget {
             (t) => FinarcTransactionTile(
               title: t.title,
               subtitle: t.category,
+              meta: transactionDateLabel(t.transactionDate),
               amount: '-${inr(t.amount)}',
               amountColor: AppColors.darkError,
               prefix: const CircleAvatar(

@@ -1673,6 +1673,86 @@ class $TransactionsTable extends Transactions
         type: DriftSqlType.double,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _recoverableBaseAmountMeta =
+      const VerificationMeta('recoverableBaseAmount');
+  @override
+  late final GeneratedColumn<double> recoverableBaseAmount =
+      GeneratedColumn<double>(
+        'recoverable_base_amount',
+        aliasedName,
+        true,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _recoveredAmountMeta = const VerificationMeta(
+    'recoveredAmount',
+  );
+  @override
+  late final GeneratedColumn<double> recoveredAmount = GeneratedColumn<double>(
+    'recovered_amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _recoverablePartyNameMeta =
+      const VerificationMeta('recoverablePartyName');
+  @override
+  late final GeneratedColumn<String> recoverablePartyName =
+      GeneratedColumn<String>(
+        'recoverable_party_name',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _recoverablePartyNotesMeta =
+      const VerificationMeta('recoverablePartyNotes');
+  @override
+  late final GeneratedColumn<String> recoverablePartyNotes =
+      GeneratedColumn<String>(
+        'recoverable_party_notes',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _recoverablePartyPhoneMeta =
+      const VerificationMeta('recoverablePartyPhone');
+  @override
+  late final GeneratedColumn<String> recoverablePartyPhone =
+      GeneratedColumn<String>(
+        'recoverable_party_phone',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _recoverableStatusMeta = const VerificationMeta(
+    'recoverableStatus',
+  );
+  @override
+  late final GeneratedColumn<String> recoverableStatus =
+      GeneratedColumn<String>(
+        'recoverable_status',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('unpaid'),
+      );
+  static const VerificationMeta _recoveredAtMeta = const VerificationMeta(
+    'recoveredAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> recoveredAt = GeneratedColumn<DateTime>(
+    'recovered_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _confirmedMeta = const VerificationMeta(
     'confirmed',
   );
@@ -1823,6 +1903,13 @@ class $TransactionsTable extends Transactions
     cashbackAmount,
     isForOthers,
     recoverableAmount,
+    recoverableBaseAmount,
+    recoveredAmount,
+    recoverablePartyName,
+    recoverablePartyNotes,
+    recoverablePartyPhone,
+    recoverableStatus,
+    recoveredAt,
     confirmed,
     detectedSourceType,
     cardBillId,
@@ -1946,6 +2033,69 @@ class $TransactionsTable extends Transactions
         recoverableAmount.isAcceptableOrUnknown(
           data['recoverable_amount']!,
           _recoverableAmountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('recoverable_base_amount')) {
+      context.handle(
+        _recoverableBaseAmountMeta,
+        recoverableBaseAmount.isAcceptableOrUnknown(
+          data['recoverable_base_amount']!,
+          _recoverableBaseAmountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('recovered_amount')) {
+      context.handle(
+        _recoveredAmountMeta,
+        recoveredAmount.isAcceptableOrUnknown(
+          data['recovered_amount']!,
+          _recoveredAmountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('recoverable_party_name')) {
+      context.handle(
+        _recoverablePartyNameMeta,
+        recoverablePartyName.isAcceptableOrUnknown(
+          data['recoverable_party_name']!,
+          _recoverablePartyNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('recoverable_party_notes')) {
+      context.handle(
+        _recoverablePartyNotesMeta,
+        recoverablePartyNotes.isAcceptableOrUnknown(
+          data['recoverable_party_notes']!,
+          _recoverablePartyNotesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('recoverable_party_phone')) {
+      context.handle(
+        _recoverablePartyPhoneMeta,
+        recoverablePartyPhone.isAcceptableOrUnknown(
+          data['recoverable_party_phone']!,
+          _recoverablePartyPhoneMeta,
+        ),
+      );
+    }
+    if (data.containsKey('recoverable_status')) {
+      context.handle(
+        _recoverableStatusMeta,
+        recoverableStatus.isAcceptableOrUnknown(
+          data['recoverable_status']!,
+          _recoverableStatusMeta,
+        ),
+      );
+    }
+    if (data.containsKey('recovered_at')) {
+      context.handle(
+        _recoveredAtMeta,
+        recoveredAt.isAcceptableOrUnknown(
+          data['recovered_at']!,
+          _recoveredAtMeta,
         ),
       );
     }
@@ -2105,6 +2255,34 @@ class $TransactionsTable extends Transactions
         DriftSqlType.double,
         data['${effectivePrefix}recoverable_amount'],
       ),
+      recoverableBaseAmount: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}recoverable_base_amount'],
+      ),
+      recoveredAmount: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}recovered_amount'],
+      )!,
+      recoverablePartyName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}recoverable_party_name'],
+      ),
+      recoverablePartyNotes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}recoverable_party_notes'],
+      ),
+      recoverablePartyPhone: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}recoverable_party_phone'],
+      ),
+      recoverableStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}recoverable_status'],
+      )!,
+      recoveredAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}recovered_at'],
+      ),
       confirmed: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}confirmed'],
@@ -2175,6 +2353,13 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   final double cashbackAmount;
   final bool isForOthers;
   final double? recoverableAmount;
+  final double? recoverableBaseAmount;
+  final double recoveredAmount;
+  final String? recoverablePartyName;
+  final String? recoverablePartyNotes;
+  final String? recoverablePartyPhone;
+  final String recoverableStatus;
+  final DateTime? recoveredAt;
   final bool confirmed;
   final String? detectedSourceType;
   final int? cardBillId;
@@ -2200,6 +2385,13 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     required this.cashbackAmount,
     required this.isForOthers,
     this.recoverableAmount,
+    this.recoverableBaseAmount,
+    required this.recoveredAmount,
+    this.recoverablePartyName,
+    this.recoverablePartyNotes,
+    this.recoverablePartyPhone,
+    required this.recoverableStatus,
+    this.recoveredAt,
     required this.confirmed,
     this.detectedSourceType,
     this.cardBillId,
@@ -2231,6 +2423,23 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     map['is_for_others'] = Variable<bool>(isForOthers);
     if (!nullToAbsent || recoverableAmount != null) {
       map['recoverable_amount'] = Variable<double>(recoverableAmount);
+    }
+    if (!nullToAbsent || recoverableBaseAmount != null) {
+      map['recoverable_base_amount'] = Variable<double>(recoverableBaseAmount);
+    }
+    map['recovered_amount'] = Variable<double>(recoveredAmount);
+    if (!nullToAbsent || recoverablePartyName != null) {
+      map['recoverable_party_name'] = Variable<String>(recoverablePartyName);
+    }
+    if (!nullToAbsent || recoverablePartyNotes != null) {
+      map['recoverable_party_notes'] = Variable<String>(recoverablePartyNotes);
+    }
+    if (!nullToAbsent || recoverablePartyPhone != null) {
+      map['recoverable_party_phone'] = Variable<String>(recoverablePartyPhone);
+    }
+    map['recoverable_status'] = Variable<String>(recoverableStatus);
+    if (!nullToAbsent || recoveredAt != null) {
+      map['recovered_at'] = Variable<DateTime>(recoveredAt);
     }
     map['confirmed'] = Variable<bool>(confirmed);
     if (!nullToAbsent || detectedSourceType != null) {
@@ -2283,6 +2492,23 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       recoverableAmount: recoverableAmount == null && nullToAbsent
           ? const Value.absent()
           : Value(recoverableAmount),
+      recoverableBaseAmount: recoverableBaseAmount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(recoverableBaseAmount),
+      recoveredAmount: Value(recoveredAmount),
+      recoverablePartyName: recoverablePartyName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(recoverablePartyName),
+      recoverablePartyNotes: recoverablePartyNotes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(recoverablePartyNotes),
+      recoverablePartyPhone: recoverablePartyPhone == null && nullToAbsent
+          ? const Value.absent()
+          : Value(recoverablePartyPhone),
+      recoverableStatus: Value(recoverableStatus),
+      recoveredAt: recoveredAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(recoveredAt),
       confirmed: Value(confirmed),
       detectedSourceType: detectedSourceType == null && nullToAbsent
           ? const Value.absent()
@@ -2336,6 +2562,21 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       recoverableAmount: serializer.fromJson<double?>(
         json['recoverableAmount'],
       ),
+      recoverableBaseAmount: serializer.fromJson<double?>(
+        json['recoverableBaseAmount'],
+      ),
+      recoveredAmount: serializer.fromJson<double>(json['recoveredAmount']),
+      recoverablePartyName: serializer.fromJson<String?>(
+        json['recoverablePartyName'],
+      ),
+      recoverablePartyNotes: serializer.fromJson<String?>(
+        json['recoverablePartyNotes'],
+      ),
+      recoverablePartyPhone: serializer.fromJson<String?>(
+        json['recoverablePartyPhone'],
+      ),
+      recoverableStatus: serializer.fromJson<String>(json['recoverableStatus']),
+      recoveredAt: serializer.fromJson<DateTime?>(json['recoveredAt']),
       confirmed: serializer.fromJson<bool>(json['confirmed']),
       detectedSourceType: serializer.fromJson<String?>(
         json['detectedSourceType'],
@@ -2376,6 +2617,19 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       'cashbackAmount': serializer.toJson<double>(cashbackAmount),
       'isForOthers': serializer.toJson<bool>(isForOthers),
       'recoverableAmount': serializer.toJson<double?>(recoverableAmount),
+      'recoverableBaseAmount': serializer.toJson<double?>(
+        recoverableBaseAmount,
+      ),
+      'recoveredAmount': serializer.toJson<double>(recoveredAmount),
+      'recoverablePartyName': serializer.toJson<String?>(recoverablePartyName),
+      'recoverablePartyNotes': serializer.toJson<String?>(
+        recoverablePartyNotes,
+      ),
+      'recoverablePartyPhone': serializer.toJson<String?>(
+        recoverablePartyPhone,
+      ),
+      'recoverableStatus': serializer.toJson<String>(recoverableStatus),
+      'recoveredAt': serializer.toJson<DateTime?>(recoveredAt),
       'confirmed': serializer.toJson<bool>(confirmed),
       'detectedSourceType': serializer.toJson<String?>(detectedSourceType),
       'cardBillId': serializer.toJson<int?>(cardBillId),
@@ -2406,6 +2660,13 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     double? cashbackAmount,
     bool? isForOthers,
     Value<double?> recoverableAmount = const Value.absent(),
+    Value<double?> recoverableBaseAmount = const Value.absent(),
+    double? recoveredAmount,
+    Value<String?> recoverablePartyName = const Value.absent(),
+    Value<String?> recoverablePartyNotes = const Value.absent(),
+    Value<String?> recoverablePartyPhone = const Value.absent(),
+    String? recoverableStatus,
+    Value<DateTime?> recoveredAt = const Value.absent(),
     bool? confirmed,
     Value<String?> detectedSourceType = const Value.absent(),
     Value<int?> cardBillId = const Value.absent(),
@@ -2433,6 +2694,21 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     recoverableAmount: recoverableAmount.present
         ? recoverableAmount.value
         : this.recoverableAmount,
+    recoverableBaseAmount: recoverableBaseAmount.present
+        ? recoverableBaseAmount.value
+        : this.recoverableBaseAmount,
+    recoveredAmount: recoveredAmount ?? this.recoveredAmount,
+    recoverablePartyName: recoverablePartyName.present
+        ? recoverablePartyName.value
+        : this.recoverablePartyName,
+    recoverablePartyNotes: recoverablePartyNotes.present
+        ? recoverablePartyNotes.value
+        : this.recoverablePartyNotes,
+    recoverablePartyPhone: recoverablePartyPhone.present
+        ? recoverablePartyPhone.value
+        : this.recoverablePartyPhone,
+    recoverableStatus: recoverableStatus ?? this.recoverableStatus,
+    recoveredAt: recoveredAt.present ? recoveredAt.value : this.recoveredAt,
     confirmed: confirmed ?? this.confirmed,
     detectedSourceType: detectedSourceType.present
         ? detectedSourceType.value
@@ -2486,6 +2762,27 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       recoverableAmount: data.recoverableAmount.present
           ? data.recoverableAmount.value
           : this.recoverableAmount,
+      recoverableBaseAmount: data.recoverableBaseAmount.present
+          ? data.recoverableBaseAmount.value
+          : this.recoverableBaseAmount,
+      recoveredAmount: data.recoveredAmount.present
+          ? data.recoveredAmount.value
+          : this.recoveredAmount,
+      recoverablePartyName: data.recoverablePartyName.present
+          ? data.recoverablePartyName.value
+          : this.recoverablePartyName,
+      recoverablePartyNotes: data.recoverablePartyNotes.present
+          ? data.recoverablePartyNotes.value
+          : this.recoverablePartyNotes,
+      recoverablePartyPhone: data.recoverablePartyPhone.present
+          ? data.recoverablePartyPhone.value
+          : this.recoverablePartyPhone,
+      recoverableStatus: data.recoverableStatus.present
+          ? data.recoverableStatus.value
+          : this.recoverableStatus,
+      recoveredAt: data.recoveredAt.present
+          ? data.recoveredAt.value
+          : this.recoveredAt,
       confirmed: data.confirmed.present ? data.confirmed.value : this.confirmed,
       detectedSourceType: data.detectedSourceType.present
           ? data.detectedSourceType.value
@@ -2534,6 +2831,13 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ..write('cashbackAmount: $cashbackAmount, ')
           ..write('isForOthers: $isForOthers, ')
           ..write('recoverableAmount: $recoverableAmount, ')
+          ..write('recoverableBaseAmount: $recoverableBaseAmount, ')
+          ..write('recoveredAmount: $recoveredAmount, ')
+          ..write('recoverablePartyName: $recoverablePartyName, ')
+          ..write('recoverablePartyNotes: $recoverablePartyNotes, ')
+          ..write('recoverablePartyPhone: $recoverablePartyPhone, ')
+          ..write('recoverableStatus: $recoverableStatus, ')
+          ..write('recoveredAt: $recoveredAt, ')
           ..write('confirmed: $confirmed, ')
           ..write('detectedSourceType: $detectedSourceType, ')
           ..write('cardBillId: $cardBillId, ')
@@ -2564,6 +2868,13 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     cashbackAmount,
     isForOthers,
     recoverableAmount,
+    recoverableBaseAmount,
+    recoveredAmount,
+    recoverablePartyName,
+    recoverablePartyNotes,
+    recoverablePartyPhone,
+    recoverableStatus,
+    recoveredAt,
     confirmed,
     detectedSourceType,
     cardBillId,
@@ -2593,6 +2904,13 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           other.cashbackAmount == this.cashbackAmount &&
           other.isForOthers == this.isForOthers &&
           other.recoverableAmount == this.recoverableAmount &&
+          other.recoverableBaseAmount == this.recoverableBaseAmount &&
+          other.recoveredAmount == this.recoveredAmount &&
+          other.recoverablePartyName == this.recoverablePartyName &&
+          other.recoverablePartyNotes == this.recoverablePartyNotes &&
+          other.recoverablePartyPhone == this.recoverablePartyPhone &&
+          other.recoverableStatus == this.recoverableStatus &&
+          other.recoveredAt == this.recoveredAt &&
           other.confirmed == this.confirmed &&
           other.detectedSourceType == this.detectedSourceType &&
           other.cardBillId == this.cardBillId &&
@@ -2620,6 +2938,13 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   final Value<double> cashbackAmount;
   final Value<bool> isForOthers;
   final Value<double?> recoverableAmount;
+  final Value<double?> recoverableBaseAmount;
+  final Value<double> recoveredAmount;
+  final Value<String?> recoverablePartyName;
+  final Value<String?> recoverablePartyNotes;
+  final Value<String?> recoverablePartyPhone;
+  final Value<String> recoverableStatus;
+  final Value<DateTime?> recoveredAt;
   final Value<bool> confirmed;
   final Value<String?> detectedSourceType;
   final Value<int?> cardBillId;
@@ -2645,6 +2970,13 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.cashbackAmount = const Value.absent(),
     this.isForOthers = const Value.absent(),
     this.recoverableAmount = const Value.absent(),
+    this.recoverableBaseAmount = const Value.absent(),
+    this.recoveredAmount = const Value.absent(),
+    this.recoverablePartyName = const Value.absent(),
+    this.recoverablePartyNotes = const Value.absent(),
+    this.recoverablePartyPhone = const Value.absent(),
+    this.recoverableStatus = const Value.absent(),
+    this.recoveredAt = const Value.absent(),
     this.confirmed = const Value.absent(),
     this.detectedSourceType = const Value.absent(),
     this.cardBillId = const Value.absent(),
@@ -2671,6 +3003,13 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.cashbackAmount = const Value.absent(),
     this.isForOthers = const Value.absent(),
     this.recoverableAmount = const Value.absent(),
+    this.recoverableBaseAmount = const Value.absent(),
+    this.recoveredAmount = const Value.absent(),
+    this.recoverablePartyName = const Value.absent(),
+    this.recoverablePartyNotes = const Value.absent(),
+    this.recoverablePartyPhone = const Value.absent(),
+    this.recoverableStatus = const Value.absent(),
+    this.recoveredAt = const Value.absent(),
     this.confirmed = const Value.absent(),
     this.detectedSourceType = const Value.absent(),
     this.cardBillId = const Value.absent(),
@@ -2703,6 +3042,13 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Expression<double>? cashbackAmount,
     Expression<bool>? isForOthers,
     Expression<double>? recoverableAmount,
+    Expression<double>? recoverableBaseAmount,
+    Expression<double>? recoveredAmount,
+    Expression<String>? recoverablePartyName,
+    Expression<String>? recoverablePartyNotes,
+    Expression<String>? recoverablePartyPhone,
+    Expression<String>? recoverableStatus,
+    Expression<DateTime>? recoveredAt,
     Expression<bool>? confirmed,
     Expression<String>? detectedSourceType,
     Expression<int>? cardBillId,
@@ -2729,6 +3075,17 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       if (cashbackAmount != null) 'cashback_amount': cashbackAmount,
       if (isForOthers != null) 'is_for_others': isForOthers,
       if (recoverableAmount != null) 'recoverable_amount': recoverableAmount,
+      if (recoverableBaseAmount != null)
+        'recoverable_base_amount': recoverableBaseAmount,
+      if (recoveredAmount != null) 'recovered_amount': recoveredAmount,
+      if (recoverablePartyName != null)
+        'recoverable_party_name': recoverablePartyName,
+      if (recoverablePartyNotes != null)
+        'recoverable_party_notes': recoverablePartyNotes,
+      if (recoverablePartyPhone != null)
+        'recoverable_party_phone': recoverablePartyPhone,
+      if (recoverableStatus != null) 'recoverable_status': recoverableStatus,
+      if (recoveredAt != null) 'recovered_at': recoveredAt,
       if (confirmed != null) 'confirmed': confirmed,
       if (detectedSourceType != null)
         'detected_source_type': detectedSourceType,
@@ -2762,6 +3119,13 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Value<double>? cashbackAmount,
     Value<bool>? isForOthers,
     Value<double?>? recoverableAmount,
+    Value<double?>? recoverableBaseAmount,
+    Value<double>? recoveredAmount,
+    Value<String?>? recoverablePartyName,
+    Value<String?>? recoverablePartyNotes,
+    Value<String?>? recoverablePartyPhone,
+    Value<String>? recoverableStatus,
+    Value<DateTime?>? recoveredAt,
     Value<bool>? confirmed,
     Value<String?>? detectedSourceType,
     Value<int?>? cardBillId,
@@ -2788,6 +3152,16 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       cashbackAmount: cashbackAmount ?? this.cashbackAmount,
       isForOthers: isForOthers ?? this.isForOthers,
       recoverableAmount: recoverableAmount ?? this.recoverableAmount,
+      recoverableBaseAmount:
+          recoverableBaseAmount ?? this.recoverableBaseAmount,
+      recoveredAmount: recoveredAmount ?? this.recoveredAmount,
+      recoverablePartyName: recoverablePartyName ?? this.recoverablePartyName,
+      recoverablePartyNotes:
+          recoverablePartyNotes ?? this.recoverablePartyNotes,
+      recoverablePartyPhone:
+          recoverablePartyPhone ?? this.recoverablePartyPhone,
+      recoverableStatus: recoverableStatus ?? this.recoverableStatus,
+      recoveredAt: recoveredAt ?? this.recoveredAt,
       confirmed: confirmed ?? this.confirmed,
       detectedSourceType: detectedSourceType ?? this.detectedSourceType,
       cardBillId: cardBillId ?? this.cardBillId,
@@ -2842,6 +3216,35 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     }
     if (recoverableAmount.present) {
       map['recoverable_amount'] = Variable<double>(recoverableAmount.value);
+    }
+    if (recoverableBaseAmount.present) {
+      map['recoverable_base_amount'] = Variable<double>(
+        recoverableBaseAmount.value,
+      );
+    }
+    if (recoveredAmount.present) {
+      map['recovered_amount'] = Variable<double>(recoveredAmount.value);
+    }
+    if (recoverablePartyName.present) {
+      map['recoverable_party_name'] = Variable<String>(
+        recoverablePartyName.value,
+      );
+    }
+    if (recoverablePartyNotes.present) {
+      map['recoverable_party_notes'] = Variable<String>(
+        recoverablePartyNotes.value,
+      );
+    }
+    if (recoverablePartyPhone.present) {
+      map['recoverable_party_phone'] = Variable<String>(
+        recoverablePartyPhone.value,
+      );
+    }
+    if (recoverableStatus.present) {
+      map['recoverable_status'] = Variable<String>(recoverableStatus.value);
+    }
+    if (recoveredAt.present) {
+      map['recovered_at'] = Variable<DateTime>(recoveredAt.value);
     }
     if (confirmed.present) {
       map['confirmed'] = Variable<bool>(confirmed.value);
@@ -2903,6 +3306,13 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
           ..write('cashbackAmount: $cashbackAmount, ')
           ..write('isForOthers: $isForOthers, ')
           ..write('recoverableAmount: $recoverableAmount, ')
+          ..write('recoverableBaseAmount: $recoverableBaseAmount, ')
+          ..write('recoveredAmount: $recoveredAmount, ')
+          ..write('recoverablePartyName: $recoverablePartyName, ')
+          ..write('recoverablePartyNotes: $recoverablePartyNotes, ')
+          ..write('recoverablePartyPhone: $recoverablePartyPhone, ')
+          ..write('recoverableStatus: $recoverableStatus, ')
+          ..write('recoveredAt: $recoveredAt, ')
           ..write('confirmed: $confirmed, ')
           ..write('detectedSourceType: $detectedSourceType, ')
           ..write('cardBillId: $cardBillId, ')
@@ -3096,6 +3506,62 @@ class $PendingTransactionsTable extends PendingTransactions
         type: DriftSqlType.double,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _recoverableBaseAmountMeta =
+      const VerificationMeta('recoverableBaseAmount');
+  @override
+  late final GeneratedColumn<double> recoverableBaseAmount =
+      GeneratedColumn<double>(
+        'recoverable_base_amount',
+        aliasedName,
+        true,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _recoveredAmountMeta = const VerificationMeta(
+    'recoveredAmount',
+  );
+  @override
+  late final GeneratedColumn<double> recoveredAmount = GeneratedColumn<double>(
+    'recovered_amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _recoverablePartyNameMeta =
+      const VerificationMeta('recoverablePartyName');
+  @override
+  late final GeneratedColumn<String> recoverablePartyName =
+      GeneratedColumn<String>(
+        'recoverable_party_name',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _recoverablePartyNotesMeta =
+      const VerificationMeta('recoverablePartyNotes');
+  @override
+  late final GeneratedColumn<String> recoverablePartyNotes =
+      GeneratedColumn<String>(
+        'recoverable_party_notes',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _recoverablePartyPhoneMeta =
+      const VerificationMeta('recoverablePartyPhone');
+  @override
+  late final GeneratedColumn<String> recoverablePartyPhone =
+      GeneratedColumn<String>(
+        'recoverable_party_phone',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _notesMeta = const VerificationMeta('notes');
   @override
   late final GeneratedColumn<String> notes = GeneratedColumn<String>(
@@ -3157,6 +3623,11 @@ class $PendingTransactionsTable extends PendingTransactions
     cashbackAmount,
     isForOthers,
     recoverableAmount,
+    recoverableBaseAmount,
+    recoveredAmount,
+    recoverablePartyName,
+    recoverablePartyNotes,
+    recoverablePartyPhone,
     notes,
     duplicateOfTransactionId,
     createdAt,
@@ -3303,6 +3774,51 @@ class $PendingTransactionsTable extends PendingTransactions
         ),
       );
     }
+    if (data.containsKey('recoverable_base_amount')) {
+      context.handle(
+        _recoverableBaseAmountMeta,
+        recoverableBaseAmount.isAcceptableOrUnknown(
+          data['recoverable_base_amount']!,
+          _recoverableBaseAmountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('recovered_amount')) {
+      context.handle(
+        _recoveredAmountMeta,
+        recoveredAmount.isAcceptableOrUnknown(
+          data['recovered_amount']!,
+          _recoveredAmountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('recoverable_party_name')) {
+      context.handle(
+        _recoverablePartyNameMeta,
+        recoverablePartyName.isAcceptableOrUnknown(
+          data['recoverable_party_name']!,
+          _recoverablePartyNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('recoverable_party_notes')) {
+      context.handle(
+        _recoverablePartyNotesMeta,
+        recoverablePartyNotes.isAcceptableOrUnknown(
+          data['recoverable_party_notes']!,
+          _recoverablePartyNotesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('recoverable_party_phone')) {
+      context.handle(
+        _recoverablePartyPhoneMeta,
+        recoverablePartyPhone.isAcceptableOrUnknown(
+          data['recoverable_party_phone']!,
+          _recoverablePartyPhoneMeta,
+        ),
+      );
+    }
     if (data.containsKey('notes')) {
       context.handle(
         _notesMeta,
@@ -3399,6 +3915,26 @@ class $PendingTransactionsTable extends PendingTransactions
         DriftSqlType.double,
         data['${effectivePrefix}recoverable_amount'],
       ),
+      recoverableBaseAmount: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}recoverable_base_amount'],
+      ),
+      recoveredAmount: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}recovered_amount'],
+      )!,
+      recoverablePartyName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}recoverable_party_name'],
+      ),
+      recoverablePartyNotes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}recoverable_party_notes'],
+      ),
+      recoverablePartyPhone: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}recoverable_party_phone'],
+      ),
       notes: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}notes'],
@@ -3441,6 +3977,11 @@ class PendingTransaction extends DataClass
   final double? cashbackAmount;
   final bool isForOthers;
   final double? recoverableAmount;
+  final double? recoverableBaseAmount;
+  final double recoveredAmount;
+  final String? recoverablePartyName;
+  final String? recoverablePartyNotes;
+  final String? recoverablePartyPhone;
   final String? notes;
   final int? duplicateOfTransactionId;
   final DateTime createdAt;
@@ -3461,6 +4002,11 @@ class PendingTransaction extends DataClass
     this.cashbackAmount,
     required this.isForOthers,
     this.recoverableAmount,
+    this.recoverableBaseAmount,
+    required this.recoveredAmount,
+    this.recoverablePartyName,
+    this.recoverablePartyNotes,
+    this.recoverablePartyPhone,
     this.notes,
     this.duplicateOfTransactionId,
     required this.createdAt,
@@ -3493,6 +4039,19 @@ class PendingTransaction extends DataClass
     map['is_for_others'] = Variable<bool>(isForOthers);
     if (!nullToAbsent || recoverableAmount != null) {
       map['recoverable_amount'] = Variable<double>(recoverableAmount);
+    }
+    if (!nullToAbsent || recoverableBaseAmount != null) {
+      map['recoverable_base_amount'] = Variable<double>(recoverableBaseAmount);
+    }
+    map['recovered_amount'] = Variable<double>(recoveredAmount);
+    if (!nullToAbsent || recoverablePartyName != null) {
+      map['recoverable_party_name'] = Variable<String>(recoverablePartyName);
+    }
+    if (!nullToAbsent || recoverablePartyNotes != null) {
+      map['recoverable_party_notes'] = Variable<String>(recoverablePartyNotes);
+    }
+    if (!nullToAbsent || recoverablePartyPhone != null) {
+      map['recoverable_party_phone'] = Variable<String>(recoverablePartyPhone);
     }
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
@@ -3531,6 +4090,19 @@ class PendingTransaction extends DataClass
       recoverableAmount: recoverableAmount == null && nullToAbsent
           ? const Value.absent()
           : Value(recoverableAmount),
+      recoverableBaseAmount: recoverableBaseAmount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(recoverableBaseAmount),
+      recoveredAmount: Value(recoveredAmount),
+      recoverablePartyName: recoverablePartyName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(recoverablePartyName),
+      recoverablePartyNotes: recoverablePartyNotes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(recoverablePartyNotes),
+      recoverablePartyPhone: recoverablePartyPhone == null && nullToAbsent
+          ? const Value.absent()
+          : Value(recoverablePartyPhone),
       notes: notes == null && nullToAbsent
           ? const Value.absent()
           : Value(notes),
@@ -3571,6 +4143,19 @@ class PendingTransaction extends DataClass
       recoverableAmount: serializer.fromJson<double?>(
         json['recoverableAmount'],
       ),
+      recoverableBaseAmount: serializer.fromJson<double?>(
+        json['recoverableBaseAmount'],
+      ),
+      recoveredAmount: serializer.fromJson<double>(json['recoveredAmount']),
+      recoverablePartyName: serializer.fromJson<String?>(
+        json['recoverablePartyName'],
+      ),
+      recoverablePartyNotes: serializer.fromJson<String?>(
+        json['recoverablePartyNotes'],
+      ),
+      recoverablePartyPhone: serializer.fromJson<String?>(
+        json['recoverablePartyPhone'],
+      ),
       notes: serializer.fromJson<String?>(json['notes']),
       duplicateOfTransactionId: serializer.fromJson<int?>(
         json['duplicateOfTransactionId'],
@@ -3602,6 +4187,17 @@ class PendingTransaction extends DataClass
       'cashbackAmount': serializer.toJson<double?>(cashbackAmount),
       'isForOthers': serializer.toJson<bool>(isForOthers),
       'recoverableAmount': serializer.toJson<double?>(recoverableAmount),
+      'recoverableBaseAmount': serializer.toJson<double?>(
+        recoverableBaseAmount,
+      ),
+      'recoveredAmount': serializer.toJson<double>(recoveredAmount),
+      'recoverablePartyName': serializer.toJson<String?>(recoverablePartyName),
+      'recoverablePartyNotes': serializer.toJson<String?>(
+        recoverablePartyNotes,
+      ),
+      'recoverablePartyPhone': serializer.toJson<String?>(
+        recoverablePartyPhone,
+      ),
       'notes': serializer.toJson<String?>(notes),
       'duplicateOfTransactionId': serializer.toJson<int?>(
         duplicateOfTransactionId,
@@ -3627,6 +4223,11 @@ class PendingTransaction extends DataClass
     Value<double?> cashbackAmount = const Value.absent(),
     bool? isForOthers,
     Value<double?> recoverableAmount = const Value.absent(),
+    Value<double?> recoverableBaseAmount = const Value.absent(),
+    double? recoveredAmount,
+    Value<String?> recoverablePartyName = const Value.absent(),
+    Value<String?> recoverablePartyNotes = const Value.absent(),
+    Value<String?> recoverablePartyPhone = const Value.absent(),
     Value<String?> notes = const Value.absent(),
     Value<int?> duplicateOfTransactionId = const Value.absent(),
     DateTime? createdAt,
@@ -3654,6 +4255,19 @@ class PendingTransaction extends DataClass
     recoverableAmount: recoverableAmount.present
         ? recoverableAmount.value
         : this.recoverableAmount,
+    recoverableBaseAmount: recoverableBaseAmount.present
+        ? recoverableBaseAmount.value
+        : this.recoverableBaseAmount,
+    recoveredAmount: recoveredAmount ?? this.recoveredAmount,
+    recoverablePartyName: recoverablePartyName.present
+        ? recoverablePartyName.value
+        : this.recoverablePartyName,
+    recoverablePartyNotes: recoverablePartyNotes.present
+        ? recoverablePartyNotes.value
+        : this.recoverablePartyNotes,
+    recoverablePartyPhone: recoverablePartyPhone.present
+        ? recoverablePartyPhone.value
+        : this.recoverablePartyPhone,
     notes: notes.present ? notes.value : this.notes,
     duplicateOfTransactionId: duplicateOfTransactionId.present
         ? duplicateOfTransactionId.value
@@ -3698,6 +4312,21 @@ class PendingTransaction extends DataClass
       recoverableAmount: data.recoverableAmount.present
           ? data.recoverableAmount.value
           : this.recoverableAmount,
+      recoverableBaseAmount: data.recoverableBaseAmount.present
+          ? data.recoverableBaseAmount.value
+          : this.recoverableBaseAmount,
+      recoveredAmount: data.recoveredAmount.present
+          ? data.recoveredAmount.value
+          : this.recoveredAmount,
+      recoverablePartyName: data.recoverablePartyName.present
+          ? data.recoverablePartyName.value
+          : this.recoverablePartyName,
+      recoverablePartyNotes: data.recoverablePartyNotes.present
+          ? data.recoverablePartyNotes.value
+          : this.recoverablePartyNotes,
+      recoverablePartyPhone: data.recoverablePartyPhone.present
+          ? data.recoverablePartyPhone.value
+          : this.recoverablePartyPhone,
       notes: data.notes.present ? data.notes.value : this.notes,
       duplicateOfTransactionId: data.duplicateOfTransactionId.present
           ? data.duplicateOfTransactionId.value
@@ -3725,6 +4354,11 @@ class PendingTransaction extends DataClass
           ..write('cashbackAmount: $cashbackAmount, ')
           ..write('isForOthers: $isForOthers, ')
           ..write('recoverableAmount: $recoverableAmount, ')
+          ..write('recoverableBaseAmount: $recoverableBaseAmount, ')
+          ..write('recoveredAmount: $recoveredAmount, ')
+          ..write('recoverablePartyName: $recoverablePartyName, ')
+          ..write('recoverablePartyNotes: $recoverablePartyNotes, ')
+          ..write('recoverablePartyPhone: $recoverablePartyPhone, ')
           ..write('notes: $notes, ')
           ..write('duplicateOfTransactionId: $duplicateOfTransactionId, ')
           ..write('createdAt: $createdAt, ')
@@ -3734,7 +4368,7 @@ class PendingTransaction extends DataClass
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     amount,
     merchant,
@@ -3750,11 +4384,16 @@ class PendingTransaction extends DataClass
     cashbackAmount,
     isForOthers,
     recoverableAmount,
+    recoverableBaseAmount,
+    recoveredAmount,
+    recoverablePartyName,
+    recoverablePartyNotes,
+    recoverablePartyPhone,
     notes,
     duplicateOfTransactionId,
     createdAt,
     updatedAt,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3775,6 +4414,11 @@ class PendingTransaction extends DataClass
           other.cashbackAmount == this.cashbackAmount &&
           other.isForOthers == this.isForOthers &&
           other.recoverableAmount == this.recoverableAmount &&
+          other.recoverableBaseAmount == this.recoverableBaseAmount &&
+          other.recoveredAmount == this.recoveredAmount &&
+          other.recoverablePartyName == this.recoverablePartyName &&
+          other.recoverablePartyNotes == this.recoverablePartyNotes &&
+          other.recoverablePartyPhone == this.recoverablePartyPhone &&
           other.notes == this.notes &&
           other.duplicateOfTransactionId == this.duplicateOfTransactionId &&
           other.createdAt == this.createdAt &&
@@ -3797,6 +4441,11 @@ class PendingTransactionsCompanion extends UpdateCompanion<PendingTransaction> {
   final Value<double?> cashbackAmount;
   final Value<bool> isForOthers;
   final Value<double?> recoverableAmount;
+  final Value<double?> recoverableBaseAmount;
+  final Value<double> recoveredAmount;
+  final Value<String?> recoverablePartyName;
+  final Value<String?> recoverablePartyNotes;
+  final Value<String?> recoverablePartyPhone;
   final Value<String?> notes;
   final Value<int?> duplicateOfTransactionId;
   final Value<DateTime> createdAt;
@@ -3817,6 +4466,11 @@ class PendingTransactionsCompanion extends UpdateCompanion<PendingTransaction> {
     this.cashbackAmount = const Value.absent(),
     this.isForOthers = const Value.absent(),
     this.recoverableAmount = const Value.absent(),
+    this.recoverableBaseAmount = const Value.absent(),
+    this.recoveredAmount = const Value.absent(),
+    this.recoverablePartyName = const Value.absent(),
+    this.recoverablePartyNotes = const Value.absent(),
+    this.recoverablePartyPhone = const Value.absent(),
     this.notes = const Value.absent(),
     this.duplicateOfTransactionId = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -3838,6 +4492,11 @@ class PendingTransactionsCompanion extends UpdateCompanion<PendingTransaction> {
     this.cashbackAmount = const Value.absent(),
     this.isForOthers = const Value.absent(),
     this.recoverableAmount = const Value.absent(),
+    this.recoverableBaseAmount = const Value.absent(),
+    this.recoveredAmount = const Value.absent(),
+    this.recoverablePartyName = const Value.absent(),
+    this.recoverablePartyNotes = const Value.absent(),
+    this.recoverablePartyPhone = const Value.absent(),
     this.notes = const Value.absent(),
     this.duplicateOfTransactionId = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -3867,6 +4526,11 @@ class PendingTransactionsCompanion extends UpdateCompanion<PendingTransaction> {
     Expression<double>? cashbackAmount,
     Expression<bool>? isForOthers,
     Expression<double>? recoverableAmount,
+    Expression<double>? recoverableBaseAmount,
+    Expression<double>? recoveredAmount,
+    Expression<String>? recoverablePartyName,
+    Expression<String>? recoverablePartyNotes,
+    Expression<String>? recoverablePartyPhone,
     Expression<String>? notes,
     Expression<int>? duplicateOfTransactionId,
     Expression<DateTime>? createdAt,
@@ -3890,6 +4554,15 @@ class PendingTransactionsCompanion extends UpdateCompanion<PendingTransaction> {
       if (cashbackAmount != null) 'cashback_amount': cashbackAmount,
       if (isForOthers != null) 'is_for_others': isForOthers,
       if (recoverableAmount != null) 'recoverable_amount': recoverableAmount,
+      if (recoverableBaseAmount != null)
+        'recoverable_base_amount': recoverableBaseAmount,
+      if (recoveredAmount != null) 'recovered_amount': recoveredAmount,
+      if (recoverablePartyName != null)
+        'recoverable_party_name': recoverablePartyName,
+      if (recoverablePartyNotes != null)
+        'recoverable_party_notes': recoverablePartyNotes,
+      if (recoverablePartyPhone != null)
+        'recoverable_party_phone': recoverablePartyPhone,
       if (notes != null) 'notes': notes,
       if (duplicateOfTransactionId != null)
         'duplicate_of_transaction_id': duplicateOfTransactionId,
@@ -3914,6 +4587,11 @@ class PendingTransactionsCompanion extends UpdateCompanion<PendingTransaction> {
     Value<double?>? cashbackAmount,
     Value<bool>? isForOthers,
     Value<double?>? recoverableAmount,
+    Value<double?>? recoverableBaseAmount,
+    Value<double>? recoveredAmount,
+    Value<String?>? recoverablePartyName,
+    Value<String?>? recoverablePartyNotes,
+    Value<String?>? recoverablePartyPhone,
     Value<String?>? notes,
     Value<int?>? duplicateOfTransactionId,
     Value<DateTime>? createdAt,
@@ -3937,6 +4615,14 @@ class PendingTransactionsCompanion extends UpdateCompanion<PendingTransaction> {
       cashbackAmount: cashbackAmount ?? this.cashbackAmount,
       isForOthers: isForOthers ?? this.isForOthers,
       recoverableAmount: recoverableAmount ?? this.recoverableAmount,
+      recoverableBaseAmount:
+          recoverableBaseAmount ?? this.recoverableBaseAmount,
+      recoveredAmount: recoveredAmount ?? this.recoveredAmount,
+      recoverablePartyName: recoverablePartyName ?? this.recoverablePartyName,
+      recoverablePartyNotes:
+          recoverablePartyNotes ?? this.recoverablePartyNotes,
+      recoverablePartyPhone:
+          recoverablePartyPhone ?? this.recoverablePartyPhone,
       notes: notes ?? this.notes,
       duplicateOfTransactionId:
           duplicateOfTransactionId ?? this.duplicateOfTransactionId,
@@ -3997,6 +4683,29 @@ class PendingTransactionsCompanion extends UpdateCompanion<PendingTransaction> {
     if (recoverableAmount.present) {
       map['recoverable_amount'] = Variable<double>(recoverableAmount.value);
     }
+    if (recoverableBaseAmount.present) {
+      map['recoverable_base_amount'] = Variable<double>(
+        recoverableBaseAmount.value,
+      );
+    }
+    if (recoveredAmount.present) {
+      map['recovered_amount'] = Variable<double>(recoveredAmount.value);
+    }
+    if (recoverablePartyName.present) {
+      map['recoverable_party_name'] = Variable<String>(
+        recoverablePartyName.value,
+      );
+    }
+    if (recoverablePartyNotes.present) {
+      map['recoverable_party_notes'] = Variable<String>(
+        recoverablePartyNotes.value,
+      );
+    }
+    if (recoverablePartyPhone.present) {
+      map['recoverable_party_phone'] = Variable<String>(
+        recoverablePartyPhone.value,
+      );
+    }
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
     }
@@ -4032,6 +4741,11 @@ class PendingTransactionsCompanion extends UpdateCompanion<PendingTransaction> {
           ..write('cashbackAmount: $cashbackAmount, ')
           ..write('isForOthers: $isForOthers, ')
           ..write('recoverableAmount: $recoverableAmount, ')
+          ..write('recoverableBaseAmount: $recoverableBaseAmount, ')
+          ..write('recoveredAmount: $recoveredAmount, ')
+          ..write('recoverablePartyName: $recoverablePartyName, ')
+          ..write('recoverablePartyNotes: $recoverablePartyNotes, ')
+          ..write('recoverablePartyPhone: $recoverablePartyPhone, ')
           ..write('notes: $notes, ')
           ..write('duplicateOfTransactionId: $duplicateOfTransactionId, ')
           ..write('createdAt: $createdAt, ')
@@ -12984,6 +13698,13 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       Value<double> cashbackAmount,
       Value<bool> isForOthers,
       Value<double?> recoverableAmount,
+      Value<double?> recoverableBaseAmount,
+      Value<double> recoveredAmount,
+      Value<String?> recoverablePartyName,
+      Value<String?> recoverablePartyNotes,
+      Value<String?> recoverablePartyPhone,
+      Value<String> recoverableStatus,
+      Value<DateTime?> recoveredAt,
       Value<bool> confirmed,
       Value<String?> detectedSourceType,
       Value<int?> cardBillId,
@@ -13011,6 +13732,13 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<double> cashbackAmount,
       Value<bool> isForOthers,
       Value<double?> recoverableAmount,
+      Value<double?> recoverableBaseAmount,
+      Value<double> recoveredAmount,
+      Value<String?> recoverablePartyName,
+      Value<String?> recoverablePartyNotes,
+      Value<String?> recoverablePartyPhone,
+      Value<String> recoverableStatus,
+      Value<DateTime?> recoveredAt,
       Value<bool> confirmed,
       Value<String?> detectedSourceType,
       Value<int?> cardBillId,
@@ -13091,6 +13819,41 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<double> get recoverableAmount => $composableBuilder(
     column: $table.recoverableAmount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get recoverableBaseAmount => $composableBuilder(
+    column: $table.recoverableBaseAmount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get recoveredAmount => $composableBuilder(
+    column: $table.recoveredAmount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get recoverablePartyName => $composableBuilder(
+    column: $table.recoverablePartyName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get recoverablePartyNotes => $composableBuilder(
+    column: $table.recoverablePartyNotes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get recoverablePartyPhone => $composableBuilder(
+    column: $table.recoverablePartyPhone,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get recoverableStatus => $composableBuilder(
+    column: $table.recoverableStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get recoveredAt => $composableBuilder(
+    column: $table.recoveredAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -13224,6 +13987,41 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get recoverableBaseAmount => $composableBuilder(
+    column: $table.recoverableBaseAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get recoveredAmount => $composableBuilder(
+    column: $table.recoveredAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get recoverablePartyName => $composableBuilder(
+    column: $table.recoverablePartyName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get recoverablePartyNotes => $composableBuilder(
+    column: $table.recoverablePartyNotes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get recoverablePartyPhone => $composableBuilder(
+    column: $table.recoverablePartyPhone,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get recoverableStatus => $composableBuilder(
+    column: $table.recoverableStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get recoveredAt => $composableBuilder(
+    column: $table.recoveredAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get confirmed => $composableBuilder(
     column: $table.confirmed,
     builder: (column) => ColumnOrderings(column),
@@ -13342,6 +14140,41 @@ class $$TransactionsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<double> get recoverableBaseAmount => $composableBuilder(
+    column: $table.recoverableBaseAmount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get recoveredAmount => $composableBuilder(
+    column: $table.recoveredAmount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get recoverablePartyName => $composableBuilder(
+    column: $table.recoverablePartyName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get recoverablePartyNotes => $composableBuilder(
+    column: $table.recoverablePartyNotes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get recoverablePartyPhone => $composableBuilder(
+    column: $table.recoverablePartyPhone,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get recoverableStatus => $composableBuilder(
+    column: $table.recoverableStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get recoveredAt => $composableBuilder(
+    column: $table.recoveredAt,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get confirmed =>
       $composableBuilder(column: $table.confirmed, builder: (column) => column);
 
@@ -13440,6 +14273,13 @@ class $$TransactionsTableTableManager
                 Value<double> cashbackAmount = const Value.absent(),
                 Value<bool> isForOthers = const Value.absent(),
                 Value<double?> recoverableAmount = const Value.absent(),
+                Value<double?> recoverableBaseAmount = const Value.absent(),
+                Value<double> recoveredAmount = const Value.absent(),
+                Value<String?> recoverablePartyName = const Value.absent(),
+                Value<String?> recoverablePartyNotes = const Value.absent(),
+                Value<String?> recoverablePartyPhone = const Value.absent(),
+                Value<String> recoverableStatus = const Value.absent(),
+                Value<DateTime?> recoveredAt = const Value.absent(),
                 Value<bool> confirmed = const Value.absent(),
                 Value<String?> detectedSourceType = const Value.absent(),
                 Value<int?> cardBillId = const Value.absent(),
@@ -13465,6 +14305,13 @@ class $$TransactionsTableTableManager
                 cashbackAmount: cashbackAmount,
                 isForOthers: isForOthers,
                 recoverableAmount: recoverableAmount,
+                recoverableBaseAmount: recoverableBaseAmount,
+                recoveredAmount: recoveredAmount,
+                recoverablePartyName: recoverablePartyName,
+                recoverablePartyNotes: recoverablePartyNotes,
+                recoverablePartyPhone: recoverablePartyPhone,
+                recoverableStatus: recoverableStatus,
+                recoveredAt: recoveredAt,
                 confirmed: confirmed,
                 detectedSourceType: detectedSourceType,
                 cardBillId: cardBillId,
@@ -13492,6 +14339,13 @@ class $$TransactionsTableTableManager
                 Value<double> cashbackAmount = const Value.absent(),
                 Value<bool> isForOthers = const Value.absent(),
                 Value<double?> recoverableAmount = const Value.absent(),
+                Value<double?> recoverableBaseAmount = const Value.absent(),
+                Value<double> recoveredAmount = const Value.absent(),
+                Value<String?> recoverablePartyName = const Value.absent(),
+                Value<String?> recoverablePartyNotes = const Value.absent(),
+                Value<String?> recoverablePartyPhone = const Value.absent(),
+                Value<String> recoverableStatus = const Value.absent(),
+                Value<DateTime?> recoveredAt = const Value.absent(),
                 Value<bool> confirmed = const Value.absent(),
                 Value<String?> detectedSourceType = const Value.absent(),
                 Value<int?> cardBillId = const Value.absent(),
@@ -13517,6 +14371,13 @@ class $$TransactionsTableTableManager
                 cashbackAmount: cashbackAmount,
                 isForOthers: isForOthers,
                 recoverableAmount: recoverableAmount,
+                recoverableBaseAmount: recoverableBaseAmount,
+                recoveredAmount: recoveredAmount,
+                recoverablePartyName: recoverablePartyName,
+                recoverablePartyNotes: recoverablePartyNotes,
+                recoverablePartyPhone: recoverablePartyPhone,
+                recoverableStatus: recoverableStatus,
+                recoveredAt: recoveredAt,
                 confirmed: confirmed,
                 detectedSourceType: detectedSourceType,
                 cardBillId: cardBillId,
@@ -13572,6 +14433,11 @@ typedef $$PendingTransactionsTableCreateCompanionBuilder =
       Value<double?> cashbackAmount,
       Value<bool> isForOthers,
       Value<double?> recoverableAmount,
+      Value<double?> recoverableBaseAmount,
+      Value<double> recoveredAmount,
+      Value<String?> recoverablePartyName,
+      Value<String?> recoverablePartyNotes,
+      Value<String?> recoverablePartyPhone,
       Value<String?> notes,
       Value<int?> duplicateOfTransactionId,
       Value<DateTime> createdAt,
@@ -13594,6 +14460,11 @@ typedef $$PendingTransactionsTableUpdateCompanionBuilder =
       Value<double?> cashbackAmount,
       Value<bool> isForOthers,
       Value<double?> recoverableAmount,
+      Value<double?> recoverableBaseAmount,
+      Value<double> recoveredAmount,
+      Value<String?> recoverablePartyName,
+      Value<String?> recoverablePartyNotes,
+      Value<String?> recoverablePartyPhone,
       Value<String?> notes,
       Value<int?> duplicateOfTransactionId,
       Value<DateTime> createdAt,
@@ -13681,6 +14552,31 @@ class $$PendingTransactionsTableFilterComposer
 
   ColumnFilters<double> get recoverableAmount => $composableBuilder(
     column: $table.recoverableAmount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get recoverableBaseAmount => $composableBuilder(
+    column: $table.recoverableBaseAmount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get recoveredAmount => $composableBuilder(
+    column: $table.recoveredAmount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get recoverablePartyName => $composableBuilder(
+    column: $table.recoverablePartyName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get recoverablePartyNotes => $composableBuilder(
+    column: $table.recoverablePartyNotes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get recoverablePartyPhone => $composableBuilder(
+    column: $table.recoverablePartyPhone,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -13789,6 +14685,31 @@ class $$PendingTransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get recoverableBaseAmount => $composableBuilder(
+    column: $table.recoverableBaseAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get recoveredAmount => $composableBuilder(
+    column: $table.recoveredAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get recoverablePartyName => $composableBuilder(
+    column: $table.recoverablePartyName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get recoverablePartyNotes => $composableBuilder(
+    column: $table.recoverablePartyNotes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get recoverablePartyPhone => $composableBuilder(
+    column: $table.recoverablePartyPhone,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get notes => $composableBuilder(
     column: $table.notes,
     builder: (column) => ColumnOrderings(column),
@@ -13884,6 +14805,31 @@ class $$PendingTransactionsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<double> get recoverableBaseAmount => $composableBuilder(
+    column: $table.recoverableBaseAmount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get recoveredAmount => $composableBuilder(
+    column: $table.recoveredAmount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get recoverablePartyName => $composableBuilder(
+    column: $table.recoverablePartyName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get recoverablePartyNotes => $composableBuilder(
+    column: $table.recoverablePartyNotes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get recoverablePartyPhone => $composableBuilder(
+    column: $table.recoverablePartyPhone,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get notes =>
       $composableBuilder(column: $table.notes, builder: (column) => column);
 
@@ -13958,6 +14904,11 @@ class $$PendingTransactionsTableTableManager
                 Value<double?> cashbackAmount = const Value.absent(),
                 Value<bool> isForOthers = const Value.absent(),
                 Value<double?> recoverableAmount = const Value.absent(),
+                Value<double?> recoverableBaseAmount = const Value.absent(),
+                Value<double> recoveredAmount = const Value.absent(),
+                Value<String?> recoverablePartyName = const Value.absent(),
+                Value<String?> recoverablePartyNotes = const Value.absent(),
+                Value<String?> recoverablePartyPhone = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 Value<int?> duplicateOfTransactionId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -13978,6 +14929,11 @@ class $$PendingTransactionsTableTableManager
                 cashbackAmount: cashbackAmount,
                 isForOthers: isForOthers,
                 recoverableAmount: recoverableAmount,
+                recoverableBaseAmount: recoverableBaseAmount,
+                recoveredAmount: recoveredAmount,
+                recoverablePartyName: recoverablePartyName,
+                recoverablePartyNotes: recoverablePartyNotes,
+                recoverablePartyPhone: recoverablePartyPhone,
                 notes: notes,
                 duplicateOfTransactionId: duplicateOfTransactionId,
                 createdAt: createdAt,
@@ -14000,6 +14956,11 @@ class $$PendingTransactionsTableTableManager
                 Value<double?> cashbackAmount = const Value.absent(),
                 Value<bool> isForOthers = const Value.absent(),
                 Value<double?> recoverableAmount = const Value.absent(),
+                Value<double?> recoverableBaseAmount = const Value.absent(),
+                Value<double> recoveredAmount = const Value.absent(),
+                Value<String?> recoverablePartyName = const Value.absent(),
+                Value<String?> recoverablePartyNotes = const Value.absent(),
+                Value<String?> recoverablePartyPhone = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 Value<int?> duplicateOfTransactionId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -14020,6 +14981,11 @@ class $$PendingTransactionsTableTableManager
                 cashbackAmount: cashbackAmount,
                 isForOthers: isForOthers,
                 recoverableAmount: recoverableAmount,
+                recoverableBaseAmount: recoverableBaseAmount,
+                recoveredAmount: recoveredAmount,
+                recoverablePartyName: recoverablePartyName,
+                recoverablePartyNotes: recoverablePartyNotes,
+                recoverablePartyPhone: recoverablePartyPhone,
                 notes: notes,
                 duplicateOfTransactionId: duplicateOfTransactionId,
                 createdAt: createdAt,

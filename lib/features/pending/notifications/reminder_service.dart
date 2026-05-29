@@ -235,7 +235,11 @@ class ReminderService {
         .fold<double>(0, (sum, t) => sum + (t.amount - t.cashbackAmount));
     final recoverable = weekTxns.fold<double>(
       0,
-      (sum, t) => sum + (t.recoverableAmount ?? 0),
+      (sum, t) =>
+          sum +
+          ((t.recoverableAmount ?? 0) > 0 && t.recoverableStatus != 'recovered'
+              ? (t.recoverableAmount ?? 0)
+              : 0),
     );
     final pending = await _pendingCount();
     final splitLine = await _splitSettlementReminderLine();
@@ -261,16 +265,19 @@ class ReminderService {
       bill.dueDate.day,
     );
     final days = due.difference(base).inDays;
+    final pendingAmount = (bill.billedAmount - bill.paidAmount)
+        .clamp(0, bill.billedAmount)
+        .toDouble();
     if (days < 0) {
-      return '${card.bankName} card bill of ${inr(bill.billedAmount)} is overdue.';
+      return '${card.bankName} card bill of ${inr(pendingAmount)} is overdue.';
     }
     if (days == 0) {
-      return '${card.bankName} card bill of ${inr(bill.billedAmount)} is due today.';
+      return '${card.bankName} card bill of ${inr(pendingAmount)} is due today.';
     }
     if (days == 1) {
-      return '${card.bankName} card bill of ${inr(bill.billedAmount)} is due in 1 day.';
+      return '${card.bankName} card bill of ${inr(pendingAmount)} is due in 1 day.';
     }
-    return '${card.bankName} card bill of ${inr(bill.billedAmount)} is due in $days days.';
+    return '${card.bankName} card bill of ${inr(pendingAmount)} is due in $days days.';
   }
 
   String loanEmiReminderText(EmiSchedule schedule) {

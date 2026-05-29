@@ -8,26 +8,104 @@ import '../../../../shared/widgets/finarc/finarc_widgets.dart';
 import '../../data/dashboard_providers.dart';
 
 class DashboardGreetingHeader extends StatelessWidget {
-  const DashboardGreetingHeader({super.key, required this.name});
+  const DashboardGreetingHeader({
+    super.key,
+    required this.name,
+    required this.unreadAlertsCount,
+    this.onAlertsTap,
+    this.onSettingsTap,
+  });
 
   final String? name;
+  final int unreadAlertsCount;
+  final VoidCallback? onAlertsTap;
+  final VoidCallback? onSettingsTap;
 
   @override
   Widget build(BuildContext context) {
     final trimmed = name?.trim();
     final hasName = trimmed != null && trimmed.isNotEmpty;
-    return Column(
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          hasName ? 'Hello, $trimmed' : 'Welcome',
-          style: Theme.of(context).textTheme.headlineSmall,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                hasName ? 'Good morning, $trimmed' : 'Good morning',
+                style: Theme.of(context).textTheme.bodyMedium,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: AppSpacing.xxs),
+              Text(
+                hasName ? '$trimmed 👋' : 'Welcome 👋',
+                style: Theme.of(context).textTheme.headlineSmall,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: AppSpacing.xxs),
-        Text(
-          'Track money confidently, offline.',
-          style: Theme.of(context).textTheme.bodyMedium,
+        const SizedBox(width: AppSpacing.sm),
+        _headerAction(
+          context,
+          icon: Icons.notifications_none_rounded,
+          onTap: onAlertsTap,
+          badge: unreadAlertsCount > 0 ? unreadAlertsCount.toString() : null,
         ),
+        const SizedBox(width: AppSpacing.xs),
+        _headerAction(context, icon: Icons.tune_rounded, onTap: onSettingsTap),
+      ],
+    );
+  }
+
+  Widget _headerAction(
+    BuildContext context, {
+    required IconData icon,
+    VoidCallback? onTap,
+    String? badge,
+  }) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        GestureDetector(
+          onTap: onTap,
+          child: Container(
+            height: 34,
+            width: 34,
+            decoration: BoxDecoration(
+              color: AppColors.darkSurfaceHigh,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.darkBorder),
+            ),
+            child: Icon(
+              icon,
+              size: 17,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+        ),
+        if (badge != null)
+          Positioned(
+            right: -3,
+            top: -3,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              decoration: BoxDecoration(
+                color: AppColors.darkError,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                badge,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Colors.white,
+                  letterSpacing: 0,
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -45,8 +123,20 @@ class NetWorthHeroCard extends StatelessWidget {
       child: FinarcBalanceCard(
         label: 'Net Worth',
         value: inr(data.netWorth),
-        subtitle: 'Liquid + recoverable - dues/loans',
-        statusLabel: data.netWorth >= 0 ? 'Healthy' : 'Attention',
+        subtitle:
+            'Assets ${inr(data.totalAssets)} • Liabilities ${inr(data.totalLiabilities)}',
+        trendLabel: 'Monthly spends ${inr(data.monthlySpends)}',
+        statusLabel: data.netWorth >= 0 ? 'On track' : 'Needs attention',
+        isHero: true,
+        leading: const CircleAvatar(
+          radius: 13,
+          backgroundColor: AppColors.darkPrimarySoft,
+          child: Icon(
+            Icons.insights_rounded,
+            size: 14,
+            color: AppColors.darkAccent,
+          ),
+        ),
       ),
     );
   }
@@ -120,24 +210,57 @@ class DashboardMetricGrid extends StatelessWidget {
       crossAxisCount: 2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 1.75,
+      childAspectRatio: 1.9,
       crossAxisSpacing: AppSpacing.xs,
       mainAxisSpacing: AppSpacing.xs,
       children: [
-        FinarcMetricCard(title: 'Bank Balance', value: inr(data.bankBalance)),
-        FinarcMetricCard(title: 'Card Dues', value: inr(data.cardDues)),
-        FinarcMetricCard(title: 'Cash In Hand', value: inr(data.cashInHand)),
         FinarcMetricCard(
-          title: 'Monthly Spends',
-          value: inr(data.monthlySpends),
+          title: 'Bank Balance',
+          value: inr(data.bankBalance),
+          icon: Icons.account_balance_rounded,
+          iconColor: AppColors.darkMint,
+          iconBackgroundColor: AppColors.darkMint.withValues(alpha: 0.14),
+          onTap: () => context.push('/accounts'),
         ),
         FinarcMetricCard(
-          title: 'Loans Outstanding',
+          title: 'Card Dues',
+          value: inr(data.cardDues),
+          icon: Icons.credit_card_rounded,
+          iconColor: AppColors.darkError,
+          iconBackgroundColor: AppColors.darkError.withValues(alpha: 0.14),
+          onTap: () => context.push('/cards'),
+        ),
+        FinarcMetricCard(
+          title: 'Cash In Hand',
+          value: inr(data.cashInHand),
+          icon: Icons.wallet_rounded,
+          iconColor: AppColors.darkWarning,
+          iconBackgroundColor: AppColors.darkWarning.withValues(alpha: 0.14),
+          onTap: () => context.push('/accounts'),
+        ),
+        FinarcMetricCard(
+          title: 'Loans',
           value: inr(data.loansOutstanding),
+          icon: Icons.account_balance_wallet_outlined,
+          iconColor: AppColors.darkOrange,
+          iconBackgroundColor: AppColors.darkOrange.withValues(alpha: 0.14),
+          onTap: () => context.push('/loans'),
         ),
         FinarcMetricCard(
           title: 'Recoverable Amount',
           value: inr(data.recoverableAmount),
+          icon: Icons.call_received_rounded,
+          iconColor: AppColors.darkBlue,
+          iconBackgroundColor: AppColors.darkBlue.withValues(alpha: 0.14),
+          onTap: () => context.push('/recoverables'),
+        ),
+        FinarcMetricCard(
+          title: 'Monthly Spends',
+          value: inr(data.monthlySpends),
+          icon: Icons.calendar_month_rounded,
+          iconColor: AppColors.darkPink,
+          iconBackgroundColor: AppColors.darkPink.withValues(alpha: 0.14),
+          onTap: () => context.push('/analytics'),
         ),
       ],
     );
@@ -223,38 +346,91 @@ class RecentTransactionsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const FinarcSectionHeader(title: 'Recent Transactions'),
-        const SizedBox(height: AppSpacing.xs),
-        if (data.recentTransactions.isEmpty)
-          const FinarcEmptyState(
-            title: 'No transactions yet',
-            subtitle: 'Add your first expense from quick actions.',
-          )
-        else
-          ...data.recentTransactions.map(
-            (t) => FinarcTransactionTile(
-              title: t.title,
-              subtitle: t.category,
-              prefix: CircleAvatar(
-                radius: 16,
-                backgroundColor: AppColors.darkPrimarySoft,
-                child: Text(
-                  t.category[0].toUpperCase(),
-                  style: Theme.of(context).textTheme.labelMedium,
-                ),
-              ),
-              amount:
-                  '${t.type == 'income' || t.type == 'refund' ? '+' : '-'}${inr(t.amount)}',
-              amountColor: t.type == 'income' || t.type == 'refund'
-                  ? AppColors.darkSuccess
-                  : AppColors.darkError,
+    final items = data.recentTransactions;
+    return FinarcCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          FinarcSectionHeader(
+            title: 'Recent Transactions',
+            trailing: TextButton(
+              onPressed: () => context.push('/expenses'),
+              child: const Text('See all'),
             ),
           ),
-      ],
+          const SizedBox(height: AppSpacing.xs),
+          SizedBox(
+            height: 320,
+            child: items.isEmpty
+                ? const FinarcEmptyState(
+                    title: 'No transactions yet',
+                    subtitle: 'Add your first expense from quick actions.',
+                  )
+                : Scrollbar(
+                    child: ListView.separated(
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: items.length,
+                      separatorBuilder: (_, _) =>
+                          const SizedBox(height: AppSpacing.xs),
+                      itemBuilder: (context, index) {
+                        final t = items[index];
+                        final isIncome =
+                            t.type == 'income' || t.type == 'refund';
+                        final tone = isIncome
+                            ? FinarcStatusTone.success
+                            : (t.paymentSourceType == 'creditCard'
+                                  ? FinarcStatusTone.warning
+                                  : FinarcStatusTone.info);
+                        return FinarcTransactionTile(
+                          title: t.title,
+                          subtitle: t.category,
+                          meta: transactionDateLabel(t.transactionDate),
+                          prefix: CircleAvatar(
+                            radius: 15,
+                            backgroundColor: _avatarColor(t.category),
+                            child: Icon(
+                              _categoryIcon(t.category),
+                              size: 14,
+                              color: Colors.white,
+                            ),
+                          ),
+                          amount: '${isIncome ? '+' : '-'}${inr(t.amount)}',
+                          amountColor: isIncome
+                              ? AppColors.darkSuccess
+                              : AppColors.darkError,
+                          statusLabel: isIncome
+                              ? 'Income'
+                              : (t.paymentSourceType == 'creditCard'
+                                    ? 'Unbilled'
+                                    : 'Spent'),
+                          statusTone: tone,
+                          compact: true,
+                        );
+                      },
+                    ),
+                  ),
+          ),
+        ],
+      ),
     );
+  }
+
+  static Color _avatarColor(String category) {
+    final key = category.trim().toLowerCase();
+    if (key.contains('food')) return AppColors.darkOrange;
+    if (key.contains('travel')) return AppColors.darkBlue;
+    if (key.contains('bill')) return AppColors.darkAccent;
+    if (key.contains('shop')) return AppColors.darkPink;
+    return AppColors.darkMint;
+  }
+
+  static IconData _categoryIcon(String category) {
+    final key = category.trim().toLowerCase();
+    if (key.contains('food')) return Icons.restaurant_rounded;
+    if (key.contains('travel')) return Icons.flight_takeoff_rounded;
+    if (key.contains('bill')) return Icons.receipt_long_rounded;
+    if (key.contains('shop')) return Icons.shopping_bag_rounded;
+    return Icons.paid_rounded;
   }
 }
 

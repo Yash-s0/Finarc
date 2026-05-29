@@ -272,7 +272,7 @@ void main() {
   });
 
   test(
-    'dashboard recoverable includes split receivables and personal share affects spend',
+    'dashboard recoverable excludes split receivables and personal share affects spend',
     () async {
       final shares = service.calculateExactSplit({youId: 300, rahulId: 700});
       await service.addSplitExpense(
@@ -301,7 +301,7 @@ void main() {
       final snapshot = await container.read(dashboardProvider.future);
 
       expect(snapshot.splitReceivableAmount, closeTo(700, 0.01));
-      expect(snapshot.recoverableAmount, closeTo(700, 0.01));
+      expect(snapshot.recoverableAmount, closeTo(0, 0.01));
       expect(snapshot.monthlySpends, closeTo(300, 0.01));
     },
   );

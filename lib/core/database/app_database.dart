@@ -55,6 +55,14 @@ class Transactions extends Table {
   RealColumn get cashbackAmount => real().withDefault(const Constant(0))();
   BoolColumn get isForOthers => boolean().withDefault(const Constant(false))();
   RealColumn get recoverableAmount => real().nullable()();
+  RealColumn get recoverableBaseAmount => real().nullable()();
+  RealColumn get recoveredAmount => real().withDefault(const Constant(0))();
+  TextColumn get recoverablePartyName => text().nullable()();
+  TextColumn get recoverablePartyNotes => text().nullable()();
+  TextColumn get recoverablePartyPhone => text().nullable()();
+  TextColumn get recoverableStatus =>
+      text().withDefault(const Constant('unpaid'))();
+  DateTimeColumn get recoveredAt => dateTime().nullable()();
   BoolColumn get confirmed => boolean().withDefault(const Constant(true))();
   TextColumn get detectedSourceType => text().nullable()();
   IntColumn get cardBillId => integer().nullable()();
@@ -85,6 +93,11 @@ class PendingTransactions extends Table {
   RealColumn get cashbackAmount => real().nullable()();
   BoolColumn get isForOthers => boolean().withDefault(const Constant(false))();
   RealColumn get recoverableAmount => real().nullable()();
+  RealColumn get recoverableBaseAmount => real().nullable()();
+  RealColumn get recoveredAmount => real().withDefault(const Constant(0))();
+  TextColumn get recoverablePartyName => text().nullable()();
+  TextColumn get recoverablePartyNotes => text().nullable()();
+  TextColumn get recoverablePartyPhone => text().nullable()();
   TextColumn get notes => text().nullable()();
   IntColumn get duplicateOfTransactionId => integer().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
@@ -307,7 +320,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -462,6 +475,41 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(appSettings, appSettings.salaryCreditDay);
         await m.addColumn(appSettings, appSettings.companyName);
       }
+      if (from < 13) {
+        await m.addColumn(transactions, transactions.recoverablePartyName);
+        await m.addColumn(transactions, transactions.recoverablePartyNotes);
+        await m.addColumn(transactions, transactions.recoverablePartyPhone);
+        await m.addColumn(transactions, transactions.recoverableStatus);
+        await m.addColumn(transactions, transactions.recoveredAt);
+        await m.addColumn(
+          pendingTransactions,
+          pendingTransactions.recoverablePartyName,
+        );
+        await m.addColumn(
+          pendingTransactions,
+          pendingTransactions.recoverablePartyNotes,
+        );
+        await m.addColumn(
+          pendingTransactions,
+          pendingTransactions.recoverablePartyPhone,
+        );
+      }
+      if (from < 14) {
+        await _backfillCardOpeningBills();
+      }
+      if (from < 15) {
+        await m.addColumn(transactions, transactions.recoverableBaseAmount);
+        await m.addColumn(transactions, transactions.recoveredAmount);
+        await m.addColumn(
+          pendingTransactions,
+          pendingTransactions.recoverableBaseAmount,
+        );
+        await m.addColumn(
+          pendingTransactions,
+          pendingTransactions.recoveredAmount,
+        );
+        await _backfillRecoverableFields();
+      }
       await globalAppLogService.log(
         category: 'migration',
         message: 'upgrade-complete',
@@ -470,11 +518,13 @@ class AppDatabase extends _$AppDatabase {
     },
     beforeOpen: (details) async {
       await _healAppSettingsRows();
+      await _healCriticalNullRows();
     },
   );
 
   Future<void> seedIfEmpty() async {
     await _healAppSettingsRows();
+    await _healCriticalNullRows();
     final settings = await (select(appSettings)..limit(1)).getSingleOrNull();
     if (settings == null) {
       await into(
@@ -501,6 +551,190 @@ class AppDatabase extends _$AppDatabase {
         'deletedCount': idsToDelete.length,
       },
     );
+  }
+
+  Future<void> _healCriticalNullRows() async {
+    final txnNullCount = await customSelect('''
+SELECT COUNT(*) AS c
+FROM transactions
+WHERE recoverable_status IS NULL
+   OR recovered_amount IS NULL
+   OR cashback_amount IS NULL
+   OR is_for_others IS NULL
+   OR confirmed IS NULL
+''').getSingle().then((r) => r.read<int>('c'));
+    if (txnNullCount > 0) {
+      await customStatement('''
+UPDATE transactions
+SET recoverable_status = COALESCE(recoverable_status, 'unpaid'),
+    recovered_amount = COALESCE(recovered_amount, 0),
+    cashback_amount = COALESCE(cashback_amount, 0),
+    is_for_others = COALESCE(is_for_others, 0),
+    confirmed = COALESCE(confirmed, 1)
+WHERE recoverable_status IS NULL
+   OR recovered_amount IS NULL
+   OR cashback_amount IS NULL
+   OR is_for_others IS NULL
+   OR confirmed IS NULL
+''');
+      await globalAppLogService.log(
+        category: 'migration',
+        message: 'healed-transaction-nulls',
+        meta: <String, Object?>{'rows': txnNullCount},
+      );
+    }
+
+    final pendingNullCount = await customSelect('''
+SELECT COUNT(*) AS c
+FROM pending_transactions
+WHERE recovered_amount IS NULL
+''').getSingle().then((r) => r.read<int>('c'));
+    if (pendingNullCount > 0) {
+      await customStatement('''
+UPDATE pending_transactions
+SET recovered_amount = COALESCE(recovered_amount, 0)
+WHERE recovered_amount IS NULL
+''');
+      await globalAppLogService.log(
+        category: 'migration',
+        message: 'healed-pending-nulls',
+        meta: <String, Object?>{'rows': pendingNullCount},
+      );
+    }
+
+    final billNullCount = await customSelect('''
+SELECT COUNT(*) AS c
+FROM card_bills
+WHERE status IS NULL
+   OR paid_amount IS NULL
+''').getSingle().then((r) => r.read<int>('c'));
+    if (billNullCount > 0) {
+      await customStatement('''
+UPDATE card_bills
+SET status = COALESCE(status, 'upcoming'),
+    paid_amount = COALESCE(paid_amount, 0)
+WHERE status IS NULL
+   OR paid_amount IS NULL
+''');
+      await globalAppLogService.log(
+        category: 'migration',
+        message: 'healed-card-bill-nulls',
+        meta: <String, Object?>{'rows': billNullCount},
+      );
+    }
+  }
+
+  Future<void> _backfillCardOpeningBills() async {
+    final cards = await select(creditCards).get();
+    for (final card in cards) {
+      final opening =
+          await (select(cardBills)..where(
+                (b) => b.cardId.equals(card.id) & b.status.equals('opening'),
+              ))
+              .getSingleOrNull();
+      if (opening != null) continue;
+
+      final bills =
+          await (select(cardBills)..where(
+                (b) => b.cardId.equals(card.id) & b.status.isNotValue('paid'),
+              ))
+              .get();
+      final billedDue = bills.fold<double>(
+        0,
+        (sum, bill) =>
+            sum +
+            (bill.billedAmount - bill.paidAmount).clamp(0, bill.billedAmount),
+      );
+
+      final unbilledCharges =
+          await (select(transactions)..where(
+                (t) =>
+                    t.paymentSourceType.equals('creditCard') &
+                    t.paymentSourceId.equals(card.id) &
+                    t.type.equals('creditCard') &
+                    t.cardBillId.isNull(),
+              ))
+              .get();
+      final unbilledSpends = unbilledCharges.fold<double>(
+        0,
+        (sum, t) => sum + t.amount,
+      );
+
+      final representedOutstanding = billedDue + unbilledSpends;
+      final delta = (card.currentOutstanding - representedOutstanding)
+          .toDouble();
+      if (delta <= 0.009) continue;
+
+      final today = DateTime.now();
+      final todayDate = DateTime(today.year, today.month, today.day);
+      final dueDay = card.dueDay.clamp(1, 31);
+      final dueDate = DateTime(todayDate.year, todayDate.month, dueDay);
+      await into(cardBills).insert(
+        CardBillsCompanion.insert(
+          cardId: card.id,
+          cycleStartDate: Value(todayDate),
+          cycleEndDate: Value(todayDate),
+          billingDate: Value(todayDate),
+          dueDate: Value(
+            dueDate.isAfter(todayDate)
+                ? dueDate
+                : DateTime(todayDate.year, todayDate.month + 1, dueDay),
+          ),
+          billedAmount: delta,
+          status: const Value('opening'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _backfillRecoverableFields() async {
+    final txns = await select(transactions).get();
+    for (final txn in txns) {
+      final isRecoverable = txn.isForOthers;
+      final base = isRecoverable
+          ? (txn.amount - txn.cashbackAmount).clamp(0, txn.amount).toDouble()
+          : 0.0;
+
+      final normalizedStatus = (txn.recoverableStatus).toLowerCase();
+      final recovered = normalizedStatus == 'recovered' ? base : 0.0;
+      final remaining = (base - recovered).clamp(0, base).toDouble();
+      final nextStatus = !isRecoverable
+          ? 'unpaid'
+          : recovered >= base
+          ? 'recovered'
+          : 'unpaid';
+
+      await (update(transactions)..where((t) => t.id.equals(txn.id))).write(
+        TransactionsCompanion(
+          recoverableBaseAmount: Value(isRecoverable ? base : null),
+          recoveredAmount: Value(recovered),
+          recoverableAmount: Value(isRecoverable ? remaining : null),
+          recoverableStatus: Value(nextStatus),
+          recoveredAt: Value(
+            recovered > 0 ? (txn.recoveredAt ?? DateTime.now()) : null,
+          ),
+        ),
+      );
+    }
+
+    final pending = await select(pendingTransactions).get();
+    for (final row in pending) {
+      final isRecoverable = row.isForOthers;
+      final base = isRecoverable
+          ? (row.amount - (row.cashbackAmount ?? 0))
+                .clamp(0, row.amount)
+                .toDouble()
+          : 0.0;
+      await (update(
+        pendingTransactions,
+      )..where((p) => p.id.equals(row.id))).write(
+        PendingTransactionsCompanion(
+          recoverableBaseAmount: Value(isRecoverable ? base : null),
+          recoveredAmount: const Value(0),
+          recoverableAmount: Value(isRecoverable ? base : null),
+        ),
+      );
+    }
   }
 }
 

@@ -302,6 +302,23 @@ class ImportService {
                 cashbackAmount: Value(_double(row['cashbackAmount']) ?? 0),
                 isForOthers: Value(_bool(row['isForOthers']) ?? false),
                 recoverableAmount: Value(_double(row['recoverableAmount'])),
+                recoverableBaseAmount: Value(
+                  _double(row['recoverableBaseAmount']),
+                ),
+                recoveredAmount: Value(_double(row['recoveredAmount']) ?? 0),
+                recoverablePartyName: Value(
+                  _stringOrNull(row['recoverablePartyName']),
+                ),
+                recoverablePartyNotes: Value(
+                  _stringOrNull(row['recoverablePartyNotes']),
+                ),
+                recoverablePartyPhone: Value(
+                  _stringOrNull(row['recoverablePartyPhone']),
+                ),
+                recoverableStatus: Value(
+                  _string(row['recoverableStatus'], fallback: 'unpaid'),
+                ),
+                recoveredAt: Value(_date(row['recoveredAt'])),
                 confirmed: Value(_bool(row['confirmed']) ?? true),
                 detectedSourceType: Value(
                   _stringOrNull(row['detectedSourceType']),
@@ -374,6 +391,19 @@ class ImportService {
                 cashbackAmount: Value(_double(row['cashbackAmount'])),
                 isForOthers: Value(_bool(row['isForOthers']) ?? false),
                 recoverableAmount: Value(_double(row['recoverableAmount'])),
+                recoverableBaseAmount: Value(
+                  _double(row['recoverableBaseAmount']),
+                ),
+                recoveredAmount: Value(_double(row['recoveredAmount']) ?? 0),
+                recoverablePartyName: Value(
+                  _stringOrNull(row['recoverablePartyName']),
+                ),
+                recoverablePartyNotes: Value(
+                  _stringOrNull(row['recoverablePartyNotes']),
+                ),
+                recoverablePartyPhone: Value(
+                  _stringOrNull(row['recoverablePartyPhone']),
+                ),
                 notes: Value(_stringOrNull(row['notes'])),
                 duplicateOfTransactionId: Value(
                   _int(row['duplicateOfTransactionId']),

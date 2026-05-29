@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/database/database_providers.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
@@ -35,13 +36,14 @@ class _EditPendingTransactionScreenState
   final _merchant = TextEditingController();
   final _category = TextEditingController();
   final _notes = TextEditingController();
+  final _recoverableParty = TextEditingController();
+  final _recoveredAmount = TextEditingController(text: '0');
   DateTime _date = DateTime.now();
   String _sourceType = 'cash';
   int? _sourceId;
   bool _forOthers = false;
   bool _cashbackOn = false;
   final _cashback = TextEditingController(text: '0');
-  final _recoverable = TextEditingController(text: '0');
   final _dateController = TextEditingController();
   bool _initialized = false;
 
@@ -51,8 +53,9 @@ class _EditPendingTransactionScreenState
     _merchant.dispose();
     _category.dispose();
     _notes.dispose();
+    _recoverableParty.dispose();
+    _recoveredAmount.dispose();
     _cashback.dispose();
-    _recoverable.dispose();
     _dateController.dispose();
     super.dispose();
   }
@@ -77,7 +80,8 @@ class _EditPendingTransactionScreenState
                 children: [
                   const FinarcEmptyState(
                     title: 'Pending transaction not found',
-                    subtitle: 'It may have been confirmed, ignored, or deleted.',
+                    subtitle:
+                        'It may have been confirmed, ignored, or deleted.',
                     icon: Icons.search_off_outlined,
                   ),
                   const SizedBox(height: AppSpacing.sm),
@@ -99,8 +103,10 @@ class _EditPendingTransactionScreenState
               _forOthers = pending.isForOthers;
               _cashbackOn = (pending.cashbackAmount ?? 0) > 0;
               _cashback.text = (pending.cashbackAmount ?? 0).toStringAsFixed(0);
-              _recoverable.text = (pending.recoverableAmount ?? 0)
-                  .toStringAsFixed(0);
+              _recoverableParty.text = pending.recoverablePartyName ?? '';
+              _recoveredAmount.text = pending.recoveredAmount.toStringAsFixed(
+                0,
+              );
               _notes.text = pending.notes ?? '';
               _dateController.text = '${_date.toLocal()}'.split('.').first;
               _initialized = true;
@@ -123,6 +129,7 @@ class _EditPendingTransactionScreenState
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
+                          onChanged: (_) => setState(() {}),
                           validator: (v) {
                             final amount = double.tryParse(v ?? '');
                             if (amount == null || amount <= 0) {
@@ -251,29 +258,78 @@ class _EditPendingTransactionScreenState
                         SwitchListTile.adaptive(
                           contentPadding: EdgeInsets.zero,
                           value: _forOthers,
-                          onChanged: (v) => setState(() => _forOthers = v),
+                          onChanged: (v) => setState(() {
+                            _forOthers = v;
+                            if (!v) _recoverableParty.clear();
+                          }),
                           title: const Text('For Others'),
                         ),
-                        if (_forOthers)
+                        if (_forOthers) ...[
+                          const SizedBox(height: AppSpacing.xs),
                           FinarcTextField(
-                            controller: _recoverable,
-                            label: 'Recoverable amount',
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
+                            controller: _recoverableParty,
+                            label: 'Paid for whom?',
                             validator: (v) {
                               if (!_forOthers) return null;
-                              final recoverable = double.tryParse(v ?? '');
-                              final amount = double.tryParse(_amount.text) ?? 0;
-                              if (recoverable == null || recoverable < 0) {
-                                return 'Enter valid recoverable amount';
-                              }
-                              if (recoverable > amount) {
-                                return 'Recoverable cannot exceed amount';
+                              if (v == null || v.trim().isEmpty) {
+                                return 'Person/contact required';
                               }
                               return null;
                             },
                           ),
+                          const SizedBox(height: AppSpacing.xs),
+                          FinarcCard(
+                            padding: const EdgeInsets.all(AppSpacing.sm),
+                            child: Row(
+                              children: [
+                                const CircleAvatar(
+                                  radius: 14,
+                                  backgroundColor: AppColors.darkPrimarySoft,
+                                  child: Icon(Icons.replay_outlined, size: 14),
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                                Expanded(
+                                  child: Text(
+                                    'Recoverable auto-calculates as amount - cashback.',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodyMedium,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          FinarcTextField(
+                            controller: _recoveredAmount,
+                            label: 'Recovered amount (optional)',
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            onChanged: (_) => setState(() {}),
+                            validator: (v) {
+                              if (!_forOthers) return null;
+                              if (v == null || v.trim().isEmpty) return null;
+                              final recovered = double.tryParse(v.trim());
+                              final amount =
+                                  double.tryParse(_amount.text) ??
+                                  pending.amount;
+                              final cashback = _cashbackOn
+                                  ? (double.tryParse(_cashback.text) ?? 0)
+                                  : 0.0;
+                              final recoverableBase = (amount - cashback)
+                                  .clamp(0, amount)
+                                  .toDouble();
+                              if (recovered == null || recovered < 0) {
+                                return 'Enter valid recovered amount';
+                              }
+                              if (recovered > recoverableBase) {
+                                return 'Recovered cannot exceed recoverable base';
+                              }
+                              return null;
+                            },
+                          ),
+                        ],
                         const SizedBox(height: AppSpacing.xs),
                         SwitchListTile.adaptive(
                           contentPadding: EdgeInsets.zero,
@@ -288,6 +344,7 @@ class _EditPendingTransactionScreenState
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
                             ),
+                            onChanged: (_) => setState(() {}),
                             validator: (v) {
                               if (!_cashbackOn) return null;
                               final cashback = double.tryParse(v ?? '');
@@ -318,7 +375,7 @@ class _EditPendingTransactionScreenState
                         const Icon(Icons.calculate_outlined, size: 16),
                         const SizedBox(width: AppSpacing.xs),
                         Text(
-                          'Preview: ${inr(double.tryParse(_amount.text) ?? pending.amount)}',
+                          'Preview remaining: ${inr(_forOthers ? (((double.tryParse(_amount.text) ?? pending.amount) - (_cashbackOn ? (double.tryParse(_cashback.text) ?? 0) : 0)).clamp(0, double.infinity) - (double.tryParse(_recoveredAmount.text) ?? 0)).clamp(0, double.infinity) : 0)}',
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
                       ],
@@ -341,7 +398,25 @@ class _EditPendingTransactionScreenState
                             : 0,
                         isForOthers: _forOthers,
                         recoverableAmount: _forOthers
-                            ? double.tryParse(_recoverable.text)
+                            ? ((((double.tryParse(_amount.text) ??
+                                                  pending.amount) -
+                                              (_cashbackOn
+                                                  ? (double.tryParse(
+                                                          _cashback.text,
+                                                        ) ??
+                                                        0)
+                                                  : 0))
+                                          .clamp(0, double.infinity)) -
+                                      (double.tryParse(_recoveredAmount.text) ??
+                                          0))
+                                  .clamp(0, double.infinity)
+                                  .toDouble()
+                            : null,
+                        recoveredAmount: _forOthers
+                            ? (double.tryParse(_recoveredAmount.text) ?? 0)
+                            : null,
+                        recoverablePartyName: _forOthers
+                            ? _recoverableParty.text.trim()
                             : null,
                         notes: _notes.text.trim().isEmpty
                             ? null

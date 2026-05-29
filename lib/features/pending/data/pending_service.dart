@@ -63,6 +63,16 @@ class PendingService {
     final type = editedData.paymentSourceType == PaymentSourceType.creditCard
         ? TransactionType.creditCard
         : editedData.paymentSourceType;
+    final recoverableBaseAmount = editedData.isForOthers
+        ? (editedData.amount - (editedData.cashbackAmount ?? 0))
+              .clamp(0, editedData.amount)
+              .toDouble()
+        : 0.0;
+    final recoveredAmount = editedData.isForOthers
+        ? (editedData.recoveredAmount ?? 0)
+              .clamp(0, recoverableBaseAmount)
+              .toDouble()
+        : 0.0;
 
     await _engine.addTransaction(
       AddTransactionInput(
@@ -75,7 +85,13 @@ class PendingService {
         paymentSourceId: editedData.paymentSourceId,
         cashbackAmount: editedData.cashbackAmount ?? 0,
         isForOthers: editedData.isForOthers,
-        recoverableAmount: editedData.recoverableAmount,
+        recoverableAmount: editedData.isForOthers
+            ? (recoverableBaseAmount - recoveredAmount)
+                  .clamp(0, recoverableBaseAmount)
+                  .toDouble()
+            : null,
+        recoveredAmount: recoveredAmount,
+        recoverablePartyName: editedData.recoverablePartyName,
         notes: editedData.notes,
         detectedSourceType: pending.sourceType,
       ),
@@ -136,6 +152,21 @@ class PendingService {
     int pendingId,
     PendingEditData editedData,
   ) async {
+    final recoverableBaseAmount = editedData.isForOthers
+        ? (editedData.amount - (editedData.cashbackAmount ?? 0))
+              .clamp(0, editedData.amount)
+              .toDouble()
+        : 0.0;
+    final recoveredAmount = editedData.isForOthers
+        ? (editedData.recoveredAmount ?? 0)
+              .clamp(0, recoverableBaseAmount)
+              .toDouble()
+        : 0.0;
+    final remainingRecoverable = editedData.isForOthers
+        ? (recoverableBaseAmount - recoveredAmount)
+              .clamp(0, recoverableBaseAmount)
+              .toDouble()
+        : null;
     await (_db.update(
       _db.pendingTransactions,
     )..where((p) => p.id.equals(pendingId))).write(
@@ -148,7 +179,12 @@ class PendingService {
         transactionDate: Value(editedData.transactionDate),
         cashbackAmount: Value(editedData.cashbackAmount),
         isForOthers: Value(editedData.isForOthers),
-        recoverableAmount: Value(editedData.recoverableAmount),
+        recoverableAmount: Value(remainingRecoverable),
+        recoverableBaseAmount: Value(
+          editedData.isForOthers ? recoverableBaseAmount : null,
+        ),
+        recoveredAmount: Value(recoveredAmount),
+        recoverablePartyName: Value(editedData.recoverablePartyName),
         notes: Value(editedData.notes),
         updatedAt: Value(DateTime.now()),
       ),

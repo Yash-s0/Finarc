@@ -2,15 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/database/app_database.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
 import '../data/cards_providers.dart';
 
-class CardsOverviewScreen extends ConsumerWidget {
+class CardsOverviewScreen extends ConsumerStatefulWidget {
   const CardsOverviewScreen({super.key});
+
+  @override
+  ConsumerState<CardsOverviewScreen> createState() =>
+      _CardsOverviewScreenState();
+}
+
+class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
+  final PageController _pageController = PageController(viewportFraction: 0.93);
+  int _selectedCardIndex = 0;
+  int _activeTab = 0;
 
   EdgeInsets _pagePadding(BuildContext context) {
     final topInset = MediaQuery.paddingOf(context).top;
@@ -23,19 +35,25 @@ class CardsOverviewScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(cardsOverviewProvider);
     return state.when(
       loading: () => ListView(
         padding: _pagePadding(context),
         children: const [
-          FinarcLoadingSkeleton(height: 36, width: 120),
-          SizedBox(height: AppSpacing.md),
-          FinarcLoadingSkeleton(height: 166),
+          FinarcLoadingSkeleton(height: 34, width: 130),
           SizedBox(height: AppSpacing.sm),
-          FinarcLoadingSkeleton(height: 98),
+          FinarcLoadingSkeleton(height: 170),
           SizedBox(height: AppSpacing.sm),
-          FinarcLoadingSkeleton(height: 220),
+          FinarcLoadingSkeleton(height: 34),
+          SizedBox(height: AppSpacing.sm),
+          FinarcLoadingSkeleton(height: 240),
         ],
       ),
       error: (e, _) => Center(child: Text('Error: $e')),
@@ -47,7 +65,7 @@ class CardsOverviewScreen extends ConsumerWidget {
               const FinarcEmptyState(
                 title: 'No cards added yet',
                 subtitle:
-                    'Track billing day, due day and card utilization once you add a card.',
+                    'Add your first credit card to track dues and utilization.',
                 icon: Icons.credit_card_off_outlined,
               ),
               const SizedBox(height: AppSpacing.sm),
@@ -61,191 +79,355 @@ class CardsOverviewScreen extends ConsumerWidget {
         }
 
         final now = DateTime.now();
-        final dueSorted = [...data.cards]
+        final summaries = [...data.cardSummaries]
           ..sort(
             (a, b) => _daysUntilDue(
               now,
-              a.dueDay,
-            ).compareTo(_daysUntilDue(now, b.dueDay)),
+              a.card.dueDay,
+            ).compareTo(_daysUntilDue(now, b.card.dueDay)),
           );
-        final dueSoon = dueSorted
-            .where((c) => _daysUntilDue(now, c.dueDay) <= 7)
-            .toList();
+
+        if (_selectedCardIndex >= summaries.length) {
+          _selectedCardIndex = 0;
+        }
+        final selected = summaries[_selectedCardIndex];
+        final selectedDetailState = ref.watch(
+          cardDetailProvider(selected.card.id),
+        );
 
         return ListView(
           padding: _pagePadding(context),
           children: [
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Cards',
+                        'Credit Cards',
                         style: Theme.of(context).textTheme.headlineSmall,
                       ),
                       const SizedBox(height: AppSpacing.xxs),
                       Text(
-                        'Track dues, limits and statements in one place.',
+                        'Portfolio, dues, and billing in one place.',
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Padding(
-                  padding: const EdgeInsets.only(top: AppSpacing.xxs),
-                  child: FinarcSecondaryButton(
-                    onPressed: () => context.push('/cards/add'),
-                    icon: Icons.add_card_rounded,
-                    label: 'Add New',
-                  ),
+                const SizedBox(width: AppSpacing.xs),
+                FinarcSecondaryButton(
+                  onPressed: () => context.push('/cards/add'),
+                  icon: Icons.add_card_rounded,
+                  label: 'Add',
                 ),
               ],
-            ),
-            const SizedBox(height: AppSpacing.md),
-            FinarcBalanceCard(
-              label: 'Total Card Dues',
-              value: inr(data.totalDues),
-              subtitle: 'Across ${data.cards.length} cards',
-              statusLabel: data.utilization >= 0.8
-                  ? 'High utilization'
-                  : data.utilization >= 0.5
-                  ? 'Moderate utilization'
-                  : 'Utilization in control',
             ),
             const SizedBox(height: AppSpacing.sm),
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              childAspectRatio: 1.72,
-              crossAxisSpacing: AppSpacing.xs,
-              mainAxisSpacing: AppSpacing.xs,
-              children: [
-                FinarcMetricCard(
-                  title: 'Unbilled Spends',
-                  value: inr(data.unbilled),
-                ),
-                FinarcMetricCard(
-                  title: 'Total Utilization',
-                  value: '${(data.utilization * 100).toStringAsFixed(1)}%',
-                  trailing: Icon(
-                    Icons.stacked_line_chart_rounded,
-                    size: 16,
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.7),
-                  ),
-                ),
-              ],
+            SizedBox(
+              height: 188,
+              child: PageView.builder(
+                controller: _pageController,
+                itemCount: summaries.length,
+                onPageChanged: (index) {
+                  setState(() {
+                    _selectedCardIndex = index;
+                  });
+                },
+                itemBuilder: (context, index) {
+                  final summary = summaries[index];
+                  final dueDays = _daysUntilDue(now, summary.card.dueDay);
+                  return Padding(
+                    padding: EdgeInsets.only(
+                      right: index == summaries.length - 1 ? 0 : AppSpacing.xs,
+                    ),
+                    child: FinarcCardPreview(
+                      bank: summary.card.bankName,
+                      nickname: summary.card.nickname,
+                      maskedNumber: summary.card.maskedNumber,
+                      outstanding: inr(summary.totalOutstanding),
+                      utilization: summary.utilization,
+                      dueLabel: _dueDayLabel(dueDays),
+                      dueTone: _toneForDueDays(dueDays),
+                      onTap: () => context.push('/cards/${summary.card.id}'),
+                    ),
+                  );
+                },
+              ),
             ),
-            const SizedBox(height: AppSpacing.md),
-            const FinarcSectionHeader(title: 'Upcoming Dues'),
-            const SizedBox(height: AppSpacing.xs),
-            if (dueSoon.isEmpty)
-              const FinarcCard(child: Text('No dues in the next 7 days.'))
-            else
-              ...dueSoon.map((card) {
-                final days = _daysUntilDue(now, card.dueDay);
-                return FinarcCard(
-                  margin: const EdgeInsets.only(bottom: AppSpacing.xs),
-                  padding: const EdgeInsets.all(AppSpacing.sm),
-                  onTap: () => context.push('/cards/${card.id}'),
-                  child: Row(
-                    children: [
-                      const CircleAvatar(
-                        radius: 17,
-                        backgroundColor: AppColors.darkPrimarySoft,
-                        child: Icon(Icons.event_available_outlined, size: 16),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${card.bankName} • ${card.nickname}',
-                              style: Theme.of(context).textTheme.titleSmall,
-                            ),
-                            const SizedBox(height: AppSpacing.xxs),
-                            Text(
-                              '${_dueDayLabel(days)} • ${card.maskedNumber}',
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                          ],
-                        ),
-                      ),
-                      Text(
-                        inr(card.currentOutstanding),
-                        style: AppTextStyles.amountStyle(
-                          color: Theme.of(context).colorScheme.onSurface,
-                          size: 14,
-                          weight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }),
-            const SizedBox(height: AppSpacing.md),
-            const FinarcSectionHeader(title: 'Card Portfolio'),
-            const SizedBox(height: AppSpacing.xs),
-            ...dueSorted.map((card) {
-              final utilization = card.creditLimit == 0
-                  ? 0.0
-                  : (card.currentOutstanding / card.creditLimit)
-                        .clamp(0, 1)
-                        .toDouble();
-              final dueDays = _daysUntilDue(now, card.dueDay);
-
-              return Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                child: FinarcCardPreview(
-                  bank: card.bankName,
-                  nickname: card.nickname,
-                  maskedNumber: card.maskedNumber,
-                  outstanding: inr(card.currentOutstanding),
-                  utilization: utilization,
-                  dueLabel: _dueDayLabel(dueDays),
-                  dueTone: _toneForDueDays(dueDays),
-                  onTap: () => context.push('/cards/${card.id}'),
-                  footer: Row(
-                    children: [
-                      Expanded(
-                        child: RichText(
-                          text: TextSpan(
-                            style: Theme.of(context).textTheme.labelMedium,
-                            children: [
-                              const TextSpan(text: 'Limit '),
-                              TextSpan(
-                                text: inr(card.creditLimit),
-                                style: AppTextStyles.amountStyle(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurface,
-                                  size: 11,
-                                  weight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      Text(
-                        'Last 4: ${card.last4}',
-                        style: Theme.of(context).textTheme.labelMedium,
-                      ),
-                    ],
+            if (summaries.length > 1) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  summaries.length,
+                  (index) => Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    width: index == _selectedCardIndex ? 14 : 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: index == _selectedCardIndex
+                          ? AppColors.darkAccent
+                          : AppColors.darkBorder,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
                   ),
                 ),
-              );
-            }),
+              ),
+            ],
+            const SizedBox(height: AppSpacing.sm),
+            _buildTabs(context),
+            const SizedBox(height: AppSpacing.sm),
+            if (_activeTab == 0)
+              ..._overviewWidgets(
+                context,
+                data,
+                selectedDetailState,
+                selected.card.id,
+              )
+            else
+              ..._detailTabWidgets(context, selectedDetailState),
           ],
         );
       },
+    );
+  }
+
+  Widget _buildTabs(BuildContext context) {
+    final tabs = ['Overview', 'Unbilled', 'Billed', 'History'];
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppColors.darkSurfaceLow,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: Border.all(color: AppColors.darkBorder),
+      ),
+      child: Row(
+        children: List.generate(tabs.length, (index) {
+          final selected = _activeTab == index;
+          return Expanded(
+            child: InkWell(
+              onTap: () => setState(() => _activeTab = index),
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: selected
+                      ? AppColors.darkPrimarySoft
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                ),
+                child: Text(
+                  tabs[index],
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: selected
+                        ? Theme.of(context).colorScheme.onSurface
+                        : Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.64),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  List<Widget> _overviewWidgets(
+    BuildContext context,
+    ({
+      List<CreditCard> cards,
+      double billedDue,
+      double totalOutstanding,
+      double totalLimit,
+      double utilization,
+      double unbilled,
+      List<CardOverviewSummary> cardSummaries,
+    })
+    data,
+    AsyncValue<CardDetailViewModel> selectedDetailState,
+    int selectedCardId,
+  ) {
+    return [
+      GridView.count(
+        crossAxisCount: 2,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        childAspectRatio: 1.9,
+        crossAxisSpacing: AppSpacing.xs,
+        mainAxisSpacing: AppSpacing.xs,
+        children: [
+          FinarcMetricCard(
+            title: 'Total Card Dues',
+            value: inr(data.billedDue),
+            icon: Icons.warning_amber_rounded,
+            iconColor: AppColors.darkWarning,
+            iconBackgroundColor: AppColors.darkWarning.withValues(alpha: 0.14),
+          ),
+          FinarcMetricCard(
+            title: 'Unbilled',
+            value: inr(data.unbilled),
+            icon: Icons.receipt_long_rounded,
+            iconColor: AppColors.darkBlue,
+            iconBackgroundColor: AppColors.darkBlue.withValues(alpha: 0.14),
+          ),
+          FinarcMetricCard(
+            title: 'Outstanding',
+            value: inr(data.totalOutstanding),
+            icon: Icons.account_balance_wallet_rounded,
+            iconColor: AppColors.darkAccent,
+            iconBackgroundColor: AppColors.darkAccent.withValues(alpha: 0.14),
+          ),
+          FinarcMetricCard(
+            title: 'Utilization',
+            value: '${(data.utilization * 100).toStringAsFixed(1)}%',
+            icon: Icons.pie_chart_outline_rounded,
+            iconColor: AppColors.darkMint,
+            iconBackgroundColor: AppColors.darkMint.withValues(alpha: 0.14),
+          ),
+        ],
+      ),
+      const SizedBox(height: AppSpacing.sm),
+      selectedDetailState.when(
+        loading: () => const FinarcLoadingSkeleton(height: 132),
+        error: (e, _) =>
+            FinarcCard(child: Text('Unable to load selected card: $e')),
+        data: (vm) {
+          final hasDues = vm.currentDueAmount > 0;
+          return FinarcCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                FinarcSectionHeader(
+                  title: 'Current Bill',
+                  trailing: FinarcStatusBadge(
+                    label: vm.billStatus.toUpperCase(),
+                    tone: _toneForStatus(vm.billStatus),
+                    compact: true,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            inr(vm.currentDueAmount),
+                            style: AppTextStyles.amountStyle(
+                              color: Theme.of(context).colorScheme.onSurface,
+                              size: 24,
+                              weight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            vm.currentBill == null
+                                ? 'No active billed statement'
+                                : 'Due ${_dateText(vm.currentBill!.dueDate)}',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Expanded(
+                      child: hasDues
+                          ? FinarcPrimaryButton(
+                              onPressed: () =>
+                                  context.push('/cards/$selectedCardId'),
+                              label: 'Pay Now',
+                              expand: false,
+                            )
+                          : FinarcSecondaryButton(
+                              onPressed: () =>
+                                  context.push('/cards/$selectedCardId'),
+                              label: 'Mark Paid',
+                            ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    ];
+  }
+
+  List<Widget> _detailTabWidgets(
+    BuildContext context,
+    AsyncValue<CardDetailViewModel> selectedDetailState,
+  ) {
+    return [
+      selectedDetailState.when(
+        loading: () => const FinarcLoadingSkeleton(height: 240),
+        error: (e, _) =>
+            FinarcCard(child: Text('Unable to load transactions: $e')),
+        data: (vm) {
+          final txns = switch (_activeTab) {
+            1 => vm.unbilledTransactions,
+            2 => vm.billedTransactions,
+            _ => vm.recentTransactions,
+          };
+          final emptyText = switch (_activeTab) {
+            1 => 'No unbilled spends',
+            2 => 'No billed spends',
+            _ => 'No recent spends',
+          };
+
+          if (txns.isEmpty) {
+            return FinarcEmptyState(
+              title: emptyText,
+              subtitle: 'Card transactions will appear once recorded.',
+              icon: Icons.receipt_long_outlined,
+            );
+          }
+
+          return Column(
+            children: txns
+                .map(
+                  (t) => Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                    child: _transactionRow(context, t),
+                  ),
+                )
+                .toList(),
+          );
+        },
+      ),
+    ];
+  }
+
+  Widget _transactionRow(BuildContext context, Transaction txn) {
+    final billed = txn.cardBillId != null;
+    return FinarcTransactionTile(
+      title: txn.title,
+      subtitle: txn.category,
+      meta: transactionDateLabel(txn.transactionDate),
+      amount: '-${inr(txn.amount)}',
+      amountColor: AppColors.darkError,
+      amountMeta: billed ? 'Billed' : 'Unbilled',
+      statusLabel: billed ? 'Billed' : 'Unbilled',
+      statusTone: billed ? FinarcStatusTone.info : FinarcStatusTone.warning,
+      compact: true,
+      prefix: CircleAvatar(
+        radius: 15,
+        backgroundColor: billed
+            ? AppColors.darkPrimarySoft
+            : AppColors.darkWarning.withValues(alpha: 0.22),
+        child: Icon(
+          billed ? Icons.receipt_long_rounded : Icons.pending_actions_rounded,
+          size: 13,
+          color: billed ? AppColors.darkAccent : AppColors.darkWarning,
+        ),
+      ),
+      onTap: () {},
     );
   }
 
@@ -268,5 +450,24 @@ class CardsOverviewScreen extends ConsumerWidget {
     if (days <= 1) return FinarcStatusTone.error;
     if (days <= 4) return FinarcStatusTone.warning;
     return FinarcStatusTone.info;
+  }
+
+  static FinarcStatusTone _toneForStatus(String status) {
+    switch (status.toLowerCase()) {
+      case 'paid':
+        return FinarcStatusTone.success;
+      case 'overdue':
+        return FinarcStatusTone.error;
+      case 'duesoon':
+      case 'due soon':
+        return FinarcStatusTone.warning;
+      default:
+        return FinarcStatusTone.info;
+    }
+  }
+
+  static String _dateText(DateTime date) {
+    final d = date.toLocal();
+    return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
   }
 }
