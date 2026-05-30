@@ -12,32 +12,48 @@ void main() {
         NotificationDebugEntry(
           receivedAt: DateTime(2026, 5, 26, 10),
           packageName: 'JD-HDFCBK-S',
-          preview: 'INR 1499 spent at SWIGGY',
+          title: 'SMS Sender',
+          bodyPreview: 'INR 1499 spent at SWIGGY',
+          decision: 'parsed',
+          reason: 'allowed-transactional-sender',
           result: 'allowed-transactional-sender',
+          sourceType: 'sms',
         ),
       );
       controller.append(
         NotificationDebugEntry(
           receivedAt: DateTime(2026, 5, 26, 10, 1),
           packageName: 'JD-HDFCBK-S',
-          preview: 'INR 1499 spent at SWIGGY',
+          title: 'SMS Sender',
+          bodyPreview: 'INR 1499 spent at SWIGGY',
+          decision: 'pending-created',
+          reason: 'success',
           result: 'parsed-pending-created',
+          sourceType: 'sms',
         ),
       );
       controller.append(
         NotificationDebugEntry(
           receivedAt: DateTime(2026, 5, 26, 10, 2),
           packageName: 'BT-YESBNK-P',
-          preview: 'promo',
+          title: 'Promo',
+          bodyPreview: 'promo',
+          decision: 'ignored',
+          reason: 'blocked-promotional-sender',
           result: 'blocked-promotional-sender',
+          sourceType: 'sms',
         ),
       );
       controller.append(
         NotificationDebugEntry(
           receivedAt: DateTime(2026, 5, 26, 10, 3),
           packageName: 'com.phonepe.app',
-          preview: 'Paid ₹700 to Rahul',
+          title: 'PhonePe',
+          bodyPreview: 'Paid ₹700 to Rahul',
+          decision: 'pending-created',
+          reason: 'success',
           result: 'parsed-pending-created',
+          sourceType: 'appNotification',
         ),
       );
 
@@ -56,8 +72,12 @@ void main() {
         NotificationDebugEntry(
           receivedAt: DateTime(2026, 5, 26, 10),
           packageName: 'com.phonepe.app',
-          preview: 'Paid',
+          title: 'PhonePe',
+          bodyPreview: 'Paid',
+          decision: 'pending-created',
+          reason: 'success',
           result: 'parsed-pending-created',
+          sourceType: 'appNotification',
         ),
       );
 

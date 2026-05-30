@@ -114,6 +114,11 @@ class RecoverablesSnapshot {
   final List<RecoverableTransactionItem> bankUpiItems;
   final List<RecoverableTransactionItem> cashItems;
   final List<RecoverableTransactionItem> recoveredItems;
+
+  // Phase-2 aliases for app-wide consumer alignment.
+  double get actionableRecoverableTotal => actionableRecoverables;
+  double get allRecoverableTotal => totalRecoverable;
+  double get recoveredRecoverables => settledRecoverables;
 }
 
 class RecoverablesService {

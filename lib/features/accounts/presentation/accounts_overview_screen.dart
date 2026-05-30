@@ -205,14 +205,26 @@ class AccountsOverviewScreen extends ConsumerWidget {
                           FinarcTransactionTile(
                             title: data.recent[i].title,
                             subtitle: data.recent[i].category,
-                            meta:
-                                '${_sourceLabel(data.recent[i].paymentSourceType)} • ${transactionDateLabel(data.recent[i].transactionDate)}',
+                            meta: FinarcTransactionPresentation.meta(
+                              date: data.recent[i].transactionDate,
+                              source: FinarcTransactionPresentation.sourceLabel(
+                                data.recent[i].paymentSourceType,
+                              ),
+                            ),
                             amount:
                                 '${_activitySign(data.recent[i].title)}${inr(data.recent[i].amount)}',
                             amountColor:
                                 _activitySign(data.recent[i].title) == '-'
                                 ? AppColors.darkError
                                 : AppColors.darkSuccess,
+                            badges: [
+                              if (data.recent[i].cashbackAmount > 0)
+                                FinarcTransactionPresentation.cashbackBadge,
+                              if (data.recent[i].isForOthers)
+                                FinarcTransactionPresentation.recoverableStatusBadge(
+                                  data.recent[i].recoverableStatus,
+                                ),
+                            ],
                             prefix: const CircleAvatar(
                               radius: 16,
                               backgroundColor: AppColors.darkPrimarySoft,
@@ -281,11 +293,5 @@ class AccountsOverviewScreen extends ConsumerWidget {
     if (title.contains('Out')) return '-';
     if (title.contains('In') || title.contains('Adjustment')) return '+';
     return '';
-  }
-
-  static String _sourceLabel(String source) {
-    if (source == 'creditCard') return 'Card';
-    if (source == 'cash') return 'Cash';
-    return source.toUpperCase();
   }
 }

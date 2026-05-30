@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/utils/formatters.dart';
 import '../../cards/data/billing_service.dart';
+import '../../expenses/data/transaction_engine.dart';
 import '../../loans/data/loan_service.dart';
+import '../../recoverables/data/recoverables_service.dart';
+import '../../split/data/split_service.dart';
 import 'notification_local_notifier.dart';
 
 class ReminderService {
@@ -205,9 +208,11 @@ class ReminderService {
     final dueSoon = await _dueSoonCount();
     final splitLine = await _splitSettlementReminderLine();
     final emiLine = await _loanEmiReminderLine(days: 2);
+    final recoverableLine = await _recoverableReminderLine();
     final base =
         'Today: ${inr(spends)} spent · $pending pending · $dueSoon bill due soon.';
     var summary = base;
+    if (recoverableLine != null) summary = '$summary $recoverableLine';
     if (splitLine != null) summary = '$summary $splitLine';
     if (emiLine != null) summary = '$summary $emiLine';
     return summary;
@@ -233,20 +238,13 @@ class ReminderService {
     final spends = weekTxns
         .where((t) => t.type != 'income' && t.type != 'refund')
         .fold<double>(0, (sum, t) => sum + (t.amount - t.cashbackAmount));
-    final recoverable = weekTxns.fold<double>(
-      0,
-      (sum, t) =>
-          sum +
-          ((t.recoverableAmount ?? 0) > 0 && t.recoverableStatus != 'recovered'
-              ? (t.recoverableAmount ?? 0)
-              : 0),
-    );
     final pending = await _pendingCount();
     final splitLine = await _splitSettlementReminderLine();
     final emiLine = await _loanEmiReminderLine(days: 7);
-    final base =
-        'This week: ${inr(spends)} spent · ${inr(recoverable)} recoverable · $pending pending.';
+    final recoverableLine = await _recoverableReminderLine();
+    final base = 'This week: ${inr(spends)} spent · $pending pending.';
     var summary = base;
+    if (recoverableLine != null) summary = '$summary $recoverableLine';
     if (splitLine != null) summary = '$summary $splitLine';
     if (emiLine != null) summary = '$summary $emiLine';
     return summary;
@@ -342,6 +340,37 @@ class ReminderService {
       if (status == 'dueSoon') count += 1;
     }
     return count;
+  }
+
+  Future<String?> _recoverableReminderLine() async {
+    final engine = TransactionEngine(_db);
+    final recoverables = await RecoverablesService(
+      _db,
+      SplitService(_db, engine),
+      engine,
+    ).buildSnapshot();
+    final actionable = recoverables.actionableRecoverableTotal;
+    if (actionable <= 0.009) return null;
+
+    final byPerson = <String, double>{};
+    for (final item in [
+      ...recoverables.cardBilledItems,
+      ...recoverables.bankUpiItems,
+      ...recoverables.cashItems,
+    ]) {
+      byPerson[item.partyName] =
+          (byPerson[item.partyName] ?? 0) + item.openAmount;
+    }
+
+    String personHint = '';
+    if (byPerson.isNotEmpty) {
+      final top = byPerson.entries.toList(growable: false)
+        ..sort((a, b) => b.value.compareTo(a.value));
+      final leader = top.first;
+      personHint = ' Top: ${leader.key} ${inr(leader.value)}.';
+    }
+
+    return 'Actionable recoverable ${inr(actionable)}.$personHint';
   }
 
   Future<String?> _splitSettlementReminderLine() async {

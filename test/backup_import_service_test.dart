@@ -406,4 +406,91 @@ void main() {
     );
     expect(accountsCsv.contains('HDFC'), true);
   });
+
+  test('import/export normalizes and preserves recoverable fields', () async {
+    final backupJson = jsonEncode({
+      'app': 'Finarc',
+      'backupVersion': 1,
+      'createdAt': DateTime.now().toIso8601String(),
+      'schemaVersion': 16,
+      'data': {
+        'settings': [
+          {
+            'id': 1,
+            'isDarkMode': true,
+            'appLockEnabled': false,
+            'notificationDetectionEnabled': true,
+            'showDetectionNotifications': true,
+            'reminderEnabled': false,
+            'dailyReminderEnabled': false,
+            'weeklyReminderEnabled': false,
+            'reminderHour': 20,
+            'reminderMinute': 0,
+            'weeklyReminderWeekday': 1,
+            'cardDueReminderEnabled': true,
+            'pendingTransactionReminderEnabled': true,
+            'settlementReminderEnabled': false,
+            'smsDetectionEnabled': false,
+            'smsBackfillEnabled': false,
+            'smsBackfillDays': 7,
+            'hasCompletedOnboarding': true,
+          },
+        ],
+        'bankAccounts': [
+          {
+            'id': 1,
+            'bankName': 'HDFC',
+            'accountName': 'Main',
+            'accountType': 'savings',
+            'currentBalance': 10000,
+          },
+        ],
+        'cashWallets': [],
+        'creditCards': [],
+        'transactions': [
+          {
+            'id': 1,
+            'type': 'bank',
+            'amount': 1000,
+            'title': 'Legacy recoverable',
+            'category': 'Food',
+            'transactionDate': DateTime(2026, 5, 25).toIso8601String(),
+            'paymentSourceType': 'bank',
+            'paymentSourceId': 1,
+            'cashbackAmount': 100,
+            'isForOthers': true,
+            'recoverableAmount': 300,
+            'recoverableStatus': 'settled',
+            'recoverablePartyName': 'Rahul',
+            'confirmed': true,
+          },
+        ],
+        'cardBills': [],
+        'pendingTransactions': [],
+        'splitGroups': [],
+        'splitMembers': [],
+        'splitExpenses': [],
+        'splitExpenseShares': [],
+        'splitSettlements': [],
+        'loans': [],
+        'loanPayments': [],
+      },
+    });
+
+    await importService.importBackupReplaceAll(backupJson);
+    final txn = await db.select(db.transactions).getSingle();
+    expect(txn.recoverableBaseAmount, closeTo(300, 0.01));
+    expect(txn.recoveredAmount, closeTo(300, 0.01));
+    expect(txn.recoverableAmount, closeTo(0, 0.01));
+    expect(txn.recoverableStatus, 'recovered');
+
+    final exported = await backupService.createBackupJson();
+    final decoded = jsonDecode(exported) as Map<String, dynamic>;
+    final txns =
+        (decoded['data'] as Map<String, dynamic>)['transactions'] as List;
+    final row = txns.first as Map<String, dynamic>;
+    expect(row['recoverableBaseAmount'], closeTo(300, 0.01));
+    expect(row['recoveredAmount'], closeTo(300, 0.01));
+    expect(row['recoverableAmount'], closeTo(0, 0.01));
+  });
 }

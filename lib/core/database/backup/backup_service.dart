@@ -108,6 +108,14 @@ class BackupService {
     ];
 
     final csvRows = rows.map((row) {
+      final normalizedRecoverable = _normalizeRecoverableAmounts(
+        isForOthers: row.isForOthers,
+        amount: row.amount,
+        cashbackAmount: row.cashbackAmount,
+        recoverableAmount: row.recoverableAmount,
+        recoverableBaseAmount: row.recoverableBaseAmount,
+        recoveredAmount: row.recoveredAmount,
+      );
       return [
         row.id,
         row.type,
@@ -120,9 +128,9 @@ class BackupService {
         row.paymentSourceId,
         row.cashbackAmount,
         row.isForOthers,
-        row.recoverableAmount,
-        row.recoverableBaseAmount,
-        row.recoveredAmount,
+        normalizedRecoverable.remaining,
+        normalizedRecoverable.base,
+        normalizedRecoverable.recovered,
         row.recoverablePartyName,
         row.recoverablePartyNotes,
         row.recoverablePartyPhone,
@@ -173,6 +181,14 @@ class BackupService {
           return row.type != 'transfer' && row.type != 'cardPayment';
         })
         .map((row) {
+          final normalizedRecoverable = _normalizeRecoverableAmounts(
+            isForOthers: row.isForOthers,
+            amount: row.amount,
+            cashbackAmount: row.cashbackAmount,
+            recoverableAmount: row.recoverableAmount,
+            recoverableBaseAmount: row.recoverableBaseAmount,
+            recoveredAmount: row.recoveredAmount,
+          );
           final netAmount = (row.amount - row.cashbackAmount).clamp(
             0,
             double.infinity,
@@ -187,9 +203,9 @@ class BackupService {
             row.paymentSourceType,
             row.paymentSourceId,
             row.isForOthers,
-            row.recoverableAmount,
-            row.recoverableBaseAmount,
-            row.recoveredAmount,
+            normalizedRecoverable.remaining,
+            normalizedRecoverable.base,
+            normalizedRecoverable.recovered,
             row.recoverablePartyName,
             row.recoverablePartyNotes,
             row.recoverablePartyPhone,
@@ -371,39 +387,49 @@ class BackupService {
     'updatedAt': _iso(row.updatedAt),
   };
 
-  static Map<String, dynamic> _mapTransaction(Transaction row) => {
-    'id': row.id,
-    'type': row.type,
-    'amount': row.amount,
-    'title': row.title,
-    'category': row.category,
-    'notes': row.notes,
-    'transactionDate': _iso(row.transactionDate),
-    'paymentSourceType': row.paymentSourceType,
-    'paymentSourceId': row.paymentSourceId,
-    'cashbackAmount': row.cashbackAmount,
-    'isForOthers': row.isForOthers,
-    'recoverableAmount': row.recoverableAmount,
-    'recoverableBaseAmount': row.recoverableBaseAmount,
-    'recoveredAmount': row.recoveredAmount,
-    'recoverablePartyName': row.recoverablePartyName,
-    'recoverablePartyNotes': row.recoverablePartyNotes,
-    'recoverablePartyPhone': row.recoverablePartyPhone,
-    'recoverableStatus': row.recoverableStatus,
-    'recoveredAt': _iso(row.recoveredAt),
-    'confirmed': row.confirmed,
-    'detectedSourceType': row.detectedSourceType,
-    'cardBillId': row.cardBillId,
-    'transferGroupId': row.transferGroupId,
-    'sourceAccountId': row.sourceAccountId,
-    'destinationAccountId': row.destinationAccountId,
-    'linkedSplitExpenseId': row.linkedSplitExpenseId,
-    'personalShareAmount': row.personalShareAmount,
-    'splitGroupId': row.splitGroupId,
-    'transactionImpactType': row.transactionImpactType,
-    'createdAt': _iso(row.createdAt),
-    'updatedAt': _iso(row.updatedAt),
-  };
+  static Map<String, dynamic> _mapTransaction(Transaction row) {
+    final normalizedRecoverable = _normalizeRecoverableAmounts(
+      isForOthers: row.isForOthers,
+      amount: row.amount,
+      cashbackAmount: row.cashbackAmount,
+      recoverableAmount: row.recoverableAmount,
+      recoverableBaseAmount: row.recoverableBaseAmount,
+      recoveredAmount: row.recoveredAmount,
+    );
+    return {
+      'id': row.id,
+      'type': row.type,
+      'amount': row.amount,
+      'title': row.title,
+      'category': row.category,
+      'notes': row.notes,
+      'transactionDate': _iso(row.transactionDate),
+      'paymentSourceType': row.paymentSourceType,
+      'paymentSourceId': row.paymentSourceId,
+      'cashbackAmount': row.cashbackAmount,
+      'isForOthers': row.isForOthers,
+      'recoverableAmount': normalizedRecoverable.remaining,
+      'recoverableBaseAmount': normalizedRecoverable.base,
+      'recoveredAmount': normalizedRecoverable.recovered,
+      'recoverablePartyName': row.recoverablePartyName,
+      'recoverablePartyNotes': row.recoverablePartyNotes,
+      'recoverablePartyPhone': row.recoverablePartyPhone,
+      'recoverableStatus': row.recoverableStatus,
+      'recoveredAt': _iso(row.recoveredAt),
+      'confirmed': row.confirmed,
+      'detectedSourceType': row.detectedSourceType,
+      'cardBillId': row.cardBillId,
+      'transferGroupId': row.transferGroupId,
+      'sourceAccountId': row.sourceAccountId,
+      'destinationAccountId': row.destinationAccountId,
+      'linkedSplitExpenseId': row.linkedSplitExpenseId,
+      'personalShareAmount': row.personalShareAmount,
+      'splitGroupId': row.splitGroupId,
+      'transactionImpactType': row.transactionImpactType,
+      'createdAt': _iso(row.createdAt),
+      'updatedAt': _iso(row.updatedAt),
+    };
+  }
 
   static Map<String, dynamic> _mapCardBill(CardBill row) => {
     'id': row.id,
@@ -420,32 +446,42 @@ class BackupService {
   };
 
   static Map<String, dynamic> _mapPendingTransaction(PendingTransaction row) =>
-      {
-        'id': row.id,
-        'amount': row.amount,
-        'merchant': row.merchant,
-        'categorySuggestion': row.categorySuggestion,
-        'paymentSourceTypeSuggestion': row.paymentSourceTypeSuggestion,
-        'paymentSourceIdSuggestion': row.paymentSourceIdSuggestion,
-        'detectedAt': _iso(row.detectedAt),
-        'transactionDate': _iso(row.transactionDate),
-        'sourceType': row.sourceType,
-        'rawText': row.rawText,
-        'confidenceScore': row.confidenceScore,
-        'status': row.status,
-        'cashbackAmount': row.cashbackAmount,
-        'isForOthers': row.isForOthers,
-        'recoverableAmount': row.recoverableAmount,
-        'recoverableBaseAmount': row.recoverableBaseAmount,
-        'recoveredAmount': row.recoveredAmount,
-        'recoverablePartyName': row.recoverablePartyName,
-        'recoverablePartyNotes': row.recoverablePartyNotes,
-        'recoverablePartyPhone': row.recoverablePartyPhone,
-        'notes': row.notes,
-        'duplicateOfTransactionId': row.duplicateOfTransactionId,
-        'createdAt': _iso(row.createdAt),
-        'updatedAt': _iso(row.updatedAt),
-      };
+      () {
+        final normalizedRecoverable = _normalizeRecoverableAmounts(
+          isForOthers: row.isForOthers,
+          amount: row.amount,
+          cashbackAmount: row.cashbackAmount ?? 0,
+          recoverableAmount: row.recoverableAmount,
+          recoverableBaseAmount: row.recoverableBaseAmount,
+          recoveredAmount: row.recoveredAmount,
+        );
+        return {
+          'id': row.id,
+          'amount': row.amount,
+          'merchant': row.merchant,
+          'categorySuggestion': row.categorySuggestion,
+          'paymentSourceTypeSuggestion': row.paymentSourceTypeSuggestion,
+          'paymentSourceIdSuggestion': row.paymentSourceIdSuggestion,
+          'detectedAt': _iso(row.detectedAt),
+          'transactionDate': _iso(row.transactionDate),
+          'sourceType': row.sourceType,
+          'rawText': row.rawText,
+          'confidenceScore': row.confidenceScore,
+          'status': row.status,
+          'cashbackAmount': row.cashbackAmount,
+          'isForOthers': row.isForOthers,
+          'recoverableAmount': normalizedRecoverable.remaining,
+          'recoverableBaseAmount': normalizedRecoverable.base,
+          'recoveredAmount': normalizedRecoverable.recovered,
+          'recoverablePartyName': row.recoverablePartyName,
+          'recoverablePartyNotes': row.recoverablePartyNotes,
+          'recoverablePartyPhone': row.recoverablePartyPhone,
+          'notes': row.notes,
+          'duplicateOfTransactionId': row.duplicateOfTransactionId,
+          'createdAt': _iso(row.createdAt),
+          'updatedAt': _iso(row.updatedAt),
+        };
+      }();
 
   static Map<String, dynamic> _mapSplitGroup(SplitGroup row) => {
     'id': row.id,
@@ -538,4 +574,28 @@ class BackupService {
     'notes': row.notes,
     'createdAt': _iso(row.createdAt),
   };
+
+  static ({double? remaining, double? base, double recovered})
+  _normalizeRecoverableAmounts({
+    required bool isForOthers,
+    required double amount,
+    required double cashbackAmount,
+    required double? recoverableAmount,
+    required double? recoverableBaseAmount,
+    required double recoveredAmount,
+  }) {
+    if (!isForOthers) {
+      return (remaining: null, base: null, recovered: 0.0);
+    }
+    final base =
+        (recoverableBaseAmount ??
+                ((recoverableAmount ?? 0) > 0
+                    ? (recoverableAmount ?? 0)
+                    : (amount - cashbackAmount)))
+            .clamp(0, amount)
+            .toDouble();
+    final recovered = recoveredAmount.clamp(0, base).toDouble();
+    final remaining = (base - recovered).clamp(0, base).toDouble();
+    return (remaining: remaining, base: base, recovered: recovered);
+  }
 }

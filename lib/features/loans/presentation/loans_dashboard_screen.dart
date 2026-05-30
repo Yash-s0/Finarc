@@ -268,29 +268,27 @@ class _PaymentRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Icon(
+    return FinarcTransactionTile(
+      title: 'Loan Payment',
+      subtitle: 'EMI',
+      meta: FinarcTransactionPresentation.meta(
+        date: payment.paymentDate,
+        source: FinarcTransactionPresentation.sourceLabel(
+          payment.paymentSourceType ?? 'bank',
+        ),
+      ),
+      amount: inr(payment.amount),
+      amountColor: AppColors.darkSuccess,
+      badges: const [FinarcTransactionPresentation.loanPaymentBadge],
+      prefix: const CircleAvatar(
+        radius: 16,
+        backgroundColor: AppColors.darkPrimarySoft,
+        child: Icon(
           Icons.check_circle_outline,
           size: 16,
           color: AppColors.darkSuccess,
         ),
-        const SizedBox(width: AppSpacing.xs),
-        Expanded(
-          child: Text(
-            '${payment.paymentDate.day}/${payment.paymentDate.month}/${payment.paymentDate.year}',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ),
-        Text(
-          inr(payment.amount),
-          style: AppTextStyles.amountStyle(
-            color: AppColors.darkSuccess,
-            size: 14,
-            weight: FontWeight.w700,
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

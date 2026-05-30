@@ -75,7 +75,7 @@ void main() {
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Recoverable Amount'));
+    await tester.tap(find.text('Recoverable'));
     await tester.pumpAndSettle();
     expect(find.text('recoverables-page'), findsOneWidget);
 

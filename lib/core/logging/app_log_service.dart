@@ -98,6 +98,21 @@ class AppLogService {
     }
   }
 
+  Future<void> clearWhere(bool Function(AppLogEntry entry) predicate) async {
+    _memoryEntries.removeWhere(predicate);
+    final file = await _file();
+    if (!await file.exists()) return;
+    final rows = await readFromDisk();
+    final kept = rows
+        .where((entry) => !predicate(entry))
+        .toList(growable: false);
+    final contents = kept.map((entry) => jsonEncode(entry.toJson())).join('\n');
+    await file.writeAsString(
+      contents.isEmpty ? '' : '$contents\n',
+      flush: true,
+    );
+  }
+
   Future<void> _appendToDisk(AppLogEntry entry) async {
     final file = await _file();
     await file.parent.create(recursive: true);

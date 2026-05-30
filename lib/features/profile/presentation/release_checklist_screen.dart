@@ -12,7 +12,10 @@ class ReleaseChecklistScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final diagnosticsState = ref.watch(releaseDiagnosticsProvider);
-    final ingestionState = ref.watch(realIngestionAvailableProvider);
+    final notificationIngestionState = ref.watch(
+      notificationIngestionAvailableProvider,
+    );
+    final smsIngestionState = ref.watch(smsIngestionAvailableProvider);
     final notifPermState = ref.watch(notificationAccessStatusProvider);
     final smsPermState = ref.watch(smsPermissionStatusProvider);
 
@@ -35,8 +38,15 @@ class ReleaseChecklistScreen extends ConsumerWidget {
                   _line(context, 'App mode', d.appMode),
                   _line(
                     context,
-                    'Real ingestion available',
-                    ingestionState.valueOrNull == true ? 'YES' : 'NO',
+                    'Notification ingestion available',
+                    notificationIngestionState.valueOrNull == true
+                        ? 'YES'
+                        : 'NO',
+                  ),
+                  _line(
+                    context,
+                    'SMS ingestion available',
+                    smsIngestionState.valueOrNull == true ? 'YES' : 'NO',
                   ),
                   _line(
                     context,

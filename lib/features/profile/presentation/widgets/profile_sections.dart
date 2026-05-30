@@ -364,9 +364,12 @@ class DetectionSettingsSection extends StatelessWidget {
     super.key,
     required this.accessBadge,
     required this.smsAccessBadge,
+    required this.notificationIngestionAvailable,
+    required this.smsIngestionAvailable,
     required this.detectionEnabled,
     required this.smsDetectionEnabled,
     required this.onOpenNotificationSetup,
+    required this.onOpenNotificationDiagnostics,
     required this.onOpenSmsSetup,
     required this.onDetectionToggle,
     required this.onSmsDetectionToggle,
@@ -374,9 +377,12 @@ class DetectionSettingsSection extends StatelessWidget {
 
   final Widget accessBadge;
   final Widget smsAccessBadge;
+  final bool notificationIngestionAvailable;
+  final bool smsIngestionAvailable;
   final bool detectionEnabled;
   final bool smsDetectionEnabled;
   final VoidCallback onOpenNotificationSetup;
+  final VoidCallback onOpenNotificationDiagnostics;
   final VoidCallback onOpenSmsSetup;
   final ValueChanged<bool> onDetectionToggle;
   final ValueChanged<bool> onSmsDetectionToggle;
@@ -400,11 +406,24 @@ class DetectionSettingsSection extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.sm),
               accessBadge,
+              if (!notificationIngestionAvailable) ...[
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Notification listener is unavailable in this build.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
               const SizedBox(height: AppSpacing.sm),
               FinarcSecondaryButton(
                 onPressed: onOpenNotificationSetup,
                 label: 'Open Setup',
                 icon: Icons.settings_outlined,
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              FinarcSecondaryButton(
+                onPressed: onOpenNotificationDiagnostics,
+                label: 'Notification Diagnostics',
+                icon: Icons.analytics_outlined,
               ),
               const SizedBox(height: AppSpacing.xs),
               Row(
@@ -416,7 +435,9 @@ class DetectionSettingsSection extends StatelessWidget {
                   const Spacer(),
                   Switch.adaptive(
                     value: detectionEnabled,
-                    onChanged: onDetectionToggle,
+                    onChanged: notificationIngestionAvailable
+                        ? onDetectionToggle
+                        : null,
                   ),
                 ],
               ),
@@ -439,6 +460,13 @@ class DetectionSettingsSection extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.sm),
               smsAccessBadge,
+              if (!smsIngestionAvailable) ...[
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'SMS reading is not available in this build.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
               const SizedBox(height: AppSpacing.sm),
               FinarcSecondaryButton(
                 onPressed: onOpenSmsSetup,
@@ -455,7 +483,9 @@ class DetectionSettingsSection extends StatelessWidget {
                   const Spacer(),
                   Switch.adaptive(
                     value: smsDetectionEnabled,
-                    onChanged: onSmsDetectionToggle,
+                    onChanged: smsIngestionAvailable
+                        ? onSmsDetectionToggle
+                        : null,
                   ),
                 ],
               ),

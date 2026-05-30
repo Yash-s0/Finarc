@@ -267,4 +267,126 @@ void main() {
       expect(after.actionableRecoverables, closeTo(330, 0.01));
     },
   );
+
+  test(
+    'cash recoverable is included immediately in actionable total',
+    () async {
+      final cashId = await db
+          .into(db.cashWallets)
+          .insert(
+            CashWalletsCompanion.insert(
+              walletName: 'Cash Wallet',
+              currentBalance: const Value(5000),
+            ),
+          );
+
+      await engine.addTransaction(
+        AddTransactionInput(
+          type: TransactionType.cash,
+          amount: 300,
+          title: 'Cash shared ride',
+          category: 'Travel',
+          transactionDate: DateTime(2026, 5, 24),
+          paymentSourceType: PaymentSourceType.cash,
+          paymentSourceId: cashId,
+          isForOthers: true,
+          recoverablePartyName: 'Rohan',
+        ),
+      );
+
+      final snapshot = await serviceFor(
+        now: () => DateTime(2026, 5, 25),
+      ).buildSnapshot();
+      expect(snapshot.cashRecoverables, closeTo(300, 0.01));
+      expect(snapshot.actionableRecoverables, closeTo(300, 0.01));
+      expect(snapshot.cashItems, hasLength(1));
+    },
+  );
+
+  test(
+    'recovered amount reduces remaining only, not card billed due',
+    () async {
+      final now = DateTime.now();
+      final billedDate = DateTime(
+        now.year,
+        now.month,
+        now.day > 1 ? now.day - 1 : 1,
+      );
+
+      await engine.addTransaction(
+        AddTransactionInput(
+          type: TransactionType.creditCard,
+          amount: 1000,
+          title: 'Card shared purchase',
+          category: 'Shopping',
+          transactionDate: billedDate,
+          paymentSourceType: PaymentSourceType.creditCard,
+          paymentSourceId: cardId,
+          cashbackAmount: 100,
+          isForOthers: true,
+          recoveredAmount: 400,
+          recoverablePartyName: 'Aarav',
+        ),
+      );
+
+      final recoverables = await serviceFor(now: () => now).buildSnapshot();
+      expect(recoverables.cardBilledRecoverables, closeTo(500, 0.01));
+
+      final billingSnapshot = await BillingService(
+        db,
+        now: () => now,
+      ).getCardBillingSnapshotById(cardId);
+      expect(billingSnapshot.billedDue, closeTo(1000, 0.01));
+    },
+  );
+
+  test('recoverable status derives as unpaid, partial, recovered', () async {
+    await engine.addTransaction(
+      AddTransactionInput(
+        type: TransactionType.bank,
+        amount: 600,
+        title: 'Unpaid item',
+        category: 'Food',
+        transactionDate: DateTime(2026, 5, 24),
+        paymentSourceType: PaymentSourceType.bank,
+        paymentSourceId: bankId,
+        isForOthers: true,
+        recoverablePartyName: 'P1',
+      ),
+    );
+    await engine.addTransaction(
+      AddTransactionInput(
+        type: TransactionType.bank,
+        amount: 600,
+        title: 'Partial item',
+        category: 'Food',
+        transactionDate: DateTime(2026, 5, 24),
+        paymentSourceType: PaymentSourceType.bank,
+        paymentSourceId: bankId,
+        isForOthers: true,
+        recoveredAmount: 250,
+        recoverablePartyName: 'P2',
+      ),
+    );
+    await engine.addTransaction(
+      AddTransactionInput(
+        type: TransactionType.bank,
+        amount: 600,
+        title: 'Recovered item',
+        category: 'Food',
+        transactionDate: DateTime(2026, 5, 24),
+        paymentSourceType: PaymentSourceType.bank,
+        paymentSourceId: bankId,
+        isForOthers: true,
+        recoveredAmount: 600,
+        recoverablePartyName: 'P3',
+      ),
+    );
+
+    final txns = await db.select(db.transactions).get();
+    final byTitle = {for (final t in txns) t.title: t};
+    expect(byTitle['Unpaid item']!.recoverableStatus, 'unpaid');
+    expect(byTitle['Partial item']!.recoverableStatus, 'partial');
+    expect(byTitle['Recovered item']!.recoverableStatus, 'recovered');
+  });
 }

@@ -46,7 +46,7 @@ class CardNotificationParser implements TransactionParser {
     final date =
         ParserTextUtils.extractDate(text, input.receivedAt) ?? input.receivedAt;
 
-    final confidence = ParserConfidenceScorer.score(
+    final confidence = ParserConfidenceScorer.assess(
       hasAmount: true,
       hasMerchant: merchant != 'Unknown Merchant',
       hasSourceHint: hintLast4 != null,
@@ -68,7 +68,8 @@ class CardNotificationParser implements TransactionParser {
               : 'card-ending-$hintLast4',
           categorySuggestion: CategorySuggester.suggest(merchant),
           rawText: input.rawText,
-          confidenceScore: confidence,
+          confidenceScore: confidence.score,
+          confidenceLevel: confidence.level.name.toUpperCase(),
           parserName: parserName,
         ),
       ],

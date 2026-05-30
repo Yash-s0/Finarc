@@ -4,7 +4,7 @@ import '../../../core/database/app_database.dart';
 import '../../../core/database/database_providers.dart';
 import '../../cards/data/cards_providers.dart';
 import '../../loans/data/loans_providers.dart';
-import '../../pending/notifications/notification_providers.dart';
+import '../../pending/notifications/notification_runtime_providers.dart';
 import '../../split/data/split_providers.dart';
 import 'alert_engine.dart';
 import 'alert_service.dart';

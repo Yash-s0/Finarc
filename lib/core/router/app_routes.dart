@@ -7,4 +7,6 @@ class AppRoutes {
   static const split = '/split';
   static const logs = '/internal/logs';
   static const releaseChecklist = '/internal/release-checklist';
+  static const notificationDiagnostics = '/notifications/diagnostics';
+  static const notificationDiagnosticsLogs = '/notifications/diagnostics/logs';
 }

@@ -17,8 +17,10 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
     final settingsState = ref.watch(detectionSettingsProvider);
     final debugEntries = ref.watch(notificationDebugLogProvider);
     final diagnostics = ref.watch(ingestionDiagnosticsProvider);
-    final realIngestionAvailable =
-        ref.watch(realIngestionAvailableProvider).valueOrNull ?? false;
+    final notificationIngestionAvailable =
+        ref.watch(notificationIngestionAvailableProvider).valueOrNull ?? false;
+    final smsIngestionAvailable =
+        ref.watch(smsIngestionAvailableProvider).valueOrNull ?? false;
     final hasNotificationAccess = accessState.valueOrNull ?? false;
     final hasSmsAccess = smsAccessState.valueOrNull ?? false;
 
@@ -40,7 +42,7 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
-                    'Finarc reads transaction notifications locally on your device. You review and confirm before any expense is added.',
+                    'Finarc reads transaction notifications locally to suggest expenses. Data stays on your device. You confirm before anything is added.',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   const SizedBox(height: AppSpacing.xs),
@@ -51,7 +53,7 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.xs),
                   if (!hasNotificationAccess)
                     Text(
-                      realIngestionAvailable
+                      notificationIngestionAvailable
                           ? 'Notification access is currently disabled.'
                           : 'Unavailable in this build (safe mode).',
                       style: Theme.of(context).textTheme.bodySmall,
@@ -106,7 +108,7 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                     },
                   ),
                   FinarcPrimaryButton(
-                    onPressed: !realIngestionAvailable
+                    onPressed: !notificationIngestionAvailable
                         ? null
                         : () async {
                             await ref
@@ -140,32 +142,48 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                   smsAccessState.when(
                     loading: () => const Text('Checking SMS permission...'),
                     error: (e, _) => Text('Error: $e'),
-                    data: (granted) => Row(
-                      children: [
-                        FinarcStatusBadge(
-                          label: granted
-                              ? 'SMS ACCESS ENABLED'
-                              : 'SMS ACCESS DISABLED',
-                          tone: granted
-                              ? FinarcStatusTone.success
-                              : FinarcStatusTone.warning,
+                    data: (granted) {
+                      if (!smsIngestionAvailable) {
+                        return const FinarcStatusBadge(
+                          label: 'SMS NOT AVAILABLE IN THIS BUILD',
+                          tone: FinarcStatusTone.neutral,
                           compact: true,
-                        ),
-                        const Spacer(),
-                        if (!granted)
-                          const Icon(
-                            Icons.warning_amber_rounded,
-                            color: Colors.amber,
+                        );
+                      }
+                      return Row(
+                        children: [
+                          FinarcStatusBadge(
+                            label: granted
+                                ? 'SMS ACCESS ENABLED'
+                                : 'SMS ACCESS DISABLED',
+                            tone: granted
+                                ? FinarcStatusTone.success
+                                : FinarcStatusTone.warning,
+                            compact: true,
                           ),
-                      ],
-                    ),
+                          const Spacer(),
+                          if (!granted)
+                            const Icon(
+                              Icons.warning_amber_rounded,
+                              color: Colors.amber,
+                            ),
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: AppSpacing.xs),
+                  if (!smsIngestionAvailable)
+                    Text(
+                      'SMS reading is not included in this Play-safe release build.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  if (!smsIngestionAvailable)
+                    const SizedBox(height: AppSpacing.xs),
                   _toggleRow(
                     context: context,
                     label: 'SMS detection enabled',
                     value: settings.smsDetectionEnabled,
-                    onChanged: realIngestionAvailable
+                    onChanged: smsIngestionAvailable
                         ? (v) async {
                             if (v && !hasSmsAccess) {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -187,7 +205,9 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                     children: [
                       Expanded(
                         child: FinarcSecondaryButton(
-                          onPressed: () => context.push('/sms/setup'),
+                          onPressed: smsIngestionAvailable
+                              ? () => context.push('/sms/setup')
+                              : null,
                           icon: Icons.sms_outlined,
                           label: 'Open SMS Setup',
                         ),
@@ -200,7 +220,7 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                       Expanded(
                         child: FinarcPrimaryButton(
                           onPressed: () async {
-                            if (!realIngestionAvailable) return;
+                            if (!smsIngestionAvailable) return;
                             if (!hasSmsAccess) {
                               if (!context.mounted) return;
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -249,7 +269,7 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                     context: context,
                     label: 'Detection enabled',
                     value: settings.notificationDetectionEnabled,
-                    onChanged: realIngestionAvailable
+                    onChanged: notificationIngestionAvailable
                         ? (v) async {
                             if (v && !hasNotificationAccess) {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -502,7 +522,7 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                           children: [
                             Expanded(
                               child: Text(
-                                '${entry.packageName} • ${entry.preview}',
+                                '${entry.packageName} • ${entry.title} • ${entry.bodyPreview}',
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: Theme.of(context).textTheme.bodySmall,
@@ -510,8 +530,8 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                             ),
                             const SizedBox(width: AppSpacing.xs),
                             FinarcStatusBadge(
-                              label: entry.result,
-                              tone: entry.result.startsWith('parsed')
+                              label: entry.decision,
+                              tone: entry.decision == 'pending-created'
                                   ? FinarcStatusTone.success
                                   : FinarcStatusTone.neutral,
                               compact: true,

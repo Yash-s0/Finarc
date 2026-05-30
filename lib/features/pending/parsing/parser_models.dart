@@ -6,6 +6,7 @@ class DetectedTransactionCandidate {
     required this.sourceType,
     required this.rawText,
     required this.confidenceScore,
+    this.confidenceLevel,
     required this.parserName,
     this.paymentSourceTypeSuggestion,
     this.paymentSourceHint,
@@ -22,6 +23,7 @@ class DetectedTransactionCandidate {
   final String? categorySuggestion;
   final String rawText;
   final double confidenceScore;
+  final String? confidenceLevel;
   final String parserName;
   final Map<String, Object?>? metadata;
 }

@@ -7,8 +7,12 @@ class AppModeConfig {
     'APP_MODE',
     defaultValue: '',
   );
+  @visibleForTesting
+  static AppMode? debugOverride;
 
   static AppMode get current {
+    final override = debugOverride;
+    if (override != null) return override;
     if (kReleaseMode) return AppMode.release;
     switch (_mode.toLowerCase()) {
       case 'personaldebug':

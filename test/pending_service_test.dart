@@ -110,6 +110,45 @@ void main() {
     },
   );
 
+  test('confirm received pending creates income transaction', () async {
+    final pendingId = await service.createPendingTransaction(
+      amount: 1,
+      merchant: 'Yas21606 4 Okaxis',
+      categorySuggestion: 'Transfer',
+      paymentSourceTypeSuggestion: PaymentSourceType.bank,
+      paymentSourceIdSuggestion: 1,
+      transactionDate: DateTime(2026, 5, 30, 12, 0),
+      sourceType: 'appNotification',
+      rawText:
+          'Received Rs.1.00 in your Kotak Bank AC X0754 from yas21606-4@okaxis on 30-05-26. UPI Ref:651638004295.',
+      confidenceScore: 0.92,
+    );
+
+    await service.confirmPendingTransaction(
+      pendingId,
+      PendingEditData(
+        amount: 1,
+        merchant: 'Yas21606 4 Okaxis',
+        category: 'Transfer',
+        paymentSourceType: PaymentSourceType.bank,
+        paymentSourceId: 1,
+        transactionDate: DateTime(2026, 5, 30, 12, 0),
+      ),
+    );
+
+    final txn = await (db.select(
+      db.transactions,
+    )..where((t) => t.id.isBiggerThanValue(0))).getSingle();
+    final bank = await (db.select(
+      db.bankAccounts,
+    )..where((b) => b.id.equals(1))).getSingle();
+
+    expect(txn.type, TransactionType.income);
+    expect(txn.amount, 1);
+    expect(txn.paymentSourceType, PaymentSourceType.bank);
+    expect(bank.currentBalance, closeTo(10001, 0.001));
+  });
+
   test('ignore pending changes status', () async {
     final id = await service.createPendingTransaction(
       amount: 99,
@@ -163,4 +202,121 @@ void main() {
     final duplicate = await service.detectPossibleDuplicate(pending);
     expect(duplicate, isNotNull);
   });
+
+  test(
+    'pending for-others confirmation computes recoverable base and keeps full card charge',
+    () async {
+      final pendingId = await service.createPendingTransaction(
+        amount: 900,
+        merchant: 'Team Dinner',
+        categorySuggestion: 'Food',
+        paymentSourceTypeSuggestion: PaymentSourceType.creditCard,
+        paymentSourceIdSuggestion: 1,
+        transactionDate: DateTime.now(),
+        sourceType: 'sms',
+        rawText: 'Rs 900 spent',
+        confidenceScore: 0.9,
+      );
+
+      await service.confirmPendingTransaction(
+        pendingId,
+        PendingEditData(
+          amount: 900,
+          merchant: 'Team Dinner',
+          category: 'Food',
+          paymentSourceType: PaymentSourceType.creditCard,
+          paymentSourceId: 1,
+          transactionDate: DateTime.now(),
+          cashbackAmount: 100,
+          isForOthers: true,
+          recoveredAmount: 200,
+          recoverablePartyName: 'Rahul',
+        ),
+      );
+
+      final txn = await (db.select(
+        db.transactions,
+      )..where((t) => t.title.equals('Team Dinner'))).getSingle();
+      expect(txn.recoverableBaseAmount, closeTo(800, 0.01));
+      expect(txn.recoveredAmount, closeTo(200, 0.01));
+      expect(txn.recoverableAmount, closeTo(600, 0.01));
+      expect(txn.recoverablePartyName, 'Rahul');
+
+      final card = await (db.select(
+        db.creditCards,
+      )..where((c) => c.id.equals(1))).getSingle();
+      expect(card.currentOutstanding, closeTo(1900, 0.01));
+    },
+  );
+
+  test('pending for-others confirmation requires party name', () async {
+    final pendingId = await service.createPendingTransaction(
+      amount: 500,
+      merchant: 'Shared ride',
+      categorySuggestion: 'Travel',
+      paymentSourceTypeSuggestion: PaymentSourceType.bank,
+      paymentSourceIdSuggestion: 1,
+      transactionDate: DateTime.now(),
+      sourceType: 'sms',
+      rawText: 'Rs 500',
+      confidenceScore: 0.7,
+    );
+
+    expect(
+      () => service.confirmPendingTransaction(
+        pendingId,
+        PendingEditData(
+          amount: 500,
+          merchant: 'Shared ride',
+          category: 'Travel',
+          paymentSourceType: PaymentSourceType.bank,
+          paymentSourceId: 1,
+          transactionDate: DateTime.now(),
+          isForOthers: true,
+          recoverablePartyName: '',
+        ),
+      ),
+      throwsArgumentError,
+    );
+  });
+
+  test(
+    'income confirmation without destination account throws actionable validation error',
+    () async {
+      final pendingId = await service.createPendingTransaction(
+        amount: 1,
+        merchant: 'Yas21606 4 Okaxis',
+        categorySuggestion: 'Transfer',
+        paymentSourceTypeSuggestion: PaymentSourceType.bank,
+        paymentSourceIdSuggestion: null,
+        transactionDate: DateTime(2026, 5, 30, 12, 0),
+        sourceType: 'appNotification',
+        rawText:
+            'Received Rs.1.00 in your Kotak Bank AC X0754 from yas21606-4@okaxis on 30-05-26. UPI Ref:651638004295.',
+        confidenceScore: 0.92,
+      );
+
+      try {
+        await service.confirmPendingTransaction(
+          pendingId,
+          PendingEditData(
+            amount: 1,
+            merchant: 'Yas21606 4 Okaxis',
+            category: 'Transfer',
+            paymentSourceType: PaymentSourceType.bank,
+            paymentSourceId: null,
+            transactionDate: DateTime(2026, 5, 30, 12, 0),
+          ),
+        );
+        fail('Expected PendingConfirmationException');
+      } on PendingConfirmationException catch (error) {
+        expect(error.reason, 'missing-destination-account');
+        expect(
+          error.userMessage,
+          'Select destination account to confirm this income.',
+        );
+        expect(error.detectedType, TransactionType.income);
+      }
+    },
+  );
 }

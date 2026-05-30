@@ -163,14 +163,27 @@ class SmsIngestionService {
 
   void _log(NotificationPayload payload, String result) {
     final sender = (payload.sender ?? payload.appName ?? 'sms').trim();
+    final decision = switch (result) {
+      'duplicate-suppressed' => 'duplicate',
+      'parsed-pending-created' => 'pending-created',
+      'parser-failed' => 'parsed',
+      _ => result.startsWith('blocked') ? 'ignored' : 'parsed',
+    };
+    final preview = payload.combinedText.length > 120
+        ? '${payload.combinedText.substring(0, 120)}...'
+        : payload.combinedText;
     _appendDebug(
       NotificationDebugEntry(
         receivedAt: payload.receivedAt,
         packageName: sender.isEmpty ? 'sms' : sender,
-        preview: payload.combinedText.length > 80
-            ? '${payload.combinedText.substring(0, 80)}...'
-            : payload.combinedText,
+        title: sender.isEmpty ? 'SMS' : sender,
+        bodyPreview: preview,
+        decision: decision,
+        reason: result,
+        sourceType: 'sms',
         result: result,
+        parseResult: result,
+        localNotificationSent: result == 'parsed-pending-created',
       ),
     );
   }

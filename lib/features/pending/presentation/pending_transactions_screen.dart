@@ -11,7 +11,10 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
 import '../data/pending_providers.dart';
+import '../data/pending_service.dart';
 import '../models/pending_models.dart';
+import '../parsing/parser_text_utils.dart';
+import '../parsing/transaction_direction_classifier.dart';
 import '../parsing/parser_models.dart';
 
 String _sourceLabelForPending(String source) {
@@ -44,6 +47,7 @@ class _PendingTransactionsScreenState
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(pendingTransactionsProvider);
+    final historyState = ref.watch(pendingHistoryProvider);
     final filter = ref.watch(pendingFilterProvider);
 
     return FinarcScaffold(
@@ -159,6 +163,167 @@ class _PendingTransactionsScreenState
                       .add(item);
                 }
 
+                final listChildren = grouped.entries.map<Widget>((entry) {
+                  final source = entry.key.split('::').first;
+                  final day = entry.key.split('::').last;
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        FinarcSectionHeader(
+                          title:
+                              '${_sourceLabelForPending(source)} • ${_prettyDay(day)}',
+                          trailing: FinarcStatusBadge(
+                            label: '${entry.value.length}',
+                            tone: FinarcStatusTone.info,
+                            compact: true,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        ...entry.value.map((item) {
+                          final confidenceLabel = _confidenceLabel(
+                            item.confidenceScore,
+                          );
+                          final confidenceTone = _confidenceTone(
+                            item.confidenceScore,
+                          );
+                          final direction = _pendingDirection(item);
+                          final isIncome =
+                              direction == PendingTransactionDirection.income;
+
+                          return Padding(
+                            padding: const EdgeInsets.only(
+                              bottom: AppSpacing.xs,
+                            ),
+                            child: FinarcTransactionTile(
+                              onTap: () => FinarcBottomSheet.show<void>(
+                                context,
+                                isScrollControlled: true,
+                                child: _ConfirmTransactionSheet(item: item),
+                              ),
+                              title: item.merchant,
+                              subtitle: item.categorySuggestion,
+                              meta: FinarcTransactionPresentation.meta(
+                                date: item.transactionDate,
+                                source: _sourceLabelForPending(item.sourceType),
+                              ),
+                              amount:
+                                  '${isIncome ? '+' : '-'}${inr(item.amount)}',
+                              amountColor: isIncome
+                                  ? AppColors.darkSuccess
+                                  : AppColors.darkError,
+                              prefix: CircleAvatar(
+                                radius: 15,
+                                backgroundColor: AppColors.darkPrimarySoft,
+                                child: Icon(
+                                  _pendingIcon(item.sourceType),
+                                  size: 14,
+                                  color: AppColors.darkAccent,
+                                ),
+                              ),
+                              badges: [
+                                FinarcTransactionPresentation.pendingStatusBadge(
+                                  'pending',
+                                ),
+                                if (isIncome)
+                                  const FinarcStatusBadge(
+                                    label: 'Income',
+                                    tone: FinarcStatusTone.success,
+                                    compact: true,
+                                  ),
+                                FinarcStatusBadge(
+                                  label: confidenceLabel,
+                                  tone: confidenceTone,
+                                  compact: true,
+                                ),
+                                FinarcStatusBadge(
+                                  label: _timeAgo(item.detectedAt),
+                                  tone: FinarcStatusTone.neutral,
+                                  compact: true,
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  );
+                }).toList();
+
+                listChildren.add(const SizedBox(height: AppSpacing.sm));
+                listChildren.add(
+                  const FinarcSectionHeader(
+                    title: 'Pending Confirmation History',
+                  ),
+                );
+                listChildren.add(const SizedBox(height: AppSpacing.xs));
+                listChildren.add(
+                  historyState.when(
+                    loading: () => const FinarcLoadingSkeleton(height: 88),
+                    error: (_, _) => const FinarcEmptyState(
+                      title: 'No decision history',
+                      subtitle: 'Ignored and duplicate items will appear here.',
+                      icon: Icons.history_toggle_off_outlined,
+                    ),
+                    data: (history) {
+                      if (history.isEmpty) {
+                        return const FinarcEmptyState(
+                          title: 'No decision history',
+                          subtitle:
+                              'Ignored and duplicate items will appear here.',
+                          icon: Icons.history_toggle_off_outlined,
+                        );
+                      }
+                      return Column(
+                        children: history
+                            .map(
+                              (item) => Padding(
+                                padding: const EdgeInsets.only(
+                                  bottom: AppSpacing.xs,
+                                ),
+                                child: FinarcTransactionTile(
+                                  title: item.merchant,
+                                  subtitle: item.categorySuggestion,
+                                  meta: FinarcTransactionPresentation.meta(
+                                    date: item.transactionDate,
+                                    source: _sourceLabelForPending(
+                                      item.sourceType,
+                                    ),
+                                  ),
+                                  amount:
+                                      '${_pendingDirection(item) == PendingTransactionDirection.income ? '+' : '-'}${inr(item.amount)}',
+                                  amountColor:
+                                      _pendingDirection(item) ==
+                                          PendingTransactionDirection.income
+                                      ? AppColors.darkSuccess
+                                      : AppColors.darkError,
+                                  prefix: CircleAvatar(
+                                    radius: 15,
+                                    backgroundColor: AppColors.darkSurfaceHigh,
+                                    child: Icon(
+                                      _pendingIcon(item.sourceType),
+                                      size: 14,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurface,
+                                    ),
+                                  ),
+                                  badges: [
+                                    FinarcTransactionPresentation.pendingStatusBadge(
+                                      item.status,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      );
+                    },
+                  ),
+                );
+
                 return ListView(
                   padding: const EdgeInsets.fromLTRB(
                     AppSpacing.md,
@@ -166,109 +331,7 @@ class _PendingTransactionsScreenState
                     AppSpacing.md,
                     AppSpacing.md,
                   ),
-                  children: grouped.entries.map((entry) {
-                    final source = entry.key.split('::').first;
-                    final day = entry.key.split('::').last;
-
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          FinarcSectionHeader(
-                            title:
-                                '${_sourceLabelForPending(source)} • ${_prettyDay(day)}',
-                            trailing: FinarcStatusBadge(
-                              label: '${entry.value.length}',
-                              tone: FinarcStatusTone.info,
-                              compact: true,
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.xs),
-                          ...entry.value.map((item) {
-                            final confidenceLabel = _confidenceLabel(
-                              item.confidenceScore,
-                            );
-                            final confidenceTone = _confidenceTone(
-                              item.confidenceScore,
-                            );
-
-                            return Padding(
-                              padding: const EdgeInsets.only(
-                                bottom: AppSpacing.xs,
-                              ),
-                              child: FinarcCard(
-                                padding: const EdgeInsets.all(AppSpacing.sm),
-                                onTap: () => FinarcBottomSheet.show<void>(
-                                  context,
-                                  isScrollControlled: true,
-                                  child: _ConfirmTransactionSheet(item: item),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            item.merchant,
-                                            style: Theme.of(
-                                              context,
-                                            ).textTheme.titleSmall,
-                                          ),
-                                        ),
-                                        Text(
-                                          inr(item.amount),
-                                          style: AppTextStyles.amountStyle(
-                                            color: Theme.of(
-                                              context,
-                                            ).colorScheme.onSurface,
-                                            size: 16,
-                                            weight: FontWeight.w700,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: AppSpacing.xxs),
-                                    Text(
-                                      item.categorySuggestion,
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.bodyMedium,
-                                    ),
-                                    const SizedBox(height: AppSpacing.xs),
-                                    Wrap(
-                                      spacing: 6,
-                                      runSpacing: 6,
-                                      children: [
-                                        FinarcStatusBadge(
-                                          label: _sourceLabelForPending(
-                                            item.sourceType,
-                                          ),
-                                          tone: FinarcStatusTone.info,
-                                          compact: true,
-                                        ),
-                                        FinarcStatusBadge(
-                                          label: confidenceLabel,
-                                          tone: confidenceTone,
-                                          compact: true,
-                                        ),
-                                        FinarcStatusBadge(
-                                          label: _timeAgo(item.detectedAt),
-                                          tone: FinarcStatusTone.neutral,
-                                          compact: true,
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          }),
-                        ],
-                      ),
-                    );
-                  }).toList(),
+                  children: listChildren,
                 );
               },
             ),
@@ -350,6 +413,26 @@ class _PendingTransactionsScreenState
     if (diff == 0) return 'Today';
     if (diff == 1) return 'Yesterday';
     return '${target.day.toString().padLeft(2, '0')}/${target.month.toString().padLeft(2, '0')}/${target.year}';
+  }
+
+  static IconData _pendingIcon(String sourceType) {
+    switch (sourceType) {
+      case 'upiNotification':
+        return Icons.qr_code_2_rounded;
+      case 'appNotification':
+        return Icons.notifications_active_outlined;
+      default:
+        return Icons.sms_outlined;
+    }
+  }
+
+  static PendingTransactionDirection _pendingDirection(
+    PendingTransaction item,
+  ) {
+    return PendingDirectionClassifier.detect(
+      text: item.rawText,
+      categoryHint: item.categorySuggestion,
+    );
   }
 }
 
@@ -507,6 +590,15 @@ class _ConfirmTransactionSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final action = ref.read(pendingActionProvider);
+    final direction = PendingDirectionClassifier.detect(
+      text: item.rawText,
+      categoryHint: item.categorySuggestion,
+    );
+    final isIncome = direction == PendingTransactionDirection.income;
+    final sourceLabel = isIncome ? 'Received in' : 'Payment source';
+    final sourceValue =
+        ParserTextUtils.extractAccountHint(item.rawText) ??
+        item.paymentSourceTypeSuggestion;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -520,14 +612,16 @@ class _ConfirmTransactionSheet extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Confirm Transaction',
+            isIncome ? 'Confirm Income' : 'Confirm Transaction',
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            inr(item.amount),
+            '${isIncome ? '+' : '-'}${inr(item.amount)}',
             style: AppTextStyles.amountStyle(
-              color: Theme.of(context).colorScheme.onSurface,
+              color: isIncome
+                  ? AppColors.darkSuccess
+                  : Theme.of(context).colorScheme.onSurface,
               size: 30,
               weight: FontWeight.w700,
             ),
@@ -541,11 +635,7 @@ class _ConfirmTransactionSheet extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _row(context, 'Category', item.categorySuggestion),
-                _row(
-                  context,
-                  'Payment source',
-                  item.paymentSourceTypeSuggestion,
-                ),
+                _row(context, sourceLabel, sourceValue),
                 _row(
                   context,
                   'Date/Time',
@@ -589,37 +679,57 @@ class _ConfirmTransactionSheet extends ConsumerWidget {
               Expanded(
                 child: FinarcPrimaryButton(
                   onPressed: () async {
-                    final duplicate = await action.detectDuplicate(item);
-                    if (duplicate != null && context.mounted) {
-                      await FinarcBottomSheet.show<void>(
-                        context,
-                        child: _DuplicateWarningSheet(
-                          pending: item,
-                          existing: duplicate,
+                    try {
+                      final duplicate = await action.detectDuplicate(item);
+                      if (duplicate != null && context.mounted) {
+                        await FinarcBottomSheet.show<void>(
+                          context,
+                          child: _DuplicateWarningSheet(
+                            pending: item,
+                            existing: duplicate,
+                          ),
+                        );
+                        return;
+                      }
+                      await action.confirm(
+                        item.id,
+                        PendingEditData(
+                          amount: item.amount,
+                          merchant: item.merchant,
+                          category: item.categorySuggestion,
+                          paymentSourceType: item.paymentSourceTypeSuggestion,
+                          paymentSourceId: item.paymentSourceIdSuggestion,
+                          transactionDate: item.transactionDate,
+                          cashbackAmount: item.cashbackAmount,
+                          isForOthers: item.isForOthers,
+                          recoverableAmount: item.recoverableAmount,
+                          recoveredAmount: item.recoveredAmount,
+                          recoverablePartyName: item.recoverablePartyName,
+                          notes: item.notes,
                         ),
                       );
-                      return;
-                    }
-                    await action.confirm(
-                      item.id,
-                      PendingEditData(
-                        amount: item.amount,
-                        merchant: item.merchant,
-                        category: item.categorySuggestion,
-                        paymentSourceType: item.paymentSourceTypeSuggestion,
-                        paymentSourceId: item.paymentSourceIdSuggestion,
-                        transactionDate: item.transactionDate,
-                        cashbackAmount: item.cashbackAmount,
-                        isForOthers: item.isForOthers,
-                        recoverableAmount: item.recoverableAmount,
-                        recoveredAmount: item.recoveredAmount,
-                        recoverablePartyName: item.recoverablePartyName,
-                        notes: item.notes,
-                      ),
-                    );
-                    if (context.mounted) {
-                      Navigator.pop(context);
-                      context.push('/pending/success');
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                        context.push('/pending/success');
+                      }
+                    } on PendingConfirmationException catch (error) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(error.userMessage)),
+                      );
+                      if (error.reason == 'missing-destination-account') {
+                        Navigator.pop(context);
+                        context.push('/pending/edit/${item.id}');
+                      }
+                    } catch (_) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Unable to confirm transaction. Please edit and try again.',
+                          ),
+                        ),
+                      );
                     }
                   },
                   label: 'Confirm',
@@ -826,27 +936,49 @@ class _DuplicateWarningSheet extends ConsumerWidget {
               Expanded(
                 child: FinarcSecondaryButton(
                   onPressed: () async {
-                    await ref
-                        .read(pendingActionProvider)
-                        .confirm(
-                          pending.id,
-                          PendingEditData(
-                            amount: pending.amount,
-                            merchant: pending.merchant,
-                            category: pending.categorySuggestion,
-                            paymentSourceType:
-                                pending.paymentSourceTypeSuggestion,
-                            paymentSourceId: pending.paymentSourceIdSuggestion,
-                            transactionDate: pending.transactionDate,
-                            cashbackAmount: pending.cashbackAmount,
-                            isForOthers: pending.isForOthers,
-                            recoverableAmount: pending.recoverableAmount,
-                            recoveredAmount: pending.recoveredAmount,
-                            recoverablePartyName: pending.recoverablePartyName,
-                            notes: pending.notes,
+                    try {
+                      await ref
+                          .read(pendingActionProvider)
+                          .confirm(
+                            pending.id,
+                            PendingEditData(
+                              amount: pending.amount,
+                              merchant: pending.merchant,
+                              category: pending.categorySuggestion,
+                              paymentSourceType:
+                                  pending.paymentSourceTypeSuggestion,
+                              paymentSourceId:
+                                  pending.paymentSourceIdSuggestion,
+                              transactionDate: pending.transactionDate,
+                              cashbackAmount: pending.cashbackAmount,
+                              isForOthers: pending.isForOthers,
+                              recoverableAmount: pending.recoverableAmount,
+                              recoveredAmount: pending.recoveredAmount,
+                              recoverablePartyName:
+                                  pending.recoverablePartyName,
+                              notes: pending.notes,
+                            ),
+                          );
+                      if (context.mounted) Navigator.pop(context);
+                    } on PendingConfirmationException catch (error) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(error.userMessage)),
+                      );
+                      if (error.reason == 'missing-destination-account') {
+                        Navigator.pop(context);
+                        context.push('/pending/edit/${pending.id}');
+                      }
+                    } catch (_) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Unable to confirm transaction. Please edit and try again.',
                           ),
-                        );
-                    if (context.mounted) Navigator.pop(context);
+                        ),
+                      );
+                    }
                   },
                   label: 'Keep Both',
                 ),

@@ -320,7 +320,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 16;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -508,7 +508,10 @@ class AppDatabase extends _$AppDatabase {
           pendingTransactions,
           pendingTransactions.recoveredAmount,
         );
-        await _backfillRecoverableFields();
+        await normalizeRecoverableDataBackfill();
+      }
+      if (from < 16) {
+        await normalizeRecoverableDataBackfill();
       }
       await globalAppLogService.log(
         category: 'migration',
@@ -687,28 +690,72 @@ WHERE status IS NULL
     }
   }
 
-  Future<void> _backfillRecoverableFields() async {
+  Future<void> normalizeRecoverableDataBackfill() async {
+    const recoveredStatuses = {'recovered', 'settled', 'paid', 'complete'};
+    const openStatuses = {
+      'open',
+      'pending',
+      'unpaid',
+      'partial',
+      'unknown',
+      'missing',
+    };
+
     final txns = await select(transactions).get();
     for (final txn in txns) {
-      final isRecoverable = txn.isForOthers;
-      final base = isRecoverable
-          ? (txn.amount - txn.cashbackAmount).clamp(0, txn.amount).toDouble()
-          : 0.0;
+      final statusRaw = txn.recoverableStatus.trim().toLowerCase();
+      final statusIsRecovered = recoveredStatuses.contains(statusRaw);
+      final statusIsOpen = openStatuses.contains(statusRaw);
+      final hasParty = (txn.recoverablePartyName?.trim().isNotEmpty ?? false);
+      final hasRecoverableValues =
+          (txn.recoverableBaseAmount ?? 0) > 0 ||
+          (txn.recoverableAmount ?? 0) > 0 ||
+          txn.recoveredAmount > 0;
+      final isRecoverable =
+          txn.isForOthers ||
+          hasParty ||
+          hasRecoverableValues ||
+          statusIsRecovered;
 
-      final normalizedStatus = (txn.recoverableStatus).toLowerCase();
-      final recovered = normalizedStatus == 'recovered' ? base : 0.0;
+      if (!isRecoverable) {
+        await (update(transactions)..where((t) => t.id.equals(txn.id))).write(
+          const TransactionsCompanion(
+            recoverableBaseAmount: Value(null),
+            recoveredAmount: Value(0),
+            recoverableAmount: Value(null),
+            recoverableStatus: Value('unpaid'),
+            recoveredAt: Value(null),
+          ),
+        );
+        continue;
+      }
+
+      final legacyLike =
+          txn.recoverableBaseAmount == null ||
+          statusIsRecovered ||
+          statusIsOpen;
+      final baseFromLegacyAmount = (txn.recoverableAmount ?? 0) > 0
+          ? txn.recoverableAmount
+          : null;
+      final base = (baseFromLegacyAmount ?? (txn.amount - txn.cashbackAmount))
+          .clamp(0, txn.amount)
+          .toDouble();
+      final recovered =
+          (legacyLike ? (statusIsRecovered ? base : 0) : txn.recoveredAmount)
+              .clamp(0, base)
+              .toDouble();
       final remaining = (base - recovered).clamp(0, base).toDouble();
-      final nextStatus = !isRecoverable
+      final nextStatus = recovered <= 0.009
           ? 'unpaid'
-          : recovered >= base
+          : recovered >= base - 0.009
           ? 'recovered'
-          : 'unpaid';
+          : 'partial';
 
       await (update(transactions)..where((t) => t.id.equals(txn.id))).write(
         TransactionsCompanion(
-          recoverableBaseAmount: Value(isRecoverable ? base : null),
+          recoverableBaseAmount: Value(base),
           recoveredAmount: Value(recovered),
-          recoverableAmount: Value(isRecoverable ? remaining : null),
+          recoverableAmount: Value(remaining),
           recoverableStatus: Value(nextStatus),
           recoveredAt: Value(
             recovered > 0 ? (txn.recoveredAt ?? DateTime.now()) : null,
@@ -719,19 +766,33 @@ WHERE status IS NULL
 
     final pending = await select(pendingTransactions).get();
     for (final row in pending) {
-      final isRecoverable = row.isForOthers;
+      final hasParty = (row.recoverablePartyName?.trim().isNotEmpty ?? false);
+      final hasRecoverableValues =
+          (row.recoverableBaseAmount ?? 0) > 0 ||
+          (row.recoverableAmount ?? 0) > 0 ||
+          row.recoveredAmount > 0;
+      final isRecoverable = row.isForOthers || hasParty || hasRecoverableValues;
+      final baseFromLegacyAmount = (row.recoverableAmount ?? 0) > 0
+          ? row.recoverableAmount
+          : null;
       final base = isRecoverable
-          ? (row.amount - (row.cashbackAmount ?? 0))
+          ? (baseFromLegacyAmount ?? (row.amount - (row.cashbackAmount ?? 0)))
                 .clamp(0, row.amount)
                 .toDouble()
+          : 0.0;
+      final recovered = isRecoverable
+          ? row.recoveredAmount.clamp(0, base).toDouble()
+          : 0.0;
+      final remaining = isRecoverable
+          ? (base - recovered).clamp(0, base).toDouble()
           : 0.0;
       await (update(
         pendingTransactions,
       )..where((p) => p.id.equals(row.id))).write(
         PendingTransactionsCompanion(
           recoverableBaseAmount: Value(isRecoverable ? base : null),
-          recoveredAmount: const Value(0),
-          recoverableAmount: Value(isRecoverable ? base : null),
+          recoveredAmount: Value(recovered),
+          recoverableAmount: Value(isRecoverable ? remaining : null),
         ),
       );
     }

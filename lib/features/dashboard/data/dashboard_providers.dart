@@ -149,15 +149,7 @@ final dashboardProvider = FutureProvider<DashboardSnapshot>((ref) async {
             t.type != 'cardPayment' &&
             t.type != 'loanEmi',
       )
-      .fold<double>(
-        0,
-        (s, t) =>
-            s +
-            ((t.personalShareAmount ?? t.amount) - t.cashbackAmount).clamp(
-              0,
-              double.infinity,
-            ),
-      );
+      .fold<double>(0, (s, t) => s + _dashboardLifestyleSpend(t));
 
   return DashboardSnapshot(
     netWorth: breakdown.netWorth,
@@ -168,7 +160,7 @@ final dashboardProvider = FutureProvider<DashboardSnapshot>((ref) async {
     monthlySpends: monthlySpends,
     pendingCount: pendingCount,
     loansOutstanding: breakdown.loanOutstanding,
-    recoverableAmount: recoverableSnapshot.actionableRecoverables,
+    recoverableAmount: recoverableSnapshot.actionableRecoverableTotal,
     splitReceivableAmount: recoverableSnapshot.splitReceivables,
     splitPayableAmount: breakdown.splitPayables,
     recentTransactions: txns,
@@ -187,6 +179,20 @@ final dashboardProvider = FutureProvider<DashboardSnapshot>((ref) async {
     latestImportantAlert: latestImportantAlert,
   );
 });
+
+double _dashboardLifestyleSpend(Transaction t) {
+  final recoverableBase =
+      t.recoverableBaseAmount ??
+      (t.isForOthers
+          ? (t.amount - t.cashbackAmount).clamp(0, t.amount).toDouble()
+          : 0.0);
+  final base =
+      t.personalShareAmount ??
+      (t.isForOthers
+          ? (t.amount - recoverableBase).clamp(0, t.amount).toDouble()
+          : t.amount);
+  return (base - t.cashbackAmount).clamp(0, double.infinity).toDouble();
+}
 
 final dashboardRefreshActionsProvider = Provider<Future<void> Function()>((
   ref,

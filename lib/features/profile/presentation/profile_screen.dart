@@ -135,6 +135,12 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final accessState = ref.watch(notificationAccessStatusProvider);
     final smsAccessState = ref.watch(smsPermissionStatusProvider);
+    final notificationIngestionAvailabilityState = ref.watch(
+      notificationIngestionAvailableProvider,
+    );
+    final smsIngestionAvailabilityState = ref.watch(
+      smsIngestionAvailableProvider,
+    );
     final postNotificationState = ref.watch(
       postNotificationsPermissionProvider,
     );
@@ -148,41 +154,49 @@ class ProfileScreen extends ConsumerWidget {
         : null;
     final profile = ref.watch(userProfileSettingsProvider).valueOrNull;
     final appVersion = ref.watch(appVersionProvider).valueOrNull ?? 'unknown';
+    final notificationIngestionAvailable =
+        notificationIngestionAvailabilityState.valueOrNull ?? false;
+    final smsIngestionAvailable =
+        smsIngestionAvailabilityState.valueOrNull ?? false;
     final notificationBadge = accessState.when(
       loading: () => const FinarcStatusBadge(
-        label: 'Notification access: Checking',
+        label: 'Notification detection: Checking',
         tone: FinarcStatusTone.neutral,
         compact: true,
       ),
       error: (_, _) => const FinarcStatusBadge(
-        label: 'Notification access: Error',
+        label: 'Notification detection: Error',
         tone: FinarcStatusTone.warning,
         compact: true,
       ),
-      data: (enabled) => FinarcStatusBadge(
-        label: enabled
-            ? 'Notification access: Enabled'
-            : 'Notification access: Disabled',
-        tone: enabled ? FinarcStatusTone.success : FinarcStatusTone.warning,
+      data: (_) => FinarcStatusBadge(
+        label: notificationIngestionAvailable
+            ? 'Notification detection: Available'
+            : 'Notification detection: Not available',
+        tone: notificationIngestionAvailable
+            ? FinarcStatusTone.success
+            : FinarcStatusTone.warning,
         compact: true,
       ),
     );
     final smsBadge = smsAccessState.when(
       loading: () => const FinarcStatusBadge(
-        label: 'SMS permission: Checking',
+        label: 'SMS detection: Checking',
         tone: FinarcStatusTone.neutral,
         compact: true,
       ),
       error: (_, _) => const FinarcStatusBadge(
-        label: 'SMS permission: Error',
+        label: 'SMS detection: Error',
         tone: FinarcStatusTone.warning,
         compact: true,
       ),
-      data: (enabled) => FinarcStatusBadge(
-        label: enabled
-            ? 'SMS permission: Granted'
-            : 'SMS permission: Not granted',
-        tone: enabled ? FinarcStatusTone.success : FinarcStatusTone.warning,
+      data: (_) => FinarcStatusBadge(
+        label: smsIngestionAvailable
+            ? 'SMS detection: Available'
+            : 'SMS detection: Not available in this build',
+        tone: smsIngestionAvailable
+            ? FinarcStatusTone.success
+            : FinarcStatusTone.neutral,
         compact: true,
       ),
     );
@@ -216,13 +230,22 @@ class ProfileScreen extends ConsumerWidget {
         tone: FinarcStatusTone.warning,
         compact: true,
       ),
-      data: (enabled) => FinarcStatusBadge(
-        label: enabled
-            ? 'NOTIFICATION ACCESS ENABLED'
-            : 'NOTIFICATION ACCESS DISABLED',
-        tone: enabled ? FinarcStatusTone.success : FinarcStatusTone.warning,
-        compact: true,
-      ),
+      data: (enabled) {
+        if (!notificationIngestionAvailable) {
+          return const FinarcStatusBadge(
+            label: 'NOTIFICATION DETECTION NOT AVAILABLE',
+            tone: FinarcStatusTone.warning,
+            compact: true,
+          );
+        }
+        return FinarcStatusBadge(
+          label: enabled
+              ? 'NOTIFICATION ACCESS ENABLED'
+              : 'NOTIFICATION ACCESS DISABLED',
+          tone: enabled ? FinarcStatusTone.success : FinarcStatusTone.warning,
+          compact: true,
+        );
+      },
     );
     final smsAccessBadge = smsAccessState.when(
       loading: () => const FinarcStatusBadge(
@@ -235,11 +258,20 @@ class ProfileScreen extends ConsumerWidget {
         tone: FinarcStatusTone.warning,
         compact: true,
       ),
-      data: (enabled) => FinarcStatusBadge(
-        label: enabled ? 'SMS ACCESS ENABLED' : 'SMS ACCESS DISABLED',
-        tone: enabled ? FinarcStatusTone.success : FinarcStatusTone.warning,
-        compact: true,
-      ),
+      data: (enabled) {
+        if (!smsIngestionAvailable) {
+          return const FinarcStatusBadge(
+            label: 'SMS NOT AVAILABLE IN THIS BUILD',
+            tone: FinarcStatusTone.neutral,
+            compact: true,
+          );
+        }
+        return FinarcStatusBadge(
+          label: enabled ? 'SMS ACCESS ENABLED' : 'SMS ACCESS DISABLED',
+          tone: enabled ? FinarcStatusTone.success : FinarcStatusTone.warning,
+          compact: true,
+        );
+      },
     );
 
     return FinarcScaffold(
@@ -420,9 +452,13 @@ class ProfileScreen extends ConsumerWidget {
           DetectionSettingsSection(
             accessBadge: detectionAccessBadge,
             smsAccessBadge: smsAccessBadge,
+            notificationIngestionAvailable: notificationIngestionAvailable,
+            smsIngestionAvailable: smsIngestionAvailable,
             detectionEnabled: detectionEnabled,
             smsDetectionEnabled: smsDetectionEnabled,
             onOpenNotificationSetup: () => context.push('/notifications/setup'),
+            onOpenNotificationDiagnostics: () =>
+                context.push(AppRoutes.notificationDiagnostics),
             onOpenSmsSetup: () => context.push('/sms/setup'),
             onDetectionToggle: (value) {
               ref

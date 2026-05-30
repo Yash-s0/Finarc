@@ -85,6 +85,107 @@ void main() {
     expect(candidate.paymentSourceTypeSuggestion, 'upi');
   });
 
+  test('parses received upi alert as income with destination hint', () {
+    final result = registry.parseInput(
+      ParserInput(
+        rawText:
+            'Received Rs.1.00 in your Kotak Bank AC X0754 from yas21606-4@okaxis on 30-05-26. UPI Ref:651638004295.',
+        sourceType: 'appNotification',
+        packageName: 'com.google.android.apps.messaging',
+        sender: 'VM-KOTAKB-S',
+        receivedAt: DateTime(2026, 5, 30, 12, 0),
+      ),
+    );
+
+    final candidate = result.candidates.first;
+    expect(candidate.amount, 1);
+    expect(candidate.merchant.toLowerCase(), contains('yas21606'));
+    expect(candidate.merchant.toLowerCase(), contains('okaxis'));
+    expect(candidate.categorySuggestion, 'Transfer');
+    expect(candidate.paymentSourceTypeSuggestion, 'bank');
+    expect(candidate.paymentSourceHint, contains('Kotak Bank AC X0754'));
+    expect(candidate.metadata?['transactionRef'], '651638004295');
+    expect(candidate.metadata?['direction'], 'income');
+  });
+
+  test('parses credited bank sender notification as income transfer', () {
+    final result = registry.parseInput(
+      ParserInput(
+        rawText:
+            'A/C *XX5661 credited by Rs 1.00 from yas21606-3@okaxis. RRN:615087788229. Avl Bal:3111.74.',
+        sourceType: 'appNotification',
+        packageName: 'com.google.android.apps.messaging',
+        sender: 'AD-INDUSB-S',
+        receivedAt: DateTime(2026, 5, 30, 12, 0),
+      ),
+    );
+
+    final candidate = result.candidates.first;
+    expect(candidate.amount, 1);
+    expect(candidate.merchant.toLowerCase(), contains('yas21606'));
+    expect(candidate.merchant.toLowerCase(), contains('okaxis'));
+    expect(candidate.categorySuggestion, 'Transfer');
+    expect(candidate.metadata?['transactionRef'], '615087788229');
+    expect(candidate.metadata?['direction'], 'income');
+  });
+
+  test('parses sent upi alert with account hint', () {
+    final result = registry.parseInput(
+      ParserInput(
+        rawText:
+            'Sent Rs.1.00 from Kotak Bank AC X0754 to yas21606-4@okaxis on 30-05-26.UPI Ref 123938960566.',
+        sourceType: 'appNotification',
+        packageName: 'com.google.android.apps.messaging',
+        sender: 'VM-KOTAKB-S',
+        receivedAt: DateTime(2026, 5, 30, 12, 0),
+      ),
+    );
+
+    final candidate = result.candidates.first;
+    expect(candidate.amount, 1);
+    expect(candidate.paymentSourceHint, contains('Kotak Bank AC X0754'));
+    expect(candidate.metadata?['transactionRef'], '123938960566');
+    expect(candidate.metadata?['direction'], 'expense');
+    expect(candidate.categorySuggestion, 'Transfer');
+  });
+
+  test('parses salary transfer as income', () {
+    final result = registry.parseInput(
+      ParserInput(
+        rawText:
+            'Hi! Your Feb 2026 salary transfer of Rs 59,700 from Stackera has been initiated. - RazorpayX Payroll',
+        sourceType: 'appNotification',
+        packageName: 'com.google.android.apps.messaging',
+        sender: 'CP-RZRPAY-S',
+        receivedAt: DateTime(2026, 5, 30, 12, 0),
+      ),
+    );
+
+    final candidate = result.candidates.first;
+    expect(candidate.amount, 59700);
+    expect(candidate.merchant.toLowerCase(), contains('stackera'));
+    expect(candidate.categorySuggestion, 'Income');
+    expect(candidate.metadata?['direction'], 'income');
+  });
+
+  test('splits two references into two candidates', () {
+    final result = registry.parseInput(
+      ParserInput(
+        rawText:
+            'A/C *XX5661 credited by Rs 1.00 from yas21606-3@okaxis. RRN:615087788229. '
+            'A/C *XX5661 credited by Rs 1.00 from yas21606-3@okhdfcbank. RRN:123938960566.',
+        sourceType: 'appNotification',
+        packageName: 'com.google.android.apps.messaging',
+        sender: 'AD-INDUSB-S',
+        receivedAt: DateTime(2026, 5, 30, 12, 0),
+      ),
+    );
+
+    expect(result.candidates.length, 2);
+    expect(result.candidates[0].metadata?['transactionRef'], '615087788229');
+    expect(result.candidates[1].metadata?['transactionRef'], '123938960566');
+  });
+
   test('card parser extracts merchant and last4 hint', () {
     final result = registry.parseInput(
       ParserInput(
@@ -118,7 +219,7 @@ void main() {
   });
 
   test('confidence scoring tiers behave as expected', () {
-    final high = ParserConfidenceScorer.score(
+    final high = ParserConfidenceScorer.assess(
       hasAmount: true,
       hasMerchant: true,
       hasSourceHint: true,
@@ -126,15 +227,15 @@ void main() {
       hasDate: true,
       isFallback: false,
     );
-    final medium = ParserConfidenceScorer.score(
+    final medium = ParserConfidenceScorer.assess(
       hasAmount: true,
-      hasMerchant: true,
+      hasMerchant: false,
       hasSourceHint: false,
-      hasPatternMatch: false,
+      hasPatternMatch: true,
       hasDate: false,
       isFallback: false,
     );
-    final low = ParserConfidenceScorer.score(
+    final low = ParserConfidenceScorer.assess(
       hasAmount: true,
       hasMerchant: false,
       hasSourceHint: false,
@@ -143,9 +244,12 @@ void main() {
       isFallback: true,
     );
 
-    expect(high, greaterThanOrEqualTo(0.85));
-    expect(medium, inInclusiveRange(0.65, 0.80));
-    expect(low, inInclusiveRange(0.40, 0.60));
+    expect(high.score, greaterThanOrEqualTo(0.85));
+    expect(high.level.name.toUpperCase(), 'HIGH');
+    expect(medium.score, inInclusiveRange(0.55, 0.75));
+    expect(medium.level.name.toUpperCase(), 'MEDIUM');
+    expect(low.score, inInclusiveRange(0.40, 0.60));
+    expect(low.level.name.toUpperCase(), 'LOW');
   });
 
   test('pending ingestion creates pending transaction records', () async {
@@ -178,5 +282,18 @@ void main() {
     expect(result.parserName, 'GenericFallbackParser');
     expect(result.candidates, isNotEmpty);
     expect(result.candidates.first.confidenceScore, lessThanOrEqualTo(0.60));
+    expect(result.candidates.first.confidenceLevel, 'LOW');
+  });
+
+  test('low-confidence candidates are skipped from pending creation', () async {
+    final ids = await ingestion.ingestParserInput(
+      ParserInput(
+        rawText: '₹1200',
+        sourceType: 'appNotification',
+        receivedAt: DateTime(2026, 5, 24, 16, 0),
+      ),
+    );
+
+    expect(ids, isEmpty);
   });
 }

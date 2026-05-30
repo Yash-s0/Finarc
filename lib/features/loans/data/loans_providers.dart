@@ -6,7 +6,7 @@ import '../../../core/database/database_providers.dart';
 import '../../alerts/data/alerts_providers.dart';
 import '../../dashboard/data/dashboard_providers.dart';
 import '../../expenses/data/expenses_providers.dart';
-import '../../pending/notifications/notification_providers.dart';
+import '../../pending/notifications/notification_runtime_providers.dart';
 import 'loan_service.dart';
 
 final loanServiceProvider = Provider<LoanService>((ref) {

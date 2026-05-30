@@ -55,6 +55,18 @@ class NotificationTestToolsService {
     return notificationIngestionService.processPayload(payload);
   }
 
+  Future<List<int>> generateTestDetection() {
+    final payload = NotificationPayload(
+      packageName: 'com.google.android.apps.nbu.paisa.user',
+      appName: 'Google Pay',
+      title: 'Payment successful',
+      body: 'Paid ₹321.00 to QA Merchant via UPI. UPI Ref 999000111.',
+      sourceType: 'appNotification',
+      receivedAt: DateTime.now(),
+    );
+    return notificationIngestionService.processPayload(payload);
+  }
+
   Future<List<int>> mockSmsTransaction() {
     final payload = NotificationPayload(
       packageName: 'android.sms',

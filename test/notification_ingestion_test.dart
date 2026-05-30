@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -38,21 +39,24 @@ class _FakeLocalNotifier extends NotificationLocalNotifier {
 
 void main() {
   group('notification keyword filter', () {
-    test('accepts transaction-like text with keywords', () {
-      final filter = NotificationKeywordFilter();
-      final payload = NotificationPayload(
-        packageName: 'com.random.app',
-        sourceType: 'appNotification',
-        receivedAt: DateTime(2026, 5, 24, 10, 0),
-        title: 'Debit Alert',
-        body: 'INR 1,499 spent at SWIGGY',
-      );
+    test(
+      'accepts allowlisted provider notification with transaction keywords',
+      () {
+        final filter = NotificationKeywordFilter();
+        final payload = NotificationPayload(
+          packageName: 'com.phonepe.app',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 24, 10, 0),
+          title: 'Debit Alert',
+          body: 'INR 1,499 spent at SWIGGY',
+        );
 
-      final result = filter.evaluate(payload);
-      expect(result.accepted, isTrue);
-    });
+        final result = filter.evaluate(payload);
+        expect(result.accepted, isTrue);
+      },
+    );
 
-    test('ignores non-transaction social text', () {
+    test('ignores package not in allowlist', () {
       final filter = NotificationKeywordFilter();
       final payload = NotificationPayload(
         packageName: 'com.whatsapp',
@@ -64,7 +68,38 @@ void main() {
 
       final result = filter.evaluate(payload);
       expect(result.accepted, isFalse);
-      expect(result.reason, 'ignored-no-finance-keyword');
+      expect(result.reason, 'ignored-package-not-allowlisted');
+    });
+
+    test('accepts messaging app notification from transactional sender', () {
+      final filter = NotificationKeywordFilter();
+      final payload = NotificationPayload(
+        packageName: 'com.google.android.apps.messaging',
+        sourceType: 'appNotification',
+        receivedAt: DateTime(2026, 5, 30, 10, 0),
+        title: 'AD-INDUSB-S',
+        body: 'A/C *XX5661 credited by Rs 1.00 from test@okaxis. RRN:123456.',
+      );
+
+      final result = filter.evaluate(payload);
+      expect(result.accepted, isTrue);
+      expect(result.reason, 'accepted-messages-transactional-sender');
+      expect(result.senderFilterResult, 'allowed-transactional-sender');
+    });
+
+    test('blocks messaging app notification from promotional sender', () {
+      final filter = NotificationKeywordFilter();
+      final payload = NotificationPayload(
+        packageName: 'com.google.android.apps.messaging',
+        sourceType: 'appNotification',
+        receivedAt: DateTime(2026, 5, 30, 10, 0),
+        title: 'CP-RZRPAY-P',
+        body: 'Offer just for you! cashback if you pay now',
+      );
+
+      final result = filter.evaluate(payload);
+      expect(result.accepted, isFalse);
+      expect(result.reason, 'blocked-promotional-sender');
     });
   });
 
@@ -122,6 +157,7 @@ void main() {
     late AppDatabase db;
     late NotificationIngestionService service;
     late _FakeLocalNotifier notifier;
+    late List<NotificationDebugEntry> debugEntries;
 
     setUp(() {
       db = AppDatabase(NativeDatabase.memory());
@@ -143,6 +179,7 @@ void main() {
       );
 
       notifier = _FakeLocalNotifier();
+      debugEntries = [];
       service = NotificationIngestionService(
         database: db,
         pendingIngestionService: pendingIngestion,
@@ -151,7 +188,7 @@ void main() {
         localNotifier: notifier,
         isDetectionEnabled: () => true,
         shouldShowDetectionNotifications: () => true,
-        appendDebug: (_) {},
+        appendDebug: (entry) => debugEntries.add(entry),
       );
     });
 
@@ -179,6 +216,7 @@ void main() {
         expect(pending.status, 'pending');
         expect(pending.merchant, 'Zomato');
         expect(notifier.shownCount, 1);
+        expect(notifier.lastTitle, 'Transaction detected');
         expect(notifier.lastRoute, '/pending');
       },
     );
@@ -196,6 +234,261 @@ void main() {
 
       expect(ids, isEmpty);
       expect(notifier.shownCount, 0);
+    });
+
+    test('CRED promo gift card notification is ignored', () async {
+      final ids = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.dreamplug.androidapp',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 31, 9, 0),
+          title: 'CRED',
+          body:
+              'your Myntra wishlist. at 6% off. with a gift card worth ₹2,500. tap to claim before it’s gone.',
+        ),
+      );
+
+      expect(ids, isEmpty);
+      expect(debugEntries.last.decision, 'ignored');
+      expect(debugEntries.last.reason, 'promotional_offer_detected');
+      expect(debugEntries.last.amountCandidate, isNotNull);
+      expect(debugEntries.last.blockedContext, contains('gift card'));
+    });
+
+    test('promo amount voucher notification is ignored', () async {
+      final ids = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.dreamplug.androidapp',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 31, 9, 5),
+          title: 'CRED',
+          body: 'Get flat ₹500 cashback voucher on shopping',
+        ),
+      );
+
+      expect(ids, isEmpty);
+      expect(debugEntries.last.decision, 'ignored');
+      expect(debugEntries.last.reason, 'promotional_offer_detected');
+    });
+
+    test('discount sale notification with amount is ignored', () async {
+      final ids = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.amazon.mshop.android.shopping',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 31, 9, 10),
+          title: 'Amazon',
+          body: 'Amazon sale 40% off, deals worth ₹2,000',
+        ),
+      );
+
+      expect(ids, isEmpty);
+      expect(debugEntries.last.decision, 'ignored');
+      expect(debugEntries.last.reason, 'promotional_offer_detected');
+    });
+
+    test('real CRED card transaction still creates pending', () async {
+      final ids = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.dreamplug.androidapp',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 31, 9, 15),
+          title: 'CRED',
+          body:
+              '₹2,500 spent on your HDFC Bank Credit Card ending 1234 at Myntra',
+        ),
+      );
+
+      expect(ids.length, 1);
+      final pending = await (db.select(
+        db.pendingTransactions,
+      )..where((p) => p.id.equals(ids.first))).getSingle();
+      expect(pending.paymentSourceTypeSuggestion, 'creditCard');
+      expect(pending.merchant, 'Myntra');
+    });
+
+    test('card bill due notification does not create spend pending', () async {
+      final ids = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.dreamplug.androidapp',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 31, 9, 20),
+          title: 'CRED',
+          body: 'Your credit card bill of ₹12,500 is due tomorrow',
+        ),
+      );
+
+      expect(ids, isEmpty);
+      expect(
+        debugEntries.last.reason,
+        anyOf('confidence-low', 'parser-no-candidate'),
+      );
+    });
+
+    test('real UPI sent notification still creates pending', () async {
+      final ids = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.phonepe.app',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 31, 9, 25),
+          title: 'PhonePe',
+          body: 'Paid ₹700 to Rahul via UPI',
+        ),
+      );
+
+      expect(ids.length, 1);
+      final pending = await (db.select(
+        db.pendingTransactions,
+      )..where((p) => p.id.equals(ids.first))).getSingle();
+      expect(pending.amount, 700);
+      expect(pending.merchant, 'Rahul');
+    });
+
+    test('real salary credited notification creates income pending', () async {
+      final ids = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.google.android.apps.messaging',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 31, 9, 30),
+          title: 'CP-RZRPAY-S',
+          body: 'Salary of Rs 59,700 credited from Stackera',
+        ),
+      );
+
+      expect(ids.length, 1);
+      final pending = await (db.select(
+        db.pendingTransactions,
+      )..where((p) => p.id.equals(ids.first))).getSingle();
+      expect(pending.amount, 59700);
+      expect(pending.categorySuggestion, 'Income');
+    });
+
+    test(
+      'creates pending transactions from messages app transactional sender',
+      () async {
+        final ids = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.google.android.apps.messaging',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 5, 30, 12, 0),
+            title: 'VM-KOTAKB-S',
+            body:
+                'Sent Rs.1.00 from Kotak Bank AC X0754 to yas21606-4@okaxis on 30-05-26.UPI Ref 123938960566.',
+          ),
+        );
+
+        expect(ids.length, 1);
+        final pending = await (db.select(
+          db.pendingTransactions,
+        )..where((p) => p.id.equals(ids.first))).getSingle();
+        expect(pending.sourceType, 'appNotification');
+        expect(pending.merchant.toLowerCase(), contains('yas21606'));
+        expect(pending.merchant.toLowerCase(), contains('okaxis'));
+        expect(pending.categorySuggestion, 'Transfer');
+      },
+    );
+
+    test('received upi notification is parsed as income transfer', () async {
+      final ids = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.google.android.apps.messaging',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 30, 12, 2),
+          title: 'VM-KOTAKB-S',
+          body:
+              'Received Rs.1.00 in your Kotak Bank AC X0754 from yas21606-4@okaxis on 30-05-26. UPI Ref:651638004295.',
+        ),
+      );
+
+      expect(ids.length, 1);
+      final pending = await (db.select(
+        db.pendingTransactions,
+      )..where((p) => p.id.equals(ids.first))).getSingle();
+      expect(pending.amount, 1);
+      expect(pending.categorySuggestion, 'Transfer');
+      expect(pending.paymentSourceTypeSuggestion, 'bank');
+      expect(pending.merchant.toLowerCase(), contains('yas21606'));
+      expect(pending.merchant.toLowerCase(), contains('okaxis'));
+    });
+
+    test('parses two RRN entries from one messages notification', () async {
+      final ids = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.google.android.apps.messaging',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 30, 12, 5),
+          title: 'AD-INDUSB-S',
+          body:
+              'A/C *XX5661 credited by Rs 1.00 from yas21606-3@okaxis. RRN:615087788229. '
+              'A/C *XX5661 credited by Rs 1.00 from yas21606-3@okhdfcbank. RRN:123938960566.',
+        ),
+      );
+
+      expect(ids.length, 2);
+      final rows = await (db.select(
+        db.pendingTransactions,
+      )..orderBy([(t) => drift.OrderingTerm.asc(t.id)])).get();
+      expect(rows.length, 2);
+      expect(rows[0].rawText, contains('615087788229'));
+      expect(rows[1].rawText, contains('123938960566'));
+    });
+
+    test('suppresses duplicate RRN and allows different RRN', () async {
+      final first = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.google.android.apps.messaging',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 30, 12, 10),
+          title: 'JX-KOTAKB-S',
+          body:
+              'Sent Rs.1.00 from Kotak Bank AC X0754 to yas21606-4@okaxis on 30-05-26. UPI Ref 615087788229.',
+        ),
+      );
+      final duplicate = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.google.android.apps.messaging',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 30, 12, 20),
+          title: 'JX-KOTAKB-S',
+          body:
+              'Sent Rs.1.00 from Kotak Bank AC X0754 to yas21606-4@okaxis on 30-05-26. UPI Ref 615087788229. Not you?',
+        ),
+      );
+      final secondUnique = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.google.android.apps.messaging',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 30, 12, 30),
+          title: 'VM-KOTAKB-S',
+          body:
+              'Sent Rs.1.00 from Kotak Bank AC X0754 to yas21606-4@okaxis on 30-05-26. UPI Ref 123938960566.',
+        ),
+      );
+
+      expect(first.length, 1);
+      expect(duplicate, isEmpty);
+      expect(secondUnique.length, 1);
+      final rows = await db.select(db.pendingTransactions).get();
+      expect(rows.length, 2);
+    });
+
+    test('duplicate repeated body with same UPI ref creates one pending', () async {
+      final ids = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.google.android.apps.messaging',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 30, 12, 35),
+          title: 'VM-KOTAKB-S',
+          body:
+              'Received Rs.1.00 in your Kotak Bank AC X0754 from yas21606-4@okaxis on 30-05-26. UPI Ref:651638004295. '
+              'Received Rs.1.00 in your Kotak Bank AC X0754 from yas21606-4@okaxis on 30-05-26. UPI Ref:651638004295.',
+        ),
+      );
+
+      expect(ids.length, 1);
+      final rows = await db.select(db.pendingTransactions).get();
+      expect(rows.length, 1);
+      expect(rows.first.rawText, contains('651638004295'));
     });
 
     test('suppresses duplicate notification ingestion', () async {

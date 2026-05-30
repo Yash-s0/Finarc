@@ -15,8 +15,8 @@ class SmsAccessSetupScreen extends ConsumerWidget {
     final receiverEnabled = ref.watch(smsReceiverEnabledProvider);
     final permissionRationale = ref.watch(smsPermissionRationaleProvider);
     final runtimeDiagnostics = ref.watch(smsRuntimeDiagnosticsProvider);
-    final realIngestionAvailable =
-        ref.watch(realIngestionAvailableProvider).valueOrNull ?? false;
+    final smsIngestionAvailable =
+        ref.watch(smsIngestionAvailableProvider).valueOrNull ?? false;
     final settingsState = ref.watch(detectionSettingsProvider);
     final diagnostics = ref.watch(ingestionDiagnosticsProvider);
     final hasSmsAccess = smsPermission.valueOrNull ?? false;
@@ -50,12 +50,21 @@ class SmsAccessSetupScreen extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.xs),
                   if (!hasSmsAccess)
                     Text(
-                      realIngestionAvailable
+                      smsIngestionAvailable
                           ? 'SMS permission is currently disabled.'
-                          : 'Unavailable in this build (safe mode).',
+                          : 'SMS reading is not included in this Play-safe release build.',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
+                  if (!smsIngestionAvailable)
+                    Padding(
+                      padding: const EdgeInsets.only(top: AppSpacing.xs),
+                      child: Text(
+                        'Manual/mock SMS parsing is only available in debug builds.',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
                   if (!hasSmsAccess &&
+                      smsIngestionAvailable &&
                       settings.smsPermissionAskedAt != null &&
                       permissionRationale.valueOrNull == false)
                     Padding(
@@ -75,34 +84,44 @@ class SmsAccessSetupScreen extends ConsumerWidget {
                 children: [
                   const FinarcSectionHeader(title: 'Permission Status'),
                   const SizedBox(height: AppSpacing.xs),
-                  smsPermission.when(
-                    loading: () => const Text('Checking SMS permission...'),
-                    error: (e, _) => Text('Error: $e'),
-                    data: (granted) => Row(
-                      children: [
-                        FinarcStatusBadge(
-                          label: granted
-                              ? 'SMS ACCESS ENABLED'
-                              : 'SMS ACCESS DISABLED',
-                          tone: granted
-                              ? FinarcStatusTone.success
-                              : FinarcStatusTone.warning,
-                          compact: true,
-                        ),
-                        const Spacer(),
-                        if (!granted)
-                          const Icon(
-                            Icons.warning_amber_rounded,
-                            color: Colors.amber,
+                  if (!smsIngestionAvailable)
+                    const FinarcStatusBadge(
+                      label: 'SMS NOT AVAILABLE IN THIS BUILD',
+                      tone: FinarcStatusTone.neutral,
+                      compact: true,
+                    )
+                  else
+                    smsPermission.when(
+                      loading: () => const Text('Checking SMS permission...'),
+                      error: (e, _) => Text('Error: $e'),
+                      data: (granted) => Row(
+                        children: [
+                          FinarcStatusBadge(
+                            label: granted
+                                ? 'SMS ACCESS ENABLED'
+                                : 'SMS ACCESS DISABLED',
+                            tone: granted
+                                ? FinarcStatusTone.success
+                                : FinarcStatusTone.warning,
+                            compact: true,
                           ),
-                      ],
+                          const Spacer(),
+                          if (!granted)
+                            const Icon(
+                              Icons.warning_amber_rounded,
+                              color: Colors.amber,
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
                   const SizedBox(height: AppSpacing.sm),
                   receiverAvailable.when(
                     loading: () => const SizedBox.shrink(),
                     error: (e, _) => Text('Receiver status error: $e'),
                     data: (available) {
+                      if (!smsIngestionAvailable) {
+                        return const SizedBox.shrink();
+                      }
                       if (available) return const SizedBox.shrink();
                       return const Padding(
                         padding: EdgeInsets.only(bottom: AppSpacing.xs),
@@ -117,21 +136,26 @@ class SmsAccessSetupScreen extends ConsumerWidget {
                   receiverEnabled.when(
                     loading: () => const SizedBox.shrink(),
                     error: (e, _) => Text('Receiver enablement error: $e'),
-                    data: (enabled) => Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                      child: FinarcStatusBadge(
-                        label: enabled
-                            ? 'SMS receiver enabled'
-                            : 'SMS receiver disabled',
-                        tone: enabled
-                            ? FinarcStatusTone.success
-                            : FinarcStatusTone.warning,
-                        compact: true,
-                      ),
-                    ),
+                    data: (enabled) {
+                      if (!smsIngestionAvailable) {
+                        return const SizedBox.shrink();
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                        child: FinarcStatusBadge(
+                          label: enabled
+                              ? 'SMS receiver enabled'
+                              : 'SMS receiver disabled',
+                          tone: enabled
+                              ? FinarcStatusTone.success
+                              : FinarcStatusTone.warning,
+                          compact: true,
+                        ),
+                      );
+                    },
                   ),
                   FinarcPrimaryButton(
-                    onPressed: !realIngestionAvailable
+                    onPressed: !smsIngestionAvailable
                         ? null
                         : () async {
                             final granted = await ref
@@ -155,7 +179,7 @@ class SmsAccessSetupScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   FinarcSecondaryButton(
-                    onPressed: !realIngestionAvailable
+                    onPressed: !smsIngestionAvailable
                         ? null
                         : () => ref
                               .read(smsPermissionServiceProvider)
@@ -175,9 +199,9 @@ class SmsAccessSetupScreen extends ConsumerWidget {
                     context,
                     'SMS detection enabled',
                     settings.smsDetectionEnabled,
-                    realIngestionAvailable
+                    smsIngestionAvailable
                         ? (value) async {
-                            if (!realIngestionAvailable) return;
+                            if (!smsIngestionAvailable) return;
                             if (value && !hasSmsAccess) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
@@ -198,7 +222,7 @@ class SmsAccessSetupScreen extends ConsumerWidget {
                     context,
                     'SMS backfill enabled',
                     settings.smsBackfillEnabled,
-                    realIngestionAvailable
+                    smsIngestionAvailable
                         ? (value) => ref
                               .read(detectionSettingsProvider.notifier)
                               .applyChanges(smsBackfillEnabled: value)
@@ -221,19 +245,21 @@ class SmsAccessSetupScreen extends ConsumerWidget {
                           DropdownMenuItem(value: 14, child: Text('14')),
                           DropdownMenuItem(value: 30, child: Text('30')),
                         ],
-                        onChanged: (value) {
-                          if (value == null) return;
-                          ref
-                              .read(detectionSettingsProvider.notifier)
-                              .applyChanges(smsBackfillDays: value);
-                        },
+                        onChanged: smsIngestionAvailable
+                            ? (value) {
+                                if (value == null) return;
+                                ref
+                                    .read(detectionSettingsProvider.notifier)
+                                    .applyChanges(smsBackfillDays: value);
+                              }
+                            : null,
                       ),
                     ],
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   FinarcPrimaryButton(
                     onPressed: () async {
-                      if (!realIngestionAvailable) return;
+                      if (!smsIngestionAvailable) return;
                       if (!hasSmsAccess) {
                         if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(

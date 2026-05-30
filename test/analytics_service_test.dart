@@ -389,6 +389,38 @@ void main() {
     expect(snapshot.cards.billSummary.pendingTotal, 5000);
   });
 
+  test(
+    'card usage spend uses full card charge even for recoverables',
+    () async {
+      await db
+          .into(db.transactions)
+          .insert(
+            TransactionsCompanion.insert(
+              type: TransactionType.creditCard,
+              amount: 600,
+              title: 'Shared card dinner',
+              category: 'Food',
+              transactionDate: DateTime(2026, 5, 21),
+              paymentSourceType: PaymentSourceType.creditCard,
+              paymentSourceId: cardA,
+              isForOthers: const Value(true),
+              recoverablePartyName: const Value('Rahul'),
+              recoverableBaseAmount: const Value(600),
+              recoverableAmount: const Value(600),
+            ),
+          );
+
+      final snapshot = await service.buildSnapshot(
+        period: AnalyticsPeriod.thisMonth,
+        now: DateTime(2026, 5, 25),
+      );
+
+      expect(snapshot.cards.highestSpendCard != null, isTrue);
+      expect(snapshot.cards.highestSpendCard!.cardId, cardA);
+      expect(snapshot.cards.highestSpendCard!.amount, closeTo(1600, 0.001));
+    },
+  );
+
   test('debt ratio trend and EMI trend are generated', () async {
     final snapshot = await service.buildSnapshot(
       period: AnalyticsPeriod.last3Months,

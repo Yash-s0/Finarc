@@ -59,6 +59,23 @@ final pendingTransactionsProvider = FutureProvider<List<PendingTransaction>>((
   return base.get();
 });
 
+final pendingHistoryProvider = FutureProvider<List<PendingTransaction>>((
+  ref,
+) async {
+  await ref.watch(seedProvider.future);
+  final db = ref.read(appDatabaseProvider);
+  return (db.select(db.pendingTransactions)
+        ..where(
+          (p) =>
+              p.status.equals('ignored') |
+              p.status.equals('duplicate') |
+              p.status.equals('merged'),
+        )
+        ..orderBy([(p) => OrderingTerm.desc(p.updatedAt)])
+        ..limit(20))
+      .get();
+});
+
 final pendingCountProvider = FutureProvider<int>((ref) async {
   await ref.watch(seedProvider.future);
   final db = ref.read(appDatabaseProvider);
@@ -80,12 +97,14 @@ final pendingActionProvider = Provider((ref) {
     ref.invalidate(pendingTransactionsProvider);
     ref.invalidate(expenseListProvider);
     ref.invalidate(pendingCountProvider);
+    ref.invalidate(pendingHistoryProvider);
   }
 
   Future<void> ignore(int pendingId) async {
     await service.ignorePendingTransaction(pendingId);
     ref.invalidate(pendingTransactionsProvider);
     ref.invalidate(pendingCountProvider);
+    ref.invalidate(pendingHistoryProvider);
   }
 
   Future<void> seedDemo() async {
@@ -97,6 +116,7 @@ final pendingActionProvider = Provider((ref) {
   Future<void> update(int pendingId, PendingEditData editedData) async {
     await service.updatePendingTransaction(pendingId, editedData);
     ref.invalidate(pendingTransactionsProvider);
+    ref.invalidate(pendingHistoryProvider);
   }
 
   Future<Transaction?> detectDuplicate(PendingTransaction txn) {
@@ -107,6 +127,7 @@ final pendingActionProvider = Provider((ref) {
     await service.markPendingAsDuplicate(pendingId, existingTransactionId);
     ref.invalidate(pendingTransactionsProvider);
     ref.invalidate(pendingCountProvider);
+    ref.invalidate(pendingHistoryProvider);
   }
 
   Future<void> mergeDuplicate(int pendingId, int existingTransactionId) async {
@@ -116,6 +137,7 @@ final pendingActionProvider = Provider((ref) {
     );
     ref.invalidate(pendingTransactionsProvider);
     ref.invalidate(pendingCountProvider);
+    ref.invalidate(pendingHistoryProvider);
   }
 
   Future<List<int>> ingestParsedInput(ParserInput input) async {

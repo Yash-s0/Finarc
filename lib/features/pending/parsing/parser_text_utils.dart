@@ -54,6 +54,26 @@ class ParserTextUtils {
     return null;
   }
 
+  static DateTime? extractDateWithNumericSupport(
+    String text,
+    DateTime fallbackYearSource,
+  ) {
+    final standard = extractDate(text, fallbackYearSource);
+    if (standard != null) return standard;
+
+    final match = RegExp(
+      r'\b(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})\b',
+    ).firstMatch(text);
+    if (match == null) return null;
+    final day = int.tryParse(match.group(1) ?? '');
+    final month = int.tryParse(match.group(2) ?? '');
+    final yearRaw = int.tryParse(match.group(3) ?? '');
+    if (day == null || month == null || yearRaw == null) return null;
+    final year = yearRaw < 100 ? 2000 + yearRaw : yearRaw;
+    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+    return DateTime(year, month, day);
+  }
+
   static String compactSpaces(String input) {
     return input.replaceAll(RegExp(r'\s+'), ' ').trim();
   }
@@ -77,6 +97,35 @@ class ParserTextUtils {
       if (cleaned.isNotEmpty) return cleaned;
     }
     return null;
+  }
+
+  static String? extractTransactionReference(String text) {
+    final match = RegExp(
+      r'(?:RRN|UPI\s*Ref(?:erence)?|Txn(?:\s*ID)?|Ref(?:\s*No)?)\s*[:#.-]?\s*([A-Za-z0-9-]{6,})',
+      caseSensitive: false,
+    ).firstMatch(text);
+    final ref = match?.group(1)?.trim();
+    if (ref == null || ref.isEmpty) return null;
+    return ref;
+  }
+
+  static String? extractAccountHint(String text) {
+    final explicit = RegExp(
+      r'(?:from|in)\s+([A-Za-z ]{2,}\s+Bank\s+AC\s*[Xx*]*\d{3,4})',
+      caseSensitive: false,
+    ).firstMatch(text);
+    final explicitValue = explicit?.group(1)?.trim();
+    if (explicitValue != null && explicitValue.isNotEmpty) {
+      return explicitValue.replaceAll(RegExp(r'\s+'), ' ');
+    }
+
+    final ac = RegExp(
+      r'(?:A\/C|AC|Account)\s*[*Xx]*([0-9]{3,4})',
+      caseSensitive: false,
+    ).firstMatch(text);
+    final last = ac?.group(1);
+    if (last == null || last.isEmpty) return null;
+    return 'A/C ending $last';
   }
 
   static int _firstBoundary(String text) {

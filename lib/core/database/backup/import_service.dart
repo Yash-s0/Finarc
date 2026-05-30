@@ -284,6 +284,15 @@ class ImportService {
 
       for (final raw in _list(data, 'transactions')) {
         final row = _asMap(raw);
+        final normalizedRecoverable = _normalizeRecoverableAmounts(
+          isForOthers: _bool(row['isForOthers']) ?? false,
+          amount: _double(row['amount']) ?? 0,
+          cashbackAmount: _double(row['cashbackAmount']) ?? 0,
+          recoverableAmount: _double(row['recoverableAmount']),
+          recoverableBaseAmount: _double(row['recoverableBaseAmount']),
+          recoveredAmount: _double(row['recoveredAmount']) ?? 0,
+          recoverableStatus: _stringOrNull(row['recoverableStatus']),
+        );
         await _db
             .into(_db.transactions)
             .insert(
@@ -301,11 +310,9 @@ class ImportService {
                 paymentSourceId: Value(_int(row['paymentSourceId']) ?? 0),
                 cashbackAmount: Value(_double(row['cashbackAmount']) ?? 0),
                 isForOthers: Value(_bool(row['isForOthers']) ?? false),
-                recoverableAmount: Value(_double(row['recoverableAmount'])),
-                recoverableBaseAmount: Value(
-                  _double(row['recoverableBaseAmount']),
-                ),
-                recoveredAmount: Value(_double(row['recoveredAmount']) ?? 0),
+                recoverableAmount: Value(normalizedRecoverable.remaining),
+                recoverableBaseAmount: Value(normalizedRecoverable.base),
+                recoveredAmount: Value(normalizedRecoverable.recovered),
                 recoverablePartyName: Value(
                   _stringOrNull(row['recoverablePartyName']),
                 ),
@@ -315,9 +322,7 @@ class ImportService {
                 recoverablePartyPhone: Value(
                   _stringOrNull(row['recoverablePartyPhone']),
                 ),
-                recoverableStatus: Value(
-                  _string(row['recoverableStatus'], fallback: 'unpaid'),
-                ),
+                recoverableStatus: Value(normalizedRecoverable.status),
                 recoveredAt: Value(_date(row['recoveredAt'])),
                 confirmed: Value(_bool(row['confirmed']) ?? true),
                 detectedSourceType: Value(
@@ -366,6 +371,15 @@ class ImportService {
 
       for (final raw in _list(data, 'pendingTransactions')) {
         final row = _asMap(raw);
+        final normalizedRecoverable = _normalizeRecoverableAmounts(
+          isForOthers: _bool(row['isForOthers']) ?? false,
+          amount: _double(row['amount']) ?? 0,
+          cashbackAmount: _double(row['cashbackAmount']) ?? 0,
+          recoverableAmount: _double(row['recoverableAmount']),
+          recoverableBaseAmount: _double(row['recoverableBaseAmount']),
+          recoveredAmount: _double(row['recoveredAmount']) ?? 0,
+          recoverableStatus: null,
+        );
         await _db
             .into(_db.pendingTransactions)
             .insert(
@@ -390,11 +404,9 @@ class ImportService {
                 status: Value(_string(row['status'], fallback: 'pending')),
                 cashbackAmount: Value(_double(row['cashbackAmount'])),
                 isForOthers: Value(_bool(row['isForOthers']) ?? false),
-                recoverableAmount: Value(_double(row['recoverableAmount'])),
-                recoverableBaseAmount: Value(
-                  _double(row['recoverableBaseAmount']),
-                ),
-                recoveredAmount: Value(_double(row['recoveredAmount']) ?? 0),
+                recoverableAmount: Value(normalizedRecoverable.remaining),
+                recoverableBaseAmount: Value(normalizedRecoverable.base),
+                recoveredAmount: Value(normalizedRecoverable.recovered),
                 recoverablePartyName: Value(
                   _stringOrNull(row['recoverablePartyName']),
                 ),
@@ -625,5 +637,60 @@ class ImportService {
     if (value == null) return null;
     final text = '$value';
     return text.isEmpty ? null : text;
+  }
+
+  static ({double? remaining, double? base, double recovered, String status})
+  _normalizeRecoverableAmounts({
+    required bool isForOthers,
+    required double amount,
+    required double cashbackAmount,
+    required double? recoverableAmount,
+    required double? recoverableBaseAmount,
+    required double recoveredAmount,
+    required String? recoverableStatus,
+  }) {
+    if (!isForOthers) {
+      return (remaining: null, base: null, recovered: 0.0, status: 'unpaid');
+    }
+
+    final normalizedStatus = (recoverableStatus ?? '').trim().toLowerCase();
+    final recoveredLike = <String>{'recovered', 'settled', 'paid', 'complete'};
+    final openLike = <String>{
+      'open',
+      'pending',
+      'unpaid',
+      'partial',
+      'unknown',
+      'missing',
+    };
+    final base =
+        (recoverableBaseAmount ??
+                ((recoverableAmount ?? 0) > 0
+                    ? (recoverableAmount ?? 0)
+                    : (amount - cashbackAmount)))
+            .clamp(0, amount)
+            .toDouble();
+    final legacyRecovered =
+        normalizedStatus.isNotEmpty &&
+        (recoveredLike.contains(normalizedStatus) ||
+            openLike.contains(normalizedStatus));
+    final recovered =
+        (legacyRecovered
+                ? (recoveredLike.contains(normalizedStatus) ? base : 0)
+                : recoveredAmount)
+            .clamp(0, base)
+            .toDouble();
+    final remaining = (base - recovered).clamp(0, base).toDouble();
+    final status = recovered <= 0.009
+        ? 'unpaid'
+        : recovered >= base - 0.009
+        ? 'recovered'
+        : 'partial';
+    return (
+      remaining: remaining,
+      base: base,
+      recovered: recovered,
+      status: status,
+    );
   }
 }

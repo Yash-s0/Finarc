@@ -15,3 +15,4 @@ export 'finarc_section_header.dart';
 export 'finarc_status_badge.dart';
 export 'finarc_text_field.dart';
 export 'finarc_transaction_tile.dart';
+export 'finarc_transaction_presentation.dart';

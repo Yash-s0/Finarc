@@ -53,7 +53,7 @@ void main() {
     );
   }
 
-  test('billing cycle includes cutoff day and excludes next day', () async {
+  test('19th billed, 20th billed, 21st unbilled', () async {
     final cardId = await createCard(billingDay: 20, dueDay: 7);
     await addCardTxn(cardId, DateTime(2026, 5, 19), 1200);
     await addCardTxn(cardId, DateTime(2026, 5, 20), 800);
@@ -73,10 +73,30 @@ void main() {
 
     expect(unbilled, hasLength(1));
     expect(unbilled.single.transactionDate, DateTime(2026, 5, 21));
+    expect(unbilled.single.amount, 600);
 
     expect(snapshot.billedDue, 2000);
     expect(snapshot.unbilledSpends, 600);
     expect(snapshot.totalOutstanding, 2600);
+
+    // Dashboard card dues should read from billedDue only.
+    final dashboardCardDues = snapshot.billedDue;
+    final dashboardOutstanding = snapshot.totalOutstanding;
+    expect(dashboardCardDues, 2000);
+    expect(dashboardOutstanding, 2600);
+  });
+
+  test('due day before billing day rolls due date to next month', () async {
+    final cardId = await createCard(billingDay: 31, dueDay: 5);
+    await addCardTxn(cardId, DateTime(2026, 4, 30), 500);
+
+    final service = BillingService(db, now: () => DateTime(2026, 5, 2));
+    final bill = await service.generateBillForCard(cardId);
+    expect(bill, isNotNull);
+    expect(bill!.billingDate, DateTime(2026, 4, 30));
+    expect(bill.cycleStartDate, DateTime(2026, 4, 1));
+    expect(bill.cycleEndDate, DateTime(2026, 4, 30));
+    expect(bill.dueDate, DateTime(2026, 5, 5));
   });
 
   test(
@@ -188,6 +208,37 @@ void main() {
       expect(snapshot.unbilledSpends, 0);
       expect(snapshot.totalOutstanding, 30000);
       expect(snapshot.availableLimit, 70000);
+    },
+  );
+
+  test(
+    'cashback/recoverable metadata does not reduce billed due for card bill',
+    () async {
+      final cardId = await createCard(billingDay: 20, dueDay: 7);
+      await TransactionEngine(db).addTransaction(
+        AddTransactionInput(
+          type: TransactionType.creditCard,
+          amount: 1000,
+          title: 'Card txn with cashback',
+          category: 'Food',
+          transactionDate: DateTime(2026, 5, 20),
+          paymentSourceType: PaymentSourceType.creditCard,
+          paymentSourceId: cardId,
+          cashbackAmount: 250,
+          isForOthers: true,
+          recoverableAmount: 750,
+          recoveredAmount: 0,
+          recoverablePartyName: 'Alex',
+        ),
+      );
+
+      final service = BillingService(db, now: () => DateTime(2026, 5, 25));
+      final snapshot = await service.getCardBillingSnapshotById(cardId);
+      final bill = await service.generateBillForCard(cardId);
+      expect(bill, isNotNull);
+      expect(snapshot.billedDue, 1000);
+      expect(snapshot.unbilledSpends, 0);
+      expect(snapshot.totalOutstanding, 1000);
     },
   );
 }

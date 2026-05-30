@@ -207,31 +207,29 @@ class LoanDetailScreen extends ConsumerWidget {
                   child: Column(
                     children: [
                       for (var i = 0; i < data.payments.length; i++) ...[
-                        Row(
-                          children: [
-                            const Icon(
+                        FinarcTransactionTile(
+                          title: data.loan.title,
+                          subtitle: 'EMI payment',
+                          meta: FinarcTransactionPresentation.meta(
+                            date: data.payments[i].paymentDate,
+                            source: FinarcTransactionPresentation.sourceLabel(
+                              data.payments[i].paymentSourceType ?? 'bank',
+                            ),
+                          ),
+                          amount: inr(data.payments[i].amount),
+                          amountColor: AppColors.darkSuccess,
+                          badges: const [
+                            FinarcTransactionPresentation.loanPaymentBadge,
+                          ],
+                          prefix: const CircleAvatar(
+                            radius: 16,
+                            backgroundColor: AppColors.darkPrimarySoft,
+                            child: Icon(
                               Icons.check_circle_outline,
                               size: 16,
                               color: AppColors.darkSuccess,
                             ),
-                            const SizedBox(width: AppSpacing.xs),
-                            Expanded(
-                              child: Text(
-                                transactionDateLabel(
-                                  data.payments[i].paymentDate,
-                                ),
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                            ),
-                            Text(
-                              inr(data.payments[i].amount),
-                              style: AppTextStyles.amountStyle(
-                                color: Theme.of(context).colorScheme.onSurface,
-                                size: 14,
-                                weight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                         if (i != data.payments.length - 1)
                           const SizedBox(height: AppSpacing.xs),
@@ -256,8 +254,18 @@ class LoanDetailScreen extends ConsumerWidget {
                           subtitle: data.relatedTransactions[i].category,
                           amount: '-${inr(data.relatedTransactions[i].amount)}',
                           amountColor: AppColors.darkError,
-                          meta:
-                              '${data.relatedTransactions[i].paymentSourceType.toUpperCase()} • ${transactionDateLabel(data.relatedTransactions[i].transactionDate)}',
+                          meta: FinarcTransactionPresentation.meta(
+                            date: data.relatedTransactions[i].transactionDate,
+                            source: FinarcTransactionPresentation.sourceLabel(
+                              data.relatedTransactions[i].paymentSourceType,
+                            ),
+                          ),
+                          badges: [
+                            if (data.relatedTransactions[i].type == 'loanEmi')
+                              FinarcTransactionPresentation.emiBadge,
+                            if (data.relatedTransactions[i].cashbackAmount > 0)
+                              FinarcTransactionPresentation.cashbackBadge,
+                          ],
                         ),
                         if (i != data.relatedTransactions.length - 1)
                           const SizedBox(height: AppSpacing.xs),

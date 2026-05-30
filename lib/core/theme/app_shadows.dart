@@ -6,6 +6,6 @@ class AppShadows {
   ];
 
   static const fab = [
-    BoxShadow(color: Color(0x7A4A58FF), blurRadius: 16, offset: Offset(0, 9)),
+    BoxShadow(color: Color(0x1F4A58FF), blurRadius: 8, offset: Offset(0, 3)),
   ];
 }

@@ -117,10 +117,13 @@ class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
                   ),
                 ),
                 const SizedBox(width: AppSpacing.xs),
-                FinarcSecondaryButton(
-                  onPressed: () => context.push('/cards/add'),
-                  icon: Icons.add_card_rounded,
-                  label: 'Add',
+                SizedBox(
+                  width: 92,
+                  child: FinarcSecondaryButton(
+                    onPressed: () => context.push('/cards/add'),
+                    icon: Icons.add_card_rounded,
+                    label: 'Add',
+                  ),
                 ),
               ],
             ),
@@ -409,12 +412,18 @@ class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
     return FinarcTransactionTile(
       title: txn.title,
       subtitle: txn.category,
-      meta: transactionDateLabel(txn.transactionDate),
+      meta: FinarcTransactionPresentation.meta(
+        date: txn.transactionDate,
+        source: billed && txn.cardBillId != null
+            ? 'Card • Statement #${txn.cardBillId}'
+            : 'Card',
+      ),
       amount: '-${inr(txn.amount)}',
       amountColor: AppColors.darkError,
-      amountMeta: billed ? 'Billed' : 'Unbilled',
-      statusLabel: billed ? 'Billed' : 'Unbilled',
-      statusTone: billed ? FinarcStatusTone.info : FinarcStatusTone.warning,
+      amountMeta: billed && txn.cardBillId != null
+          ? 'Stmt #${txn.cardBillId}'
+          : null,
+      badges: [FinarcTransactionPresentation.billedBadge(billed: billed)],
       compact: true,
       prefix: CircleAvatar(
         radius: 15,

@@ -66,5 +66,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byIcon(Icons.bolt_rounded), findsOneWidget);
+
+    router.go('/cards');
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.bolt_rounded), findsNothing);
   });
 }

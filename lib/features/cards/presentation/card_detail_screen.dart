@@ -262,25 +262,40 @@ class CardDetailScreen extends ConsumerWidget {
                         icon: Icons.receipt_long_outlined,
                       )
                     else
-                      ...vm.recentTransactions.map(
-                        (t) => FinarcTransactionTile(
+                      ...vm.recentTransactions.map((t) {
+                        final billed = t.cardBillId != null;
+                        return FinarcTransactionTile(
                           title: t.title,
                           subtitle: t.category,
-                          meta: transactionDateLabel(t.transactionDate),
+                          meta: FinarcTransactionPresentation.meta(
+                            date: t.transactionDate,
+                            source: billed && t.cardBillId != null
+                                ? 'Card • Statement #${t.cardBillId}'
+                                : 'Card',
+                          ),
                           amount: '-${inr(t.amount)}',
                           amountColor: AppColors.darkError,
+                          amountMeta: billed && t.cardBillId != null
+                              ? 'Stmt #${t.cardBillId}'
+                              : null,
+                          badges: [
+                            FinarcTransactionPresentation.billedBadge(
+                              billed: billed,
+                            ),
+                          ],
                           prefix: const CircleAvatar(
                             radius: 16,
                             backgroundColor: AppColors.darkPrimarySoft,
                             child: Icon(Icons.credit_card, size: 15),
                           ),
-                        ),
-                      ),
+                        );
+                      }),
                   ],
                 ),
                 _transactionTab(
                   context,
                   vm.unbilledTransactions,
+                  forceBilledState: false,
                   emptyTitle: 'No unbilled spends',
                   emptySubtitle:
                       'New card expenses after statement date appear here.',
@@ -288,6 +303,7 @@ class CardDetailScreen extends ConsumerWidget {
                 _transactionTab(
                   context,
                   vm.billedTransactions,
+                  forceBilledState: true,
                   emptyTitle: 'No billed transactions',
                   emptySubtitle:
                       'Generated statement transactions appear here.',
@@ -295,6 +311,7 @@ class CardDetailScreen extends ConsumerWidget {
                 _transactionTab(
                   context,
                   vm.recentTransactions,
+                  forceBilledState: null,
                   emptyTitle: 'No transaction history',
                   emptySubtitle:
                       'Card history will appear here once you start using this card.',
@@ -343,6 +360,7 @@ class CardDetailScreen extends ConsumerWidget {
   static Widget _transactionTab(
     BuildContext context,
     List<Transaction> transactions, {
+    required bool? forceBilledState,
     required String emptyTitle,
     required String emptySubtitle,
   }) {
@@ -356,20 +374,32 @@ class CardDetailScreen extends ConsumerWidget {
             icon: Icons.list_alt_outlined,
           )
         else
-          ...transactions.map(
-            (t) => FinarcTransactionTile(
+          ...transactions.map((t) {
+            final billed = forceBilledState ?? (t.cardBillId != null);
+            return FinarcTransactionTile(
               title: t.title,
               subtitle: t.category,
-              meta: transactionDateLabel(t.transactionDate),
+              meta: FinarcTransactionPresentation.meta(
+                date: t.transactionDate,
+                source: billed && t.cardBillId != null
+                    ? 'Card • Statement #${t.cardBillId}'
+                    : 'Card',
+              ),
               amount: '-${inr(t.amount)}',
               amountColor: AppColors.darkError,
+              amountMeta: billed && t.cardBillId != null
+                  ? 'Stmt #${t.cardBillId}'
+                  : null,
+              badges: [
+                FinarcTransactionPresentation.billedBadge(billed: billed),
+              ],
               prefix: const CircleAvatar(
                 radius: 16,
                 backgroundColor: AppColors.darkPrimarySoft,
                 child: Icon(Icons.receipt_long_outlined, size: 15),
               ),
-            ),
-          ),
+            );
+          }),
       ],
     );
   }

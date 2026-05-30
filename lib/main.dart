@@ -3,11 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/constants/app_constants.dart';
 import 'core/router/app_routes.dart';
-import 'core/router/app_router.dart';
+import 'core/router/app_router_release.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_controller.dart';
 import 'features/onboarding/data/onboarding_providers.dart';
-import 'features/pending/notifications/notification_providers.dart';
+import 'features/pending/notifications/notification_bootstrap_release.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,15 +22,15 @@ class FinarcApp extends ConsumerWidget {
     ref.watch(notificationListenerBootstrapProvider);
     final onboardingState = ref.watch(onboardingCompletedProvider);
     onboardingState.whenData((completed) {
-      final path = appRouter.routeInformationProvider.value.uri.path;
+      final path = appRouterRelease.routeInformationProvider.value.uri.path;
       if (!completed && path != AppRoutes.onboarding) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          appRouter.go(AppRoutes.onboarding);
+          appRouterRelease.go(AppRoutes.onboarding);
         });
       }
       if (completed && path == AppRoutes.onboarding) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          appRouter.go(AppRoutes.home);
+          appRouterRelease.go(AppRoutes.home);
         });
       }
     });
@@ -41,7 +41,7 @@ class FinarcApp extends ConsumerWidget {
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       themeMode: themeMode,
-      routerConfig: appRouter,
+      routerConfig: appRouterRelease,
     );
   }
 }

@@ -19,7 +19,9 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   static const double _bottomNavHeight = 60;
-  static const double _fabSize = 58;
+  static const double _fabSize = 50;
+  static const double _fabBottomPad = 12; // ~0.5cm-ish gap above nav
+  static const double _homeBodyBottomInset = 56;
 
   void _openQuickActions() {
     FinarcBottomSheet.show<void>(
@@ -83,10 +85,16 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    final isHomeTab = widget.navigationShell.currentIndex == 0;
     return FinarcScaffold(
       body: Stack(
         children: [
-          widget.navigationShell,
+          Padding(
+            padding: EdgeInsets.only(
+              bottom: isHomeTab ? _homeBodyBottomInset : 0,
+            ),
+            child: widget.navigationShell,
+          ),
           if (AppModeConfig.showModeBadge)
             Positioned(
               top: MediaQuery.paddingOf(context).top + 8,
@@ -113,30 +121,38 @@ class _AppShellState extends State<AppShell> {
             ),
         ],
       ),
-      floatingActionButton: DecoratedBox(
-        decoration: const BoxDecoration(
-          boxShadow: AppShadows.fab,
-          shape: BoxShape.circle,
-        ),
-        child: SizedBox(
-          height: _fabSize,
-          width: _fabSize,
-          child: FloatingActionButton(
-            onPressed: _openQuickActions,
-            backgroundColor: AppColors.darkPrimary,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppRadius.pill),
-              side: const BorderSide(color: AppColors.darkAccent, width: 1),
-            ),
-            child: const Icon(Icons.bolt_rounded, size: 24),
-          ),
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: SafeArea(
-        top: false,
+      floatingActionButton: isHomeTab
+          ? DecoratedBox(
+              decoration: const BoxDecoration(
+                boxShadow: AppShadows.fab,
+                shape: BoxShape.circle,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.only(right: 2, bottom: _fabBottomPad),
+                child: SizedBox(
+                  height: _fabSize,
+                  width: _fabSize,
+                  child: FloatingActionButton(
+                    onPressed: _openQuickActions,
+                    backgroundColor: AppColors.darkPrimary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                      side: const BorderSide(
+                        color: AppColors.darkAccent,
+                        width: 0.9,
+                      ),
+                    ),
+                    child: const Icon(Icons.bolt_rounded, size: 20),
+                  ),
+                ),
+              ),
+            )
+          : null,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.only(top: 4),
         child: DecoratedBox(
           decoration: const BoxDecoration(
             color: AppColors.darkSurfaceLow,

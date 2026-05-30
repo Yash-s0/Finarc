@@ -11,7 +11,13 @@
     <application>
         <service
             android:name=".FinarcNotificationListenerService"
-            tools:node="remove" />
+            android:label="Finarc Notification Listener"
+            android:exported="true"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
 
         <receiver
             android:name=".FinarcSmsReceiver"

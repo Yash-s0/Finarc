@@ -19,6 +19,7 @@ import 'notification_local_notifier.dart';
 import 'notification_permission_service.dart';
 import 'notification_payload.dart';
 import 'notification_test_tools_service.dart';
+import 'notification_diagnostics_service.dart';
 import 'reminder_service.dart';
 import 'sms_fingerprint.dart';
 import 'sms_ingestion_service.dart';
@@ -35,7 +36,7 @@ final notificationPermissionServiceProvider =
 
 final notificationAccessStatusProvider = FutureProvider<bool>((ref) async {
   final ingestionEnabled = await ref.read(
-    realIngestionAvailableProvider.future,
+    notificationIngestionAvailableProvider.future,
   );
   if (!ingestionEnabled) return false;
   return ref.read(notificationPermissionServiceProvider).isAccessEnabled();
@@ -58,9 +59,7 @@ final smsPermissionServiceProvider = Provider<SmsPermissionService>((ref) {
 });
 
 final smsPermissionStatusProvider = FutureProvider<bool>((ref) async {
-  final ingestionEnabled = await ref.read(
-    realIngestionAvailableProvider.future,
-  );
+  final ingestionEnabled = await ref.read(smsIngestionAvailableProvider.future);
   if (!ingestionEnabled) return false;
   return ref.read(smsPermissionServiceProvider).isPermissionGranted();
 });
@@ -89,8 +88,24 @@ final realIngestionModeServiceProvider = Provider<RealIngestionModeService>((
   return RealIngestionModeService();
 });
 
+final notificationIngestionAvailableProvider = FutureProvider<bool>((
+  ref,
+) async {
+  return ref
+      .read(realIngestionModeServiceProvider)
+      .isNotificationIngestionAvailable();
+});
+
+final smsIngestionAvailableProvider = FutureProvider<bool>((ref) async {
+  return ref.read(realIngestionModeServiceProvider).isSmsIngestionAvailable();
+});
+
 final realIngestionAvailableProvider = FutureProvider<bool>((ref) async {
-  return ref.read(realIngestionModeServiceProvider).isAvailable();
+  final notification = await ref.read(
+    notificationIngestionAvailableProvider.future,
+  );
+  final sms = await ref.read(smsIngestionAvailableProvider.future);
+  return notification || sms;
 });
 
 final smsPermissionCachedProvider = StateProvider<bool>((ref) => false);
@@ -223,6 +238,16 @@ final reminderServiceProvider = Provider<ReminderService>((ref) {
   );
 });
 
+final notificationDiagnosticsServiceProvider =
+    Provider<NotificationDiagnosticsService>((ref) {
+      return NotificationDiagnosticsService(ref.read(appLogServiceProvider));
+    });
+
+final notificationDiagnosticsSnapshotProvider =
+    FutureProvider<NotificationDiagnosticsSnapshot>((ref) async {
+      return ref.read(notificationDiagnosticsServiceProvider).loadSnapshot();
+    });
+
 final notificationDebugLogProvider =
     StateNotifierProvider<
       NotificationDebugLogController,
@@ -237,7 +262,7 @@ class NotificationDebugLogController
 
   void append(NotificationDebugEntry entry) {
     final next = [entry, ...state];
-    state = next.take(20).toList(growable: false);
+    state = next.take(100).toList(growable: false);
   }
 
   void clear() {
@@ -259,9 +284,11 @@ class IngestionDiagnosticsController
   }
 
   void append(NotificationDebugEntry entry) {
-    final result = entry.result;
+    final result = entry.parseResult ?? entry.result;
     final package = entry.packageName.toUpperCase();
+    final decision = entry.decision;
     final isSms =
+        entry.sourceType == 'sms' ||
         package == 'ANDROID.SMS' ||
         package == 'SMS' ||
         package.endsWith('-S') ||
@@ -291,11 +318,11 @@ class IngestionDiagnosticsController
         state = state.copyWith(
           smsBlockedNonTransaction: state.smsBlockedNonTransaction + 1,
         );
-      } else if (result == 'duplicate-suppressed') {
+      } else if (decision == 'duplicate') {
         state = state.copyWith(
           smsDuplicateSuppressed: state.smsDuplicateSuppressed + 1,
         );
-      } else if (result == 'parsed-pending-created') {
+      } else if (decision == 'pending-created') {
         state = state.copyWith(smsParsedPending: state.smsParsedPending + 1);
       }
       return;
@@ -307,11 +334,11 @@ class IngestionDiagnosticsController
       lastNotificationPackage: entry.packageName,
       lastNotificationResult: result,
     );
-    if (result == 'parsed-pending-created') {
+    if (decision == 'pending-created') {
       state = state.copyWith(
         notificationsParsedPending: state.notificationsParsedPending + 1,
       );
-    } else if (result == 'duplicate-suppressed') {
+    } else if (decision == 'duplicate') {
       state = state.copyWith(
         notificationsDuplicateSuppressed:
             state.notificationsDuplicateSuppressed + 1,
@@ -333,10 +360,27 @@ final notificationIngestionServiceProvider =
           ref
               .read(appLogServiceProvider)
               .log(
-                category: 'ingestion',
-                message: entry.result,
+                category: 'notification_event',
+                message: entry.decision,
                 meta: <String, Object?>{
-                  'source': entry.packageName,
+                  'source': entry.sourceType,
+                  'package': entry.packageName,
+                  'title': entry.title,
+                  'bodyPreview': entry.bodyPreview,
+                  'decision': entry.decision,
+                  'reason': entry.reason,
+                  'result': entry.result,
+                  'parseResult': entry.parseResult,
+                  'providerName': entry.providerName,
+                  'sender': entry.sender,
+                  'senderFilterResult': entry.senderFilterResult,
+                  'confidenceScore': entry.confidenceScore,
+                  'confidenceLevel': entry.confidenceLevel,
+                  'candidateCount': entry.candidateCount,
+                  'duplicateDecision': entry.duplicateDecision,
+                  'amountCandidate': entry.amountCandidate,
+                  'blockedContext': entry.blockedContext,
+                  'localNotificationSent': entry.localNotificationSent,
                   'receivedAt': entry.receivedAt.toIso8601String(),
                 },
               ),
@@ -365,11 +409,27 @@ final smsIngestionServiceProvider = Provider<SmsIngestionService>((ref) {
       ref
           .read(appLogServiceProvider)
           .log(
-            category: 'ingestion',
-            message: entry.result,
+            category: 'notification_event',
+            message: entry.decision,
             meta: <String, Object?>{
-              'source': 'sms',
-              'sender': entry.packageName,
+              'source': entry.sourceType,
+              'package': entry.packageName,
+              'title': entry.title,
+              'bodyPreview': entry.bodyPreview,
+              'decision': entry.decision,
+              'reason': entry.reason,
+              'result': entry.result,
+              'parseResult': entry.parseResult,
+              'providerName': entry.providerName,
+              'sender': entry.sender,
+              'senderFilterResult': entry.senderFilterResult,
+              'confidenceScore': entry.confidenceScore,
+              'confidenceLevel': entry.confidenceLevel,
+              'candidateCount': entry.candidateCount,
+              'duplicateDecision': entry.duplicateDecision,
+              'amountCandidate': entry.amountCandidate,
+              'blockedContext': entry.blockedContext,
+              'localNotificationSent': entry.localNotificationSent,
               'receivedAt': entry.receivedAt.toIso8601String(),
             },
           ),
@@ -497,15 +557,19 @@ class NotificationRouteAction {
 }
 
 final notificationListenerBootstrapProvider = Provider<void>((ref) {
+  final notificationIngestionAvailable =
+      ref.watch(notificationIngestionAvailableProvider).valueOrNull ?? false;
+  final smsIngestionAvailable =
+      ref.watch(smsIngestionAvailableProvider).valueOrNull ?? false;
   final realIngestionAvailable =
-      ref.watch(realIngestionAvailableProvider).valueOrNull ?? false;
+      notificationIngestionAvailable || smsIngestionAvailable;
   final bridge = ref.read(notificationBridgeProvider);
   final notificationIngestion = ref.read(notificationIngestionServiceProvider);
   final smsIngestion = ref.read(smsIngestionServiceProvider);
   ref.watch(reminderBootstrapProvider);
 
   Future<void> refreshSmsPermission() async {
-    if (!realIngestionAvailable) {
+    if (!smsIngestionAvailable) {
       ref.read(smsPermissionCachedProvider.notifier).state = false;
       return;
     }
@@ -556,6 +620,7 @@ final notificationListenerBootstrapProvider = Provider<void>((ref) {
       bridge.initialize(
         onPayload: (payload) async {
           if (payload.sourceType == 'sms') {
+            if (!smsIngestionAvailable) return;
             final ids = await smsIngestion.processSmsPayload(payload);
             if (ids.isNotEmpty) {
               await ref
@@ -570,6 +635,7 @@ final notificationListenerBootstrapProvider = Provider<void>((ref) {
             ref.invalidate(pendingCountProvider);
             return;
           }
+          if (!notificationIngestionAvailable) return;
           final ids = await notificationIngestion.processPayload(payload);
           if (ids.isNotEmpty) {
             await ref

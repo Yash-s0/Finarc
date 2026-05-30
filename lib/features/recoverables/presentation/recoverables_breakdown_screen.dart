@@ -139,6 +139,23 @@ class _RecoverablesSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final byPerson = <String, List<RecoverableTransactionItem>>{};
+    for (final item in items) {
+      byPerson.putIfAbsent(item.partyName, () => []).add(item);
+    }
+    final groups = byPerson.entries.toList()
+      ..sort((a, b) {
+        final aRemaining = a.value.fold<double>(
+          0,
+          (sum, item) => sum + item.remainingRecoverableAmount,
+        );
+        final bRemaining = b.value.fold<double>(
+          0,
+          (sum, item) => sum + item.remainingRecoverableAmount,
+        );
+        return bRemaining.compareTo(aRemaining);
+      });
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -146,22 +163,26 @@ class _RecoverablesSection extends ConsumerWidget {
         FinarcSectionHeader(title: title),
         const SizedBox(height: AppSpacing.xs),
         if (items.isEmpty)
-          Text(emptyText, style: Theme.of(context).textTheme.bodySmall)
+          FinarcEmptyState(
+            title: 'No entries',
+            subtitle: emptyText,
+            icon: Icons.receipt_long_outlined,
+          )
         else
-          ...items.map(
-            (item) => _RecoverableItemCard(
-              item: item,
-              onOpen: () => context.push('/expenses/transaction/${item.id}'),
-              onRecovered: item.isRecovered
-                  ? null
-                  : () async {
-                      await ref
-                          .read(recoverablesServiceProvider)
-                          .markRecovered(item.id);
-                      ref.invalidate(recoverablesSnapshotProvider);
-                      ref.invalidate(dashboardProvider);
-                      ref.invalidate(transactionByIdProvider(item.id));
-                    },
+          ...groups.map(
+            (group) => _RecoverablePersonGroupCard(
+              personName: group.key,
+              items: group.value,
+              onOpenItem: (item) =>
+                  context.push('/expenses/transaction/${item.id}'),
+              onRecoveredItem: (item) async {
+                await ref
+                    .read(recoverablesServiceProvider)
+                    .markRecovered(item.id);
+                ref.invalidate(recoverablesSnapshotProvider);
+                ref.invalidate(dashboardProvider);
+                ref.invalidate(transactionByIdProvider(item.id));
+              },
             ),
           ),
       ],
@@ -169,23 +190,39 @@ class _RecoverablesSection extends ConsumerWidget {
   }
 }
 
-class _RecoverableItemCard extends StatelessWidget {
-  const _RecoverableItemCard({
-    required this.item,
-    required this.onOpen,
-    required this.onRecovered,
+class _RecoverablePersonGroupCard extends StatelessWidget {
+  const _RecoverablePersonGroupCard({
+    required this.personName,
+    required this.items,
+    required this.onOpenItem,
+    required this.onRecoveredItem,
   });
 
-  final RecoverableTransactionItem item;
-  final VoidCallback onOpen;
-  final VoidCallback? onRecovered;
+  final String personName;
+  final List<RecoverableTransactionItem> items;
+  final void Function(RecoverableTransactionItem item) onOpenItem;
+  final Future<void> Function(RecoverableTransactionItem item) onRecoveredItem;
 
   @override
   Widget build(BuildContext context) {
+    final sorted = [...items]
+      ..sort((a, b) => b.transactionDate.compareTo(a.transactionDate));
+    final baseTotal = sorted.fold<double>(
+      0,
+      (sum, item) => sum + item.recoverableBaseAmount,
+    );
+    final recoveredTotal = sorted.fold<double>(
+      0,
+      (sum, item) => sum + item.recoveredAmount,
+    );
+    final remainingTotal = sorted.fold<double>(
+      0,
+      (sum, item) => sum + item.remainingRecoverableAmount,
+    );
+
     return FinarcCard(
       margin: const EdgeInsets.only(bottom: AppSpacing.xs),
       padding: const EdgeInsets.all(AppSpacing.sm),
-      onTap: onOpen,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -195,86 +232,70 @@ class _RecoverableItemCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item.title),
+                    Text(personName),
                     const SizedBox(height: 2),
                     Text(
-                      item.category,
+                      'Base ${inr(baseTotal)} • Recovered ${inr(recoveredTotal)} • Remaining ${inr(remainingTotal)}',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: AppSpacing.xs),
-              Text(
-                inr(item.openAmount),
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              FinarcStatusBadge(
-                label: item.partyName,
-                tone: FinarcStatusTone.info,
-                compact: true,
-              ),
-              FinarcStatusBadge(
-                label: item.isRecovered ? 'Recovered' : 'Open',
-                tone: item.isRecovered
-                    ? FinarcStatusTone.success
-                    : FinarcStatusTone.warning,
-                compact: true,
-              ),
-              FinarcStatusBadge(
-                label: _sourceLabel(item.bucket),
-                tone: FinarcStatusTone.info,
-                compact: true,
-              ),
-              FinarcStatusBadge(
-                label: 'Base ${inr(item.recoverableBaseAmount)}',
-                tone: FinarcStatusTone.neutral,
-                compact: true,
-              ),
-              if (item.recoveredAmount > 0)
-                FinarcStatusBadge(
-                  label: 'Recovered ${inr(item.recoveredAmount)}',
-                  tone: FinarcStatusTone.success,
-                  compact: true,
+          ...sorted.map((item) {
+            final isCardBucket =
+                item.bucket == RecoverableBuckets.cardBilled ||
+                item.bucket == RecoverableBuckets.cardUnbilled;
+            return Column(
+              children: [
+                FinarcTransactionTile(
+                  onTap: () => onOpenItem(item),
+                  title: item.title,
+                  subtitle: item.category,
+                  meta: FinarcTransactionPresentation.meta(
+                    date: item.transactionDate,
+                    source: _sourceLabel(item.bucket),
+                  ),
+                  amount: inr(item.remainingRecoverableAmount),
+                  amountMeta: 'Remaining',
+                  badges: [
+                    if (isCardBucket)
+                      FinarcTransactionPresentation.billedBadge(
+                        billed: item.bucket == RecoverableBuckets.cardBilled,
+                      ),
+                    FinarcTransactionPresentation.recoverableStatusBadge(
+                      item.status,
+                    ),
+                    FinarcStatusBadge(
+                      label: 'Base ${inr(item.recoverableBaseAmount)}',
+                      tone: FinarcStatusTone.neutral,
+                      compact: true,
+                    ),
+                    FinarcStatusBadge(
+                      label: 'Recovered ${inr(item.recoveredAmount)}',
+                      tone: item.recoveredAmount > 0
+                          ? FinarcStatusTone.success
+                          : FinarcStatusTone.neutral,
+                      compact: true,
+                    ),
+                  ],
                 ),
-              FinarcStatusBadge(
-                label: 'Cashback ${inr(item.cashbackAmount)}',
-                tone: FinarcStatusTone.neutral,
-                compact: true,
-              ),
-            ],
-          ),
-          if (item.partyPhone != null &&
-              item.partyPhone!.trim().isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              item.partyPhone!,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
-          const SizedBox(height: AppSpacing.xs),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Recorded ${transactionDateLabel(item.transactionDate)}',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ),
-              if (onRecovered != null)
-                TextButton(
-                  onPressed: onRecovered,
-                  child: const Text('Mark as Recovered'),
-                ),
-            ],
-          ),
+                if (!item.isRecovered)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () {
+                        onRecoveredItem(item);
+                      },
+                      child: const Text('Mark as Recovered'),
+                    ),
+                  ),
+                const Divider(height: AppSpacing.sm),
+              ],
+            );
+          }),
         ],
       ),
     );

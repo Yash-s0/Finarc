@@ -1,7 +1,9 @@
 import '../../../core/database/app_database.dart';
 import '../../cards/data/billing_service.dart';
 import '../../loans/data/loan_service.dart';
+import '../../recoverables/data/recoverables_service.dart';
 import '../../split/data/split_service.dart';
+import '../../expenses/data/transaction_engine.dart';
 
 class NetWorthBreakdown {
   const NetWorthBreakdown({
@@ -78,17 +80,12 @@ class NetWorthService {
     );
     final loanOutstanding = await _loanService.getTotalLoanOutstanding();
     final monthlyEmiBurden = await _loanService.getMonthlyEmiBurden();
-
-    final txns = await _db.select(_db.transactions).get();
-    final recoverables = txns.fold<double>(0, (sum, txn) {
-      if (txn.linkedSplitExpenseId != null || !txn.isForOthers) return sum;
-      final base =
-          txn.recoverableBaseAmount ??
-          (txn.amount - txn.cashbackAmount).clamp(0, txn.amount).toDouble();
-      final recovered = (txn.recoveredAmount).clamp(0, base).toDouble();
-      final remaining = (base - recovered).clamp(0, base).toDouble();
-      return sum + remaining;
-    });
+    final recoverableSnapshot = await RecoverablesService(
+      _db,
+      _splitService,
+      TransactionEngine(_db),
+    ).buildSnapshot();
+    final recoverables = recoverableSnapshot.normalRecoverables;
 
     return NetWorthBreakdown(
       bankBalance: bankBalance,

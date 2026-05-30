@@ -31,6 +31,8 @@ import '../../features/pending/presentation/for_others_screen.dart';
 import '../../features/pending/presentation/pending_success_screen.dart';
 import '../../features/pending/presentation/pending_transactions_screen.dart';
 import '../../features/pending/notifications/notification_access_setup_screen.dart';
+import '../../features/pending/notifications/notification_diagnostics_screen.dart';
+import '../../features/pending/notifications/notification_debug_log_viewer_screen.dart';
 import '../../features/pending/notifications/sms_access_setup_screen.dart';
 import '../../features/onboarding/presentation/onboarding_flow_screen.dart';
 import '../../features/accounts/presentation/account_detail_screen.dart';
@@ -155,6 +157,14 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/notifications/setup',
       builder: (_, _) => const NotificationAccessSetupScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.notificationDiagnostics,
+      builder: (_, _) => const NotificationDiagnosticsScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.notificationDiagnosticsLogs,
+      builder: (_, _) => const NotificationDebugLogViewerScreen(),
     ),
     GoRoute(
       path: '/sms/setup',

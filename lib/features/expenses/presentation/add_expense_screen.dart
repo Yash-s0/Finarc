@@ -333,7 +333,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                       const SizedBox(height: AppSpacing.xs),
                       FinarcTextField(
                         controller: _recoverableParty,
-                        label: 'Person',
+                        label: 'Paid for whom?',
                         validator: (v) {
                           if (!_forOthers) return null;
                           if (v == null || v.trim().isEmpty) {

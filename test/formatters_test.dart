@@ -28,4 +28,23 @@ void main() {
       '24 May 2025',
     );
   });
+
+  test('transactionMetaLabel combines date and source consistently', () {
+    final now = DateTime(2026, 5, 28, 20, 0);
+    final date = DateTime(2026, 5, 28, 19, 42);
+
+    expect(
+      transactionMetaLabel(date, sourceLabel: 'Card', now: now),
+      'Today, 7:42 PM • Card',
+    );
+    expect(
+      transactionMetaLabel(
+        DateTime(2026, 5, 27, 9, 10),
+        sourceLabel: 'Bank',
+        now: now,
+      ),
+      'Yesterday • Bank',
+    );
+    expect(transactionMetaLabel(date, now: now), 'Today, 7:42 PM');
+  });
 }

@@ -202,7 +202,12 @@ class AccountDetailScreen extends ConsumerWidget {
                     child: FinarcTransactionTile(
                       title: t.title,
                       subtitle: t.category,
-                      meta: transactionDateLabel(t.transactionDate),
+                      meta: FinarcTransactionPresentation.meta(
+                        date: t.transactionDate,
+                        source: FinarcTransactionPresentation.sourceLabel(
+                          t.paymentSourceType,
+                        ),
+                      ),
                       amount: '$sign${inr(t.amount)}',
                       amountColor: color,
                       prefix: CircleAvatar(
@@ -216,6 +221,14 @@ class AccountDetailScreen extends ConsumerWidget {
                           color: AppColors.darkAccent,
                         ),
                       ),
+                      badges: [
+                        if (t.cashbackAmount > 0)
+                          FinarcTransactionPresentation.cashbackBadge,
+                        if (t.isForOthers)
+                          FinarcTransactionPresentation.recoverableStatusBadge(
+                            t.recoverableStatus,
+                          ),
+                      ],
                     ),
                   );
                 }),

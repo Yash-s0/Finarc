@@ -4,6 +4,7 @@ import '../merchant_normalizer.dart';
 import '../parser_confidence_scorer.dart';
 import '../parser_models.dart';
 import '../parser_text_utils.dart';
+import '../transaction_direction_classifier.dart';
 import '../transaction_parser.dart';
 
 class UpiNotificationParser implements TransactionParser {
@@ -24,6 +25,7 @@ class UpiNotificationParser implements TransactionParser {
   @override
   ParserResult parse(ParserInput input) {
     final text = input.fullText;
+    final lower = text.toLowerCase();
     final amount = ParserTextUtils.extractAmount(text);
     if (amount == null) {
       return ParserResult(
@@ -34,28 +36,49 @@ class UpiNotificationParser implements TransactionParser {
       );
     }
 
-    final merchantRaw = ParserTextUtils.extractMerchantAfterKeyword(text, [
-      'paid to',
-      'sent to',
-      'to',
-      'for upi payment to',
-      'collect paid to',
-    ]);
+    final direction = PendingDirectionClassifier.detect(text: text);
+    final merchantRaw = _extractCounterpartyByDirection(text, direction);
 
     final merchant = MerchantNormalizer.normalize(
       merchantRaw ?? 'Unknown Merchant',
     );
     final date =
-        ParserTextUtils.extractDate(text, input.receivedAt) ?? input.receivedAt;
+        ParserTextUtils.extractDateWithNumericSupport(text, input.receivedAt) ??
+        input.receivedAt;
+    final hasTransactionAction =
+        lower.contains('paid') ||
+        lower.contains('sent') ||
+        lower.contains('debited') ||
+        lower.contains('credited') ||
+        lower.contains('received') ||
+        lower.contains('refunded') ||
+        lower.contains('collect paid');
 
-    final confidence = ParserConfidenceScorer.score(
+    final confidence = ParserConfidenceScorer.assess(
       hasAmount: true,
       hasMerchant: merchant != 'Unknown Merchant',
       hasSourceHint: text.toLowerCase().contains('upi ref'),
-      hasPatternMatch: true,
-      hasDate: ParserTextUtils.extractDate(text, input.receivedAt) != null,
+      hasPatternMatch: hasTransactionAction,
+      hasDate:
+          ParserTextUtils.extractDateWithNumericSupport(
+            text,
+            input.receivedAt,
+          ) !=
+          null,
       isFallback: false,
     );
+    final accountHint = ParserTextUtils.extractAccountHint(text);
+    final paymentSourceSuggestion = _paymentSourceSuggestion(
+      text: text,
+      direction: direction,
+      accountHint: accountHint,
+    );
+    final categorySuggestion = _categoryForDirection(
+      direction: direction,
+      text: text,
+      merchant: merchant,
+    );
+    final transactionRef = ParserTextUtils.extractTransactionReference(text);
 
     return ParserResult(
       candidates: [
@@ -64,18 +87,90 @@ class UpiNotificationParser implements TransactionParser {
           merchant: merchant,
           transactionDate: date,
           sourceType: input.sourceType,
-          paymentSourceTypeSuggestion: PaymentSourceType.upi,
-          paymentSourceHint: text.toLowerCase().contains('upi ref')
-              ? 'upi-ref-present'
-              : null,
-          categorySuggestion: CategorySuggester.suggest(merchant),
+          paymentSourceTypeSuggestion: paymentSourceSuggestion,
+          paymentSourceHint:
+              accountHint ??
+              (lower.contains('upi ref') ? 'upi-ref-present' : null),
+          categorySuggestion: categorySuggestion,
           rawText: input.rawText,
-          confidenceScore: confidence,
+          confidenceScore: confidence.score,
+          confidenceLevel: confidence.level.name.toUpperCase(),
           parserName: parserName,
+          metadata: {
+            'direction': direction.name,
+            'counterparty': merchant,
+            'sender': input.sender ?? input.notificationTitle,
+            'transactionRef': transactionRef,
+          },
         ),
       ],
       parserName: parserName,
       parsedAt: DateTime.now(),
     );
+  }
+
+  String? _extractCounterpartyByDirection(
+    String text,
+    PendingTransactionDirection direction,
+  ) {
+    if (direction == PendingTransactionDirection.income) {
+      return ParserTextUtils.extractMerchantAfterKeyword(text, [
+        'from',
+        'received from',
+        'credited from',
+      ]);
+    }
+    if (direction == PendingTransactionDirection.expense) {
+      return ParserTextUtils.extractMerchantAfterKeyword(text, [
+        'paid to',
+        'sent to',
+        'to',
+        'for upi payment to',
+        'collect paid to',
+      ]);
+    }
+    return ParserTextUtils.extractMerchantAfterKeyword(text, [
+      'to',
+      'from',
+      'paid to',
+      'sent to',
+    ]);
+  }
+
+  String _paymentSourceSuggestion({
+    required String text,
+    required PendingTransactionDirection direction,
+    required String? accountHint,
+  }) {
+    final lower = text.toLowerCase();
+    if (direction == PendingTransactionDirection.income &&
+        accountHint != null) {
+      return PaymentSourceType.bank;
+    }
+    if (lower.contains('upi')) {
+      return PaymentSourceType.upi;
+    }
+    return PaymentSourceType.bank;
+  }
+
+  String _categoryForDirection({
+    required PendingTransactionDirection direction,
+    required String text,
+    required String merchant,
+  }) {
+    final lower = text.toLowerCase();
+    if (direction == PendingTransactionDirection.income) {
+      if (lower.contains('salary') || lower.contains('payroll')) {
+        return 'Income';
+      }
+      if (lower.contains('refund')) {
+        return 'Refund';
+      }
+      return 'Transfer';
+    }
+    if (direction == PendingTransactionDirection.expense) {
+      return 'Transfer';
+    }
+    return CategorySuggester.suggest(merchant);
   }
 }

@@ -191,6 +191,24 @@ void main() {
     },
   );
 
+  test('card liability includes billed plus unbilled outstanding', () async {
+    await engine.addTransaction(
+      AddTransactionInput(
+        type: TransactionType.creditCard,
+        amount: 1500,
+        title: 'Unbilled swipe',
+        category: 'Shopping',
+        transactionDate: DateTime(2026, 5, 25),
+        paymentSourceType: PaymentSourceType.creditCard,
+        paymentSourceId: 1,
+      ),
+    );
+
+    final breakdown = await netWorthService.calculate();
+    expect(breakdown.cardLiability, closeTo(21500, 0.01));
+    expect(breakdown.totalLiabilities, closeTo(141500, 0.01));
+  });
+
   test('loan payments reduce outstanding and affect liabilities', () async {
     final loan = (await loanService.getActiveLoans()).first;
 

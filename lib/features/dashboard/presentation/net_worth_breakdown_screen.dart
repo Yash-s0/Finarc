@@ -51,7 +51,7 @@ class NetWorthBreakdownScreen extends ConsumerWidget {
                   _row('Bank balances', inr(data.bankBalance)),
                   _row('Cash', inr(data.cashInHand)),
                   _row(
-                    'Recoverables',
+                    'Recoverable (All)',
                     inr(
                       data.totalAssets -
                           (data.bankBalance +
@@ -72,7 +72,7 @@ class NetWorthBreakdownScreen extends ConsumerWidget {
                   vertical: AppSpacing.xs,
                 ),
                 children: [
-                  _row('Card outstanding', inr(data.cardOutstanding)),
+                  _row('Total Card Outstanding', inr(data.cardOutstanding)),
                   _row('Loans outstanding', inr(data.loansOutstanding)),
                   _row('Split payables', inr(data.splitPayableAmount)),
                   const Divider(),

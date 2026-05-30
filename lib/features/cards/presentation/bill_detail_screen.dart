@@ -233,9 +233,15 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
                   (t) => FinarcTransactionTile(
                     title: t.title,
                     subtitle: t.category,
-                    meta: transactionDateLabel(t.transactionDate),
+                    meta: FinarcTransactionPresentation.meta(
+                      date: t.transactionDate,
+                      source: 'Card • Statement #${widget.billId}',
+                    ),
                     amount: '-${inr(t.amount)}',
                     amountColor: AppColors.darkError,
+                    badges: [
+                      FinarcTransactionPresentation.billedBadge(billed: true),
+                    ],
                     prefix: const CircleAvatar(
                       radius: 16,
                       backgroundColor: AppColors.darkPrimarySoft,

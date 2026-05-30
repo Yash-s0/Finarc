@@ -288,6 +288,19 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                           final net = ref
                               .read(transactionEngineProvider)
                               .netExpense(t);
+                          final recoverableBase =
+                              t.recoverableBaseAmount ??
+                              (t.isForOthers
+                                  ? (t.amount - t.cashbackAmount)
+                                        .clamp(0, t.amount)
+                                        .toDouble()
+                                  : 0.0);
+                          final recovered = t.recoveredAmount
+                              .clamp(0, recoverableBase)
+                              .toDouble();
+                          final remaining = (recoverableBase - recovered)
+                              .clamp(0, recoverableBase)
+                              .toDouble();
                           final isPositive =
                               t.type == 'income' || t.type == 'refund';
                           return Padding(
@@ -299,8 +312,13 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                                   context.push('/expenses/transaction/${t.id}'),
                               title: t.title,
                               subtitle: t.category,
-                              meta:
-                                  '${_sourceLabel(t.paymentSourceType)} • ${transactionDateLabel(t.transactionDate)}',
+                              meta: FinarcTransactionPresentation.meta(
+                                date: t.transactionDate,
+                                source:
+                                    FinarcTransactionPresentation.sourceLabel(
+                                      t.paymentSourceType,
+                                    ),
+                              ),
                               amount:
                                   '${isPositive ? '+' : '-'}${inr(t.amount)}',
                               amountColor: isPositive
@@ -316,73 +334,66 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                                 ),
                               ),
                               badges: [
-                                _badge(
-                                  context,
-                                  t.paymentSourceType.toUpperCase(),
-                                  FinarcStatusTone.info,
-                                ),
-                                _badge(
-                                  context,
-                                  t.category,
-                                  FinarcStatusTone.neutral,
-                                ),
+                                if (t.paymentSourceType == 'creditCard')
+                                  FinarcTransactionPresentation.billedBadge(
+                                    billed: t.cardBillId != null,
+                                  ),
                                 if (t.cashbackAmount > 0)
-                                  _badge(
-                                    context,
-                                    'Cashback ${inr(t.cashbackAmount)}',
-                                    FinarcStatusTone.success,
-                                  ),
+                                  FinarcTransactionPresentation.cashbackBadge,
                                 if (t.detectedSourceType != null)
-                                  _badge(
-                                    context,
-                                    'Detected ${_sourceLabel(t.detectedSourceType)}',
-                                    FinarcStatusTone.warning,
+                                  FinarcStatusBadge(
+                                    label:
+                                        'Detected ${_sourceLabel(t.detectedSourceType)}',
+                                    tone: FinarcStatusTone.info,
+                                    compact: true,
                                   ),
                                 if (t.isForOthers)
-                                  _badge(
-                                    context,
-                                    '${t.recoverablePartyName ?? 'Recoverable'} ${inr(t.recoverableAmount ?? 0)}',
-                                    FinarcStatusTone.warning,
+                                  FinarcStatusBadge(
+                                    label:
+                                        t.recoverablePartyName ?? 'For Others',
+                                    tone: FinarcStatusTone.info,
+                                    compact: true,
                                   ),
                                 if (t.isForOthers)
-                                  _badge(
-                                    context,
-                                    t.recoverableStatus == 'recovered'
-                                        ? 'Recovered'
-                                        : t.recoverableStatus == 'partial'
-                                        ? 'Partial'
-                                        : 'Unpaid',
-                                    t.recoverableStatus == 'recovered'
+                                  FinarcTransactionPresentation.recoverableStatusBadge(
+                                    t.recoverableStatus,
+                                  ),
+                                if (t.isForOthers)
+                                  FinarcStatusBadge(
+                                    label: 'Remaining ${inr(remaining)}',
+                                    tone: remaining <= 0.009
                                         ? FinarcStatusTone.success
-                                        : t.recoverableStatus == 'partial'
-                                        ? FinarcStatusTone.info
                                         : FinarcStatusTone.warning,
+                                    compact: true,
+                                  ),
+                                if (t.isForOthers && recovered > 0)
+                                  FinarcStatusBadge(
+                                    label: 'Recovered ${inr(recovered)}',
+                                    tone: FinarcStatusTone.success,
+                                    compact: true,
                                   ),
                                 if (t.linkedSplitExpenseId != null ||
                                     t.splitGroupId != null)
-                                  _badge(
-                                    context,
-                                    'Split',
-                                    FinarcStatusTone.info,
+                                  const FinarcStatusBadge(
+                                    label: 'Split',
+                                    tone: FinarcStatusTone.info,
+                                    compact: true,
                                   ),
                                 if (t.type == 'loanEmi')
-                                  _badge(
-                                    context,
-                                    'Loan EMI',
-                                    FinarcStatusTone.warning,
-                                  ),
+                                  FinarcTransactionPresentation.emiBadge,
                                 if ((t.personalShareAmount ?? 0) > 0 &&
                                     (t.personalShareAmount ?? 0) < t.amount)
-                                  _badge(
-                                    context,
-                                    'My share ${inr(t.personalShareAmount ?? 0)}',
-                                    FinarcStatusTone.neutral,
+                                  FinarcStatusBadge(
+                                    label:
+                                        'My share ${inr(t.personalShareAmount ?? 0)}',
+                                    tone: FinarcStatusTone.neutral,
+                                    compact: true,
                                   ),
                                 if (t.cashbackAmount > 0)
-                                  _badge(
-                                    context,
-                                    'Net ${inr(net)}',
-                                    FinarcStatusTone.info,
+                                  FinarcStatusBadge(
+                                    label: 'Net ${inr(net)}',
+                                    tone: FinarcStatusTone.info,
+                                    compact: true,
                                   ),
                               ],
                             ),
@@ -405,14 +416,6 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
         },
       ),
     );
-  }
-
-  static Widget _badge(
-    BuildContext context,
-    String label,
-    FinarcStatusTone tone,
-  ) {
-    return FinarcStatusBadge(label: label, tone: tone, compact: true);
   }
 
   static String _sourceLabel(String? source) {

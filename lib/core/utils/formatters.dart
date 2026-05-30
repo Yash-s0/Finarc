@@ -30,3 +30,14 @@ String transactionDateLabel(
   }
   return _dayMonthYearPattern.format(date.toLocal());
 }
+
+String transactionMetaLabel(
+  DateTime date, {
+  String? sourceLabel,
+  DateTime? now,
+}) {
+  final dateLabel = transactionDateLabel(date, now: now);
+  final source = sourceLabel?.trim();
+  if (source == null || source.isEmpty) return dateLabel;
+  return '$dateLabel • $source';
+}

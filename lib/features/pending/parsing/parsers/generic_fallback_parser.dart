@@ -37,7 +37,7 @@ class GenericFallbackParser implements TransactionParser {
     );
 
     final suggestion = _sourceSuggestion(input);
-    final confidence = ParserConfidenceScorer.score(
+    final confidence = ParserConfidenceScorer.assess(
       hasAmount: true,
       hasMerchant: merchant != 'Unknown Merchant',
       hasSourceHint: false,
@@ -57,7 +57,8 @@ class GenericFallbackParser implements TransactionParser {
           paymentSourceHint: null,
           categorySuggestion: CategorySuggester.suggest(merchant),
           rawText: input.rawText,
-          confidenceScore: confidence,
+          confidenceScore: confidence.score,
+          confidenceLevel: confidence.level.name.toUpperCase(),
           parserName: parserName,
         ),
       ],

@@ -247,7 +247,7 @@ class DashboardMetricGrid extends StatelessWidget {
           onTap: () => context.push('/loans'),
         ),
         FinarcMetricCard(
-          title: 'Recoverable Amount',
+          title: 'Recoverable',
           value: inr(data.recoverableAmount),
           icon: Icons.call_received_rounded,
           iconColor: AppColors.darkBlue,
@@ -376,15 +376,22 @@ class RecentTransactionsSection extends StatelessWidget {
                         final t = items[index];
                         final isIncome =
                             t.type == 'income' || t.type == 'refund';
+                        final isCard = t.paymentSourceType == 'creditCard';
+                        final isBilled = t.cardBillId != null;
                         final tone = isIncome
                             ? FinarcStatusTone.success
-                            : (t.paymentSourceType == 'creditCard'
+                            : (isCard
                                   ? FinarcStatusTone.warning
                                   : FinarcStatusTone.info);
                         return FinarcTransactionTile(
                           title: t.title,
                           subtitle: t.category,
-                          meta: transactionDateLabel(t.transactionDate),
+                          meta: FinarcTransactionPresentation.meta(
+                            date: t.transactionDate,
+                            source: FinarcTransactionPresentation.sourceLabel(
+                              t.paymentSourceType,
+                            ),
+                          ),
                           prefix: CircleAvatar(
                             radius: 15,
                             backgroundColor: _avatarColor(t.category),
@@ -400,10 +407,22 @@ class RecentTransactionsSection extends StatelessWidget {
                               : AppColors.darkError,
                           statusLabel: isIncome
                               ? 'Income'
-                              : (t.paymentSourceType == 'creditCard'
-                                    ? 'Unbilled'
+                              : (isCard
+                                    ? (isBilled ? 'Billed' : 'Unbilled')
                                     : 'Spent'),
                           statusTone: tone,
+                          badges: [
+                            if (isCard)
+                              FinarcTransactionPresentation.billedBadge(
+                                billed: isBilled,
+                              ),
+                            if (t.cashbackAmount > 0)
+                              FinarcTransactionPresentation.cashbackBadge,
+                            if (t.isForOthers)
+                              FinarcTransactionPresentation.recoverableStatusBadge(
+                                t.recoverableStatus,
+                              ),
+                          ],
                           compact: true,
                         );
                       },

@@ -223,7 +223,7 @@ class AnalyticsService {
     final spendByCard = <int, double>{};
     for (final t in cardTxns) {
       spendByCard[t.paymentSourceId] =
-          (spendByCard[t.paymentSourceId] ?? 0) + _netLifestyleSpend(t);
+          (spendByCard[t.paymentSourceId] ?? 0) + _cardChargeAmount(t);
     }
 
     final snapshotByCardId = <int, CardBillingSnapshot>{
@@ -501,6 +501,21 @@ class AnalyticsService {
             ? (t.amount - recoverableBase).clamp(0, t.amount).toDouble()
             : t.amount);
     return (base - t.cashbackAmount).clamp(0, double.infinity).toDouble();
+  }
+
+  double _cardChargeAmount(Transaction t) {
+    if (t.type == TransactionType.cardPayment ||
+        t.type == TransactionType.transfer ||
+        t.type == TransactionType.income ||
+        t.type == TransactionType.loanEmi) {
+      return 0.0;
+    }
+    if (t.type == TransactionType.refund) {
+      return -t.amount;
+    }
+    // Card liability is based on full charge amount, not personal-share or
+    // recoverable reductions.
+    return t.amount;
   }
 
   List<NamedAmount> _sortNamedAmounts(Map<String, double> raw) {

@@ -11,8 +11,6 @@ import android.content.ComponentName
 import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
-import android.provider.Telephony
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -44,14 +42,15 @@ class MainActivity : FlutterActivity() {
         private const val SUMMARIES_CHANNEL_ID = "finarc_summaries"
         private const val SUMMARIES_CHANNEL_NAME = "Summaries"
         private const val EXTRA_ROUTE = "finarc_route"
-        private const val SMS_PERMISSION_REQUEST_CODE = 7307
         private const val POST_NOTIFICATIONS_PERMISSION_REQUEST_CODE = 7308
 
         private val launchRouteQueue: ArrayDeque<String> = ArrayDeque()
     }
 
-    private var smsPermissionResult: MethodChannel.Result? = null
     private var postNotificationsPermissionResult: MethodChannel.Result? = null
+    private val ingestionBridge: IngestionPlatformBridge by lazy {
+        createIngestionPlatformBridge(this)
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -84,6 +83,9 @@ class MainActivity : FlutterActivity() {
                 "isNotificationListenerComponentAvailable" -> {
                     result.success(isNotificationListenerComponentAvailable())
                 }
+                "isNotificationIngestionAvailable" -> {
+                    result.success(isNotificationIngestionAvailable())
+                }
                 "isRealIngestionAvailable" -> {
                     result.success(isRealIngestionAvailable())
                 }
@@ -93,35 +95,8 @@ class MainActivity : FlutterActivity() {
                     result.success(true)
                 }
 
-                "isSmsPermissionGranted" -> {
-                    result.success(isSmsPermissionGranted())
-                }
-                "isReadSmsPermissionGranted" -> {
-                    result.success(isReadSmsPermissionGranted())
-                }
-                "isReceiveSmsPermissionGranted" -> {
-                    result.success(isReceiveSmsPermissionGranted())
-                }
-                "shouldShowSmsPermissionRationale" -> {
-                    result.success(shouldShowSmsPermissionRationale())
-                }
-
-                "isSmsReceiverComponentAvailable" -> {
-                    result.success(isSmsReceiverComponentAvailable())
-                }
-                "isSmsReceiverComponentEnabled" -> {
-                    result.success(isSmsReceiverComponentEnabled())
-                }
-                "getSmsReceiverDiagnostics" -> {
-                    result.success(getSmsReceiverDiagnostics())
-                }
-
                 "isPostNotificationsGranted" -> {
                     result.success(isPostNotificationsGranted())
-                }
-
-                "requestSmsPermission" -> {
-                    requestSmsPermission(result)
                 }
 
                 "requestPostNotificationsPermission" -> {
@@ -131,12 +106,6 @@ class MainActivity : FlutterActivity() {
                 "openAppPermissionSettings" -> {
                     openAppPermissionSettings()
                     result.success(true)
-                }
-
-                "scanRecentSms" -> {
-                    val days = call.argument<Int>("days") ?: 7
-                    val count = scanRecentSms(days)
-                    result.success(count)
                 }
 
                 "drainCapturedNotifications" -> {
@@ -200,7 +169,11 @@ class MainActivity : FlutterActivity() {
                     result.success(consumeLaunchRoute())
                 }
 
-                else -> result.notImplemented()
+                else -> {
+                    if (!ingestionBridge.handleMethodCall(call, result)) {
+                        result.notImplemented()
+                    }
+                }
             }
         }
 
@@ -218,11 +191,7 @@ class MainActivity : FlutterActivity() {
         grantResults: IntArray,
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == SMS_PERMISSION_REQUEST_CODE) {
-            val granted = grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }
-            Log.d("FinarcMainActivity", "SMS permission result granted=$granted")
-            smsPermissionResult?.success(granted)
-            smsPermissionResult = null
+        if (ingestionBridge.onRequestPermissionsResult(requestCode, permissions, grantResults)) {
             return
         }
 
@@ -245,7 +214,7 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun isNotificationAccessEnabled(): Boolean {
-        if (!isRealIngestionAvailable()) return false
+        if (!isNotificationIngestionAvailable()) return false
         val enabledListeners = Settings.Secure.getString(
             contentResolver,
             "enabled_notification_listeners",
@@ -255,7 +224,7 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun isNotificationListenerComponentAvailable(): Boolean {
-        if (!isRealIngestionAvailable()) return false
+        if (!isNotificationIngestionAvailable()) return false
         return rawNotificationListenerComponentAvailable()
     }
 
@@ -272,102 +241,6 @@ class MainActivity : FlutterActivity() {
         } catch (_: Exception) {
             false
         }
-    }
-
-    private fun isSmsReceiverComponentAvailable(): Boolean {
-        if (!isRealIngestionAvailable()) return false
-        return rawSmsReceiverComponentAvailable()
-    }
-
-    private fun rawSmsReceiverComponentAvailable(): Boolean {
-        return try {
-            val component = ComponentName(this, FinarcSmsReceiver::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                packageManager.getReceiverInfo(component, PackageManager.ComponentInfoFlags.of(0))
-            } else {
-                @Suppress("DEPRECATION")
-                packageManager.getReceiverInfo(component, 0)
-            }
-            true
-        } catch (_: Exception) {
-            false
-        }
-    }
-
-    private fun isSmsPermissionGranted(): Boolean {
-        if (!isRealIngestionAvailable()) return false
-        return isReadSmsPermissionGranted() && isReceiveSmsPermissionGranted()
-    }
-
-    private fun isReadSmsPermissionGranted(): Boolean {
-        if (!isRealIngestionAvailable()) return false
-        return ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.READ_SMS,
-        ) == PackageManager.PERMISSION_GRANTED
-    }
-
-    private fun isReceiveSmsPermissionGranted(): Boolean {
-        if (!isRealIngestionAvailable()) return false
-        return ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.RECEIVE_SMS,
-        ) == PackageManager.PERMISSION_GRANTED
-    }
-
-    private fun shouldShowSmsPermissionRationale(): Boolean {
-        if (!isRealIngestionAvailable()) return false
-        return shouldShowRequestPermissionRationale(Manifest.permission.READ_SMS) ||
-            shouldShowRequestPermissionRationale(Manifest.permission.RECEIVE_SMS)
-    }
-
-    private fun isSmsReceiverComponentEnabled(): Boolean {
-        if (!isRealIngestionAvailable()) return false
-        return try {
-            val component = ComponentName(this, FinarcSmsReceiver::class.java)
-            val state = packageManager.getComponentEnabledSetting(component)
-            state == PackageManager.COMPONENT_ENABLED_STATE_DEFAULT ||
-                state == PackageManager.COMPONENT_ENABLED_STATE_ENABLED
-        } catch (_: Exception) {
-            false
-        }
-    }
-
-    private fun getSmsReceiverDiagnostics(): Map<String, Any?> {
-        val prefs = getSharedPreferences(FinarcSmsReceiver.DIAGNOSTICS_PREFS, Context.MODE_PRIVATE)
-        return mapOf(
-            "readSmsGranted" to isReadSmsPermissionGranted(),
-            "receiveSmsGranted" to isReceiveSmsPermissionGranted(),
-            "smsPermissionGranted" to isSmsPermissionGranted(),
-            "receiverDeclared" to isSmsReceiverComponentAvailable(),
-            "receiverEnabled" to isSmsReceiverComponentEnabled(),
-            "lastReceivedAtMillis" to prefs.getLong(FinarcSmsReceiver.KEY_LAST_RECEIVED_AT_MILLIS, 0L),
-            "lastSender" to prefs.getString(FinarcSmsReceiver.KEY_LAST_SENDER, null),
-            "lastCallbackSuccessAtMillis" to prefs.getLong(FinarcSmsReceiver.KEY_LAST_CALLBACK_SUCCESS_AT_MILLIS, 0L),
-            "lastError" to prefs.getString(FinarcSmsReceiver.KEY_LAST_ERROR, null),
-            "realIngestionAvailable" to isRealIngestionAvailable(),
-        )
-    }
-
-    private fun requestSmsPermission(result: MethodChannel.Result) {
-        if (!isRealIngestionAvailable()) {
-            result.success(false)
-            return
-        }
-        if (isSmsPermissionGranted()) {
-            result.success(true)
-            return
-        }
-        if (smsPermissionResult != null) {
-            result.error("permission_in_progress", "SMS permission request already in progress", null)
-            return
-        }
-
-        smsPermissionResult = result
-        requestPermissions(
-            arrayOf(Manifest.permission.READ_SMS, Manifest.permission.RECEIVE_SMS),
-            SMS_PERMISSION_REQUEST_CODE,
-        )
     }
 
     private fun isPostNotificationsGranted(): Boolean {
@@ -406,55 +279,16 @@ class MainActivity : FlutterActivity() {
         startActivity(intent)
     }
 
-    private fun scanRecentSms(days: Int): Int {
-        if (!isRealIngestionAvailable()) return 0
-        if (!isSmsPermissionGranted()) return 0
-        val boundedDays = days.coerceIn(1, 30)
-        val sinceMillis = System.currentTimeMillis() - boundedDays * 24L * 60L * 60L * 1000L
-        val uri = Telephony.Sms.Inbox.CONTENT_URI
-        val projection = arrayOf(
-            Telephony.Sms.ADDRESS,
-            Telephony.Sms.BODY,
-            Telephony.Sms.DATE,
-        )
-        val selection = "${Telephony.Sms.DATE} >= ?"
-        val selectionArgs = arrayOf(sinceMillis.toString())
-        val sortOrder = "${Telephony.Sms.DATE} DESC"
+    private fun isNotificationIngestionAvailable(): Boolean {
+        return rawNotificationListenerComponentAvailable()
+    }
 
-        var count = 0
-        contentResolver.query(uri, projection, selection, selectionArgs, sortOrder)?.use { cursor ->
-            val addressIdx = cursor.getColumnIndex(Telephony.Sms.ADDRESS)
-            val bodyIdx = cursor.getColumnIndex(Telephony.Sms.BODY)
-            val dateIdx = cursor.getColumnIndex(Telephony.Sms.DATE)
-
-            while (cursor.moveToNext()) {
-                val sender = if (addressIdx >= 0) cursor.getString(addressIdx).orEmpty() else ""
-                val body = if (bodyIdx >= 0) cursor.getString(bodyIdx).orEmpty() else ""
-                val date = if (dateIdx >= 0) cursor.getLong(dateIdx) else System.currentTimeMillis()
-                if (body.isBlank()) continue
-
-                val payload = mapOf(
-                    "packageName" to "android.sms",
-                    "appName" to "SMS",
-                    "sender" to sender.trim(),
-                    "title" to sender.trim(),
-                    "body" to body.trim(),
-                    "bigText" to null,
-                    "subText" to null,
-                    "receivedAt" to date,
-                    "sourceType" to "sms",
-                    "isOngoing" to false,
-                    "category" to "sms",
-                )
-                NotificationBridge.publish(payload)
-                count += 1
-            }
-        }
-        return count
+    private fun isSecondaryIngestionAvailable(): Boolean {
+        return ingestionBridge.isIngestionAvailable()
     }
 
     private fun isRealIngestionAvailable(): Boolean {
-        return rawNotificationListenerComponentAvailable() || rawSmsReceiverComponentAvailable()
+        return isNotificationIngestionAvailable() || isSecondaryIngestionAvailable()
     }
 
     private fun showDetectionNotification(

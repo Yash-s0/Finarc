@@ -158,6 +158,9 @@ void main() {
             transactionDate: insideWeek,
             paymentSourceType: 'bank',
             paymentSourceId: 1,
+            isForOthers: const Value(true),
+            recoverablePartyName: const Value('Rahul'),
+            recoverableBaseAmount: const Value(700),
             recoverableAmount: const Value(700),
           ),
         );
@@ -180,7 +183,8 @@ void main() {
     final summary = await service.weeklySummaryText();
     expect(summary, contains('This week:'));
     expect(summary, contains('₹8,420'));
-    expect(summary, contains('₹700 recoverable'));
+    expect(summary, contains('Actionable recoverable ₹700'));
+    expect(summary, contains('Rahul'));
     expect(summary, contains('1 pending'));
   });
 
@@ -205,5 +209,42 @@ void main() {
     final text = service.dueBillReminderText(card, bill);
     expect(text, contains('₹12,400'));
     expect(text, contains('due in'));
+  });
+
+  test('due bill reminder uses billed pending amount only', () async {
+    final card = await (db.select(
+      db.creditCards,
+    )..where((c) => c.id.equals(1))).getSingle();
+    final bill = CardBill(
+      id: 99,
+      cardId: card.id,
+      cycleStartDate: DateTime.now().subtract(const Duration(days: 30)),
+      cycleEndDate: DateTime.now().subtract(const Duration(days: 1)),
+      billingDate: DateTime.now().subtract(const Duration(days: 1)),
+      billedAmount: 1000,
+      paidAmount: 0,
+      dueDate: DateTime.now().add(const Duration(days: 2)),
+      status: 'billed',
+      createdAt: DateTime.now(),
+      paidAt: null,
+    );
+
+    await db
+        .into(db.transactions)
+        .insert(
+          TransactionsCompanion.insert(
+            type: 'creditCard',
+            amount: 800,
+            title: 'Later swipe',
+            category: 'Food',
+            transactionDate: DateTime.now(),
+            paymentSourceType: 'creditCard',
+            paymentSourceId: 1,
+          ),
+        );
+
+    final text = service.dueBillReminderText(card, bill);
+    expect(text, contains('₹1,000'));
+    expect(text.contains('₹1,800'), isFalse);
   });
 }

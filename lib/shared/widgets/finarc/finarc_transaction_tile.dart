@@ -4,6 +4,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/formatters.dart';
 import 'finarc_status_badge.dart';
 
 class FinarcTransactionTile extends StatelessWidget {
@@ -21,6 +22,8 @@ class FinarcTransactionTile extends StatelessWidget {
     this.statusLabel,
     this.statusTone = FinarcStatusTone.neutral,
     this.compact = false,
+    this.date,
+    this.source,
   });
 
   final String title;
@@ -35,6 +38,8 @@ class FinarcTransactionTile extends StatelessWidget {
   final String? statusLabel;
   final FinarcStatusTone statusTone;
   final bool compact;
+  final DateTime? date;
+  final String? source;
 
   @override
   Widget build(BuildContext context) {
@@ -42,6 +47,11 @@ class FinarcTransactionTile extends StatelessWidget {
     final titleStyle = compact
         ? Theme.of(context).textTheme.labelLarge
         : Theme.of(context).textTheme.titleSmall;
+    final resolvedMeta =
+        meta ??
+        (date == null
+            ? null
+            : transactionMetaLabel(date!, sourceLabel: source));
     final content = Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.sm,
@@ -63,9 +73,12 @@ class FinarcTransactionTile extends StatelessWidget {
                 Text(title, style: titleStyle),
                 const SizedBox(height: 2),
                 Text(subtitle, style: Theme.of(context).textTheme.labelMedium),
-                if (meta != null) ...[
+                if (resolvedMeta != null) ...[
                   const SizedBox(height: 2),
-                  Text(meta!, style: Theme.of(context).textTheme.bodySmall),
+                  Text(
+                    resolvedMeta,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                 ],
                 if (badges.isNotEmpty)
                   Padding(

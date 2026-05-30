@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/database/database_providers.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/numeric_input_formatters.dart';
@@ -123,6 +124,92 @@ class _TransactionDetailScreenState
               child: ListView(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 children: [
+                  FinarcCard(
+                    child: FinarcTransactionTile(
+                      title: txn.title,
+                      subtitle: txn.category,
+                      meta: FinarcTransactionPresentation.meta(
+                        date: txn.transactionDate,
+                        source: FinarcTransactionPresentation.sourceLabel(
+                          txn.paymentSourceType,
+                        ),
+                      ),
+                      amount:
+                          '${(txn.type == 'income' || txn.type == 'refund') ? '+' : '-'}${inr(txn.amount)}',
+                      amountColor:
+                          (txn.type == 'income' || txn.type == 'refund')
+                          ? AppColors.darkSuccess
+                          : AppColors.darkError,
+                      amountMeta: txn.cardBillId != null
+                          ? 'Statement #${txn.cardBillId}'
+                          : null,
+                      badges: [
+                        if (txn.paymentSourceType == 'creditCard')
+                          FinarcTransactionPresentation.billedBadge(
+                            billed: txn.cardBillId != null,
+                          ),
+                        if (txn.cashbackAmount > 0)
+                          FinarcTransactionPresentation.cashbackBadge,
+                        if (txn.type == TransactionType.loanEmi)
+                          FinarcTransactionPresentation.loanPaymentBadge,
+                        if (txn.isForOthers)
+                          FinarcTransactionPresentation.recoverableStatusBadge(
+                            txn.recoverableStatus,
+                          ),
+                        if (txn.isForOthers &&
+                            (txn.recoverablePartyName?.trim().isNotEmpty ??
+                                false))
+                          FinarcStatusBadge(
+                            label: 'For ${txn.recoverablePartyName!.trim()}',
+                            tone: FinarcStatusTone.info,
+                            compact: true,
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (txn.isForOthers) ...[
+                    const SizedBox(height: AppSpacing.xs),
+                    FinarcCard(
+                      padding: const EdgeInsets.all(AppSpacing.sm),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Recoverable Visibility',
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          _detailRow(
+                            context,
+                            'Person',
+                            (txn.recoverablePartyName?.trim().isNotEmpty ??
+                                    false)
+                                ? txn.recoverablePartyName!.trim()
+                                : 'Not set',
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          _detailRow(
+                            context,
+                            'Recoverable base',
+                            inr(recoverableBase),
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          _detailRow(
+                            context,
+                            'Recovered',
+                            inr(recoveredAmount),
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          _detailRow(
+                            context,
+                            'Remaining',
+                            inr(remainingRecoverable),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: AppSpacing.sm),
                   if (!editable)
                     const FinarcCard(
                       child: Text(

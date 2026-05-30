@@ -142,10 +142,19 @@ class SplitScreen extends ConsumerWidget {
                         child: FinarcTransactionTile(
                           title: e.title,
                           subtitle: e.category,
-                          meta:
-                              'Group #${e.groupId} • ${e.splitType.toUpperCase()} • ${transactionDateLabel(e.expenseDate)}',
+                          meta: FinarcTransactionPresentation.meta(
+                            date: e.expenseDate,
+                            source: 'Group #${e.groupId}',
+                          ),
                           amount: inr(e.totalAmount),
                           amountColor: AppColors.darkError,
+                          badges: [
+                            FinarcStatusBadge(
+                              label: e.splitType.toUpperCase(),
+                              tone: FinarcStatusTone.info,
+                              compact: true,
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -158,10 +167,19 @@ class SplitScreen extends ConsumerWidget {
                           title: 'Settlement',
                           subtitle:
                               'Member ${s.fromMemberId} → ${s.toMemberId}',
-                          meta:
-                              'Group #${s.groupId} • ${transactionDateLabel(s.settlementDate)}',
+                          meta: FinarcTransactionPresentation.meta(
+                            date: s.settlementDate,
+                            source: 'Group #${s.groupId}',
+                          ),
                           amount: inr(s.amount),
                           amountColor: AppColors.darkSuccess,
+                          badges: const [
+                            FinarcStatusBadge(
+                              label: 'Settled',
+                              tone: FinarcStatusTone.success,
+                              compact: true,
+                            ),
+                          ],
                         ),
                       ),
                     ),
