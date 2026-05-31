@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -11,8 +13,38 @@ import '../../profile/data/profile_settings_providers.dart';
 import '../data/dashboard_providers.dart';
 import 'widgets/dashboard_sections.dart';
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen>
+    with WidgetsBindingObserver {
+  Timer? _greetingRefreshTimer;
+  DateTime _now = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _scheduleGreetingRefresh();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _greetingRefreshTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshGreetingNow();
+    }
+  }
 
   EdgeInsets _pagePadding(BuildContext context) {
     final topInset = MediaQuery.paddingOf(context).top;
@@ -25,7 +57,7 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final onboardingState = ref.watch(onboardingCompletedProvider);
     final profile = ref.watch(userProfileSettingsProvider).valueOrNull;
     return onboardingState.when(
@@ -118,6 +150,7 @@ class DashboardScreen extends ConsumerWidget {
                 children: [
                   DashboardGreetingHeader(
                     name: profile?.name,
+                    now: _now,
                     unreadAlertsCount: data.unreadAlertsCount,
                     onAlertsTap: () => context.push('/alerts'),
                     onSettingsTap: () => context.push('/profile'),
@@ -207,6 +240,38 @@ class DashboardScreen extends ConsumerWidget {
         );
       },
     );
+  }
+
+  void _refreshGreetingNow() {
+    if (!mounted) return;
+    setState(() => _now = DateTime.now());
+    _scheduleGreetingRefresh();
+  }
+
+  void _scheduleGreetingRefresh() {
+    _greetingRefreshTimer?.cancel();
+    final now = DateTime.now();
+    final nextBoundary = _nextGreetingBoundary(now);
+    var delay = nextBoundary.difference(now);
+    if (delay <= Duration.zero) {
+      delay = const Duration(seconds: 1);
+    }
+    _greetingRefreshTimer = Timer(delay, _refreshGreetingNow);
+  }
+
+  DateTime _nextGreetingBoundary(DateTime now) {
+    final today = DateTime(now.year, now.month, now.day);
+    final boundaries = <DateTime>[
+      today.add(const Duration(hours: 5)),
+      today.add(const Duration(hours: 12)),
+      today.add(const Duration(hours: 17)),
+      today.add(const Duration(hours: 21)),
+      today.add(const Duration(days: 1, hours: 5)),
+    ];
+    for (final boundary in boundaries) {
+      if (boundary.isAfter(now)) return boundary;
+    }
+    return today.add(const Duration(days: 1, hours: 5));
   }
 
   String _salaryInsight(int salaryCreditDay) {

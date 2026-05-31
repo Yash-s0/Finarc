@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/config/app_mode.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/utils/formatters.dart';
 import '../../../../shared/widgets/finarc/finarc_widgets.dart';
 import '../../../pending/notifications/detection_settings.dart';
 import '../../../pending/notifications/ingestion_diagnostics.dart';
@@ -41,6 +42,10 @@ class ProfileHeaderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final trimmedName = name?.trim();
+    final hasName = trimmedName != null && trimmedName.isNotEmpty;
+    final trimmedCompany = companyName?.trim();
+    final hasCompany = trimmedCompany != null && trimmedCompany.isNotEmpty;
     return FinarcCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -50,17 +55,23 @@ class ProfileHeaderCard extends StatelessWidget {
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: AppSpacing.xs),
-          Text('Name: ${name ?? '—'}'),
+          Text('Name: ${hasName ? trimmedName : 'Add your name'}'),
+          Text('Company: ${hasCompany ? trimmedCompany : 'Add company'}'),
           Text(
-            'Monthly salary: ${monthlySalary == null ? '—' : monthlySalary!.toStringAsFixed(2)}',
+            monthlySalary != null
+                ? 'Monthly salary: ${inr(monthlySalary!)}'
+                : 'Monthly salary: Add salary',
           ),
-          Text('Salary credit day: ${salaryCreditDay ?? '—'}'),
-          Text('Company: ${companyName ?? '—'}'),
+          Text(
+            salaryCreditDay != null
+                ? 'Salary credit day: $salaryCreditDay'
+                : 'Salary credit day: Add salary day',
+          ),
           const SizedBox(height: AppSpacing.sm),
           FinarcSecondaryButton(
             onPressed: onEdit,
             icon: Icons.edit_outlined,
-            label: 'Edit Profile & Salary',
+            label: 'Edit',
           ),
         ],
       ),
@@ -115,6 +126,7 @@ class DataControlsSection extends StatelessWidget {
     super.key,
     required this.onExportBackup,
     required this.onImportBackup,
+    required this.onImportTransactions,
     required this.onExportTransactions,
     required this.onExportExpenses,
     required this.onExportAccounts,
@@ -125,6 +137,7 @@ class DataControlsSection extends StatelessWidget {
 
   final VoidCallback onExportBackup;
   final VoidCallback onImportBackup;
+  final VoidCallback onImportTransactions;
   final VoidCallback onExportTransactions;
   final VoidCallback onExportExpenses;
   final VoidCallback onExportAccounts;
@@ -155,6 +168,12 @@ class DataControlsSection extends StatelessWidget {
             onPressed: onImportBackup,
             label: 'Import Backup',
             icon: Icons.upload_file_rounded,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          FinarcSecondaryButton(
+            onPressed: onImportTransactions,
+            label: 'Import Transactions',
+            icon: Icons.playlist_add_check_circle_outlined,
           ),
           const SizedBox(height: AppSpacing.sm),
           FinarcSecondaryButton(

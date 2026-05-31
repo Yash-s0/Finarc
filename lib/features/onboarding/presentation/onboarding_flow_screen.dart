@@ -22,6 +22,8 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
   final _salaryDay = TextEditingController();
   final _company = TextEditingController();
   int _index = 0;
+  bool _nameSkippedExplicitly = false;
+  static const int _profileStepIndex = 4;
 
   @override
   void dispose() {
@@ -77,6 +79,7 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
         salaryController: _salary,
         salaryDayController: _salaryDay,
         companyController: _company,
+        onSkipName: () => setState(() => _nameSkippedExplicitly = true),
       ),
       _StepTemplate(
         title: 'Setup complete',
@@ -89,7 +92,12 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
     return FinarcScaffold(
       appBar: FinarcAppBar(
         title: 'First Run Setup',
-        actions: [TextButton(onPressed: _finish, child: const Text('Skip'))],
+        actions: [
+          TextButton(
+            onPressed: () => _finish(allowNameSkip: true),
+            child: const Text('Skip'),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -149,11 +157,8 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
                 Expanded(
                   child: FinarcPrimaryButton(
                     onPressed: _index == pages.length - 1
-                        ? _finish
-                        : () => _controller.nextPage(
-                            duration: const Duration(milliseconds: 220),
-                            curve: Curves.easeOut,
-                          ),
+                        ? () => _finish()
+                        : _onNext,
                     icon: _index == pages.length - 1
                         ? Icons.check_circle_outline
                         : Icons.arrow_forward_rounded,
@@ -168,16 +173,72 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
     );
   }
 
-  Future<void> _finish() async {
+  Future<void> _onNext() async {
+    if (_index == _profileStepIndex && !_validateProfileInputs()) {
+      return;
+    }
+    await _controller.nextPage(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+    );
+  }
+
+  bool _validateProfileInputs() {
+    final name = _name.text.trim();
+    final salaryText = _salary.text.trim();
+    final salaryDayText = _salaryDay.text.trim();
+
+    if (name.isEmpty && !_nameSkippedExplicitly) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please add your name or choose "Skip name for now".'),
+        ),
+      );
+      return false;
+    }
+
+    if (salaryText.isNotEmpty) {
+      final salary = double.tryParse(salaryText);
+      if (salary == null || salary <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Monthly salary must be positive.')),
+        );
+        return false;
+      }
+    }
+
+    if (salaryDayText.isNotEmpty) {
+      final salaryDay = int.tryParse(salaryDayText);
+      if (salaryDay == null || salaryDay < 1 || salaryDay > 31) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Salary credit day must be 1 to 31.')),
+        );
+        return false;
+      }
+    }
+    return true;
+  }
+
+  Future<void> _finish({bool allowNameSkip = false}) async {
+    if (allowNameSkip) {
+      _nameSkippedExplicitly = true;
+    }
+    if (!_validateProfileInputs()) return;
+
+    final name = _name.text.trim();
     final salary = double.tryParse(_salary.text.trim());
-    final salaryDay = int.tryParse(_salaryDay.text.trim());
+    final rawSalaryDay = int.tryParse(_salaryDay.text.trim());
+    final salaryDay = rawSalaryDay == null
+        ? null
+        : (rawSalaryDay >= 1 && rawSalaryDay <= 31 ? rawSalaryDay : null);
+    final company = _company.text.trim();
     await ref
         .read(onboardingActionsProvider)
         .complete(
-          userName: _name.text.trim(),
+          userName: name.isEmpty ? null : name,
           monthlySalary: salary,
           salaryCreditDay: salaryDay,
-          companyName: _company.text.trim(),
+          companyName: company.isEmpty ? null : company,
         );
     if (!mounted) return;
     context.go('/');
@@ -284,12 +345,14 @@ class _ProfileSetupStep extends StatelessWidget {
     required this.salaryController,
     required this.salaryDayController,
     required this.companyController,
+    required this.onSkipName,
   });
 
   final TextEditingController nameController;
   final TextEditingController salaryController;
   final TextEditingController salaryDayController;
   final TextEditingController companyController;
+  final VoidCallback onSkipName;
 
   @override
   Widget build(BuildContext context) {
@@ -300,33 +363,40 @@ class _ProfileSetupStep extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              FinarcSectionHeader(title: 'Your Profile (Optional)'),
+              FinarcSectionHeader(title: 'Tell us about you'),
               SizedBox(height: AppSpacing.xs),
-              Text('Add personal salary details for smarter local insights.'),
+              Text(
+                'Name is strongly recommended. Salary details are optional and used for local insights.',
+              ),
             ],
           ),
         ),
         const SizedBox(height: AppSpacing.sm),
-        FinarcTextField(controller: nameController, label: 'Your Name'),
+        FinarcTextField(controller: nameController, label: 'Your name'),
+        const SizedBox(height: AppSpacing.xs),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton(
+            onPressed: onSkipName,
+            child: const Text('Skip name for now'),
+          ),
+        ),
         const SizedBox(height: AppSpacing.sm),
         FinarcTextField(
           controller: salaryController,
-          label: 'Monthly Salary (optional)',
+          label: 'Monthly salary',
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           inputFormatters: [StripLeadingZeroFormatter()],
         ),
         const SizedBox(height: AppSpacing.sm),
         FinarcTextField(
           controller: salaryDayController,
-          label: 'Salary Credit Day (1-31, optional)',
+          label: 'Salary credit day',
           keyboardType: TextInputType.number,
           inputFormatters: [StripLeadingZeroFormatter(allowDecimal: false)],
         ),
         const SizedBox(height: AppSpacing.sm),
-        FinarcTextField(
-          controller: companyController,
-          label: 'Company Name (optional)',
-        ),
+        FinarcTextField(controller: companyController, label: 'Company name'),
       ],
     );
   }

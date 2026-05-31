@@ -6,6 +6,8 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
 import '../../expenses/data/expenses_providers.dart';
+import '../../expenses/models/transaction_types.dart';
+import '../../expenses/presentation/payment_source_selector_support.dart';
 import '../data/loans_providers.dart';
 
 class EmiPaymentScreen extends ConsumerStatefulWidget {
@@ -18,6 +20,24 @@ class EmiPaymentScreen extends ConsumerStatefulWidget {
 }
 
 class _EmiPaymentScreenState extends ConsumerState<EmiPaymentScreen> {
+  static const _modeOptions = [
+    FinarcPaymentModeOption(
+      value: PaymentSourceType.cash,
+      label: 'Cash',
+      icon: Icons.payments_rounded,
+    ),
+    FinarcPaymentModeOption(
+      value: PaymentSourceType.upi,
+      label: 'UPI',
+      icon: Icons.qr_code_scanner_rounded,
+    ),
+    FinarcPaymentModeOption(
+      value: PaymentSourceType.bank,
+      label: 'Bank',
+      icon: Icons.account_balance_rounded,
+    ),
+  ];
+
   final _formKey = GlobalKey<FormState>();
   final _amount = TextEditingController();
   final _notes = TextEditingController();
@@ -142,33 +162,6 @@ class _EmiPaymentScreenState extends ConsumerState<EmiPaymentScreen> {
                         },
                       ),
                       const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        'Source type',
-                        style: Theme.of(context).textTheme.labelMedium,
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Wrap(
-                        spacing: 8,
-                        children: [
-                          FinarcActionChip(
-                            label: 'Bank',
-                            selected: _sourceType == 'bank',
-                            onTap: () => setState(() {
-                              _sourceType = 'bank';
-                              _sourceId = null;
-                            }),
-                          ),
-                          FinarcActionChip(
-                            label: 'Cash',
-                            selected: _sourceType == 'cash',
-                            onTap: () => setState(() {
-                              _sourceType = 'cash';
-                              _sourceId = null;
-                            }),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
                       sources.when(
                         loading: () => const FinarcLoadingSkeleton(height: 56),
                         error: (e, _) => Text(
@@ -176,56 +169,40 @@ class _EmiPaymentScreenState extends ConsumerState<EmiPaymentScreen> {
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                         data: (sourceData) {
-                          final items = _sourceType == 'cash'
-                              ? sourceData.cashWallets
-                                    .map(
-                                      (w) => (
-                                        id: w.id,
-                                        label:
-                                            '${w.walletName} (${inr(w.currentBalance)})',
-                                      ),
-                                    )
-                                    .toList(growable: false)
-                              : sourceData.banks
-                                    .map(
-                                      (b) => (
-                                        id: b.id,
-                                        label:
-                                            '${b.accountName} (${inr(b.currentBalance)})',
-                                      ),
-                                    )
-                                    .toList(growable: false);
-
-                          if (items.isNotEmpty && _sourceId == null) {
-                            _sourceId = items.first.id;
-                          }
-
-                          if (items.isEmpty) {
-                            return Text(
-                              _sourceType == 'cash'
-                                  ? 'No cash wallets available'
-                                  : 'No bank accounts available',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            );
-                          }
-
-                          return DropdownButtonFormField<int>(
-                            initialValue: _sourceId,
-                            isExpanded: true,
-                            decoration: const InputDecoration(
-                              labelText: 'Payment source',
-                            ),
-                            items: [
-                              for (final item in items)
-                                DropdownMenuItem<int>(
-                                  value: item.id,
-                                  child: Text(item.label),
-                                ),
-                            ],
-                            onChanged: (value) =>
+                          final sourceConfig = sourceConfigForMode(
+                            sourceData,
+                            _sourceType,
+                          );
+                          _syncSourceSelection(sourceConfig.options);
+                          final emptyState = sourceConfig.options.isEmpty
+                              ? FinarcPaymentSourceEmptyState(
+                                  message: sourceConfig.emptyMessage!,
+                                  ctaLabel: sourceConfig.emptyCtaLabel!,
+                                  onTap: () =>
+                                      context.push(sourceConfig.emptyCtaRoute!),
+                                )
+                              : null;
+                          return FinarcPaymentSelector(
+                            title: 'Payment Source',
+                            selectedMode: _sourceType,
+                            modes: _modeOptions,
+                            onModeChanged: (v) => setState(() {
+                              _sourceType = v;
+                              _sourceId = null;
+                            }),
+                            sources: sourceConfig.options,
+                            selectedSourceId: _sourceId,
+                            onSourceChanged: (value) =>
                                 setState(() => _sourceId = value),
-                            validator: (value) =>
-                                value == null ? 'Select source' : null,
+                            sourceLabel: sourceConfig.fieldLabel,
+                            singleSourcePrefix: sourceConfig.singlePrefix,
+                            emptyState: emptyState,
+                            sourceValidator: (value) {
+                              if (sourceConfig.options.length <= 1) {
+                                return null;
+                              }
+                              return value == null ? 'Select source' : null;
+                            },
                           );
                         },
                       ),
@@ -275,7 +252,23 @@ class _EmiPaymentScreenState extends ConsumerState<EmiPaymentScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_sourceId == null) return;
+    final sources = ref.read(paymentSourcesProvider).valueOrNull;
+    final sourceConfig = sourceConfigForMode(
+      sources ??
+          const PaymentSourcesData(banks: [], cards: [], cashWallets: []),
+      _sourceType,
+    );
+    final sourceId = resolveAutoSelectedSourceId(
+      _sourceId,
+      sourceConfig.options,
+    );
+    if (sourceId == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(sourceConfig.emptyMessage ?? 'Select source')),
+      );
+      return;
+    }
 
     final amount = double.parse(_amount.text);
     await ref
@@ -284,7 +277,7 @@ class _EmiPaymentScreenState extends ConsumerState<EmiPaymentScreen> {
           loanId: widget.loanId,
           amount: amount,
           paymentSourceType: _sourceType,
-          paymentSourceId: _sourceId!,
+          paymentSourceId: sourceId,
           paymentDate: _date,
           notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
         );
@@ -294,5 +287,14 @@ class _EmiPaymentScreenState extends ConsumerState<EmiPaymentScreen> {
       SnackBar(content: Text('EMI payment recorded: ${inr(amount)}')),
     );
     context.pop();
+  }
+
+  void _syncSourceSelection(List<FinarcPaymentSourceOption> options) {
+    final next = resolveAutoSelectedSourceId(_sourceId, options);
+    if (next == _sourceId) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _sourceId = next);
+    });
   }
 }

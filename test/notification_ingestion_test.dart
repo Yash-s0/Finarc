@@ -158,6 +158,66 @@ void main() {
     late NotificationIngestionService service;
     late _FakeLocalNotifier notifier;
     late List<NotificationDebugEntry> debugEntries;
+    const iciciBillText =
+        'Pay Total Amount Due of Rs 17,027.10 or Minimum Amount Due of Rs 860.00 by 07-Jun-26 '
+        'towards ICICI Bank Credit Card XX9000. Delay/Non-payment is reported to Credit Bureaus. Ignore if paid.';
+
+    Future<int> createCard({
+      required String bankName,
+      required String last4,
+      String nickname = 'Primary Card',
+    }) {
+      return db
+          .into(db.creditCards)
+          .insert(
+            CreditCardsCompanion.insert(
+              bankName: bankName,
+              nickname: nickname,
+              last4: last4,
+              maskedNumber: 'XXXXXX$last4',
+              creditLimit: 200000,
+              billingDay: 1,
+              dueDay: 7,
+              currentOutstanding: const drift.Value(0.0),
+            ),
+          );
+    }
+
+    Future<int> createBill({
+      required int cardId,
+      required double billedAmount,
+      required DateTime dueDate,
+      required String status,
+      double paidAmount = 0,
+    }) {
+      return db
+          .into(db.cardBills)
+          .insert(
+            CardBillsCompanion.insert(
+              cardId: cardId,
+              cycleStartDate: drift.Value(DateTime(2026, 5, 1)),
+              cycleEndDate: drift.Value(DateTime(2026, 5, 31)),
+              billingDate: drift.Value(DateTime(2026, 5, 31)),
+              billedAmount: billedAmount,
+              paidAmount: drift.Value(paidAmount),
+              dueDate: drift.Value(dueDate),
+              status: drift.Value(status),
+            ),
+          );
+    }
+
+    NotificationPayload iciciBillPayload({
+      DateTime? receivedAt,
+      String packageName = 'com.dreamplug.androidapp',
+    }) {
+      return NotificationPayload(
+        packageName: packageName,
+        sourceType: 'appNotification',
+        receivedAt: receivedAt ?? DateTime(2026, 5, 31, 9, 20),
+        title: 'CRED',
+        body: iciciBillText,
+      );
+    }
 
     setUp(() {
       db = AppDatabase(NativeDatabase.memory());
@@ -307,23 +367,202 @@ void main() {
       expect(pending.merchant, 'Myntra');
     });
 
-    test('card bill due notification does not create spend pending', () async {
-      final ids = await service.processPayload(
-        NotificationPayload(
-          packageName: 'com.dreamplug.androidapp',
-          sourceType: 'appNotification',
-          receivedAt: DateTime(2026, 5, 31, 9, 20),
-          title: 'CRED',
-          body: 'Your credit card bill of ₹12,500 is due tomorrow',
-        ),
+    test('ICICI bill due notification is classified and reconciled', () async {
+      final cardId = await createCard(bankName: 'ICICI Bank', last4: '9000');
+      await createBill(
+        cardId: cardId,
+        billedAmount: 17027.10,
+        dueDate: DateTime(2026, 6, 7),
+        status: 'billed',
+      );
+      final payload = iciciBillPayload();
+
+      final parsed = service.cardBillDueNotificationService.parse(payload);
+      expect(parsed, isNotNull);
+      expect(parsed!.totalAmountDue, 17027.10);
+      expect(parsed.minimumAmountDue, 860.00);
+      expect(parsed.dueDate, DateTime(2026, 6, 7));
+      expect(parsed.cardLast4, '9000');
+      expect(parsed.issuer, 'ICICI');
+
+      final ids = await service.processPayload(payload);
+      expect(ids, isEmpty);
+      expect(await db.select(db.pendingTransactions).get(), isEmpty);
+      final alerts = await db.select(db.alerts).get();
+      expect(alerts.length, 1);
+      expect(alerts.first.alertType, 'cardDue');
+      expect(alerts.first.title.toLowerCase(), contains('verified'));
+      expect(debugEntries.last.reason, 'card-bill-due-verified');
+    });
+
+    test('card bill due with no matching card creates alert only', () async {
+      final ids = await service.processPayload(iciciBillPayload());
+      expect(ids, isEmpty);
+      expect(await db.select(db.pendingTransactions).get(), isEmpty);
+
+      final alerts = await db.select(db.alerts).get();
+      expect(alerts.length, 1);
+      expect(
+        alerts.first.title,
+        'Card bill detected but no matching card found',
+      );
+      expect(debugEntries.last.reason, 'card-bill-due-noMatchingCard');
+    });
+
+    test(
+      'existing unpaid bill same amount verifies and updates due date',
+      () async {
+        final cardId = await createCard(bankName: 'ICICI Bank', last4: '9000');
+        final billId = await createBill(
+          cardId: cardId,
+          billedAmount: 17027.10,
+          dueDate: DateTime(2026, 6, 8),
+          status: 'billed',
+        );
+
+        final ids = await service.processPayload(iciciBillPayload());
+        expect(ids, isEmpty);
+        expect(await db.select(db.pendingTransactions).get(), isEmpty);
+
+        final bill = await (db.select(
+          db.cardBills,
+        )..where((b) => b.id.equals(billId))).getSingle();
+        expect(bill.billedAmount, 17027.10);
+        expect(bill.dueDate, DateTime(2026, 6, 7));
+        expect(debugEntries.last.reason, 'card-bill-due-updatedDueDate');
+      },
+    );
+
+    test(
+      'existing unpaid bill mismatch creates warning and no overwrite',
+      () async {
+        final cardId = await createCard(bankName: 'ICICI Bank', last4: '9000');
+        final billId = await createBill(
+          cardId: cardId,
+          billedAmount: 16000,
+          dueDate: DateTime(2026, 6, 7),
+          status: 'billed',
+        );
+
+        final ids = await service.processPayload(iciciBillPayload());
+        expect(ids, isEmpty);
+        expect(await db.select(db.pendingTransactions).get(), isEmpty);
+
+        final bill = await (db.select(
+          db.cardBills,
+        )..where((b) => b.id.equals(billId))).getSingle();
+        expect(bill.billedAmount, 16000);
+        expect(bill.dueDate, DateTime(2026, 6, 7));
+
+        final alerts = await db.select(db.alerts).get();
+        expect(alerts.length, 1);
+        expect(alerts.first.priority, 'warning');
+        expect(alerts.first.title.toLowerCase(), contains('amount mismatch'));
+        expect(debugEntries.last.reason, 'card-bill-due-mismatchAlert');
+      },
+    );
+
+    test('already paid bill same amount creates info alert only', () async {
+      final cardId = await createCard(bankName: 'ICICI Bank', last4: '9000');
+      final billId = await createBill(
+        cardId: cardId,
+        billedAmount: 17027.10,
+        dueDate: DateTime(2026, 6, 7),
+        status: 'paid',
+        paidAmount: 17027.10,
       );
 
+      final ids = await service.processPayload(iciciBillPayload());
       expect(ids, isEmpty);
-      expect(
-        debugEntries.last.reason,
-        anyOf('confidence-low', 'parser-no-candidate'),
-      );
+      expect(await db.select(db.pendingTransactions).get(), isEmpty);
+
+      final bill = await (db.select(
+        db.cardBills,
+      )..where((b) => b.id.equals(billId))).getSingle();
+      expect(bill.billedAmount, 17027.10);
+      expect(bill.status, 'paid');
+
+      final alerts = await db.select(db.alerts).get();
+      expect(alerts.length, 1);
+      expect(alerts.first.priority, 'info');
+      expect(alerts.first.title, 'Paid bill notification matches your record');
+      expect(debugEntries.last.reason, 'card-bill-due-paidBillVerified');
     });
+
+    test(
+      'already paid bill mismatch creates warning and does not reopen',
+      () async {
+        final cardId = await createCard(bankName: 'ICICI Bank', last4: '9000');
+        final billId = await createBill(
+          cardId: cardId,
+          billedAmount: 18000,
+          dueDate: DateTime(2026, 6, 7),
+          status: 'paid',
+          paidAmount: 18000,
+        );
+
+        final ids = await service.processPayload(iciciBillPayload());
+        expect(ids, isEmpty);
+        expect(await db.select(db.pendingTransactions).get(), isEmpty);
+
+        final bill = await (db.select(
+          db.cardBills,
+        )..where((b) => b.id.equals(billId))).getSingle();
+        expect(bill.billedAmount, 18000);
+        expect(bill.status, 'paid');
+
+        final alerts = await db.select(db.alerts).get();
+        expect(alerts.length, 1);
+        expect(alerts.first.priority, 'warning');
+        expect(
+          alerts.first.title,
+          'Paid bill amount differs from notification',
+        );
+        expect(debugEntries.last.reason, 'card-bill-due-paidBillMismatch');
+      },
+    );
+
+    test('duplicate bill due notification is deduped', () async {
+      await createCard(bankName: 'ICICI Bank', last4: '9000');
+
+      final first = await service.processPayload(iciciBillPayload());
+      final second = await service.processPayload(
+        iciciBillPayload(receivedAt: DateTime(2026, 5, 31, 9, 21)),
+      );
+
+      expect(first, isEmpty);
+      expect(second, isEmpty);
+      expect(await db.select(db.pendingTransactions).get(), isEmpty);
+
+      final alerts = await db.select(db.alerts).get();
+      expect(alerts.length, 1);
+      expect(debugEntries.last.reason, 'card-bill-due-ignoredDuplicate');
+    });
+
+    test(
+      'normal card spend notification still creates pending expense',
+      () async {
+        await createCard(bankName: 'ICICI Bank', last4: '9000');
+        final ids = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.dreamplug.androidapp',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 5, 31, 10, 0),
+            title: 'CRED',
+            body: '₹500 spent on ICICI Credit Card XX9000 at Amazon',
+          ),
+        );
+
+        expect(ids.length, 1);
+        final pending = await (db.select(
+          db.pendingTransactions,
+        )..where((p) => p.id.equals(ids.first))).getSingle();
+        expect(pending.amount, 500);
+        expect(pending.paymentSourceTypeSuggestion, 'creditCard');
+        expect(pending.merchant, 'Amazon');
+        expect(await db.select(db.alerts).get(), isEmpty);
+      },
+    );
 
     test('real UPI sent notification still creates pending', () async {
       final ids = await service.processPayload(

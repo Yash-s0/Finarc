@@ -14,6 +14,7 @@ import '../data/expenses_providers.dart';
 import '../data/transaction_engine.dart';
 import '../models/transaction_types.dart';
 import '../../recoverables/data/recoverables_service.dart';
+import 'payment_source_selector_support.dart';
 
 final transactionByIdProvider = FutureProvider.family((ref, int id) async {
   await ref.watch(seedProvider.future);
@@ -35,6 +36,53 @@ class TransactionDetailScreen extends ConsumerStatefulWidget {
 
 class _TransactionDetailScreenState
     extends ConsumerState<TransactionDetailScreen> {
+  static const _allModes = [
+    FinarcPaymentModeOption(
+      value: PaymentSourceType.cash,
+      label: 'Cash',
+      icon: Icons.payments_rounded,
+    ),
+    FinarcPaymentModeOption(
+      value: PaymentSourceType.upi,
+      label: 'UPI',
+      icon: Icons.qr_code_scanner_rounded,
+    ),
+    FinarcPaymentModeOption(
+      value: PaymentSourceType.creditCard,
+      label: 'Card',
+      icon: Icons.credit_card_rounded,
+    ),
+    FinarcPaymentModeOption(
+      value: PaymentSourceType.bank,
+      label: 'Bank',
+      icon: Icons.account_balance_rounded,
+    ),
+  ];
+  static const _incomeModes = [
+    FinarcPaymentModeOption(
+      value: PaymentSourceType.cash,
+      label: 'Cash',
+      icon: Icons.payments_rounded,
+    ),
+    FinarcPaymentModeOption(
+      value: PaymentSourceType.upi,
+      label: 'UPI',
+      icon: Icons.qr_code_scanner_rounded,
+    ),
+    FinarcPaymentModeOption(
+      value: PaymentSourceType.bank,
+      label: 'Bank',
+      icon: Icons.account_balance_rounded,
+    ),
+  ];
+  static const _cardOnlyModes = [
+    FinarcPaymentModeOption(
+      value: PaymentSourceType.creditCard,
+      label: 'Card',
+      icon: Icons.credit_card_rounded,
+    ),
+  ];
+
   final _formKey = GlobalKey<FormState>();
   final _amount = TextEditingController();
   final _title = TextEditingController();
@@ -43,7 +91,6 @@ class _TransactionDetailScreenState
   final _dateController = TextEditingController();
   final _cashback = TextEditingController();
   final _recoverableParty = TextEditingController();
-  final _recoveredAmount = TextEditingController(text: '0');
 
   bool _forOthers = false;
   DateTime _date = DateTime.now();
@@ -61,7 +108,6 @@ class _TransactionDetailScreenState
     _dateController.dispose();
     _cashback.dispose();
     _recoverableParty.dispose();
-    _recoveredAmount.dispose();
     super.dispose();
   }
 
@@ -94,10 +140,9 @@ class _TransactionDetailScreenState
               _dateController.text = '${_date.toLocal()}'.split('.').first;
               _sourceType = txn.paymentSourceType;
               _sourceId = txn.paymentSourceId;
-              _forOthers = txn.isForOthers;
               _cashback.text = txn.cashbackAmount.toStringAsFixed(2);
               _recoverableParty.text = txn.recoverablePartyName ?? '';
-              _recoveredAmount.text = txn.recoveredAmount.toStringAsFixed(2);
+              _forOthers = _recoverableParty.text.trim().isNotEmpty;
               _type = txn.type;
               _initialized = true;
             }
@@ -110,14 +155,25 @@ class _TransactionDetailScreenState
                 ? (formAmount - formCashback).clamp(0, formAmount).toDouble()
                 : 0.0;
             final recoveredAmount = _forOthers
-                ? (double.tryParse(_recoveredAmount.text) ??
-                          txn.recoveredAmount)
-                      .clamp(0, recoverableBase)
-                      .toDouble()
+                ? txn.recoveredAmount.clamp(0, recoverableBase).toDouble()
                 : 0.0;
             final remainingRecoverable = (recoverableBase - recoveredAmount)
                 .clamp(0, recoverableBase)
                 .toDouble();
+            final modeOptions = _sourceModesForType(txn.type);
+            final sourceConfig = sourceConfigForMode(
+              sources,
+              _sourceType,
+              destination: txn.type == TransactionType.income,
+            );
+            _syncSourceSelection(sourceConfig.options);
+            final emptyState = sourceConfig.options.isEmpty
+                ? FinarcPaymentSourceEmptyState(
+                    message: sourceConfig.emptyMessage!,
+                    ctaLabel: sourceConfig.emptyCtaLabel!,
+                    onTap: () => context.push(sourceConfig.emptyCtaRoute!),
+                  )
+                : null;
 
             return Form(
               key: _formKey,
@@ -248,36 +304,28 @@ class _TransactionDetailScreenState
                     readOnly: !editable,
                   ),
                   const SizedBox(height: AppSpacing.xs),
-                  DropdownButtonFormField<String>(
-                    initialValue: _sourceType,
-                    decoration: const InputDecoration(
-                      labelText: 'Payment source',
-                    ),
-                    onChanged: !editable
-                        ? null
-                        : (v) {
-                            setState(() {
-                              _sourceType = v ?? PaymentSourceType.cash;
-                              _sourceId = null;
-                            });
-                          },
-                    items: _sourceItemsForType(txn.type),
+                  FinarcPaymentSelector(
+                    title: txn.type == TransactionType.income
+                        ? 'Receive into'
+                        : 'Payment Source',
+                    selectedMode: _sourceType,
+                    modes: modeOptions,
+                    onModeChanged: (v) => setState(() {
+                      _sourceType = v;
+                      _sourceId = null;
+                    }),
+                    sources: sourceConfig.options,
+                    selectedSourceId: _sourceId,
+                    onSourceChanged: (v) => setState(() => _sourceId = v),
+                    sourceLabel: sourceConfig.fieldLabel,
+                    singleSourcePrefix: sourceConfig.singlePrefix,
+                    emptyState: emptyState,
+                    enabled: editable,
+                    sourceValidator: (v) {
+                      if (sourceConfig.options.length <= 1) return null;
+                      return v == null ? 'Source required' : null;
+                    },
                   ),
-                  const SizedBox(height: AppSpacing.xs),
-                  if (_sourceType != PaymentSourceType.cash)
-                    DropdownButtonFormField<int>(
-                      initialValue: _sourceId,
-                      decoration: const InputDecoration(
-                        labelText: 'Source account/card',
-                      ),
-                      onChanged: !editable
-                          ? null
-                          : (v) => setState(() => _sourceId = v),
-                      items: _sourceItems(sources),
-                      validator: (v) => v == null ? 'Source required' : null,
-                    )
-                  else
-                    const Text('Cash source auto-selected'),
                   const SizedBox(height: AppSpacing.xs),
                   FinarcTextField(
                     controller: _dateController,
@@ -296,13 +344,31 @@ class _TransactionDetailScreenState
                       readOnly: !editable,
                     ),
                   const SizedBox(height: AppSpacing.xs),
-                  SwitchListTile.adaptive(
-                    title: const Text('For others'),
-                    contentPadding: EdgeInsets.zero,
-                    value: _forOthers,
-                    onChanged: !editable
-                        ? null
-                        : (v) => setState(() => _forOthers = v),
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          'For others?',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      Expanded(
+                        flex: 3,
+                        child: FinarcTextField(
+                          controller: _recoverableParty,
+                          label: 'Person name',
+                          readOnly: !editable,
+                          onChanged: !editable
+                              ? null
+                              : (value) => setState(
+                                  () => _forOthers = value.trim().isNotEmpty,
+                                ),
+                        ),
+                      ),
+                    ],
                   ),
                   if (_forOthers)
                     FinarcCard(
@@ -310,67 +376,14 @@ class _TransactionDetailScreenState
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const FinarcSectionHeader(
-                            title: 'Recoverable Details',
+                          Text(
+                            'Recoverable: ${inr(recoverableBase)} from ${_recoverableParty.text.trim()}',
+                            style: Theme.of(context).textTheme.bodyMedium,
                           ),
                           const SizedBox(height: AppSpacing.xs),
                           Text(
-                            'Recoverable amount is auto-calculated from amount - cashback.',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          _detailRow(
-                            context,
-                            'Recoverable base',
-                            inr(recoverableBase),
-                          ),
-                          const SizedBox(height: AppSpacing.xs),
-                          _detailRow(
-                            context,
-                            'Recovered',
-                            inr(recoveredAmount),
-                          ),
-                          const SizedBox(height: AppSpacing.xs),
-                          _detailRow(
-                            context,
-                            'Remaining',
-                            inr(remainingRecoverable),
-                          ),
-                          const SizedBox(height: AppSpacing.xs),
-                          FinarcTextField(
-                            controller: _recoveredAmount,
-                            label: 'Recovered amount',
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            inputFormatters: [StripLeadingZeroFormatter()],
-                            readOnly: !editable,
-                            onChanged: (_) => setState(() {}),
-                            validator: (v) {
-                              if (!_forOthers) return null;
-                              if (v == null || v.trim().isEmpty) return null;
-                              final recovered = double.tryParse(v.trim());
-                              if (recovered == null || recovered < 0) {
-                                return 'Enter valid recovered amount';
-                              }
-                              if (recovered > recoverableBase) {
-                                return 'Recovered cannot exceed recoverable base';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: AppSpacing.xs),
-                          FinarcTextField(
-                            controller: _recoverableParty,
-                            label: 'Paid for whom?',
-                            readOnly: !editable,
-                            validator: (v) {
-                              if (!_forOthers) return null;
-                              if (v == null || v.trim().isEmpty) {
-                                return 'Person/contact required';
-                              }
-                              return null;
-                            },
+                            'Recovered ${inr(recoveredAmount)} • Remaining ${inr(remainingRecoverable)}',
+                            style: Theme.of(context).textTheme.bodySmall,
                           ),
                           const SizedBox(height: AppSpacing.xs),
                           _RecoverableStatusPill(
@@ -420,60 +433,40 @@ class _TransactionDetailScreenState
     );
   }
 
-  List<DropdownMenuItem<String>> _sourceItemsForType(String txnType) {
-    if (txnType == TransactionType.income) {
-      return const [
-        DropdownMenuItem(value: PaymentSourceType.bank, child: Text('Bank')),
-        DropdownMenuItem(value: PaymentSourceType.cash, child: Text('Cash')),
-      ];
-    }
-    if (txnType == TransactionType.creditCard) {
-      return const [
-        DropdownMenuItem(
-          value: PaymentSourceType.creditCard,
-          child: Text('Credit Card'),
-        ),
-      ];
-    }
-    return const [
-      DropdownMenuItem(value: PaymentSourceType.bank, child: Text('Bank')),
-      DropdownMenuItem(value: PaymentSourceType.upi, child: Text('UPI')),
-      DropdownMenuItem(value: PaymentSourceType.cash, child: Text('Cash')),
-      DropdownMenuItem(
-        value: PaymentSourceType.creditCard,
-        child: Text('Credit Card'),
-      ),
-    ];
+  List<FinarcPaymentModeOption> _sourceModesForType(String txnType) {
+    if (txnType == TransactionType.income) return _incomeModes;
+    if (txnType == TransactionType.creditCard) return _cardOnlyModes;
+    return _allModes;
   }
 
-  List<DropdownMenuItem<int>> _sourceItems(PaymentSourcesData sources) {
-    if (_sourceType == PaymentSourceType.creditCard) {
-      return sources.cards
-          .map(
-            (c) => DropdownMenuItem(
-              value: c.id,
-              child: Text('${c.bankName} • ${c.last4}'),
-            ),
-          )
-          .toList();
-    }
-    if (_sourceType == PaymentSourceType.cash) {
-      return sources.cashWallets
-          .map((w) => DropdownMenuItem(value: w.id, child: Text(w.walletName)))
-          .toList();
-    }
-    return sources.banks
-        .map((b) => DropdownMenuItem(value: b.id, child: Text(b.accountName)))
-        .toList();
+  void _syncSourceSelection(List<FinarcPaymentSourceOption> options) {
+    final next = resolveAutoSelectedSourceId(_sourceId, options);
+    if (next == _sourceId) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _sourceId = next);
+    });
   }
 
   Future<void> _save(dynamic txn) async {
     if (!_formKey.currentState!.validate()) return;
     final sources = ref.read(paymentSourcesProvider).valueOrNull;
-    var sourceId = _sourceId;
-    if (_sourceType == PaymentSourceType.cash) {
-      final wallets = sources?.cashWallets ?? const [];
-      sourceId = wallets.isEmpty ? null : wallets.first.id;
+    final sourceConfig = sourceConfigForMode(
+      sources ??
+          const PaymentSourcesData(banks: [], cards: [], cashWallets: []),
+      _sourceType,
+      destination: txn.type == TransactionType.income,
+    );
+    final sourceId = resolveAutoSelectedSourceId(
+      _sourceId,
+      sourceConfig.options,
+    );
+    if (sourceId == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(sourceConfig.emptyMessage ?? 'Source required')),
+      );
+      return;
     }
 
     try {
@@ -481,13 +474,13 @@ class _TransactionDetailScreenState
       final cashback = _sourceType == PaymentSourceType.cash
           ? 0.0
           : (double.tryParse(_cashback.text) ?? 0.0);
-      final recoverableBase = _forOthers
+      final recoverableParty = _recoverableParty.text.trim();
+      final forOthers = recoverableParty.isNotEmpty;
+      final recoverableBase = forOthers
           ? (amount - cashback).clamp(0, amount).toDouble()
           : 0.0;
-      final recoveredAmount = _forOthers
-          ? (double.tryParse(_recoveredAmount.text) ?? 0)
-                .clamp(0, recoverableBase)
-                .toDouble()
+      final recoveredAmount = forOthers
+          ? txn.recoveredAmount.clamp(0, recoverableBase).toDouble()
           : 0.0;
 
       await ref
@@ -503,16 +496,14 @@ class _TransactionDetailScreenState
               paymentSourceType: _sourceType,
               paymentSourceId: sourceId,
               cashbackAmount: cashback,
-              isForOthers: _forOthers,
-              recoverableAmount: _forOthers
+              isForOthers: forOthers,
+              recoverableAmount: forOthers
                   ? (recoverableBase - recoveredAmount)
                         .clamp(0, recoverableBase)
                         .toDouble()
                   : null,
               recoveredAmount: recoveredAmount,
-              recoverablePartyName: _forOthers
-                  ? _recoverableParty.text.trim()
-                  : null,
+              recoverablePartyName: forOthers ? recoverableParty : null,
               recoveredAt: txn.recoveredAt,
               notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
             ),

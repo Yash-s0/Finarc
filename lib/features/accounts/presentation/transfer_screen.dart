@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
 import '../../expenses/data/expenses_providers.dart';
+import '../../expenses/models/transaction_types.dart';
+import '../../expenses/presentation/payment_source_selector_support.dart';
 import '../data/accounts_providers.dart';
 
 class TransferScreen extends ConsumerStatefulWidget {
@@ -19,10 +19,41 @@ class TransferScreen extends ConsumerStatefulWidget {
 }
 
 class _TransferScreenState extends ConsumerState<TransferScreen> {
+  static const _fromModes = [
+    FinarcPaymentModeOption(
+      value: PaymentSourceType.cash,
+      label: 'Wallet/Cash',
+      icon: Icons.wallet_rounded,
+    ),
+    FinarcPaymentModeOption(
+      value: PaymentSourceType.bank,
+      label: 'Bank',
+      icon: Icons.account_balance_rounded,
+    ),
+  ];
+
+  static const _toModes = [
+    FinarcPaymentModeOption(
+      value: PaymentSourceType.cash,
+      label: 'Wallet/Cash',
+      icon: Icons.wallet_rounded,
+    ),
+    FinarcPaymentModeOption(
+      value: PaymentSourceType.bank,
+      label: 'Bank',
+      icon: Icons.account_balance_rounded,
+    ),
+    FinarcPaymentModeOption(
+      value: PaymentSourceType.creditCard,
+      label: 'Card',
+      icon: Icons.credit_card_rounded,
+    ),
+  ];
+
   final _formKey = GlobalKey<FormState>();
-  String _fromType = 'bank';
+  String _fromType = PaymentSourceType.bank;
   int? _fromId;
-  String _toType = 'cash';
+  String _toType = PaymentSourceType.cash;
   int? _toId;
   final _amount = TextEditingController();
   final _notes = TextEditingController();
@@ -43,13 +74,33 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (sources) {
-          final fromLabel = _selectedLabel(
+          final fromConfig = sourceConfigForMode(sources, _fromType);
+          final toConfig = sourceConfigForMode(
             sources,
-            kind: _fromType,
-            id: _fromId,
+            _toType,
+            destination: true,
           );
-          final toLabel = _selectedLabel(sources, kind: _toType, id: _toId);
+          _syncSelection(isFrom: true, options: fromConfig.options);
+          _syncSelection(isFrom: false, options: toConfig.options);
+
+          final fromLabel = _selectedSourceLabel(_fromId, fromConfig.options);
+          final toLabel = _selectedSourceLabel(_toId, toConfig.options);
           final amountValue = double.tryParse(_amount.text) ?? 0;
+
+          final fromEmpty = fromConfig.options.isEmpty
+              ? FinarcPaymentSourceEmptyState(
+                  message: fromConfig.emptyMessage!,
+                  ctaLabel: fromConfig.emptyCtaLabel!,
+                  onTap: () => context.push(fromConfig.emptyCtaRoute!),
+                )
+              : null;
+          final toEmpty = toConfig.options.isEmpty
+              ? FinarcPaymentSourceEmptyState(
+                  message: toConfig.emptyMessage!,
+                  ctaLabel: toConfig.emptyCtaLabel!,
+                  onTap: () => context.push(toConfig.emptyCtaRoute!),
+                )
+              : null;
 
           return Form(
             key: _formKey,
@@ -62,88 +113,46 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
                     children: [
                       const FinarcSectionHeader(title: 'Transfer Direction'),
                       const SizedBox(height: AppSpacing.sm),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              initialValue: _fromType,
-                              decoration: const InputDecoration(
-                                labelText: 'From type',
-                              ),
-                              items: const [
-                                DropdownMenuItem(
-                                  value: 'bank',
-                                  child: Text('Bank'),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'cash',
-                                  child: Text('Cash'),
-                                ),
-                              ],
-                              onChanged: (v) {
-                                setState(() {
-                                  _fromType = v ?? 'bank';
-                                  _fromId = null;
-                                });
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.sm),
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              initialValue: _toType,
-                              decoration: const InputDecoration(
-                                labelText: 'To type',
-                              ),
-                              items: const [
-                                DropdownMenuItem(
-                                  value: 'bank',
-                                  child: Text('Bank'),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'cash',
-                                  child: Text('Cash'),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'creditCard',
-                                  child: Text('Credit Card Payment'),
-                                ),
-                              ],
-                              onChanged: (v) {
-                                setState(() {
-                                  _toType = v ?? 'bank';
-                                  _toId = null;
-                                });
-                              },
-                            ),
-                          ),
-                        ],
+                      FinarcPaymentSelector(
+                        title: 'Transfer from',
+                        selectedMode: _fromType,
+                        modes: _fromModes,
+                        onModeChanged: (v) => setState(() {
+                          _fromType = v;
+                          _fromId = null;
+                        }),
+                        sources: fromConfig.options,
+                        selectedSourceId: _fromId,
+                        onSourceChanged: (v) => setState(() => _fromId = v),
+                        sourceLabel: fromConfig.fieldLabel,
+                        singleSourcePrefix: fromConfig.singlePrefix,
+                        emptyState: fromEmpty,
+                        sourceValidator: (v) {
+                          if (fromConfig.options.length <= 1) return null;
+                          if (v == null) return 'Source required';
+                          return null;
+                        },
                       ),
                       const SizedBox(height: AppSpacing.sm),
-                      _selectorField(
-                        context,
-                        label: 'From account',
-                        value: fromLabel,
-                        onTap: () => _pickAccount(
-                          context,
-                          sources,
-                          type: _fromType,
-                          isFrom: true,
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      _selectorField(
-                        context,
-                        label: _toType == 'creditCard'
-                            ? 'To card'
-                            : 'To account',
-                        value: toLabel,
-                        onTap: () => _pickAccount(
-                          context,
-                          sources,
-                          type: _toType,
-                          isFrom: false,
-                        ),
+                      FinarcPaymentSelector(
+                        title: 'Transfer to',
+                        selectedMode: _toType,
+                        modes: _toModes,
+                        onModeChanged: (v) => setState(() {
+                          _toType = v;
+                          _toId = null;
+                        }),
+                        sources: toConfig.options,
+                        selectedSourceId: _toId,
+                        onSourceChanged: (v) => setState(() => _toId = v),
+                        sourceLabel: toConfig.fieldLabel,
+                        singleSourcePrefix: toConfig.singlePrefix,
+                        emptyState: toEmpty,
+                        sourceValidator: (v) {
+                          if (toConfig.options.length <= 1) return null;
+                          if (v == null) return 'Destination required';
+                          return null;
+                        },
                       ),
                     ],
                   ),
@@ -229,89 +238,60 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
     );
   }
 
-  Widget _selectorField(
-    BuildContext context, {
-    required String label,
-    required String value,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.md),
-      child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: label,
-          suffixIcon: const Icon(Icons.keyboard_arrow_down_rounded),
-        ),
-        child: Text(value, style: Theme.of(context).textTheme.bodyLarge),
-      ),
-    );
-  }
-
-  Future<void> _pickAccount(
-    BuildContext context,
-    PaymentSourcesData sources, {
-    required String type,
-    required bool isFrom,
-  }) async {
-    final selected = await FinarcBottomSheet.show<int>(
-      context,
-      child: _AccountSelectorSheet(
-        type: type,
-        sources: sources,
-        selectedId: isFrom ? _fromId : _toId,
-      ),
-    );
-
-    if (selected == null) return;
-    setState(() {
-      if (isFrom) {
-        _fromId = selected;
-      } else {
-        _toId = selected;
-      }
-    });
-  }
-
-  String _selectedLabel(
-    PaymentSourcesData sources, {
-    required String kind,
-    required int? id,
-  }) {
+  String _selectedSourceLabel(
+    int? id,
+    List<FinarcPaymentSourceOption> options,
+  ) {
     if (id == null) return 'Select';
-
-    if (kind == 'cash') {
-      final matches = sources.cashWallets.where((w) => w.id == id);
-      final match = matches.isEmpty ? null : matches.first;
-      return match == null
-          ? 'Select'
-          : '${match.walletName} • ${inr(match.currentBalance)}';
+    for (final option in options) {
+      if (option.id == id) return option.label;
     }
-    if (kind == 'creditCard') {
-      final matches = sources.cards.where((c) => c.id == id);
-      final match = matches.isEmpty ? null : matches.first;
-      return match == null ? 'Select' : '${match.bankName} • ${match.last4}';
-    }
-
-    final matches = sources.banks.where((b) => b.id == id);
-    final match = matches.isEmpty ? null : matches.first;
-    return match == null
-        ? 'Select'
-        : '${match.accountName} • ${inr(match.currentBalance)}';
+    return 'Select';
   }
 
   Future<void> _submit(BuildContext context) async {
     if (!_formKey.currentState!.validate()) return;
-    if (_fromId == null || _toId == null) return;
+
+    final sources = ref.read(paymentSourcesProvider).valueOrNull;
+    final fromConfig = sourceConfigForMode(
+      sources ?? const PaymentSourcesData(banks: [], cards: [], cashWallets: []),
+      _fromType,
+    );
+    final toConfig = sourceConfigForMode(
+      sources ?? const PaymentSourcesData(banks: [], cards: [], cashWallets: []),
+      _toType,
+      destination: true,
+    );
+    final fromId = resolveAutoSelectedSourceId(_fromId, fromConfig.options);
+    final toId = resolveAutoSelectedSourceId(_toId, toConfig.options);
+
+    if (fromId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(fromConfig.emptyMessage ?? 'Select source')),
+      );
+      return;
+    }
+    if (toId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(toConfig.emptyMessage ?? 'Select destination')),
+      );
+      return;
+    }
+    if (_fromType == _toType && fromId == toId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('From and To cannot be the same account')),
+      );
+      return;
+    }
 
     final amount = double.tryParse(_amount.text) ?? 0;
     await ref
         .read(accountServiceProvider)
         .transferBetweenAccounts(
           sourceType: _fromType,
-          sourceId: _fromId!,
+          sourceId: fromId,
           destinationType: _toType,
-          destinationId: _toId!,
+          destinationId: toId,
           amount: amount,
           transactionDate: DateTime.now(),
           notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
@@ -324,128 +304,23 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
       '/accounts/transfer/success?amount=$amount&from=$_fromType&to=$_toType',
     );
   }
-}
 
-class _AccountSelectorSheet extends StatelessWidget {
-  const _AccountSelectorSheet({
-    required this.type,
-    required this.sources,
-    required this.selectedId,
-  });
-
-  final String type;
-  final PaymentSourcesData sources;
-  final int? selectedId;
-
-  @override
-  Widget build(BuildContext context) {
-    final List<_SheetItem> items;
-    if (type == 'cash') {
-      items = sources.cashWallets
-          .map(
-            (w) => _SheetItem(
-              id: w.id,
-              title: w.walletName,
-              subtitle: 'Cash wallet',
-              amount: inr(w.currentBalance),
-              badge: 'CASH',
-              icon: Icons.account_balance_wallet_outlined,
-            ),
-          )
-          .toList();
-    } else if (type == 'creditCard') {
-      items = sources.cards
-          .map(
-            (c) => _SheetItem(
-              id: c.id,
-              title: '${c.bankName} • ${c.last4}',
-              subtitle: c.maskedNumber,
-              amount: inr(c.currentOutstanding),
-              badge: 'CARD',
-              icon: Icons.credit_card,
-            ),
-          )
-          .toList();
-    } else {
-      items = sources.banks
-          .map(
-            (b) => _SheetItem(
-              id: b.id,
-              title: b.accountName,
-              subtitle: b.bankName,
-              amount: inr(b.currentBalance),
-              badge: b.accountType.toUpperCase(),
-              icon: Icons.account_balance,
-            ),
-          )
-          .toList();
-    }
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        AppSpacing.xs,
-        AppSpacing.md,
-        AppSpacing.lg,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Select ${type == 'creditCard' ? 'Card' : 'Account'}',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          if (items.isEmpty)
-            const FinarcEmptyState(
-              title: 'No options available',
-              subtitle: 'Create an account or wallet first.',
-            )
-          else
-            ...items.map(
-              (item) => Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(AppRadius.lg),
-                    border: Border.all(
-                      color: selectedId == item.id
-                          ? AppColors.darkAccent.withValues(alpha: 0.5)
-                          : Colors.transparent,
-                    ),
-                  ),
-                  child: FinarcAccountTile(
-                    title: item.title,
-                    subtitle: item.subtitle,
-                    amount: item.amount,
-                    icon: item.icon,
-                    badge: item.badge,
-                    onTap: () => Navigator.of(context).pop(item.id),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
+  void _syncSelection({
+    required bool isFrom,
+    required List<FinarcPaymentSourceOption> options,
+  }) {
+    final current = isFrom ? _fromId : _toId;
+    final next = resolveAutoSelectedSourceId(current, options);
+    if (next == current) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        if (isFrom) {
+          _fromId = next;
+        } else {
+          _toId = next;
+        }
+      });
+    });
   }
-}
-
-class _SheetItem {
-  const _SheetItem({
-    required this.id,
-    required this.title,
-    required this.subtitle,
-    required this.amount,
-    required this.badge,
-    required this.icon,
-  });
-
-  final int id;
-  final String title;
-  final String subtitle;
-  final String amount;
-  final String badge;
-  final IconData icon;
 }

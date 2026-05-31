@@ -19,15 +19,31 @@ class OnboardingService {
     int? salaryCreditDay,
     String? companyName,
   }) async {
+    if (monthlySalary != null && monthlySalary <= 0) {
+      throw ArgumentError('Monthly salary must be positive');
+    }
+    if (salaryCreditDay != null &&
+        (salaryCreditDay < 1 || salaryCreditDay > 31)) {
+      throw ArgumentError('Salary credit day must be between 1 and 31');
+    }
+
     final row = await _ensureSettingsRow();
     await (_db.update(_db.appSettings)..where((t) => t.id.equals(row.id)))
         .write(
           AppSettingsCompanion(
             hasCompletedOnboarding: Value(completed),
-            userName: Value(_normalize(userName)),
-            monthlySalary: Value(monthlySalary),
-            salaryCreditDay: Value(salaryCreditDay),
-            companyName: Value(_normalize(companyName)),
+            userName: userName == null
+                ? const Value.absent()
+                : Value(_normalize(userName)),
+            monthlySalary: monthlySalary == null
+                ? const Value.absent()
+                : Value(monthlySalary),
+            salaryCreditDay: salaryCreditDay == null
+                ? const Value.absent()
+                : Value(salaryCreditDay),
+            companyName: companyName == null
+                ? const Value.absent()
+                : Value(_normalize(companyName)),
           ),
         );
   }

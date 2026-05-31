@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 import '../../../core/database/app_database.dart';
 import '../parsing/parser_models.dart';
 import '../parsing/pending_ingestion_service.dart';
+import 'card_bill_due_notification_service.dart';
 import 'notification_ingestion_service.dart';
 import 'notification_keyword_filter.dart';
 import 'notification_local_notifier.dart';
@@ -22,7 +23,11 @@ class SmsIngestionService {
     required this._shouldShowDetectionNotifications,
     required this._appendDebug,
     required this._senderFilter,
-  }) : _db = database;
+    CardBillDueNotificationService? cardBillDueNotificationService,
+  }) : _db = database,
+       _cardBillDueNotificationService =
+           cardBillDueNotificationService ??
+           CardBillDueNotificationService(database: database);
 
   final AppDatabase _db;
   final PendingIngestionService _pendingIngestionService;
@@ -34,6 +39,7 @@ class SmsIngestionService {
   final bool Function() _shouldShowDetectionNotifications;
   final void Function(NotificationDebugEntry entry) _appendDebug;
   final SmsSenderFilter _senderFilter;
+  final CardBillDueNotificationService _cardBillDueNotificationService;
 
   Future<List<int>> processSmsPayload(
     NotificationPayload payload, {
@@ -60,6 +66,14 @@ class SmsIngestionService {
     final filterResult = _keywordFilter.evaluate(payload);
     if (!filterResult.accepted) {
       _log(payload, 'blocked-non-transaction-text');
+      return const [];
+    }
+
+    final billDueResult = await _cardBillDueNotificationService.handleIfBillDue(
+      payload,
+    );
+    if (billDueResult != null) {
+      _log(payload, 'card-bill-due-${billDueResult.action}');
       return const [];
     }
 

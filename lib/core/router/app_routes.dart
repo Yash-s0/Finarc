@@ -9,4 +9,10 @@ class AppRoutes {
   static const releaseChecklist = '/internal/release-checklist';
   static const notificationDiagnostics = '/notifications/diagnostics';
   static const notificationDiagnosticsLogs = '/notifications/diagnostics/logs';
+  static const transactionImport = '/profile/transaction-import';
+  static const transactionImportPaste = '/profile/transaction-import/paste';
+  static const transactionImportPreview = '/profile/transaction-import/preview';
+  static const transactionImportResult = '/profile/transaction-import/result';
+  static const transactionImportSampleFormat =
+      '/profile/transaction-import/sample-format';
 }

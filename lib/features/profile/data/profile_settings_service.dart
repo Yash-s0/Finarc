@@ -38,6 +38,13 @@ class ProfileSettingsService {
   }
 
   Future<void> save(UserProfileSettings profile) async {
+    if (profile.monthlySalary != null && profile.monthlySalary! <= 0) {
+      throw ArgumentError('Monthly salary must be positive');
+    }
+    if (profile.salaryCreditDay != null &&
+        (profile.salaryCreditDay! < 1 || profile.salaryCreditDay! > 31)) {
+      throw ArgumentError('Salary credit day must be between 1 and 31');
+    }
     final row = await _ensureSettingsRow();
     await (_db.update(_db.appSettings)..where((t) => t.id.equals(row.id))).write(
       AppSettingsCompanion(

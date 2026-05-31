@@ -18,6 +18,8 @@ import '../../features/expenses/presentation/add_expense_screen.dart';
 import '../../features/expenses/presentation/add_income_screen.dart';
 import '../../features/expenses/presentation/transaction_detail_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
+import '../../features/profile/presentation/transaction_import_screen.dart';
+import '../../features/profile/data/transaction_import_models.dart';
 import '../../features/split/presentation/split_screen.dart';
 import '../../features/split/presentation/add_split_group_screen.dart';
 import '../../features/split/presentation/split_group_detail_screen.dart';
@@ -100,6 +102,46 @@ final appRouter = GoRouter(
       ],
     ),
     GoRoute(path: '/cards/add', builder: (_, _) => const AddCardScreen()),
+    GoRoute(
+      path: AppRoutes.transactionImport,
+      builder: (_, _) => const TransactionImportScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.transactionImportPaste,
+      builder: (_, _) => const TransactionImportPasteScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.transactionImportSampleFormat,
+      builder: (_, _) => const TransactionImportSampleFormatScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.transactionImportPreview,
+      builder: (_, state) {
+        final preview = state.extra;
+        if (preview is! TransactionImportPreview) {
+          return const RouteFallbackScreen(
+            title: 'Invalid import preview',
+            message: 'Import preview data is missing or malformed.',
+            backRoute: AppRoutes.transactionImport,
+          );
+        }
+        return TransactionImportPreviewScreen(preview: preview);
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.transactionImportResult,
+      builder: (_, state) {
+        final result = state.extra;
+        if (result is! TransactionImportExecutionResult) {
+          return const RouteFallbackScreen(
+            title: 'Invalid import result',
+            message: 'Import result data is missing or malformed.',
+            backRoute: AppRoutes.transactionImport,
+          );
+        }
+        return TransactionImportResultScreen(result: result);
+      },
+    ),
     GoRoute(
       path: '/cards/:id',
       builder: (_, state) {

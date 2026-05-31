@@ -8,6 +8,7 @@ export 'finarc_card_preview.dart';
 export 'finarc_empty_state.dart';
 export 'finarc_loading_skeleton.dart';
 export 'finarc_metric_card.dart';
+export 'finarc_payment_selector.dart';
 export 'finarc_primary_button.dart';
 export 'finarc_scaffold.dart';
 export 'finarc_secondary_button.dart';

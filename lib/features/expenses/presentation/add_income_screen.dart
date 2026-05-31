@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/database/database_providers.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/numeric_input_formatters.dart';
@@ -15,16 +14,40 @@ import '../../dashboard/data/dashboard_providers.dart';
 import '../data/expenses_providers.dart';
 import '../data/transaction_engine.dart';
 import '../models/transaction_types.dart';
+import 'entry_date_time_utils.dart';
+import 'payment_source_selector_support.dart';
 
 class AddIncomeScreen extends ConsumerStatefulWidget {
-  const AddIncomeScreen({super.key});
+  const AddIncomeScreen({super.key, this.initialDateTime});
+
+  final DateTime? initialDateTime;
 
   @override
   ConsumerState<AddIncomeScreen> createState() => _AddIncomeScreenState();
 }
 
 class _AddIncomeScreenState extends ConsumerState<AddIncomeScreen> {
+  static const _destinationModes = [
+    FinarcPaymentModeOption(
+      value: PaymentSourceType.cash,
+      label: 'Cash',
+      icon: Icons.payments_rounded,
+    ),
+    FinarcPaymentModeOption(
+      value: PaymentSourceType.upi,
+      label: 'UPI',
+      icon: Icons.qr_code_scanner_rounded,
+    ),
+    FinarcPaymentModeOption(
+      value: PaymentSourceType.bank,
+      label: 'Bank',
+      icon: Icons.account_balance_rounded,
+    ),
+  ];
+
   static const _incomeCategories = [
+    'General',
+    'Income',
     'Salary',
     'Freelance',
     'Business',
@@ -41,15 +64,16 @@ class _AddIncomeScreenState extends ConsumerState<AddIncomeScreen> {
   final _notes = TextEditingController();
   final _dateController = TextEditingController();
 
-  String _category = _incomeCategories.first;
-  String? _destinationType;
+  String _category = 'General';
+  String _destinationType = PaymentSourceType.bank;
   int? _destinationId;
-  DateTime? _date = DateTime.now();
+  late DateTime _date;
 
   @override
   void initState() {
     super.initState();
-    _dateController.text = _dateText(_date!);
+    _date = widget.initialDateTime ?? DateTime.now();
+    _dateController.text = _dateText(_date);
   }
 
   @override
@@ -70,240 +94,224 @@ class _AddIncomeScreenState extends ConsumerState<AddIncomeScreen> {
       body: sourcesState.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
-        data: (sources) => Form(
-          key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.all(AppSpacing.md),
+        data: (sources) {
+          final destinationConfig = sourceConfigForMode(
+            sources,
+            _resolvedDestinationType,
+            destination: true,
+          );
+          _syncDestinationSelection(destinationConfig.options);
+          final emptyState = destinationConfig.options.isEmpty
+              ? FinarcPaymentSourceEmptyState(
+                  message: destinationConfig.emptyMessage!,
+                  ctaLabel: destinationConfig.emptyCtaLabel!,
+                  onTap: () => context.push(destinationConfig.emptyCtaRoute!),
+                )
+              : null;
+          return Column(
             children: [
-              FinarcCard(
-                padding: const EdgeInsets.all(AppSpacing.xs),
-                child: SegmentedButton<String>(
-                  showSelectedIcon: false,
-                  segments: const [
-                    ButtonSegment<String>(
-                      value: 'expense',
-                      label: Text('Expense'),
+              Expanded(
+                child: Form(
+                  key: _formKey,
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.md,
+                      AppSpacing.md,
+                      AppSpacing.md,
+                      AppSpacing.sm,
                     ),
-                    ButtonSegment<String>(
-                      value: 'income',
-                      label: Text('Income'),
-                    ),
-                  ],
-                  selected: const {'income'},
-                  onSelectionChanged: (selection) {
-                    if (selection.first == 'expense') {
-                      context.go('/expenses/add');
-                    }
-                  },
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              FinarcCard(
-                child: Row(
-                  children: [
-                    const CircleAvatar(
-                      radius: 18,
-                      backgroundColor: AppColors.darkSuccess,
-                      child: Icon(
-                        Icons.south_west_rounded,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Text(
-                        'Money In: ${inr(double.tryParse(_amount.text) ?? 0)}',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              FinarcCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const FinarcSectionHeader(title: 'Income Basics'),
-                    const SizedBox(height: AppSpacing.sm),
-                    FinarcTextField(
-                      controller: _amount,
-                      label: 'Amount',
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      inputFormatters: [StripLeadingZeroFormatter()],
-                      validator: (v) {
-                        final amount = double.tryParse((v ?? '').trim());
-                        if (amount == null || amount <= 0) {
-                          return 'Amount must be greater than 0';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    FinarcTextField(
-                      controller: _title,
-                      label: 'Income source/title',
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) {
-                          return 'Title is required';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    DropdownButtonFormField<String>(
-                      initialValue: _category,
-                      decoration: const InputDecoration(labelText: 'Category'),
-                      items: _incomeCategories
-                          .map(
-                            (category) => DropdownMenuItem<String>(
-                              value: category,
-                              child: Text(category),
+                    children: [
+                      FinarcCard(
+                        padding: const EdgeInsets.all(AppSpacing.xs),
+                        child: SegmentedButton<String>(
+                          showSelectedIcon: false,
+                          segments: const [
+                            ButtonSegment<String>(
+                              value: 'expense',
+                              label: Text('Expense'),
                             ),
-                          )
-                          .toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _category = value ?? _incomeCategories.first;
-                        });
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              FinarcCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const FinarcSectionHeader(title: 'Destination'),
-                    const SizedBox(height: AppSpacing.sm),
-                    DropdownButtonFormField<String>(
-                      initialValue: _destinationType,
-                      decoration: const InputDecoration(
-                        labelText: 'Destination type',
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: PaymentSourceType.bank,
-                          child: Text('Bank account'),
+                            ButtonSegment<String>(
+                              value: 'income',
+                              label: Text('Income'),
+                            ),
+                          ],
+                          selected: const {'income'},
+                          onSelectionChanged: (selection) {
+                            if (selection.first == 'expense') {
+                              context.go('/expenses/add');
+                            }
+                          },
                         ),
-                        DropdownMenuItem(
-                          value: PaymentSourceType.cash,
-                          child: Text('Cash wallet'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          _destinationType = value;
-                          _destinationId = null;
-                        });
-                      },
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Destination type required';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    DropdownButtonFormField<int>(
-                      initialValue: _destinationId,
-                      decoration: const InputDecoration(
-                        labelText: 'Destination account/wallet',
                       ),
-                      items: _destinationItems(sources),
-                      onChanged: (value) {
-                        setState(() {
-                          _destinationId = value;
-                        });
-                      },
-                      validator: (value) {
-                        if (value == null) {
-                          return 'Destination account/wallet required';
-                        }
-                        return null;
-                      },
-                    ),
-                  ],
+                      const SizedBox(height: AppSpacing.sm),
+                      FinarcCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              inr(double.tryParse(_amount.text) ?? 0),
+                              style: Theme.of(context).textTheme.headlineMedium
+                                  ?.copyWith(fontWeight: FontWeight.w800),
+                            ),
+                            const SizedBox(height: AppSpacing.xs),
+                            TextFormField(
+                              controller: _amount,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              inputFormatters: [StripLeadingZeroFormatter()],
+                              onChanged: (_) => setState(() {}),
+                              decoration: const InputDecoration(
+                                labelText: 'Enter amount',
+                                prefixText: '₹ ',
+                              ),
+                              validator: (v) {
+                                final amount = double.tryParse(
+                                  (v ?? '').trim(),
+                                );
+                                if (amount == null || amount <= 0) {
+                                  return 'Amount must be greater than 0';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: AppSpacing.xs),
+                            FinarcTextField(
+                              controller: _title,
+                              label: 'Income source/title (optional)',
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      FinarcCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const FinarcSectionHeader(title: 'Receive Into'),
+                            const SizedBox(height: AppSpacing.xs),
+                            FinarcPaymentSelector(
+                              title: 'Receive into',
+                              selectedMode: _destinationType,
+                              modes: _destinationModes,
+                              onModeChanged: (mode) => setState(() {
+                                _destinationType = mode;
+                                _destinationId = null;
+                              }),
+                              sources: destinationConfig.options,
+                              selectedSourceId: _destinationId,
+                              onSourceChanged: (value) =>
+                                  setState(() => _destinationId = value),
+                              sourceLabel: destinationConfig.fieldLabel,
+                              singleSourcePrefix:
+                                  destinationConfig.singlePrefix,
+                              emptyState: emptyState,
+                              compactModeTiles: true,
+                              useSourceCardPicker: true,
+                              modeTestPrefix: 'income-mode',
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      FinarcCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const FinarcSectionHeader(title: 'Category'),
+                            const SizedBox(height: AppSpacing.xs),
+                            DropdownButtonFormField<String>(
+                              initialValue: _category,
+                              decoration: const InputDecoration(
+                                labelText: 'Category',
+                              ),
+                              items: _incomeCategories
+                                  .map(
+                                    (category) => DropdownMenuItem<String>(
+                                      value: category,
+                                      child: Text(category),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (value) {
+                                setState(() {
+                                  _category = value ?? 'General';
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      FinarcCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            FinarcTextField(
+                              controller: _dateController,
+                              label: 'Transaction date',
+                              readOnly: true,
+                              suffixIcon: const Icon(
+                                Icons.calendar_month_outlined,
+                              ),
+                              onTap: () async {
+                                final picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: _date,
+                                  firstDate: DateTime(2020),
+                                  lastDate: DateTime(2100),
+                                );
+                                if (picked == null) return;
+                                setState(() {
+                                  _date = mergeDateWithExistingTime(
+                                    pickedDate: picked,
+                                    existing: _date,
+                                  );
+                                  _dateController.text = _dateText(_date);
+                                });
+                              },
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            FinarcTextField(
+                              controller: _notes,
+                              label: 'Notes (optional)',
+                              maxLines: 2,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: AppSpacing.sm),
-              FinarcCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const FinarcSectionHeader(title: 'Details'),
-                    const SizedBox(height: AppSpacing.sm),
-                    FinarcTextField(
-                      controller: _dateController,
-                      label: 'Date',
-                      readOnly: true,
-                      suffixIcon: const Icon(Icons.calendar_month_outlined),
-                      onTap: () async {
-                        final initial = _date ?? DateTime.now();
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: initial,
-                          firstDate: DateTime(2020),
-                          lastDate: DateTime(2100),
-                        );
-                        if (picked == null) return;
-                        setState(() {
-                          _date = picked;
-                          _dateController.text = _dateText(picked);
-                        });
-                      },
-                      validator: (value) {
-                        if (_date == null) return 'Date required';
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    FinarcTextField(
-                      controller: _notes,
-                      label: 'Notes (optional)',
-                      maxLines: 2,
-                    ),
-                  ],
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  AppSpacing.xs,
+                  AppSpacing.md,
+                  MediaQuery.of(context).viewInsets.bottom + AppSpacing.xs,
                 ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              FinarcPrimaryButton(
-                onPressed: _submit,
-                label: 'Save Income',
-                icon: Icons.check_circle_outline,
+                child: FinarcPrimaryButton(
+                  onPressed: _submit,
+                  label: 'Save Income',
+                  icon: Icons.check_circle_outline,
+                ),
               ),
             ],
-          ),
-        ),
+          );
+        },
       ),
     );
   }
 
-  List<DropdownMenuItem<int>> _destinationItems(PaymentSourcesData sources) {
-    if (_destinationType == PaymentSourceType.cash) {
-      return sources.cashWallets
-          .map(
-            (wallet) => DropdownMenuItem<int>(
-              value: wallet.id,
-              child: Text(wallet.walletName),
-            ),
-          )
-          .toList(growable: false);
-    }
-
-    return sources.banks
-        .map(
-          (bank) => DropdownMenuItem<int>(
-            value: bank.id,
-            child: Text(bank.accountName),
-          ),
-        )
-        .toList(growable: false);
+  void _syncDestinationSelection(List<FinarcPaymentSourceOption> options) {
+    final next = resolveAutoSelectedSourceId(_destinationId, options);
+    if (next == _destinationId) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _destinationId = next);
+    });
   }
 
   String _dateText(DateTime date) {
@@ -312,15 +320,40 @@ class _AddIncomeScreenState extends ConsumerState<AddIncomeScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_date == null) {
+
+    final sources = ref.read(paymentSourcesProvider).valueOrNull;
+    final destinationConfig = sourceConfigForMode(
+      sources ??
+          const PaymentSourcesData(banks: [], cards: [], cashWallets: []),
+      _resolvedDestinationType,
+      destination: true,
+    );
+    final destinationId = resolveAutoSelectedSourceId(
+      _destinationId,
+      destinationConfig.options,
+    );
+    if (destinationId == null) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Date required')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            destinationConfig.emptyMessage ?? 'Destination account required',
+          ),
+        ),
+      );
       return;
     }
+    _destinationId = destinationId;
 
     final amount = double.parse(_amount.text.trim());
+    final rawCategory = _category.trim();
+    final category = rawCategory.isEmpty ? 'General' : rawCategory;
+    final title = _title.text.trim().isEmpty
+        ? ((category.toLowerCase() == 'general' ||
+                  category.toLowerCase() == 'income')
+              ? 'Income'
+              : '$category Income')
+        : _title.text.trim();
 
     try {
       await ref
@@ -329,11 +362,11 @@ class _AddIncomeScreenState extends ConsumerState<AddIncomeScreen> {
             AddTransactionInput(
               type: TransactionType.income,
               amount: amount,
-              title: _title.text.trim(),
-              category: _category,
+              title: title,
+              category: category,
               notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
-              transactionDate: _date!,
-              paymentSourceType: _destinationType!,
+              transactionDate: _date,
+              paymentSourceType: _resolvedDestinationType,
               paymentSourceId: _destinationId,
             ),
           );
@@ -360,6 +393,10 @@ class _AddIncomeScreenState extends ConsumerState<AddIncomeScreen> {
     ref.invalidate(expenseListProvider);
     ref.invalidate(dashboardProvider);
     ref.invalidate(analyticsSnapshotProvider);
-    if (mounted) context.pop();
+    if (mounted) {
+      Navigator.of(context).maybePop();
+    }
   }
+
+  String get _resolvedDestinationType => _destinationType;
 }

@@ -62,6 +62,7 @@ Future<void> _showProfileEditSheet(
   WidgetRef ref,
   UserProfileSettings? profile,
 ) async {
+  final formKey = GlobalKey<FormState>();
   final name = TextEditingController(text: profile?.name ?? '');
   final salary = TextEditingController(
     text: profile?.monthlySalary?.toString() ?? '',
@@ -82,46 +83,74 @@ Future<void> _showProfileEditSheet(
           top: AppSpacing.md,
           bottom: MediaQuery.of(ctx).viewInsets.bottom + AppSpacing.md,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            FinarcTextField(controller: name, label: 'Name'),
-            const SizedBox(height: AppSpacing.xs),
-            FinarcTextField(
-              controller: salary,
-              label: 'Monthly Salary',
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
+        child: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FinarcTextField(controller: name, label: 'Name'),
+              const SizedBox(height: AppSpacing.xs),
+              FinarcTextField(
+                controller: salary,
+                label: 'Monthly Salary',
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                validator: (value) {
+                  final text = value?.trim() ?? '';
+                  if (text.isEmpty) return null;
+                  final parsed = double.tryParse(text);
+                  if (parsed == null || parsed <= 0) {
+                    return 'Salary must be a positive number';
+                  }
+                  return null;
+                },
               ),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            FinarcTextField(
-              controller: salaryDay,
-              label: 'Salary Credit Day',
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            FinarcTextField(controller: company, label: 'Company Name'),
-            const SizedBox(height: AppSpacing.sm),
-            FinarcPrimaryButton(
-              onPressed: () async {
-                await ref
-                    .read(profileSettingsServiceProvider)
-                    .save(
-                      UserProfileSettings(
-                        name: name.text.trim(),
-                        monthlySalary: double.tryParse(salary.text.trim()),
-                        salaryCreditDay: int.tryParse(salaryDay.text.trim()),
-                        companyName: company.text.trim(),
-                      ),
-                    );
-                ref.invalidate(userProfileSettingsProvider);
-                if (ctx.mounted) Navigator.of(ctx).pop();
-              },
-              label: 'Save Profile',
-              icon: Icons.check_circle_outline,
-            ),
-          ],
+              const SizedBox(height: AppSpacing.xs),
+              FinarcTextField(
+                controller: salaryDay,
+                label: 'Salary Credit Day',
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  final text = value?.trim() ?? '';
+                  if (text.isEmpty) return null;
+                  final parsed = int.tryParse(text);
+                  if (parsed == null || parsed < 1 || parsed > 31) {
+                    return 'Day must be between 1 and 31';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              FinarcTextField(controller: company, label: 'Company Name'),
+              const SizedBox(height: AppSpacing.sm),
+              FinarcPrimaryButton(
+                onPressed: () async {
+                  if (!formKey.currentState!.validate()) return;
+                  await ref
+                      .read(profileSettingsServiceProvider)
+                      .save(
+                        UserProfileSettings(
+                          name: name.text.trim(),
+                          monthlySalary: double.tryParse(salary.text.trim()),
+                          salaryCreditDay: (() {
+                            final parsed = int.tryParse(salaryDay.text.trim());
+                            if (parsed == null) return null;
+                            if (parsed < 1 || parsed > 31) return null;
+                            return parsed;
+                          })(),
+                          companyName: company.text.trim(),
+                        ),
+                      );
+                  ref.invalidate(userProfileSettingsProvider);
+                  ref.invalidate(dashboardProvider);
+                  if (ctx.mounted) Navigator.of(ctx).pop();
+                },
+                label: 'Save Profile',
+                icon: Icons.check_circle_outline,
+              ),
+            ],
+          ),
         ),
       );
     },
@@ -475,6 +504,8 @@ class ProfileScreen extends ConsumerWidget {
           DataControlsSection(
             onExportBackup: () => _confirmExportFullBackup(context, ref),
             onImportBackup: () => _pickAndImportBackup(context, ref),
+            onImportTransactions: () =>
+                context.push(AppRoutes.transactionImport),
             onExportTransactions: () => _exportCsv(
               context,
               ref,

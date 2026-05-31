@@ -12,19 +12,22 @@ class DashboardGreetingHeader extends StatelessWidget {
     super.key,
     required this.name,
     required this.unreadAlertsCount,
+    this.now,
     this.onAlertsTap,
     this.onSettingsTap,
   });
 
   final String? name;
   final int unreadAlertsCount;
+  final DateTime? now;
   final VoidCallback? onAlertsTap;
   final VoidCallback? onSettingsTap;
 
   @override
   Widget build(BuildContext context) {
-    final trimmed = name?.trim();
-    final hasName = trimmed != null && trimmed.isNotEmpty;
+    final displayName = _displayName(name);
+    final hasName = displayName.isNotEmpty;
+    final greeting = _dynamicGreeting(now ?? DateTime.now());
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -33,14 +36,14 @@ class DashboardGreetingHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                hasName ? 'Good morning, $trimmed' : 'Good morning',
+                '$greeting,',
                 style: Theme.of(context).textTheme.bodyMedium,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: AppSpacing.xxs),
               Text(
-                hasName ? '$trimmed 👋' : 'Welcome 👋',
+                hasName ? '$displayName 👋' : 'Welcome 👋',
                 style: Theme.of(context).textTheme.headlineSmall,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -59,6 +62,27 @@ class DashboardGreetingHeader extends StatelessWidget {
         _headerAction(context, icon: Icons.tune_rounded, onTap: onSettingsTap),
       ],
     );
+  }
+
+  String _dynamicGreeting(DateTime now) {
+    final hour = now.hour;
+    if (hour >= 5 && hour <= 11) return 'Good morning';
+    if (hour >= 12 && hour <= 16) return 'Good afternoon';
+    if (hour >= 17 && hour <= 20) return 'Good evening';
+    return 'Good night';
+  }
+
+  String _displayName(String? value) {
+    final trimmed = value?.trim() ?? '';
+    if (trimmed.isEmpty) return '';
+    return trimmed
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .map((part) {
+          if (part.length == 1) return part.toUpperCase();
+          return '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}';
+        })
+        .join(' ');
   }
 
   Widget _headerAction(

@@ -589,19 +589,41 @@ class AnalyticsService {
     required List<LoanPayment> loanPayments,
     required DateTime date,
   }) {
+    final targetDay = DateTime(date.year, date.month, date.day);
     var total = 0.0;
     for (final loan in loans) {
-      if (loan.createdAt.isAfter(date)) {
+      final loanCreatedDay = DateTime(
+        loan.createdAt.year,
+        loan.createdAt.month,
+        loan.createdAt.day,
+      );
+      if (loanCreatedDay.isAfter(targetDay)) {
         continue;
       }
 
       var outstandingAt = loan.currentOutstanding;
       for (final payment in loanPayments.where(
-        (p) => p.loanId == loan.id && p.paymentDate.isAfter(date),
+        (p) =>
+            p.loanId == loan.id &&
+            DateTime(
+              p.paymentDate.year,
+              p.paymentDate.month,
+              p.paymentDate.day,
+            ).isAfter(targetDay),
       )) {
         outstandingAt += payment.amount;
       }
-      if (loan.closedAt != null && loan.closedAt!.isBefore(date)) {
+      if (loan.closedAt != null) {
+        final closedDay = DateTime(
+          loan.closedAt!.year,
+          loan.closedAt!.month,
+          loan.closedAt!.day,
+        );
+        if (!closedDay.isAfter(targetDay)) {
+          outstandingAt = 0;
+        }
+      }
+      if (outstandingAt < 0) {
         outstandingAt = 0;
       }
       total += outstandingAt;

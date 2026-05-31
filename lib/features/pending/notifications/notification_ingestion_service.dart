@@ -9,6 +9,7 @@ import '../parsing/parser_confidence_scorer.dart';
 import '../parsing/parser_text_utils.dart';
 import '../parsing/pending_ingestion_service.dart';
 import '../parsing/transaction_direction_classifier.dart';
+import 'card_bill_due_notification_service.dart';
 import 'notification_fingerprint.dart';
 import 'notification_keyword_filter.dart';
 import 'notification_local_notifier.dart';
@@ -74,7 +75,10 @@ class NotificationIngestionService {
     required this.isDetectionEnabled,
     required this.shouldShowDetectionNotifications,
     required this.appendDebug,
-  });
+    CardBillDueNotificationService? cardBillDueNotificationService,
+  }) : cardBillDueNotificationService =
+           cardBillDueNotificationService ??
+           CardBillDueNotificationService(database: database);
 
   final AppDatabase database;
   final PendingIngestionService pendingIngestionService;
@@ -84,6 +88,7 @@ class NotificationIngestionService {
   final bool Function() isDetectionEnabled;
   final bool Function() shouldShowDetectionNotifications;
   final void Function(NotificationDebugEntry entry) appendDebug;
+  final CardBillDueNotificationService cardBillDueNotificationService;
   static const Duration _nearDuplicateWindow = Duration(seconds: 40);
 
   Future<List<int>> processPayload(NotificationPayload payload) async {
@@ -124,6 +129,24 @@ class NotificationIngestionService {
       notificationTitle: payload.title,
       notificationBody: payload.body,
     );
+
+    final billDueResult = await cardBillDueNotificationService.handleIfBillDue(
+      payload,
+    );
+    if (billDueResult != null) {
+      _log(
+        payload,
+        decision: billDueResult.action == 'ignoredDuplicate'
+            ? 'duplicate'
+            : 'parsed',
+        reason: 'card-bill-due-${billDueResult.action}',
+        parseResult: 'card-bill-due-notification',
+        providerName: filterResult.providerName,
+        senderFilterResult: filterResult.senderFilterResult,
+        candidateCount: 0,
+      );
+      return const [];
+    }
 
     final parserResult = pendingIngestionService.previewParserInput(
       parserInput,

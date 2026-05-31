@@ -7,6 +7,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
 import '../../expenses/data/expenses_providers.dart';
 import '../../expenses/models/transaction_types.dart';
+import '../../expenses/presentation/payment_source_selector_support.dart';
 import '../data/split_providers.dart';
 
 class AddSplitSettlementScreen extends ConsumerStatefulWidget {
@@ -21,6 +22,46 @@ class AddSplitSettlementScreen extends ConsumerStatefulWidget {
 
 class _AddSplitSettlementScreenState
     extends ConsumerState<AddSplitSettlementScreen> {
+  static const _payerModes = [
+    FinarcPaymentModeOption(
+      value: PaymentSourceType.cash,
+      label: 'Cash',
+      icon: Icons.payments_rounded,
+    ),
+    FinarcPaymentModeOption(
+      value: PaymentSourceType.upi,
+      label: 'UPI',
+      icon: Icons.qr_code_scanner_rounded,
+    ),
+    FinarcPaymentModeOption(
+      value: PaymentSourceType.creditCard,
+      label: 'Card',
+      icon: Icons.credit_card_rounded,
+    ),
+    FinarcPaymentModeOption(
+      value: PaymentSourceType.bank,
+      label: 'Bank',
+      icon: Icons.account_balance_rounded,
+    ),
+  ];
+  static const _receiverModes = [
+    FinarcPaymentModeOption(
+      value: PaymentSourceType.cash,
+      label: 'Cash',
+      icon: Icons.payments_rounded,
+    ),
+    FinarcPaymentModeOption(
+      value: PaymentSourceType.upi,
+      label: 'UPI',
+      icon: Icons.qr_code_scanner_rounded,
+    ),
+    FinarcPaymentModeOption(
+      value: PaymentSourceType.bank,
+      label: 'Bank',
+      icon: Icons.account_balance_rounded,
+    ),
+  ];
+
   final _formKey = GlobalKey<FormState>();
   int? _fromMemberId;
   int? _toMemberId;
@@ -68,8 +109,29 @@ class _AddSplitSettlementScreenState
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Center(child: Text('Error: $e')),
             data: (sources) {
-              final selectedSource = _selectedSourceLabel(sources);
               final amount = double.tryParse(_amount.text) ?? 0;
+              final currentUserPays =
+                  currentUser != null && _fromMemberId == currentUser.id;
+              final modeOptions = currentUserPays
+                  ? _payerModes
+                  : _receiverModes;
+              if (!modeOptions.any((m) => m.value == _paymentSourceType)) {
+                _paymentSourceType = PaymentSourceType.bank;
+                _paymentSourceId = null;
+              }
+              final sourceConfig = sourceConfigForMode(
+                sources,
+                _paymentSourceType,
+                destination: !currentUserPays,
+              );
+              _syncSourceSelection(sourceConfig.options);
+              final emptyState = sourceConfig.options.isEmpty
+                  ? FinarcPaymentSourceEmptyState(
+                      message: sourceConfig.emptyMessage!,
+                      ctaLabel: sourceConfig.emptyCtaLabel!,
+                      onTap: () => context.push(sourceConfig.emptyCtaRoute!),
+                    )
+                  : null;
 
               return Form(
                 key: _formKey,
@@ -181,59 +243,29 @@ class _AddSplitSettlementScreenState
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const FinarcSectionHeader(title: 'Payment Source'),
-                            const SizedBox(height: AppSpacing.sm),
-                            DropdownButtonFormField<String>(
-                              initialValue: _paymentSourceType,
-                              decoration: const InputDecoration(
-                                labelText: 'Source type',
-                              ),
-                              items: const [
-                                DropdownMenuItem(
-                                  value: PaymentSourceType.bank,
-                                  child: Text('Bank'),
-                                ),
-                                DropdownMenuItem(
-                                  value: PaymentSourceType.upi,
-                                  child: Text('UPI'),
-                                ),
-                                DropdownMenuItem(
-                                  value: PaymentSourceType.cash,
-                                  child: Text('Cash'),
-                                ),
-                              ],
-                              onChanged: (v) {
-                                setState(() {
-                                  _paymentSourceType =
-                                      v ?? PaymentSourceType.bank;
-                                  _paymentSourceId = null;
-                                });
+                            FinarcPaymentSelector(
+                              title: currentUserPays
+                                  ? 'Payment Source'
+                                  : 'Receive into',
+                              selectedMode: _paymentSourceType,
+                              modes: modeOptions,
+                              onModeChanged: (v) => setState(() {
+                                _paymentSourceType = v;
+                                _paymentSourceId = null;
+                              }),
+                              sources: sourceConfig.options,
+                              selectedSourceId: _paymentSourceId,
+                              onSourceChanged: (v) =>
+                                  setState(() => _paymentSourceId = v),
+                              sourceLabel: sourceConfig.fieldLabel,
+                              singleSourcePrefix: sourceConfig.singlePrefix,
+                              emptyState: emptyState,
+                              sourceValidator: (v) {
+                                if (sourceConfig.options.length <= 1) {
+                                  return null;
+                                }
+                                return v == null ? 'Source required' : null;
                               },
-                            ),
-                            const SizedBox(height: AppSpacing.sm),
-                            InkWell(
-                              onTap: () async {
-                                final selected =
-                                    await FinarcBottomSheet.show<int>(
-                                      context,
-                                      child: _SettlementSourceSheet(
-                                        data: sources,
-                                        sourceType: _paymentSourceType,
-                                        selectedId: _paymentSourceId,
-                                      ),
-                                    );
-                                if (selected == null) return;
-                                setState(() => _paymentSourceId = selected);
-                              },
-                              child: InputDecorator(
-                                decoration: const InputDecoration(
-                                  labelText: 'Source account/wallet',
-                                  suffixIcon: Icon(
-                                    Icons.keyboard_arrow_down_rounded,
-                                  ),
-                                ),
-                                child: Text(selectedSource),
-                              ),
                             ),
                           ],
                         ),
@@ -278,22 +310,6 @@ class _AddSplitSettlementScreenState
     );
   }
 
-  String _selectedSourceLabel(PaymentSourcesData data) {
-    if (_paymentSourceId == null) return 'Select source';
-    if (_paymentSourceType == PaymentSourceType.cash) {
-      final wallet = data.cashWallets
-          .where((w) => w.id == _paymentSourceId)
-          .firstOrNull;
-      return wallet == null
-          ? 'Select source'
-          : '${wallet.walletName} • ${inr(wallet.currentBalance)}';
-    }
-    final bank = data.banks.where((b) => b.id == _paymentSourceId).firstOrNull;
-    return bank == null
-        ? 'Select source'
-        : '${bank.accountName} • ${inr(bank.currentBalance)}';
-  }
-
   Future<void> _submit(int? currentUserId, bool userInvolved) async {
     if (!_formKey.currentState!.validate()) return;
     if (_fromMemberId == null || _toMemberId == null) return;
@@ -302,14 +318,31 @@ class _AddSplitSettlementScreenState
     final amount = double.tryParse(_amount.text) ?? 0;
     if (amount <= 0) return;
 
-    if (userInvolved && _paymentSourceId == null) {
+    final sources = ref.read(paymentSourcesProvider).valueOrNull;
+    final currentUserPays =
+        currentUserId != null && _fromMemberId == currentUserId;
+    final sourceConfig = sourceConfigForMode(
+      sources ??
+          const PaymentSourcesData(banks: [], cards: [], cashWallets: []),
+      _paymentSourceType,
+      destination: !currentUserPays,
+    );
+    final sourceId = resolveAutoSelectedSourceId(
+      _paymentSourceId,
+      sourceConfig.options,
+    );
+    if (userInvolved && sourceId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Select payment source for personal settlement'),
+        SnackBar(
+          content: Text(
+            sourceConfig.emptyMessage ??
+                'Select payment source for personal settlement',
+          ),
         ),
       );
       return;
     }
+    _paymentSourceId = sourceId;
 
     await ref
         .read(splitActionsProvider)
@@ -320,7 +353,7 @@ class _AddSplitSettlementScreenState
           amount: amount,
           settlementDate: _date,
           paymentSourceType: userInvolved ? _paymentSourceType : null,
-          paymentSourceId: userInvolved ? _paymentSourceId : null,
+          paymentSourceId: userInvolved ? sourceId : null,
           notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
         );
 
@@ -329,112 +362,13 @@ class _AddSplitSettlementScreenState
       '/split/settlement/success?amount=$amount&groupId=${widget.groupId}',
     );
   }
-}
 
-class _SettlementSourceSheet extends StatelessWidget {
-  const _SettlementSourceSheet({
-    required this.data,
-    required this.sourceType,
-    required this.selectedId,
-  });
-
-  final PaymentSourcesData data;
-  final String sourceType;
-  final int? selectedId;
-
-  @override
-  Widget build(BuildContext context) {
-    final rows = sourceType == PaymentSourceType.cash
-        ? data.cashWallets
-              .map(
-                (w) => _SourceItem(
-                  id: w.id,
-                  title: w.walletName,
-                  subtitle: 'Cash wallet',
-                  amount: inr(w.currentBalance),
-                  icon: Icons.account_balance_wallet_outlined,
-                ),
-              )
-              .toList(growable: false)
-        : data.banks
-              .map(
-                (b) => _SourceItem(
-                  id: b.id,
-                  title: b.accountName,
-                  subtitle: b.bankName,
-                  amount: inr(b.currentBalance),
-                  icon: Icons.account_balance,
-                ),
-              )
-              .toList(growable: false);
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        AppSpacing.xs,
-        AppSpacing.md,
-        AppSpacing.lg,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const FinarcSectionHeader(title: 'Select Source'),
-          const SizedBox(height: AppSpacing.sm),
-          ...rows.map((row) {
-            final selected = row.id == selectedId;
-            return Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-              child: FinarcCard(
-                onTap: () => Navigator.pop(context, row.id),
-                child: Row(
-                  children: [
-                    Icon(row.icon, size: 18),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(row.title),
-                          const SizedBox(height: 2),
-                          Text(
-                            row.subtitle,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                    ),
-                    Text(
-                      row.amount,
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                    if (selected) ...[
-                      const SizedBox(width: AppSpacing.xs),
-                      const Icon(Icons.check_circle_rounded, size: 18),
-                    ],
-                  ],
-                ),
-              ),
-            );
-          }),
-        ],
-      ),
-    );
+  void _syncSourceSelection(List<FinarcPaymentSourceOption> options) {
+    final next = resolveAutoSelectedSourceId(_paymentSourceId, options);
+    if (next == _paymentSourceId) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _paymentSourceId = next);
+    });
   }
-}
-
-class _SourceItem {
-  const _SourceItem({
-    required this.id,
-    required this.title,
-    required this.subtitle,
-    required this.amount,
-    required this.icon,
-  });
-
-  final int id;
-  final String title;
-  final String subtitle;
-  final String amount;
-  final IconData icon;
 }
