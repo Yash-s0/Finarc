@@ -79,17 +79,15 @@ class FinarcPaymentSelector extends StatelessWidget {
       children: [
         FinarcSectionHeader(title: title),
         const SizedBox(height: AppSpacing.xs),
-        Wrap(
-          spacing: AppSpacing.xs,
-          runSpacing: AppSpacing.xs,
-          children: modes
-              .map(
-                (mode) => compactModeTiles
-                    ? _buildModeSquare(context, mode)
-                    : _buildModePill(context, mode),
-              )
-              .toList(growable: false),
-        ),
+        compactModeTiles
+            ? _buildCompactModeGrid(context)
+            : Wrap(
+                spacing: AppSpacing.xs,
+                runSpacing: AppSpacing.xs,
+                children: modes
+                    .map((mode) => _buildModePill(context, mode))
+                    .toList(growable: false),
+              ),
         const SizedBox(height: AppSpacing.sm),
         if (emptyState != null) ...[
           Text(
@@ -131,6 +129,29 @@ class FinarcPaymentSelector extends StatelessWidget {
             ),
         ],
       ],
+    );
+  }
+
+  Widget _buildCompactModeGrid(BuildContext context) {
+    const spacing = AppSpacing.xs;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final perRow = modes.length <= 4 ? modes.length : 4;
+        if (perRow <= 0) return const SizedBox.shrink();
+        final width = (constraints.maxWidth - spacing * (perRow - 1)) / perRow;
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: modes
+              .map(
+                (mode) => SizedBox(
+                  width: width,
+                  child: _buildModeSquare(context, mode),
+                ),
+              )
+              .toList(growable: false),
+        );
+      },
     );
   }
 
@@ -181,7 +202,6 @@ class FinarcPaymentSelector extends StatelessWidget {
         onTap: enabled ? () => onModeChanged(mode.value) : null,
         borderRadius: BorderRadius.circular(12),
         child: Ink(
-          width: 72,
           height: 72,
           decoration: BoxDecoration(
             color: isSelected
