@@ -24,6 +24,19 @@ class ParserTextUtils {
     'dec': 12,
   };
 
+  static final RegExp _dateNumericWithOptionalTimePattern = RegExp(
+    r'\b(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})(?:[,\s]+(?:at\s*)?(\d{1,2}):(\d{2})(?:\s*([AaPp][Mm]))?)?\b',
+  );
+
+  static final RegExp _dateMonthWithOptionalTimePattern = RegExp(
+    r'\b(\d{1,2})[-\s](Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b(?:[,\s]+(?:at\s*)?(\d{1,2}):(\d{2})(?:\s*([AaPp][Mm]))?)?',
+    caseSensitive: false,
+  );
+
+  static final RegExp _timeOnlyPattern = RegExp(
+    r'\b(?:at\s*)?(\d{1,2}):(\d{2})(?:\s*([AaPp][Mm]))?\b',
+  );
+
   static double? extractAmount(String text) {
     final match = _amountPattern.firstMatch(text);
     if (match == null) return null;
@@ -37,41 +50,101 @@ class ParserTextUtils {
   }
 
   static DateTime? extractDate(String text, DateTime fallbackYearSource) {
-    final match = RegExp(
-      r'\b(\d{1,2})[-\s](Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b',
-      caseSensitive: false,
-    ).firstMatch(text);
-
-    if (match != null) {
-      final day = int.tryParse(match.group(1) ?? '');
-      final monthName = (match.group(2) ?? '').toLowerCase();
-      final month = _months[monthName];
-      if (day != null && month != null) {
-        return DateTime(fallbackYearSource.year, month, day);
-      }
-    }
-
-    return null;
+    return extractDateTime(text, fallbackYearSource)?.value;
   }
 
   static DateTime? extractDateWithNumericSupport(
     String text,
     DateTime fallbackYearSource,
   ) {
-    final standard = extractDate(text, fallbackYearSource);
-    if (standard != null) return standard;
+    return extractDateTime(text, fallbackYearSource)?.value;
+  }
 
-    final match = RegExp(
-      r'\b(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})\b',
-    ).firstMatch(text);
-    if (match == null) return null;
-    final day = int.tryParse(match.group(1) ?? '');
-    final month = int.tryParse(match.group(2) ?? '');
-    final yearRaw = int.tryParse(match.group(3) ?? '');
-    if (day == null || month == null || yearRaw == null) return null;
-    final year = yearRaw < 100 ? 2000 + yearRaw : yearRaw;
-    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-    return DateTime(year, month, day);
+  static ParsedDateTime? extractDateTime(String text, DateTime captureTime) {
+    final numeric = _dateNumericWithOptionalTimePattern.firstMatch(text);
+    if (numeric != null) {
+      final day = int.tryParse(numeric.group(1) ?? '');
+      final month = int.tryParse(numeric.group(2) ?? '');
+      final yearRaw = int.tryParse(numeric.group(3) ?? '');
+      if (day != null &&
+          month != null &&
+          yearRaw != null &&
+          month >= 1 &&
+          month <= 12 &&
+          day >= 1 &&
+          day <= 31) {
+        final year = yearRaw < 100 ? 2000 + yearRaw : yearRaw;
+        final resolvedTime = _resolveTime(
+          hourText: numeric.group(4),
+          minuteText: numeric.group(5),
+          periodText: numeric.group(6),
+          fallback: captureTime,
+        );
+        return ParsedDateTime(
+          value: DateTime(
+            year,
+            month,
+            day,
+            resolvedTime.hour,
+            resolvedTime.minute,
+            resolvedTime.second,
+          ),
+          hasDate: true,
+          hasTime: resolvedTime.explicit,
+        );
+      }
+    }
+
+    final dayMonth = _dateMonthWithOptionalTimePattern.firstMatch(text);
+    if (dayMonth != null) {
+      final day = int.tryParse(dayMonth.group(1) ?? '');
+      final monthName = (dayMonth.group(2) ?? '').toLowerCase();
+      final month = _months[monthName];
+      if (day != null && month != null) {
+        final resolvedTime = _resolveTime(
+          hourText: dayMonth.group(3),
+          minuteText: dayMonth.group(4),
+          periodText: dayMonth.group(5),
+          fallback: captureTime,
+        );
+        return ParsedDateTime(
+          value: DateTime(
+            captureTime.year,
+            month,
+            day,
+            resolvedTime.hour,
+            resolvedTime.minute,
+            resolvedTime.second,
+          ),
+          hasDate: true,
+          hasTime: resolvedTime.explicit,
+        );
+      }
+    }
+
+    final timeOnly = _timeOnlyPattern.firstMatch(text);
+    if (timeOnly != null) {
+      final resolvedTime = _resolveTime(
+        hourText: timeOnly.group(1),
+        minuteText: timeOnly.group(2),
+        periodText: timeOnly.group(3),
+        fallback: captureTime,
+      );
+      return ParsedDateTime(
+        value: DateTime(
+          captureTime.year,
+          captureTime.month,
+          captureTime.day,
+          resolvedTime.hour,
+          resolvedTime.minute,
+          resolvedTime.second,
+        ),
+        hasDate: false,
+        hasTime: resolvedTime.explicit,
+      );
+    }
+
+    return null;
   }
 
   static String compactSpaces(String input) {
@@ -128,6 +201,63 @@ class ParserTextUtils {
     return 'A/C ending $last';
   }
 
+  static _ResolvedTime _resolveTime({
+    required String? hourText,
+    required String? minuteText,
+    required String? periodText,
+    required DateTime fallback,
+  }) {
+    if (hourText == null || minuteText == null) {
+      return _ResolvedTime(
+        hour: fallback.hour,
+        minute: fallback.minute,
+        second: fallback.second,
+        explicit: false,
+      );
+    }
+
+    var hour = int.tryParse(hourText);
+    final minute = int.tryParse(minuteText);
+    if (hour == null || minute == null || minute < 0 || minute > 59) {
+      return _ResolvedTime(
+        hour: fallback.hour,
+        minute: fallback.minute,
+        second: fallback.second,
+        explicit: false,
+      );
+    }
+
+    final period = periodText?.toLowerCase();
+    if (period == 'am' || period == 'pm') {
+      if (hour < 1 || hour > 12) {
+        return _ResolvedTime(
+          hour: fallback.hour,
+          minute: fallback.minute,
+          second: fallback.second,
+          explicit: false,
+        );
+      }
+      if (period == 'pm' && hour != 12) hour += 12;
+      if (period == 'am' && hour == 12) hour = 0;
+    } else {
+      if (hour < 0 || hour > 23) {
+        return _ResolvedTime(
+          hour: fallback.hour,
+          minute: fallback.minute,
+          second: fallback.second,
+          explicit: false,
+        );
+      }
+    }
+
+    return _ResolvedTime(
+      hour: hour,
+      minute: minute,
+      second: fallback.second,
+      explicit: true,
+    );
+  }
+
   static int _firstBoundary(String text) {
     final markers = [
       ' on ',
@@ -159,4 +289,30 @@ class ParserTextUtils {
   static String _cleanMerchant(String raw) {
     return compactSpaces(raw.replaceAll(RegExp(r"[^A-Za-z0-9&.\-' ]"), ''));
   }
+}
+
+class ParsedDateTime {
+  const ParsedDateTime({
+    required this.value,
+    required this.hasDate,
+    required this.hasTime,
+  });
+
+  final DateTime value;
+  final bool hasDate;
+  final bool hasTime;
+}
+
+class _ResolvedTime {
+  const _ResolvedTime({
+    required this.hour,
+    required this.minute,
+    required this.second,
+    required this.explicit,
+  });
+
+  final int hour;
+  final int minute;
+  final int second;
+  final bool explicit;
 }

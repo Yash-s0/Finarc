@@ -89,6 +89,13 @@ class NotificationDiagnosticsScreen extends ConsumerWidget {
                       ),
                       _counterRow(
                         context,
+                        'Near-duplicates blocked (40s)',
+                        ref
+                            .watch(ingestionDiagnosticsProvider)
+                            .notificationsNearDuplicateSuppressed,
+                      ),
+                      _counterRow(
+                        context,
                         'Local notifications sent',
                         snapshot.localNotificationsSent,
                       ),
@@ -117,8 +124,24 @@ class NotificationDiagnosticsScreen extends ConsumerWidget {
                         _line(context, 'Body', snapshot.lastEvent!.bodyPreview),
                         _line(
                           context,
-                          'Timestamp',
+                          'Received at',
                           snapshot.lastEvent!.timestamp.toLocal().toString(),
+                        ),
+                        _line(
+                          context,
+                          'Received used',
+                          snapshot.lastEvent!.receivedAtUsed
+                                  ?.toLocal()
+                                  .toString() ??
+                              '—',
+                        ),
+                        _line(
+                          context,
+                          'Chosen tx date',
+                          snapshot.lastEvent!.transactionDateChosen
+                                  ?.toLocal()
+                                  .toString() ??
+                              '—',
                         ),
                         _line(
                           context,
@@ -126,6 +149,20 @@ class NotificationDiagnosticsScreen extends ConsumerWidget {
                           snapshot.lastEvent!.parseResult,
                         ),
                         _line(context, 'Reason', snapshot.lastEvent!.reason),
+                        if ((snapshot.lastEvent!.duplicateDecision ?? '')
+                            .isNotEmpty)
+                          _line(
+                            context,
+                            'Duplicate reason',
+                            snapshot.lastEvent!.duplicateDecision!,
+                          ),
+                        if ((snapshot.lastEvent!.possibleDuplicateReason ?? '')
+                            .isNotEmpty)
+                          _line(
+                            context,
+                            'Possible duplicate',
+                            snapshot.lastEvent!.possibleDuplicateReason!,
+                          ),
                         if ((snapshot.lastEvent!.amountCandidate ?? '')
                             .isNotEmpty)
                           _line(

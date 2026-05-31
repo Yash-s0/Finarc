@@ -11,6 +11,7 @@ class IngestionDiagnostics {
     this.notificationsParsedPending = 0,
     this.notificationsIgnored = 0,
     this.notificationsDuplicateSuppressed = 0,
+    this.notificationsNearDuplicateSuppressed = 0,
     this.lastSmsEventAt,
     this.lastSmsSender,
     this.lastSmsResult,
@@ -31,6 +32,7 @@ class IngestionDiagnostics {
   final int notificationsParsedPending;
   final int notificationsIgnored;
   final int notificationsDuplicateSuppressed;
+  final int notificationsNearDuplicateSuppressed;
   final DateTime? lastSmsEventAt;
   final String? lastSmsSender;
   final String? lastSmsResult;
@@ -51,6 +53,7 @@ class IngestionDiagnostics {
     int? notificationsParsedPending,
     int? notificationsIgnored,
     int? notificationsDuplicateSuppressed,
+    int? notificationsNearDuplicateSuppressed,
     DateTime? lastSmsEventAt,
     String? lastSmsSender,
     String? lastSmsResult,
@@ -80,6 +83,9 @@ class IngestionDiagnostics {
       notificationsDuplicateSuppressed:
           notificationsDuplicateSuppressed ??
           this.notificationsDuplicateSuppressed,
+      notificationsNearDuplicateSuppressed:
+          notificationsNearDuplicateSuppressed ??
+          this.notificationsNearDuplicateSuppressed,
       lastSmsEventAt: lastSmsEventAt ?? this.lastSmsEventAt,
       lastSmsSender: lastSmsSender ?? this.lastSmsSender,
       lastSmsResult: lastSmsResult ?? this.lastSmsResult,

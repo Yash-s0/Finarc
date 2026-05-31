@@ -87,7 +87,14 @@ class SmsIngestionService {
       _db.pendingTransactions,
     )..where((p) => p.id.equals(pendingId))).getSingleOrNull();
 
-    if (pending == null || await _hasSimilarPending(pending)) {
+    if (pending == null) {
+      _log(payload, 'duplicate-suppressed');
+      return const [];
+    }
+    if (await _hasSimilarPending(pending)) {
+      await (_db.delete(
+        _db.pendingTransactions,
+      )..where((p) => p.id.equals(pendingId))).go();
       _log(payload, 'duplicate-suppressed');
       return const [];
     }
@@ -112,7 +119,8 @@ class SmsIngestionService {
       sourceType: 'sms',
       packageName: payload.packageName,
       sender: payload.sender ?? payload.appName,
-      receivedAt: payload.receivedAt,
+      receivedAt: payload.captureTime,
+      postTime: payload.postTime,
       notificationTitle: payload.title,
       notificationBody: payload.body,
     );

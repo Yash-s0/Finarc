@@ -510,6 +510,205 @@ void main() {
       expect(pendingRows.length, 1);
     });
 
+    test(
+      'uses notification receivedAt time when parsed text has no explicit time',
+      () async {
+        final receivedAt = DateTime(2026, 5, 30, 21, 17, 42);
+        final ids = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.phonepe.app',
+            sourceType: 'appNotification',
+            receivedAt: receivedAt,
+            title: 'PhonePe',
+            body: 'Paid ₹250 to Zomato via UPI',
+          ),
+        );
+
+        expect(ids.length, 1);
+        final pending = await (db.select(
+          db.pendingTransactions,
+        )..where((p) => p.id.equals(ids.first))).getSingle();
+        expect(pending.transactionDate, receivedAt);
+      },
+    );
+
+    test(
+      'combines parsed date with receivedAt time when time is missing',
+      () async {
+        final receivedAt = DateTime(2026, 5, 30, 21, 17, 42);
+        final ids = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.google.android.apps.messaging',
+            sourceType: 'appNotification',
+            receivedAt: receivedAt,
+            title: 'VM-KOTAKB-S',
+            body:
+                'Sent Rs.1.00 from Kotak Bank AC X0754 to yas21606-4@okaxis on 30-05-26. UPI Ref 123938960566.',
+          ),
+        );
+
+        expect(ids.length, 1);
+        final pending = await (db.select(
+          db.pendingTransactions,
+        )..where((p) => p.id.equals(ids.first))).getSingle();
+        expect(pending.transactionDate, DateTime(2026, 5, 30, 21, 17, 42));
+      },
+    );
+
+    test(
+      'suppresses same amount/person/type duplicate within 40 seconds',
+      () async {
+        final first = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.phonepe.app',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 5, 30, 13, 0, 0),
+            title: 'PhonePe',
+            body: 'Paid ₹700 to Rahul via UPI',
+          ),
+        );
+        final second = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.phonepe.app',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 5, 30, 13, 0, 30),
+            title: 'PhonePe',
+            body: 'Sent ₹700 to Rahul via UPI',
+          ),
+        );
+
+        expect(first.length, 1);
+        expect(second, isEmpty);
+        expect(debugEntries.last.decision, 'duplicate');
+        expect(
+          debugEntries.last.reason,
+          'near_duplicate_same_amount_counterparty_40s',
+        );
+        final rows = await db.select(db.pendingTransactions).get();
+        expect(rows.length, 1);
+      },
+    );
+
+    test('allows same amount/person/type after 45 seconds', () async {
+      final first = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.phonepe.app',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 30, 14, 0, 0),
+          title: 'PhonePe',
+          body: 'Paid ₹700 to Rahul via UPI',
+        ),
+      );
+      final second = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.phonepe.app',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 30, 14, 0, 45),
+          title: 'PhonePe',
+          body: 'Sent ₹700 to Rahul via UPI from account',
+        ),
+      );
+
+      expect(first.length, 1);
+      expect(second.length, 1);
+      final rows = await db.select(db.pendingTransactions).get();
+      expect(rows.length, 2);
+    });
+
+    test(
+      'does not dedupe income and expense with same amount/person',
+      () async {
+        final expense = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.phonepe.app',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 5, 30, 15, 0, 0),
+            title: 'PhonePe',
+            body: 'Paid ₹500 to Rahul via UPI',
+          ),
+        );
+        final income = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.phonepe.app',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 5, 30, 15, 0, 20),
+            title: 'PhonePe',
+            body: 'Received ₹500 from Rahul via UPI',
+          ),
+        );
+
+        expect(expense.length, 1);
+        expect(income.length, 1);
+        final rows = await db.select(db.pendingTransactions).get();
+        expect(rows.length, 2);
+      },
+    );
+
+    test('same UPI reference dedupes even outside 40 second window', () async {
+      final first = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.google.android.apps.messaging',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 30, 16, 0, 0),
+          title: 'VM-KOTAKB-S',
+          body:
+              'Sent Rs.1.00 from Kotak Bank AC X0754 to yas21606-4@okaxis on 30-05-26. UPI Ref 615087788229.',
+        ),
+      );
+      final duplicate = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.google.android.apps.messaging',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 30, 16, 2, 0),
+          title: 'VM-KOTAKB-S',
+          body:
+              'Sent Rs.1.00 from Kotak Bank AC X0754 to yas21606-4@okaxis on 30-05-26. UPI Ref 615087788229.',
+        ),
+      );
+
+      expect(first.length, 1);
+      expect(duplicate, isEmpty);
+      expect(debugEntries.last.reason, 'duplicate-ref');
+      final rows = await db.select(db.pendingTransactions).get();
+      expect(rows.length, 1);
+    });
+
+    test(
+      'different UPI refs within 40 seconds are marked possible duplicate',
+      () async {
+        final first = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.google.android.apps.messaging',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 5, 30, 17, 0, 0),
+            title: 'VM-KOTAKB-S',
+            body:
+                'Sent Rs.1.00 from Kotak Bank AC X0754 to yas21606-4@okaxis on 30-05-26. UPI Ref 615087788229.',
+          ),
+        );
+        final second = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.google.android.apps.messaging',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 5, 30, 17, 0, 20),
+            title: 'VM-KOTAKB-S',
+            body:
+                'Sent Rs.1.00 from Kotak Bank AC X0754 to yas21606-4@okaxis on 30-05-26. UPI Ref 123938960566.',
+          ),
+        );
+
+        expect(first.length, 1);
+        expect(second.length, 1);
+        expect(debugEntries.last.decision, 'pending-created');
+        expect(
+          debugEntries.last.possibleDuplicateReason,
+          'possible_duplicate_different_reference_within_40s',
+        );
+        final rows = await db.select(db.pendingTransactions).get();
+        expect(rows.length, 2);
+      },
+    );
+
     test('detection disabled prevents ingestion', () async {
       final pendingService = PendingService(db, TransactionEngine(db));
       final parserRegistry = TransactionParserRegistry(

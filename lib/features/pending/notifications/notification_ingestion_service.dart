@@ -3,9 +3,12 @@ import 'package:drift/drift.dart';
 import '../../../core/database/app_database.dart';
 import '../../expenses/models/transaction_types.dart';
 import '../parsing/confidence_level.dart';
+import '../parsing/counterparty_normalizer.dart';
 import '../parsing/parser_models.dart';
 import '../parsing/parser_confidence_scorer.dart';
+import '../parsing/parser_text_utils.dart';
 import '../parsing/pending_ingestion_service.dart';
+import '../parsing/transaction_direction_classifier.dart';
 import 'notification_fingerprint.dart';
 import 'notification_keyword_filter.dart';
 import 'notification_local_notifier.dart';
@@ -30,8 +33,11 @@ class NotificationDebugEntry {
     this.senderFilterResult,
     this.candidateCount,
     this.duplicateDecision,
+    this.possibleDuplicateReason,
     this.amountCandidate,
     this.blockedContext,
+    this.receivedAtUsed,
+    this.transactionDateChosen,
   });
 
   final DateTime receivedAt;
@@ -51,8 +57,11 @@ class NotificationDebugEntry {
   final String? senderFilterResult;
   final int? candidateCount;
   final String? duplicateDecision;
+  final String? possibleDuplicateReason;
   final String? amountCandidate;
   final String? blockedContext;
+  final DateTime? receivedAtUsed;
+  final DateTime? transactionDateChosen;
 }
 
 class NotificationIngestionService {
@@ -75,6 +84,7 @@ class NotificationIngestionService {
   final bool Function() isDetectionEnabled;
   final bool Function() shouldShowDetectionNotifications;
   final void Function(NotificationDebugEntry entry) appendDebug;
+  static const Duration _nearDuplicateWindow = Duration(seconds: 40);
 
   Future<List<int>> processPayload(NotificationPayload payload) async {
     if (!isDetectionEnabled()) {
@@ -109,7 +119,8 @@ class NotificationIngestionService {
           : payload.sourceType,
       packageName: payload.packageName,
       sender: payload.sender ?? payload.appName,
-      receivedAt: payload.receivedAt,
+      receivedAt: payload.captureTime,
+      postTime: payload.postTime,
       notificationTitle: payload.title,
       notificationBody: payload.body,
     );
@@ -131,21 +142,9 @@ class NotificationIngestionService {
       return const [];
     }
 
-    final fingerprintValue = fingerprint.build(payload: payload);
-    if (fingerprint.isDuplicate(fingerprintValue, payload.receivedAt)) {
-      _log(
-        payload,
-        decision: 'duplicate',
-        reason: 'duplicate-same-notification',
-        parseResult: 'duplicate-suppressed',
-        providerName: filterResult.providerName,
-        senderFilterResult: filterResult.senderFilterResult,
-        candidateCount: candidateCount,
-        duplicateDecision: 'package-title-body-fingerprint',
-      );
-      return const [];
-    }
-
+    final bestCandidate = parserResult.candidates.isEmpty
+        ? null
+        : parserResult.candidates.first;
     final duplicateByReference = await _allCandidatesReferenceDuplicate(
       parserResult.candidates,
     );
@@ -159,13 +158,49 @@ class NotificationIngestionService {
         senderFilterResult: filterResult.senderFilterResult,
         candidateCount: candidateCount,
         duplicateDecision: 'ref-plus-amount',
+        transactionDateChosen: bestCandidate?.transactionDate,
       );
       return const [];
     }
 
-    final bestCandidate = parserResult.candidates.isEmpty
-        ? null
-        : parserResult.candidates.first;
+    final nearDuplicateDecision = await _evaluateNearDuplicate(
+      parserResult.candidates,
+    );
+    if (nearDuplicateDecision.suppress) {
+      _log(
+        payload,
+        decision: 'duplicate',
+        reason: nearDuplicateDecision.reason!,
+        parseResult: 'duplicate-suppressed',
+        providerName: filterResult.providerName,
+        senderFilterResult: filterResult.senderFilterResult,
+        candidateCount: candidateCount,
+        duplicateDecision: nearDuplicateDecision.reason,
+        transactionDateChosen: bestCandidate?.transactionDate,
+      );
+      return const [];
+    }
+
+    final fingerprintValue = fingerprint.build(
+      payload: payload,
+      amount: bestCandidate?.amount,
+      merchant: bestCandidate?.merchant,
+    );
+    if (fingerprint.isDuplicate(fingerprintValue, payload.captureTime)) {
+      _log(
+        payload,
+        decision: 'duplicate',
+        reason: 'duplicate-same-notification-body-hash',
+        parseResult: 'duplicate-suppressed',
+        providerName: filterResult.providerName,
+        senderFilterResult: filterResult.senderFilterResult,
+        candidateCount: candidateCount,
+        duplicateDecision: 'body-hash-fallback',
+        transactionDateChosen: bestCandidate?.transactionDate,
+      );
+      return const [];
+    }
+
     final parsedConfidenceLevel =
         bestCandidate?.confidenceLevel ??
         (bestCandidate == null
@@ -186,50 +221,34 @@ class NotificationIngestionService {
         providerName: filterResult.providerName,
         senderFilterResult: filterResult.senderFilterResult,
         candidateCount: candidateCount,
+        transactionDateChosen: bestCandidate.transactionDate,
       );
       return const [];
     }
 
     final ids = await pendingIngestionService.ingestParserInput(parserInput);
     if (ids.isEmpty) {
-      final duplicateBySignature = await _hasSenderAmountRecipientDuplicate(
+      final postIngestNearDuplicate = await _evaluateNearDuplicate(
         parserResult.candidates,
       );
       _log(
         payload,
-        decision: duplicateBySignature ? 'duplicate' : 'parsed',
-        reason: duplicateBySignature
-            ? 'duplicate-sender-amount-recipient'
+        decision: postIngestNearDuplicate.suppress ? 'duplicate' : 'parsed',
+        reason: postIngestNearDuplicate.suppress
+            ? (postIngestNearDuplicate.reason ??
+                  'near_duplicate_same_amount_counterparty_40s')
             : 'parser-no-candidate',
-        parseResult: duplicateBySignature
+        parseResult: postIngestNearDuplicate.suppress
             ? 'duplicate-suppressed'
             : 'parser-failed',
         providerName: filterResult.providerName,
         senderFilterResult: filterResult.senderFilterResult,
         candidateCount: candidateCount,
-        duplicateDecision: duplicateBySignature
-            ? 'sender-amount-date-recipient'
+        duplicateDecision: postIngestNearDuplicate.suppress
+            ? (postIngestNearDuplicate.reason ??
+                  'near_duplicate_same_amount_counterparty_40s')
             : null,
-      );
-      return const [];
-    }
-
-    final pendingId = ids.first;
-    final pending = await (database.select(
-      database.pendingTransactions,
-    )..where((p) => p.id.equals(pendingId))).getSingleOrNull();
-    if (pending == null || await _hasSimilarPending(pending)) {
-      _log(
-        payload,
-        decision: 'duplicate',
-        reason: 'duplicate-multi-source-or-existing-pending',
-        parseResult: 'duplicate-suppressed',
-        confidenceScore: bestCandidate?.confidenceScore,
-        confidenceLevel: parsedConfidenceLevel,
-        providerName: filterResult.providerName,
-        senderFilterResult: filterResult.senderFilterResult,
-        candidateCount: candidateCount,
-        duplicateDecision: 'existing-pending-similarity',
+        transactionDateChosen: bestCandidate?.transactionDate,
       );
       return const [];
     }
@@ -261,6 +280,10 @@ class NotificationIngestionService {
       senderFilterResult: filterResult.senderFilterResult,
       candidateCount: candidateCount,
       localNotificationSent: localNotificationSent,
+      possibleDuplicateReason: nearDuplicateDecision.possibleDuplicate
+          ? nearDuplicateDecision.reason
+          : null,
+      transactionDateChosen: bestCandidate?.transactionDate,
     );
     return ids;
   }
@@ -295,19 +318,12 @@ class NotificationIngestionService {
     return referenceCandidateCount > 0;
   }
 
-  Future<bool> _hasSenderAmountRecipientDuplicate(
+  Future<_NearDuplicateDecision> _evaluateNearDuplicate(
     List<DetectedTransactionCandidate> candidates,
   ) async {
     for (final candidate in candidates) {
-      final sender = _metadataString(candidate, 'sender');
-      final recipient = _metadataString(candidate, 'counterparty');
-      if (sender == null || recipient == null) {
-        continue;
-      }
-      final start = candidate.transactionDate.subtract(
-        const Duration(minutes: 30),
-      );
-      final end = candidate.transactionDate.add(const Duration(minutes: 30));
+      final start = candidate.transactionDate.subtract(_nearDuplicateWindow);
+      final end = candidate.transactionDate.add(_nearDuplicateWindow);
       final rows =
           await (database.select(database.pendingTransactions)..where(
                 (p) =>
@@ -317,25 +333,61 @@ class NotificationIngestionService {
                     p.transactionDate.isSmallerOrEqualValue(end),
               ))
               .get();
+      final candidateDirection = _directionFromCandidate(candidate);
+      final candidateCounterparty = CounterpartyNormalizer.normalize(
+        _metadataString(candidate, 'counterparty') ?? candidate.merchant,
+      );
+      final candidateSource = candidate.paymentSourceTypeSuggestion;
+      final candidateSourceHint = _normalizeSourceHint(
+        candidate.paymentSourceHint,
+      );
+      final candidateRef = _extractTransactionReference(
+        candidate,
+      )?.toLowerCase();
+
       for (final row in rows) {
-        final rawLower = row.rawText.toLowerCase();
-        final senderLower = sender.toLowerCase();
-        final recipientLower = recipient.toLowerCase();
-        final candidateRef = _extractTransactionReference(candidate);
-        final rowRef = _extractTransactionReferenceFromText(row.rawText);
-        if (candidateRef != null &&
-            rowRef != null &&
-            candidateRef.toLowerCase() != rowRef.toLowerCase()) {
+        if (_directionFromPending(row) != candidateDirection) continue;
+        if (!CounterpartyNormalizer.isSameOrNearMatch(
+          candidateCounterparty,
+          row.merchant,
+        )) {
           continue;
         }
-        if (_similarity(row.merchant, candidate.merchant) >= 0.8 &&
-            rawLower.contains(senderLower) &&
-            rawLower.contains(recipientLower)) {
-          return true;
+        if (candidateSource != null &&
+            row.paymentSourceTypeSuggestion.trim().isNotEmpty &&
+            row.paymentSourceTypeSuggestion != candidateSource) {
+          continue;
         }
+        final rowSourceHint = _normalizeSourceHint(
+          ParserTextUtils.extractAccountHint(row.rawText),
+        );
+        if (candidateSourceHint != null &&
+            rowSourceHint != null &&
+            candidateSourceHint != rowSourceHint) {
+          continue;
+        }
+        final rowRef = _extractTransactionReferenceFromText(
+          row.rawText,
+        )?.toLowerCase();
+        if (candidateRef != null && rowRef != null && candidateRef != rowRef) {
+          return const _NearDuplicateDecision(
+            suppress: false,
+            possibleDuplicate: true,
+            reason: 'possible_duplicate_different_reference_within_40s',
+          );
+        }
+        return const _NearDuplicateDecision(
+          suppress: true,
+          possibleDuplicate: false,
+          reason: 'near_duplicate_same_amount_counterparty_40s',
+        );
       }
     }
-    return false;
+    return const _NearDuplicateDecision(
+      suppress: false,
+      possibleDuplicate: false,
+      reason: null,
+    );
   }
 
   String? _extractTransactionReference(DetectedTransactionCandidate candidate) {
@@ -370,40 +422,42 @@ class NotificationIngestionService {
     return value;
   }
 
-  Future<bool> _hasSimilarPending(PendingTransaction pending) async {
-    final start = pending.transactionDate.subtract(const Duration(hours: 24));
-    final end = pending.transactionDate.add(const Duration(hours: 24));
-    final rows =
-        await (database.select(database.pendingTransactions)..where(
-              (p) =>
-                  p.id.isNotValue(pending.id) &
-                  p.status.equals('pending') &
-                  p.amount.equals(pending.amount) &
-                  p.transactionDate.isBiggerOrEqualValue(start) &
-                  p.transactionDate.isSmallerOrEqualValue(end),
-            ))
-            .get();
-
-    for (final row in rows) {
-      final pendingRef = _extractTransactionReferenceFromText(pending.rawText);
-      final rowRef = _extractTransactionReferenceFromText(row.rawText);
-      if (pendingRef != null &&
-          rowRef != null &&
-          pendingRef.toLowerCase() != rowRef.toLowerCase()) {
-        continue;
-      }
-      if (_similarity(row.merchant, pending.merchant) >= 0.6) {
-        return true;
-      }
+  String _directionFromCandidate(DetectedTransactionCandidate candidate) {
+    final metadataDirection = _metadataString(candidate, 'direction');
+    if (metadataDirection == 'income') return 'income';
+    if (metadataDirection == 'expense') return 'expense';
+    final direction = PendingDirectionClassifier.detect(
+      text: candidate.rawText,
+      categoryHint: candidate.categorySuggestion,
+    );
+    switch (direction) {
+      case PendingTransactionDirection.income:
+        return 'income';
+      case PendingTransactionDirection.expense:
+        return 'expense';
+      case PendingTransactionDirection.unknown:
+        return 'unknown';
     }
-    return false;
   }
 
-  double _similarity(String a, String b) {
-    final xa = a.toLowerCase().split(RegExp(r'\s+')).toSet();
-    final xb = b.toLowerCase().split(RegExp(r'\s+')).toSet();
-    if (xa.isEmpty || xb.isEmpty) return 0;
-    return xa.intersection(xb).length / xa.union(xb).length;
+  String _directionFromPending(PendingTransaction pending) {
+    final direction = PendingDirectionClassifier.detect(
+      text: pending.rawText,
+      categoryHint: pending.categorySuggestion,
+    );
+    switch (direction) {
+      case PendingTransactionDirection.income:
+        return 'income';
+      case PendingTransactionDirection.expense:
+        return 'expense';
+      case PendingTransactionDirection.unknown:
+        return 'unknown';
+    }
+  }
+
+  String? _normalizeSourceHint(String? hint) {
+    if (hint == null || hint.trim().isEmpty) return null;
+    return hint.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '').trim();
   }
 
   void _log(
@@ -418,8 +472,10 @@ class NotificationIngestionService {
     String? senderFilterResult,
     int? candidateCount,
     String? duplicateDecision,
+    String? possibleDuplicateReason,
     String? amountCandidate,
     String? blockedContext,
+    DateTime? transactionDateChosen,
   }) {
     final title = payload.title?.trim();
     final previewSource = payload.body?.trim().isNotEmpty == true
@@ -430,7 +486,7 @@ class NotificationIngestionService {
         : previewSource;
     appendDebug(
       NotificationDebugEntry(
-        receivedAt: payload.receivedAt,
+        receivedAt: payload.captureTime,
         packageName: payload.packageName,
         title: title?.isNotEmpty == true ? title! : (payload.appName ?? '—'),
         bodyPreview: preview,
@@ -447,8 +503,11 @@ class NotificationIngestionService {
         senderFilterResult: senderFilterResult,
         candidateCount: candidateCount,
         duplicateDecision: duplicateDecision,
+        possibleDuplicateReason: possibleDuplicateReason,
         amountCandidate: amountCandidate,
         blockedContext: blockedContext,
+        receivedAtUsed: payload.captureTime,
+        transactionDateChosen: transactionDateChosen,
       ),
     );
   }
@@ -488,4 +547,16 @@ class NotificationIngestionService {
         return sourceType.toUpperCase();
     }
   }
+}
+
+class _NearDuplicateDecision {
+  const _NearDuplicateDecision({
+    required this.suppress,
+    required this.possibleDuplicate,
+    required this.reason,
+  });
+
+  final bool suppress;
+  final bool possibleDuplicate;
+  final String? reason;
 }

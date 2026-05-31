@@ -42,9 +42,11 @@ class UpiNotificationParser implements TransactionParser {
     final merchant = MerchantNormalizer.normalize(
       merchantRaw ?? 'Unknown Merchant',
     );
-    final date =
-        ParserTextUtils.extractDateWithNumericSupport(text, input.receivedAt) ??
-        input.receivedAt;
+    final parsedDateTime = ParserTextUtils.extractDateTime(
+      text,
+      input.captureTime,
+    );
+    final date = parsedDateTime?.value ?? input.captureTime;
     final hasTransactionAction =
         lower.contains('paid') ||
         lower.contains('sent') ||
@@ -59,12 +61,7 @@ class UpiNotificationParser implements TransactionParser {
       hasMerchant: merchant != 'Unknown Merchant',
       hasSourceHint: text.toLowerCase().contains('upi ref'),
       hasPatternMatch: hasTransactionAction,
-      hasDate:
-          ParserTextUtils.extractDateWithNumericSupport(
-            text,
-            input.receivedAt,
-          ) !=
-          null,
+      hasDate: parsedDateTime?.hasDate == true,
       isFallback: false,
     );
     final accountHint = ParserTextUtils.extractAccountHint(text);
@@ -101,6 +98,8 @@ class UpiNotificationParser implements TransactionParser {
             'counterparty': merchant,
             'sender': input.sender ?? input.notificationTitle,
             'transactionRef': transactionRef,
+            'hasParsedDate': parsedDateTime?.hasDate == true,
+            'hasParsedTime': parsedDateTime?.hasTime == true,
           },
         ),
       ],

@@ -5,9 +5,12 @@ import '../../../core/logging/app_log_service.dart';
 import '../../expenses/models/transaction_types.dart';
 import '../data/pending_service.dart';
 import 'category_suggester.dart';
+import 'counterparty_normalizer.dart';
 import 'confidence_level.dart';
 import 'parser_models.dart';
 import 'parser_confidence_scorer.dart';
+import 'parser_text_utils.dart';
+import 'transaction_direction_classifier.dart';
 import 'transaction_parser_registry.dart';
 
 class PendingIngestionService {
@@ -16,6 +19,7 @@ class PendingIngestionService {
   final AppDatabase _db;
   final PendingService _pendingService;
   final TransactionParserRegistry _parserRegistry;
+  static const Duration _nearDuplicateWindow = Duration(seconds: 40);
 
   ParserResult previewParserInput(ParserInput input) {
     return _parserRegistry.parseInput(input);
@@ -86,28 +90,31 @@ class PendingIngestionService {
         );
         continue;
       }
-      if (await _hasSignatureDuplicate(candidate)) {
+      final nearDuplicateDecision = await _evaluateNearDuplicate(candidate);
+      if (nearDuplicateDecision.suppress) {
         await globalAppLogService.log(
           category: 'parser',
-          message: 'candidate-deduped-signature',
+          message: 'candidate-deduped-near-duplicate',
           meta: <String, Object?>{
             'sourceType': candidate.sourceType,
             'amount': candidate.amount,
             'merchant': candidate.merchant,
+            'reason': nearDuplicateDecision.reason,
           },
         );
         continue;
       }
-      if (await _hasSimilarPending(candidate)) {
+      if (nearDuplicateDecision.possibleDuplicate) {
         await globalAppLogService.log(
           category: 'parser',
-          message: 'candidate-deduped',
+          message: 'candidate-possible-duplicate',
           meta: <String, Object?>{
             'sourceType': candidate.sourceType,
             'amount': candidate.amount,
+            'merchant': candidate.merchant,
+            'reason': nearDuplicateDecision.reason,
           },
         );
-        continue;
       }
       final paymentSourceType =
           candidate.paymentSourceTypeSuggestion ??
@@ -165,81 +172,77 @@ class PendingIngestionService {
     return rows.any((row) => row.rawText.toLowerCase().contains(refLower));
   }
 
-  Future<bool> _hasSignatureDuplicate(
+  Future<_NearDuplicateDecision> _evaluateNearDuplicate(
     DetectedTransactionCandidate candidate,
   ) async {
-    final sender = _metadataString(candidate, 'sender');
-    final counterparty = _metadataString(candidate, 'counterparty');
-    if (sender == null || counterparty == null) return false;
-
-    final start = candidate.transactionDate.subtract(
-      const Duration(minutes: 30),
+    final start = candidate.transactionDate.subtract(_nearDuplicateWindow);
+    final end = candidate.transactionDate.add(_nearDuplicateWindow);
+    final rows =
+        await (_db.select(_db.pendingTransactions)..where(
+              (p) =>
+                  p.status.equals('pending') &
+                  p.amount.equals(candidate.amount) &
+                  p.transactionDate.isBiggerOrEqualValue(start) &
+                  p.transactionDate.isSmallerOrEqualValue(end),
+            ))
+            .get();
+    final candidateRef = _extractReference(candidate)?.toLowerCase();
+    final candidateDirection = _directionFromCandidate(candidate);
+    final candidateCounterparty = CounterpartyNormalizer.normalize(
+      _metadataString(candidate, 'counterparty') ?? candidate.merchant,
     );
-    final end = candidate.transactionDate.add(const Duration(minutes: 30));
-    final rows =
-        await (_db.select(_db.pendingTransactions)..where(
-              (p) =>
-                  p.status.equals('pending') &
-                  p.amount.equals(candidate.amount) &
-                  p.transactionDate.isBiggerOrEqualValue(start) &
-                  p.transactionDate.isSmallerOrEqualValue(end),
-            ))
-            .get();
-    final senderLower = sender.toLowerCase();
-    final counterpartyLower = counterparty.toLowerCase();
-    final candidateRef = _extractReference(candidate);
-    for (final row in rows) {
-      final raw = row.rawText.toLowerCase();
-      final rowRef = _extractReferenceFromText(row.rawText);
-      if (candidateRef != null &&
-          rowRef != null &&
-          candidateRef.toLowerCase() != rowRef.toLowerCase()) {
-        continue;
-      }
-      if (_similarity(row.merchant, candidate.merchant) >= 0.8 &&
-          raw.contains(senderLower) &&
-          raw.contains(counterpartyLower)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  Future<bool> _hasSimilarPending(
-    DetectedTransactionCandidate candidate,
-  ) async {
-    final start = candidate.transactionDate.subtract(const Duration(hours: 24));
-    final end = candidate.transactionDate.add(const Duration(hours: 24));
-    final rows =
-        await (_db.select(_db.pendingTransactions)..where(
-              (p) =>
-                  p.status.equals('pending') &
-                  p.amount.equals(candidate.amount) &
-                  p.transactionDate.isBiggerOrEqualValue(start) &
-                  p.transactionDate.isSmallerOrEqualValue(end),
-            ))
-            .get();
+    final candidateSource = candidate.paymentSourceTypeSuggestion;
+    final candidateSourceHint = _normalizeSourceHint(
+      candidate.paymentSourceHint,
+    );
 
     for (final row in rows) {
-      final candidateRef = _extractReference(candidate);
-      final rowRef = _extractReferenceFromText(row.rawText);
-      if (candidateRef != null &&
-          rowRef != null &&
-          candidateRef.toLowerCase() != rowRef.toLowerCase()) {
+      final rowDirection = _directionFromPending(row);
+      if (candidateDirection != rowDirection) continue;
+
+      if (!CounterpartyNormalizer.isSameOrNearMatch(
+        candidateCounterparty,
+        row.merchant,
+      )) {
         continue;
       }
-      if (_similarity(row.merchant, candidate.merchant) >= 0.6) {
-        return true;
-      }
-    }
-    return false;
-  }
 
-  double _similarity(String a, String b) {
-    final xa = a.toLowerCase().split(RegExp(r'\s+')).toSet();
-    final xb = b.toLowerCase().split(RegExp(r'\s+')).toSet();
-    if (xa.isEmpty || xb.isEmpty) return 0;
-    return xa.intersection(xb).length / xa.union(xb).length;
+      if (candidateSource != null &&
+          row.paymentSourceTypeSuggestion.trim().isNotEmpty &&
+          row.paymentSourceTypeSuggestion != candidateSource) {
+        continue;
+      }
+
+      final rowSourceHint = _normalizeSourceHint(
+        ParserTextUtils.extractAccountHint(row.rawText),
+      );
+      if (candidateSourceHint != null &&
+          rowSourceHint != null &&
+          candidateSourceHint != rowSourceHint) {
+        continue;
+      }
+
+      final rowRef = _extractReferenceFromText(row.rawText)?.toLowerCase();
+      if (candidateRef != null && rowRef != null && candidateRef != rowRef) {
+        return const _NearDuplicateDecision(
+          suppress: false,
+          possibleDuplicate: true,
+          reason: 'possible_duplicate_different_reference_within_40s',
+        );
+      }
+
+      return const _NearDuplicateDecision(
+        suppress: true,
+        possibleDuplicate: false,
+        reason: 'near_duplicate_same_amount_counterparty_40s',
+      );
+    }
+
+    return const _NearDuplicateDecision(
+      suppress: false,
+      possibleDuplicate: false,
+      reason: null,
+    );
   }
 
   String? _extractReference(DetectedTransactionCandidate candidate) {
@@ -268,6 +271,44 @@ class PendingIngestionService {
       caseSensitive: false,
     ).firstMatch(rawText);
     return match?.group(1)?.trim();
+  }
+
+  String _directionFromCandidate(DetectedTransactionCandidate candidate) {
+    final metadataDirection = _metadataString(candidate, 'direction');
+    if (metadataDirection == 'income') return 'income';
+    if (metadataDirection == 'expense') return 'expense';
+    final direction = PendingDirectionClassifier.detect(
+      text: candidate.rawText,
+      categoryHint: candidate.categorySuggestion,
+    );
+    switch (direction) {
+      case PendingTransactionDirection.income:
+        return 'income';
+      case PendingTransactionDirection.expense:
+        return 'expense';
+      case PendingTransactionDirection.unknown:
+        return 'unknown';
+    }
+  }
+
+  String _directionFromPending(PendingTransaction pending) {
+    final direction = PendingDirectionClassifier.detect(
+      text: pending.rawText,
+      categoryHint: pending.categorySuggestion,
+    );
+    switch (direction) {
+      case PendingTransactionDirection.income:
+        return 'income';
+      case PendingTransactionDirection.expense:
+        return 'expense';
+      case PendingTransactionDirection.unknown:
+        return 'unknown';
+    }
+  }
+
+  String? _normalizeSourceHint(String? hint) {
+    if (hint == null || hint.trim().isEmpty) return null;
+    return hint.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '').trim();
   }
 
   String _defaultSourceSuggestion(ParserInput input) {
@@ -312,4 +353,16 @@ class PendingIngestionService {
     }
     return fallbackId;
   }
+}
+
+class _NearDuplicateDecision {
+  const _NearDuplicateDecision({
+    required this.suppress,
+    required this.possibleDuplicate,
+    required this.reason,
+  });
+
+  final bool suppress;
+  final bool possibleDuplicate;
+  final String? reason;
 }

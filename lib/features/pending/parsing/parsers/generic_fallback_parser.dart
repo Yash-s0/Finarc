@@ -51,7 +51,7 @@ class GenericFallbackParser implements TransactionParser {
         DetectedTransactionCandidate(
           amount: amount,
           merchant: merchant,
-          transactionDate: input.receivedAt,
+          transactionDate: input.captureTime,
           sourceType: input.sourceType,
           paymentSourceTypeSuggestion: suggestion,
           paymentSourceHint: null,

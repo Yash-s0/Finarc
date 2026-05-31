@@ -30,6 +30,12 @@ String _sourceLabelForPending(String source) {
   }
 }
 
+String _pendingMetaWithExactTime(PendingTransaction item) {
+  final local = item.transactionDate.toLocal();
+  final exact = local.toString().split('.').first;
+  return '$exact • ${_sourceLabelForPending(item.sourceType)}';
+}
+
 class PendingTransactionsScreen extends ConsumerStatefulWidget {
   const PendingTransactionsScreen({super.key, this.openPendingId});
 
@@ -205,10 +211,7 @@ class _PendingTransactionsScreenState
                               ),
                               title: item.merchant,
                               subtitle: item.categorySuggestion,
-                              meta: FinarcTransactionPresentation.meta(
-                                date: item.transactionDate,
-                                source: _sourceLabelForPending(item.sourceType),
-                              ),
+                              meta: _pendingMetaWithExactTime(item),
                               amount:
                                   '${isIncome ? '+' : '-'}${inr(item.amount)}',
                               amountColor: isIncome
@@ -286,12 +289,7 @@ class _PendingTransactionsScreenState
                                 child: FinarcTransactionTile(
                                   title: item.merchant,
                                   subtitle: item.categorySuggestion,
-                                  meta: FinarcTransactionPresentation.meta(
-                                    date: item.transactionDate,
-                                    source: _sourceLabelForPending(
-                                      item.sourceType,
-                                    ),
-                                  ),
+                                  meta: _pendingMetaWithExactTime(item),
                                   amount:
                                       '${_pendingDirection(item) == PendingTransactionDirection.income ? '+' : '-'}${inr(item.amount)}',
                                   amountColor:

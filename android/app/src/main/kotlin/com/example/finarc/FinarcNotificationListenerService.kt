@@ -37,6 +37,7 @@ class FinarcNotificationListenerService : NotificationListenerService() {
             "bigText" to if (bigText.isBlank()) null else bigText,
             "subText" to if (subText.isBlank()) null else subText,
             "receivedAt" to sbn.postTime,
+            "postTime" to sbn.postTime,
             "sourceType" to "appNotification",
             "isOngoing" to sbn.isOngoing,
             "category" to notification.category,

@@ -342,6 +342,10 @@ class IngestionDiagnosticsController
       state = state.copyWith(
         notificationsDuplicateSuppressed:
             state.notificationsDuplicateSuppressed + 1,
+        notificationsNearDuplicateSuppressed:
+            (entry.reason == 'near_duplicate_same_amount_counterparty_40s')
+            ? state.notificationsNearDuplicateSuppressed + 1
+            : state.notificationsNearDuplicateSuppressed,
       );
     } else {
       state = state.copyWith(
@@ -378,10 +382,14 @@ final notificationIngestionServiceProvider =
                   'confidenceLevel': entry.confidenceLevel,
                   'candidateCount': entry.candidateCount,
                   'duplicateDecision': entry.duplicateDecision,
+                  'possibleDuplicateReason': entry.possibleDuplicateReason,
                   'amountCandidate': entry.amountCandidate,
                   'blockedContext': entry.blockedContext,
                   'localNotificationSent': entry.localNotificationSent,
                   'receivedAt': entry.receivedAt.toIso8601String(),
+                  'receivedAtUsed': entry.receivedAtUsed?.toIso8601String(),
+                  'transactionDateChosen': entry.transactionDateChosen
+                      ?.toIso8601String(),
                 },
               ),
         );
@@ -427,10 +435,14 @@ final smsIngestionServiceProvider = Provider<SmsIngestionService>((ref) {
               'confidenceLevel': entry.confidenceLevel,
               'candidateCount': entry.candidateCount,
               'duplicateDecision': entry.duplicateDecision,
+              'possibleDuplicateReason': entry.possibleDuplicateReason,
               'amountCandidate': entry.amountCandidate,
               'blockedContext': entry.blockedContext,
               'localNotificationSent': entry.localNotificationSent,
               'receivedAt': entry.receivedAt.toIso8601String(),
+              'receivedAtUsed': entry.receivedAtUsed?.toIso8601String(),
+              'transactionDateChosen': entry.transactionDateChosen
+                  ?.toIso8601String(),
             },
           ),
     );

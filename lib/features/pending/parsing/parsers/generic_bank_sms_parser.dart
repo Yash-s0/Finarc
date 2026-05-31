@@ -57,12 +57,11 @@ class GenericBankSmsParser implements TransactionParser {
       final paymentSourceHint =
           accountHint ?? (hintLast4 == null ? null : 'ending $hintLast4');
       final ref = ParserTextUtils.extractTransactionReference(segment);
-      final date =
-          ParserTextUtils.extractDateWithNumericSupport(
-            segment,
-            input.receivedAt,
-          ) ??
-          input.receivedAt;
+      final parsedDateTime = ParserTextUtils.extractDateTime(
+        segment,
+        input.captureTime,
+      );
+      final date = parsedDateTime?.value ?? input.captureTime;
       final sourceSuggestion = _sourceSuggestionForSegment(
         segment: segment,
         direction: direction,
@@ -74,12 +73,7 @@ class GenericBankSmsParser implements TransactionParser {
         hasMerchant: merchant != 'Unknown Merchant',
         hasSourceHint: paymentSourceHint != null || ref != null,
         hasPatternMatch: direction != _TxnDirection.unknown,
-        hasDate:
-            ParserTextUtils.extractDateWithNumericSupport(
-              segment,
-              input.receivedAt,
-            ) !=
-            null,
+        hasDate: parsedDateTime?.hasDate == true,
         isFallback: false,
       );
 
@@ -106,6 +100,8 @@ class GenericBankSmsParser implements TransactionParser {
             'sourceSuggestion': sourceSuggestion,
             'transactionRef': ref,
             'direction': direction.name,
+            'hasParsedDate': parsedDateTime?.hasDate == true,
+            'hasParsedTime': parsedDateTime?.hasTime == true,
           },
         ),
       );

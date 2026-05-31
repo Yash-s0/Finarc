@@ -40,9 +40,16 @@ class NotificationDebugLogViewerScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${event.timestamp.toLocal()}',
+                      'received ${event.timestamp.toLocal()}',
                       style: Theme.of(context).textTheme.labelSmall,
                     ),
+                    if (event.transactionDateChosen != null) ...[
+                      const SizedBox(height: AppSpacing.xxs),
+                      Text(
+                        'tx-date ${event.transactionDateChosen!.toLocal()}',
+                        style: Theme.of(context).textTheme.labelSmall,
+                      ),
+                    ],
                     const SizedBox(height: AppSpacing.xxs),
                     Text(
                       event.packageName,
@@ -73,6 +80,18 @@ class NotificationDebugLogViewerScreen extends ConsumerWidget {
                         if (event.confidenceLevel != null)
                           FinarcStatusBadge(
                             label: event.confidenceLevel!,
+                            tone: FinarcStatusTone.info,
+                            compact: true,
+                          ),
+                        if ((event.duplicateDecision ?? '').isNotEmpty)
+                          FinarcStatusBadge(
+                            label: event.duplicateDecision!,
+                            tone: FinarcStatusTone.warning,
+                            compact: true,
+                          ),
+                        if ((event.possibleDuplicateReason ?? '').isNotEmpty)
+                          FinarcStatusBadge(
+                            label: event.possibleDuplicateReason!,
                             tone: FinarcStatusTone.info,
                             compact: true,
                           ),

@@ -91,7 +91,7 @@ class _TransactionDetailScreenState
               _category.text = txn.category;
               _notes.text = txn.notes ?? '';
               _date = txn.transactionDate;
-              _dateController.text = _date.toIso8601String().split('T').first;
+              _dateController.text = '${_date.toLocal()}'.split('.').first;
               _sourceType = txn.paymentSourceType;
               _sourceId = txn.paymentSourceId;
               _forOthers = txn.isForOthers;

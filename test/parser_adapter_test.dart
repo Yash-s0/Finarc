@@ -6,6 +6,7 @@ import 'package:finarc/core/database/app_database.dart';
 import 'package:finarc/features/expenses/data/transaction_engine.dart';
 import 'package:finarc/features/pending/data/pending_service.dart';
 import 'package:finarc/features/pending/parsing/category_suggester.dart';
+import 'package:finarc/features/pending/parsing/counterparty_normalizer.dart';
 import 'package:finarc/features/pending/parsing/merchant_normalizer.dart';
 import 'package:finarc/features/pending/parsing/parser_confidence_scorer.dart';
 import 'package:finarc/features/pending/parsing/parser_models.dart';
@@ -207,6 +208,23 @@ void main() {
     expect(MerchantNormalizer.normalize('SWIGGY INSTAMART UPI TXN'), 'Swiggy');
     expect(MerchantNormalizer.normalize('AMAZON PAY INFO'), 'Amazon');
     expect(MerchantNormalizer.normalize('DOMINOS CARD PAYMENT'), "Domino's");
+  });
+
+  test('counterparty normalization matches UPI handle variants', () {
+    expect(
+      CounterpartyNormalizer.isSameOrNearMatch(
+        'Yas21606 4 Okaxis',
+        'yas21606-4@okaxis',
+      ),
+      isTrue,
+    );
+    expect(
+      CounterpartyNormalizer.isSameOrNearMatch(
+        'yas21606 4@okaxis',
+        'yas21606-4@okaxis',
+      ),
+      isTrue,
+    );
   });
 
   test('category suggestion returns mapped categories', () {

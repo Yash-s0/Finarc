@@ -8,13 +8,11 @@ class NotificationFingerprint {
     double? amount,
     String? merchant,
   }) {
-    final roundedMillis =
-        (payload.receivedAt.millisecondsSinceEpoch ~/ 10000) * 10000;
     final input = [
       payload.packageName,
+      payload.sourceType,
       payload.title ?? '',
       payload.body ?? '',
-      roundedMillis.toString(),
       amount?.toStringAsFixed(2) ?? '',
       merchant?.toLowerCase() ?? '',
     ].join('|');

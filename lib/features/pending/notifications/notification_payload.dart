@@ -3,6 +3,7 @@ class NotificationPayload {
     required this.packageName,
     required this.sourceType,
     required this.receivedAt,
+    this.postTime,
     this.appName,
     this.sender,
     this.title,
@@ -21,9 +22,12 @@ class NotificationPayload {
   final String? bigText;
   final String? subText;
   final DateTime receivedAt;
+  final DateTime? postTime;
   final String sourceType;
   final bool isOngoing;
   final String? category;
+
+  DateTime get captureTime => postTime ?? receivedAt;
 
   String get combinedText {
     return [
@@ -35,9 +39,10 @@ class NotificationPayload {
   }
 
   factory NotificationPayload.fromMap(Map<dynamic, dynamic> map) {
-    final millis =
+    final receivedAtMillis =
         (map['receivedAt'] as num?)?.toInt() ??
         DateTime.now().millisecondsSinceEpoch;
+    final postTimeMillis = (map['postTime'] as num?)?.toInt();
     return NotificationPayload(
       packageName: (map['packageName'] as String?) ?? '',
       appName: map['appName'] as String?,
@@ -46,7 +51,10 @@ class NotificationPayload {
       body: map['body'] as String?,
       bigText: map['bigText'] as String?,
       subText: map['subText'] as String?,
-      receivedAt: DateTime.fromMillisecondsSinceEpoch(millis),
+      receivedAt: DateTime.fromMillisecondsSinceEpoch(receivedAtMillis),
+      postTime: postTimeMillis == null
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch(postTimeMillis),
       sourceType: (map['sourceType'] as String?) ?? 'appNotification',
       isOngoing: (map['isOngoing'] as bool?) ?? false,
       category: map['category'] as String?,

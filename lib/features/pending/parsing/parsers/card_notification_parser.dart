@@ -43,15 +43,18 @@ class CardNotificationParser implements TransactionParser {
       merchantRaw ?? 'Unknown Merchant',
     );
     final hintLast4 = ParserTextUtils.extractLast4Hint(text);
-    final date =
-        ParserTextUtils.extractDate(text, input.receivedAt) ?? input.receivedAt;
+    final parsedDateTime = ParserTextUtils.extractDateTime(
+      text,
+      input.captureTime,
+    );
+    final date = parsedDateTime?.value ?? input.captureTime;
 
     final confidence = ParserConfidenceScorer.assess(
       hasAmount: true,
       hasMerchant: merchant != 'Unknown Merchant',
       hasSourceHint: hintLast4 != null,
       hasPatternMatch: true,
-      hasDate: ParserTextUtils.extractDate(text, input.receivedAt) != null,
+      hasDate: parsedDateTime?.hasDate == true,
       isFallback: false,
     );
 
@@ -71,6 +74,10 @@ class CardNotificationParser implements TransactionParser {
           confidenceScore: confidence.score,
           confidenceLevel: confidence.level.name.toUpperCase(),
           parserName: parserName,
+          metadata: {
+            'hasParsedDate': parsedDateTime?.hasDate == true,
+            'hasParsedTime': parsedDateTime?.hasTime == true,
+          },
         ),
       ],
       parserName: parserName,

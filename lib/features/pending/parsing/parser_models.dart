@@ -49,6 +49,7 @@ class ParserInput {
     required this.rawText,
     required this.sourceType,
     required this.receivedAt,
+    this.postTime,
     this.packageName,
     this.sender,
     this.notificationTitle,
@@ -60,8 +61,11 @@ class ParserInput {
   final String? packageName;
   final String? sender;
   final DateTime receivedAt;
+  final DateTime? postTime;
   final String? notificationTitle;
   final String? notificationBody;
+
+  DateTime get captureTime => postTime ?? receivedAt;
 
   String get fullText {
     final parts = <String>[

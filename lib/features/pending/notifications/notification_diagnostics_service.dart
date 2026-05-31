@@ -17,8 +17,11 @@ class NotificationDiagnosticsEvent {
     this.senderFilterResult,
     this.candidateCount,
     this.duplicateDecision,
+    this.possibleDuplicateReason,
     this.amountCandidate,
     this.blockedContext,
+    this.receivedAtUsed,
+    this.transactionDateChosen,
   });
 
   final DateTime timestamp;
@@ -36,8 +39,11 @@ class NotificationDiagnosticsEvent {
   final String? senderFilterResult;
   final int? candidateCount;
   final String? duplicateDecision;
+  final String? possibleDuplicateReason;
   final String? amountCandidate;
   final String? blockedContext;
+  final DateTime? receivedAtUsed;
+  final DateTime? transactionDateChosen;
 }
 
 class NotificationDiagnosticsSnapshot {
@@ -155,8 +161,23 @@ class NotificationDiagnosticsService {
       senderFilterResult: row.meta['senderFilterResult'] as String?,
       candidateCount: _toInt(row.meta['candidateCount']),
       duplicateDecision: row.meta['duplicateDecision'] as String?,
+      possibleDuplicateReason: row.meta['possibleDuplicateReason'] as String?,
       amountCandidate: row.meta['amountCandidate'] as String?,
       blockedContext: row.meta['blockedContext'] as String?,
+      receivedAtUsed: _parseTimestamp(
+        row.meta['receivedAtUsed'] as String?,
+        fallback: _parseTimestamp(
+          row.meta['receivedAt'] as String?,
+          fallback: row.timestamp,
+        ),
+      ),
+      transactionDateChosen: _parseTimestamp(
+        row.meta['transactionDateChosen'] as String?,
+        fallback: _parseTimestamp(
+          row.meta['receivedAt'] as String?,
+          fallback: row.timestamp,
+        ),
+      ),
     );
   }
 
