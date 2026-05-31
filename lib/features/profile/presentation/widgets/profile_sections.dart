@@ -166,7 +166,7 @@ class DataControlsSection extends StatelessWidget {
           const SizedBox(height: AppSpacing.xs),
           FinarcSecondaryButton(
             onPressed: onImportBackup,
-            label: 'Import Backup',
+            label: 'Import Full Backup',
             icon: Icons.upload_file_rounded,
           ),
           const SizedBox(height: AppSpacing.xs),

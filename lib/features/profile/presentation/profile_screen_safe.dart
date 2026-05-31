@@ -1,13 +1,29 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
+import '../../../core/database/backup/backup_models.dart';
+import '../../../core/database/backup/backup_providers.dart';
 import '../../../core/config/app_info_provider.dart';
 import '../../../core/config/app_mode.dart';
+import '../../../core/database/database_providers.dart';
+import '../../../core/database/reset_data_service.dart';
+import '../../accounts/data/accounts_providers.dart';
+import '../../alerts/data/alerts_providers.dart';
+import '../../cards/data/cards_providers.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
 import '../../dashboard/data/dashboard_providers.dart';
+import '../../expenses/data/expenses_providers.dart';
+import '../../loans/data/loans_providers.dart';
 import '../../onboarding/data/onboarding_providers.dart';
+import '../../pending/data/pending_providers.dart';
+import '../../pending/notifications/notification_providers.dart';
+import '../../split/data/split_providers.dart';
 import '../data/profile_settings_providers.dart';
 import '../data/profile_settings_service.dart';
 import '../../../core/router/app_routes.dart';
@@ -161,35 +177,57 @@ class ProfileScreenSafe extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const FinarcSectionHeader(title: 'Access Setup'),
+                const SizedBox(height: AppSpacing.xs),
+                const Text(
+                  'Notification listener is available in release. SMS features are intentionally unavailable.',
+                ),
                 const SizedBox(height: AppSpacing.sm),
                 FinarcPrimaryButton(
                   onPressed: () => context.push('/notifications/setup'),
                   icon: Icons.notifications_active_outlined,
                   label: 'Notification Access',
                 ),
-                const SizedBox(height: AppSpacing.xs),
-                FinarcSecondaryButton(
-                  onPressed: () => context.push('/sms/setup'),
-                  icon: Icons.sms_outlined,
-                  label: 'SMS Access (Unavailable)',
-                ),
               ],
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
-          FinarcCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const FinarcSectionHeader(title: 'Data Controls'),
-                const SizedBox(height: AppSpacing.sm),
-                FinarcPrimaryButton(
-                  onPressed: () => context.push(AppRoutes.transactionImport),
-                  icon: Icons.playlist_add_check_circle_outlined,
-                  label: 'Import Transactions',
-                ),
-              ],
+          DataControlsSection(
+            onExportBackup: () => _confirmExportFullBackup(context, ref),
+            onImportBackup: () => _pickAndImportBackup(context, ref),
+            onImportTransactions: () =>
+                context.push(AppRoutes.transactionImport),
+            onExportTransactions: () => _exportCsv(
+              context,
+              ref,
+              fileNamePrefix: 'finarc_transactions',
+              label: 'Transactions CSV',
+              exporter: () =>
+                  ref.read(backupServiceProvider).exportTransactionsCsv(),
             ),
+            onExportExpenses: () => _exportCsv(
+              context,
+              ref,
+              fileNamePrefix: 'finarc_expenses',
+              label: 'Expenses CSV',
+              exporter: () =>
+                  ref.read(backupServiceProvider).exportExpensesCsv(),
+            ),
+            onExportAccounts: () => _exportCsv(
+              context,
+              ref,
+              fileNamePrefix: 'finarc_accounts',
+              label: 'Accounts CSV',
+              exporter: () =>
+                  ref.read(backupServiceProvider).exportAccountsCsv(),
+            ),
+            onExportCards: () => _exportCsv(
+              context,
+              ref,
+              fileNamePrefix: 'finarc_cards',
+              label: 'Cards CSV',
+              exporter: () => ref.read(backupServiceProvider).exportCardsCsv(),
+            ),
+            onResetAll: () => _confirmResetAllData(context, ref),
           ),
         ],
       ),
@@ -207,4 +245,280 @@ class ProfileScreenSafe extends ConsumerWidget {
       ),
     );
   }
+}
+
+Future<void> _confirmExportFullBackup(
+  BuildContext context,
+  WidgetRef ref,
+) async {
+  final shouldExport = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Export Unencrypted Backup?'),
+      content: const Text(
+        'This creates a readable local JSON backup file. Anyone with access to this file can read your financial data.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Export'),
+        ),
+      ],
+    ),
+  );
+
+  if (shouldExport != true || !context.mounted) return;
+
+  final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
+  final outputPath = await _buildExportPath('finarc_backup_$timestamp.json');
+  if (outputPath == null || !context.mounted) return;
+
+  try {
+    await ref
+        .read(backupServiceProvider)
+        .exportBackupToFile(filePath: outputPath);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Backup exported to: $outputPath')));
+  } catch (error) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Backup export failed: $error')));
+  }
+}
+
+Future<void> _exportCsv(
+  BuildContext context,
+  WidgetRef ref, {
+  required String fileNamePrefix,
+  required String label,
+  required Future<String> Function() exporter,
+}) async {
+  final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
+  final outputPath = await _buildExportPath('${fileNamePrefix}_$timestamp.csv');
+  if (outputPath == null || !context.mounted) return;
+
+  try {
+    final csv = await exporter();
+    await ref
+        .read(backupServiceProvider)
+        .writeStringToFile(filePath: outputPath, content: csv);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('$label exported to: $outputPath')));
+  } catch (error) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('$label export failed: $error')));
+  }
+}
+
+Future<void> _pickAndImportBackup(BuildContext context, WidgetRef ref) async {
+  final selectedPath = await _askImportPath(context);
+  if (selectedPath == null || !context.mounted) return;
+  String? jsonText;
+  if (await File(selectedPath).exists()) {
+    jsonText = await File(selectedPath).readAsString();
+  }
+  if (!context.mounted) return;
+  if (jsonText == null || jsonText.trim().isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Unable to read selected backup file.')),
+    );
+    return;
+  }
+
+  final importService = ref.read(importServiceProvider);
+  final validation = importService.validateBackupJson(jsonText);
+  if (!context.mounted) return;
+  if (!validation.isValid) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Invalid backup: ${validation.message}')),
+    );
+    return;
+  }
+
+  final preview = importService.previewBackup(jsonText);
+  final shouldImport = await _showImportPreviewDialog(context, preview);
+  if (shouldImport != true || !context.mounted) return;
+
+  try {
+    final result = await importService.importBackupReplaceAll(jsonText);
+    _invalidateAfterDataChange(ref);
+
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Backup imported successfully.')),
+    );
+    context.go(result.onboardingCompleted ? '/' : '/onboarding');
+  } catch (error) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Import failed: $error')));
+  }
+}
+
+Future<String?> _buildExportPath(String fileName) async {
+  final baseDir = await getApplicationDocumentsDirectory();
+  final backupDir = Directory(p.join(baseDir.path, 'exports'));
+  await backupDir.create(recursive: true);
+  return p.join(backupDir.path, fileName);
+}
+
+Future<String?> _askImportPath(BuildContext context) async {
+  final controller = TextEditingController();
+  final baseDir = await getApplicationDocumentsDirectory();
+  if (!context.mounted) return null;
+  controller.text = p.join(baseDir.path, 'exports', 'finarc_backup.json');
+
+  final result = await showDialog<String>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Import Backup JSON'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Paste the local JSON backup file path to import (replace all).',
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              labelText: 'Backup file path',
+              hintText: '/storage/emulated/0/Download/finarc_backup.json',
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+          child: const Text('Continue'),
+        ),
+      ],
+    ),
+  );
+  controller.dispose();
+  if (result == null || result.isEmpty) return null;
+  return result;
+}
+
+Future<bool?> _showImportPreviewDialog(
+  BuildContext context,
+  BackupPreview preview,
+) {
+  return showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Import Backup (Replace All)'),
+      content: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'This will permanently replace all local Finarc data on this device.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text('Created: ${preview.createdAt?.toLocal().toString() ?? '-'}'),
+            Text('Backup version: ${preview.backupVersion}'),
+            Text('Schema version: ${preview.schemaVersion}'),
+            const SizedBox(height: AppSpacing.sm),
+            ...preview.counts.entries.map(
+              (entry) => Text('${entry.key}: ${entry.value}'),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Import & Replace'),
+        ),
+      ],
+    ),
+  );
+}
+
+Future<void> _confirmResetAllData(BuildContext context, WidgetRef ref) async {
+  final shouldReset = await showDialog<bool>(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: const Text('Delete all data?'),
+        content: const Text(
+          'This permanently deletes all local Finarc data on this device. This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      );
+    },
+  );
+
+  if (shouldReset != true) return;
+
+  final verification = await ResetDataService(
+    ref.read(appDatabaseProvider),
+  ).wipeAllUserDataAndRestartOnboarding();
+
+  _invalidateAfterDataChange(ref);
+
+  if (context.mounted) {
+    if (!verification.isClean) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Reset verification failed. Please try again.'),
+        ),
+      );
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('All local data deleted. Starting fresh.')),
+    );
+    context.go('/onboarding');
+  }
+}
+
+void _invalidateAfterDataChange(WidgetRef ref) {
+  ref.invalidate(dashboardProvider);
+  ref.invalidate(accountsOverviewProvider);
+  ref.invalidate(cardsOverviewProvider);
+  ref.invalidate(expenseListProvider);
+  ref.invalidate(pendingTransactionsProvider);
+  ref.invalidate(pendingCountProvider);
+  ref.invalidate(splitDashboardProvider);
+  ref.invalidate(loansDashboardProvider);
+  ref.invalidate(alertsInboxProvider);
+  ref.invalidate(alertsUnreadCountProvider);
+  ref.invalidate(latestImportantAlertProvider);
+  ref.invalidate(onboardingCompletedProvider);
+  ref.invalidate(detectionSettingsProvider);
 }
