@@ -4,6 +4,7 @@ import '../../../core/database/app_database.dart';
 import '../../../core/logging/app_log_service.dart';
 import '../../expenses/models/transaction_types.dart';
 import '../data/pending_service.dart';
+import 'bank_account_matcher.dart';
 import 'category_suggester.dart';
 import 'counterparty_normalizer.dart';
 import 'confidence_level.dart';
@@ -19,7 +20,7 @@ class PendingIngestionService {
   final AppDatabase _db;
   final PendingService _pendingService;
   final TransactionParserRegistry _parserRegistry;
-  static const Duration _nearDuplicateWindow = Duration(seconds: 40);
+  static const Duration _nearDuplicateWindow = Duration(minutes: 8);
 
   ParserResult previewParserInput(ParserInput input) {
     return _parserRegistry.parseInput(input);
@@ -227,14 +228,14 @@ class PendingIngestionService {
         return const _NearDuplicateDecision(
           suppress: false,
           possibleDuplicate: true,
-          reason: 'possible_duplicate_different_reference_within_40s',
+          reason: 'possible_duplicate_different_reference_within_8m',
         );
       }
 
       return const _NearDuplicateDecision(
         suppress: true,
         possibleDuplicate: false,
-        reason: 'near_duplicate_same_amount_counterparty_40s',
+        reason: 'near_duplicate_same_amount_counterparty_8m',
       );
     }
 
@@ -332,26 +333,8 @@ class PendingIngestionService {
     final hint = sourceHint.trim().toLowerCase();
     final banks = await _db.select(_db.bankAccounts).get();
     if (banks.isEmpty) return null;
-
-    final hintedLast4 = RegExp(r'(\d{3,4})\b').firstMatch(hint)?.group(1);
-
-    int? fallbackId;
-    for (final bank in banks) {
-      final bankName = bank.bankName.toLowerCase();
-      final accountName = bank.accountName.toLowerCase();
-      if (hint.contains(bankName) || hint.contains(accountName)) {
-        fallbackId = bank.id;
-        if (hintedLast4 != null &&
-            (accountName.contains(hintedLast4) ||
-                bankName.contains(hintedLast4))) {
-          return bank.id;
-        }
-      }
-      if (hintedLast4 != null && accountName.contains(hintedLast4)) {
-        return bank.id;
-      }
-    }
-    return fallbackId;
+    final match = BankAccountMatcher.match(accounts: banks, sourceHint: hint);
+    return match.accountId;
   }
 }
 

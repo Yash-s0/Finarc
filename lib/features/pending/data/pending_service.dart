@@ -30,6 +30,8 @@ class PendingService {
 
   final AppDatabase _db;
   final TransactionEngine _engine;
+  static const Duration _transactionDuplicateWindow = Duration(minutes: 10);
+  static const Duration _cardPaymentDuplicateWindow = Duration(minutes: 20);
 
   Future<int> createPendingTransaction({
     required double amount,
@@ -519,10 +521,10 @@ class PendingService {
     PendingTransaction pendingTransaction,
   ) async {
     final rangeStart = pendingTransaction.transactionDate.subtract(
-      const Duration(hours: 24),
+      _transactionDuplicateWindow,
     );
     final rangeEnd = pendingTransaction.transactionDate.add(
-      const Duration(hours: 24),
+      _transactionDuplicateWindow,
     );
 
     final candidates =
@@ -557,8 +559,8 @@ class PendingService {
     required int cardId,
     required DateTime transactionDate,
   }) async {
-    final rangeStart = transactionDate.subtract(const Duration(hours: 24));
-    final rangeEnd = transactionDate.add(const Duration(hours: 24));
+    final rangeStart = transactionDate.subtract(_cardPaymentDuplicateWindow);
+    final rangeEnd = transactionDate.add(_cardPaymentDuplicateWindow);
     final rows =
         await (_db.select(_db.transactions)..where(
               (t) =>

@@ -32,6 +32,22 @@ class CounterpartyNormalizer {
     'available',
     'info',
     'payment',
+    'that',
+    'fast',
+    'check',
+    'balance',
+    'tap',
+    'open',
+    'link',
+    'mark',
+    'read',
+    'not',
+    'you',
+    'avoid',
+    'charges',
+    'before',
+    'last',
+    'date',
   };
 
   static String normalize(String input) {

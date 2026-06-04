@@ -142,9 +142,9 @@ class SmsIngestionService {
 
   Future<bool> _hasSimilarPending(PendingTransaction pending) async {
     final rangeStart = pending.transactionDate.subtract(
-      const Duration(hours: 24),
+      const Duration(minutes: 10),
     );
-    final rangeEnd = pending.transactionDate.add(const Duration(hours: 24));
+    final rangeEnd = pending.transactionDate.add(const Duration(minutes: 10));
     final rows =
         await (_db.select(_db.pendingTransactions)..where(
               (p) =>

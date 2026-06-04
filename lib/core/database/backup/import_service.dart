@@ -236,6 +236,7 @@ class ImportService {
                 bankName: Value(_string(row['bankName'])),
                 accountName: Value(_string(row['accountName'])),
                 accountType: Value(_string(row['accountType'])),
+                last4: Value(_stringOrNull(row['last4'])),
                 currentBalance: Value(_double(row['currentBalance']) ?? 0),
                 colorOrIcon: Value(_stringOrNull(row['colorOrIcon'])),
                 createdAt: Value(_date(row['createdAt']) ?? DateTime.now()),

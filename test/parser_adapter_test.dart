@@ -43,6 +43,7 @@ void main() {
             bankName: 'Test Bank',
             accountName: 'Primary',
             accountType: 'savings',
+            last4: const Value('7821'),
             currentBalance: const Value(50000),
           ),
         );
@@ -286,6 +287,36 @@ void main() {
     expect(pending.status, 'pending');
     expect(pending.merchant, 'Zomato');
     expect(pending.amount, 250);
+  });
+
+  test('pending ingestion auto-matches bank source by last4 when available', () async {
+    await db.into(db.bankAccounts).insert(
+      BankAccountsCompanion.insert(
+        bankName: 'Kotak',
+        accountName: 'Salary',
+        accountType: 'savings',
+        last4: const Value('0754'),
+        currentBalance: const Value(20000),
+      ),
+    );
+
+    final ids = await ingestion.ingestParserInput(
+      ParserInput(
+        rawText:
+            'Sent Rs.1.00 from Kotak Bank AC X0754 to yas21606-4@okaxis on 30-05-26. UPI Ref 123938960566.',
+        sourceType: 'appNotification',
+        packageName: 'com.google.android.apps.messaging',
+        sender: 'VM-KOTAKB-S',
+        receivedAt: DateTime(2026, 5, 30, 12, 0),
+      ),
+    );
+
+    expect(ids, hasLength(1));
+    final pending = await (db.select(
+      db.pendingTransactions,
+    )..where((p) => p.id.equals(ids.first))).getSingle();
+    expect(pending.paymentSourceIdSuggestion, 2);
+    expect(pending.rawText, contains('X0754'));
   });
 
   test('fallback parser produces low-confidence candidate', () {

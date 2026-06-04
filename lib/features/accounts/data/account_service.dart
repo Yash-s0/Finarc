@@ -25,6 +25,7 @@ class AccountService {
     required String accountName,
     required String accountType,
     required double currentBalance,
+    String? last4,
     String? colorOrIcon,
   }) {
     return _db
@@ -34,6 +35,7 @@ class AccountService {
             bankName: bankName,
             accountName: accountName,
             accountType: accountType,
+            last4: Value(last4),
             currentBalance: Value(currentBalance),
             colorOrIcon: Value(colorOrIcon),
           ),
@@ -45,6 +47,7 @@ class AccountService {
     String? bankName,
     String? accountName,
     String? accountType,
+    String? last4,
     double? currentBalance,
     String? colorOrIcon,
   }) {
@@ -57,6 +60,7 @@ class AccountService {
         accountType: accountType == null
             ? const Value.absent()
             : Value(accountType),
+        last4: last4 == null ? const Value.absent() : Value(last4),
         currentBalance: currentBalance == null
             ? const Value.absent()
             : Value(currentBalance),

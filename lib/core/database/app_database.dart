@@ -14,6 +14,7 @@ class BankAccounts extends Table {
   TextColumn get bankName => text()();
   TextColumn get accountName => text()();
   TextColumn get accountType => text()();
+  TextColumn get last4 => text().withLength(min: 4, max: 4).nullable()();
   RealColumn get currentBalance => real().withDefault(const Constant(0))();
   TextColumn get colorOrIcon => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
@@ -323,7 +324,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 17;
+  int get schemaVersion => 18;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -523,6 +524,9 @@ class AppDatabase extends _$AppDatabase {
         );
         await m.addColumn(transactions, transactions.cashbackDestinationId);
         await m.addColumn(transactions, transactions.relatedTransactionId);
+      }
+      if (from < 18) {
+        await m.addColumn(bankAccounts, bankAccounts.last4);
       }
       await globalAppLogService.log(
         category: 'migration',

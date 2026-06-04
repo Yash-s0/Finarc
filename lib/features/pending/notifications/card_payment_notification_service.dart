@@ -4,6 +4,7 @@ import '../../../core/database/app_database.dart';
 import '../../../core/logging/app_log_service.dart';
 import '../../expenses/models/transaction_types.dart';
 import '../data/pending_service.dart';
+import '../parsing/bank_account_matcher.dart';
 import '../parsing/parser_text_utils.dart';
 import 'card_payment_pending_codec.dart';
 import 'notification_payload.dart';
@@ -84,6 +85,7 @@ class CardPaymentNotificationService {
 
   final AppDatabase _db;
   final PendingService _pendingService;
+  static const Duration _mergeWindow = Duration(minutes: 20);
 
   Future<CardPaymentHandlingResult?> handleIfCardPayment(
     NotificationPayload payload,
@@ -174,8 +176,8 @@ class CardPaymentNotificationService {
   Future<PendingTransaction?> _findExistingPending(
     CardPaymentNotification parsed,
   ) async {
-    final start = parsed.transactionDate.subtract(const Duration(hours: 12));
-    final end = parsed.transactionDate.add(const Duration(hours: 12));
+    final start = parsed.transactionDate.subtract(_mergeWindow);
+    final end = parsed.transactionDate.add(_mergeWindow);
     final rows =
         await (_db.select(_db.pendingTransactions)..where(
               (p) =>
@@ -460,17 +462,11 @@ class CardPaymentNotificationService {
   }
 
   Future<int?> _matchSourceAccountId(String? sourceHint) async {
-    final normalizedHint = _normalize(sourceHint);
-    if (normalizedHint == null) return null;
     final banks = await _db.select(_db.bankAccounts).get();
-    final matches = banks
-        .where((bank) {
-          final bankName = _normalize(bank.bankName);
-          return bankName != null && normalizedHint.contains(bankName);
-        })
-        .toList(growable: false);
-    if (matches.length == 1) return matches.first.id;
-    return null;
+    return BankAccountMatcher.match(
+      accounts: banks,
+      sourceHint: sourceHint,
+    ).accountId;
   }
 
   String? _normalize(String? value) {

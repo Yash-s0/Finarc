@@ -55,6 +55,19 @@ class $BankAccountsTable extends BankAccounts
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _last4Meta = const VerificationMeta('last4');
+  @override
+  late final GeneratedColumn<String> last4 = GeneratedColumn<String>(
+    'last4',
+    aliasedName,
+    true,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 4,
+      maxTextLength: 4,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _currentBalanceMeta = const VerificationMeta(
     'currentBalance',
   );
@@ -108,6 +121,7 @@ class $BankAccountsTable extends BankAccounts
     bankName,
     accountName,
     accountType,
+    last4,
     currentBalance,
     colorOrIcon,
     createdAt,
@@ -157,6 +171,12 @@ class $BankAccountsTable extends BankAccounts
       );
     } else if (isInserting) {
       context.missing(_accountTypeMeta);
+    }
+    if (data.containsKey('last4')) {
+      context.handle(
+        _last4Meta,
+        last4.isAcceptableOrUnknown(data['last4']!, _last4Meta),
+      );
     }
     if (data.containsKey('current_balance')) {
       context.handle(
@@ -213,6 +233,10 @@ class $BankAccountsTable extends BankAccounts
         DriftSqlType.string,
         data['${effectivePrefix}account_type'],
       )!,
+      last4: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last4'],
+      ),
       currentBalance: attachedDatabase.typeMapping.read(
         DriftSqlType.double,
         data['${effectivePrefix}current_balance'],
@@ -243,6 +267,7 @@ class BankAccount extends DataClass implements Insertable<BankAccount> {
   final String bankName;
   final String accountName;
   final String accountType;
+  final String? last4;
   final double currentBalance;
   final String? colorOrIcon;
   final DateTime createdAt;
@@ -252,6 +277,7 @@ class BankAccount extends DataClass implements Insertable<BankAccount> {
     required this.bankName,
     required this.accountName,
     required this.accountType,
+    this.last4,
     required this.currentBalance,
     this.colorOrIcon,
     required this.createdAt,
@@ -264,6 +290,9 @@ class BankAccount extends DataClass implements Insertable<BankAccount> {
     map['bank_name'] = Variable<String>(bankName);
     map['account_name'] = Variable<String>(accountName);
     map['account_type'] = Variable<String>(accountType);
+    if (!nullToAbsent || last4 != null) {
+      map['last4'] = Variable<String>(last4);
+    }
     map['current_balance'] = Variable<double>(currentBalance);
     if (!nullToAbsent || colorOrIcon != null) {
       map['color_or_icon'] = Variable<String>(colorOrIcon);
@@ -279,6 +308,9 @@ class BankAccount extends DataClass implements Insertable<BankAccount> {
       bankName: Value(bankName),
       accountName: Value(accountName),
       accountType: Value(accountType),
+      last4: last4 == null && nullToAbsent
+          ? const Value.absent()
+          : Value(last4),
       currentBalance: Value(currentBalance),
       colorOrIcon: colorOrIcon == null && nullToAbsent
           ? const Value.absent()
@@ -298,6 +330,7 @@ class BankAccount extends DataClass implements Insertable<BankAccount> {
       bankName: serializer.fromJson<String>(json['bankName']),
       accountName: serializer.fromJson<String>(json['accountName']),
       accountType: serializer.fromJson<String>(json['accountType']),
+      last4: serializer.fromJson<String?>(json['last4']),
       currentBalance: serializer.fromJson<double>(json['currentBalance']),
       colorOrIcon: serializer.fromJson<String?>(json['colorOrIcon']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -312,6 +345,7 @@ class BankAccount extends DataClass implements Insertable<BankAccount> {
       'bankName': serializer.toJson<String>(bankName),
       'accountName': serializer.toJson<String>(accountName),
       'accountType': serializer.toJson<String>(accountType),
+      'last4': serializer.toJson<String?>(last4),
       'currentBalance': serializer.toJson<double>(currentBalance),
       'colorOrIcon': serializer.toJson<String?>(colorOrIcon),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -324,6 +358,7 @@ class BankAccount extends DataClass implements Insertable<BankAccount> {
     String? bankName,
     String? accountName,
     String? accountType,
+    Value<String?> last4 = const Value.absent(),
     double? currentBalance,
     Value<String?> colorOrIcon = const Value.absent(),
     DateTime? createdAt,
@@ -333,6 +368,7 @@ class BankAccount extends DataClass implements Insertable<BankAccount> {
     bankName: bankName ?? this.bankName,
     accountName: accountName ?? this.accountName,
     accountType: accountType ?? this.accountType,
+    last4: last4.present ? last4.value : this.last4,
     currentBalance: currentBalance ?? this.currentBalance,
     colorOrIcon: colorOrIcon.present ? colorOrIcon.value : this.colorOrIcon,
     createdAt: createdAt ?? this.createdAt,
@@ -348,6 +384,7 @@ class BankAccount extends DataClass implements Insertable<BankAccount> {
       accountType: data.accountType.present
           ? data.accountType.value
           : this.accountType,
+      last4: data.last4.present ? data.last4.value : this.last4,
       currentBalance: data.currentBalance.present
           ? data.currentBalance.value
           : this.currentBalance,
@@ -366,6 +403,7 @@ class BankAccount extends DataClass implements Insertable<BankAccount> {
           ..write('bankName: $bankName, ')
           ..write('accountName: $accountName, ')
           ..write('accountType: $accountType, ')
+          ..write('last4: $last4, ')
           ..write('currentBalance: $currentBalance, ')
           ..write('colorOrIcon: $colorOrIcon, ')
           ..write('createdAt: $createdAt, ')
@@ -380,6 +418,7 @@ class BankAccount extends DataClass implements Insertable<BankAccount> {
     bankName,
     accountName,
     accountType,
+    last4,
     currentBalance,
     colorOrIcon,
     createdAt,
@@ -393,6 +432,7 @@ class BankAccount extends DataClass implements Insertable<BankAccount> {
           other.bankName == this.bankName &&
           other.accountName == this.accountName &&
           other.accountType == this.accountType &&
+          other.last4 == this.last4 &&
           other.currentBalance == this.currentBalance &&
           other.colorOrIcon == this.colorOrIcon &&
           other.createdAt == this.createdAt &&
@@ -404,6 +444,7 @@ class BankAccountsCompanion extends UpdateCompanion<BankAccount> {
   final Value<String> bankName;
   final Value<String> accountName;
   final Value<String> accountType;
+  final Value<String?> last4;
   final Value<double> currentBalance;
   final Value<String?> colorOrIcon;
   final Value<DateTime> createdAt;
@@ -413,6 +454,7 @@ class BankAccountsCompanion extends UpdateCompanion<BankAccount> {
     this.bankName = const Value.absent(),
     this.accountName = const Value.absent(),
     this.accountType = const Value.absent(),
+    this.last4 = const Value.absent(),
     this.currentBalance = const Value.absent(),
     this.colorOrIcon = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -423,6 +465,7 @@ class BankAccountsCompanion extends UpdateCompanion<BankAccount> {
     required String bankName,
     required String accountName,
     required String accountType,
+    this.last4 = const Value.absent(),
     this.currentBalance = const Value.absent(),
     this.colorOrIcon = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -435,6 +478,7 @@ class BankAccountsCompanion extends UpdateCompanion<BankAccount> {
     Expression<String>? bankName,
     Expression<String>? accountName,
     Expression<String>? accountType,
+    Expression<String>? last4,
     Expression<double>? currentBalance,
     Expression<String>? colorOrIcon,
     Expression<DateTime>? createdAt,
@@ -445,6 +489,7 @@ class BankAccountsCompanion extends UpdateCompanion<BankAccount> {
       if (bankName != null) 'bank_name': bankName,
       if (accountName != null) 'account_name': accountName,
       if (accountType != null) 'account_type': accountType,
+      if (last4 != null) 'last4': last4,
       if (currentBalance != null) 'current_balance': currentBalance,
       if (colorOrIcon != null) 'color_or_icon': colorOrIcon,
       if (createdAt != null) 'created_at': createdAt,
@@ -457,6 +502,7 @@ class BankAccountsCompanion extends UpdateCompanion<BankAccount> {
     Value<String>? bankName,
     Value<String>? accountName,
     Value<String>? accountType,
+    Value<String?>? last4,
     Value<double>? currentBalance,
     Value<String?>? colorOrIcon,
     Value<DateTime>? createdAt,
@@ -467,6 +513,7 @@ class BankAccountsCompanion extends UpdateCompanion<BankAccount> {
       bankName: bankName ?? this.bankName,
       accountName: accountName ?? this.accountName,
       accountType: accountType ?? this.accountType,
+      last4: last4 ?? this.last4,
       currentBalance: currentBalance ?? this.currentBalance,
       colorOrIcon: colorOrIcon ?? this.colorOrIcon,
       createdAt: createdAt ?? this.createdAt,
@@ -488,6 +535,9 @@ class BankAccountsCompanion extends UpdateCompanion<BankAccount> {
     }
     if (accountType.present) {
       map['account_type'] = Variable<String>(accountType.value);
+    }
+    if (last4.present) {
+      map['last4'] = Variable<String>(last4.value);
     }
     if (currentBalance.present) {
       map['current_balance'] = Variable<double>(currentBalance.value);
@@ -511,6 +561,7 @@ class BankAccountsCompanion extends UpdateCompanion<BankAccount> {
           ..write('bankName: $bankName, ')
           ..write('accountName: $accountName, ')
           ..write('accountType: $accountType, ')
+          ..write('last4: $last4, ')
           ..write('currentBalance: $currentBalance, ')
           ..write('colorOrIcon: $colorOrIcon, ')
           ..write('createdAt: $createdAt, ')
@@ -13102,6 +13153,7 @@ typedef $$BankAccountsTableCreateCompanionBuilder =
       required String bankName,
       required String accountName,
       required String accountType,
+      Value<String?> last4,
       Value<double> currentBalance,
       Value<String?> colorOrIcon,
       Value<DateTime> createdAt,
@@ -13113,6 +13165,7 @@ typedef $$BankAccountsTableUpdateCompanionBuilder =
       Value<String> bankName,
       Value<String> accountName,
       Value<String> accountType,
+      Value<String?> last4,
       Value<double> currentBalance,
       Value<String?> colorOrIcon,
       Value<DateTime> createdAt,
@@ -13145,6 +13198,11 @@ class $$BankAccountsTableFilterComposer
 
   ColumnFilters<String> get accountType => $composableBuilder(
     column: $table.accountType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get last4 => $composableBuilder(
+    column: $table.last4,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -13198,6 +13256,11 @@ class $$BankAccountsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get last4 => $composableBuilder(
+    column: $table.last4,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<double> get currentBalance => $composableBuilder(
     column: $table.currentBalance,
     builder: (column) => ColumnOrderings(column),
@@ -13243,6 +13306,9 @@ class $$BankAccountsTableAnnotationComposer
     column: $table.accountType,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get last4 =>
+      $composableBuilder(column: $table.last4, builder: (column) => column);
 
   GeneratedColumn<double> get currentBalance => $composableBuilder(
     column: $table.currentBalance,
@@ -13296,6 +13362,7 @@ class $$BankAccountsTableTableManager
                 Value<String> bankName = const Value.absent(),
                 Value<String> accountName = const Value.absent(),
                 Value<String> accountType = const Value.absent(),
+                Value<String?> last4 = const Value.absent(),
                 Value<double> currentBalance = const Value.absent(),
                 Value<String?> colorOrIcon = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -13305,6 +13372,7 @@ class $$BankAccountsTableTableManager
                 bankName: bankName,
                 accountName: accountName,
                 accountType: accountType,
+                last4: last4,
                 currentBalance: currentBalance,
                 colorOrIcon: colorOrIcon,
                 createdAt: createdAt,
@@ -13316,6 +13384,7 @@ class $$BankAccountsTableTableManager
                 required String bankName,
                 required String accountName,
                 required String accountType,
+                Value<String?> last4 = const Value.absent(),
                 Value<double> currentBalance = const Value.absent(),
                 Value<String?> colorOrIcon = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -13325,6 +13394,7 @@ class $$BankAccountsTableTableManager
                 bankName: bankName,
                 accountName: accountName,
                 accountType: accountType,
+                last4: last4,
                 currentBalance: currentBalance,
                 colorOrIcon: colorOrIcon,
                 createdAt: createdAt,

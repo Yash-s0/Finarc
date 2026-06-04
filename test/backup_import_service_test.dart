@@ -40,6 +40,7 @@ void main() {
             bankName: 'HDFC',
             accountName: 'Main',
             accountType: 'savings',
+            last4: const Value('7788'),
             currentBalance: const Value(25000),
           ),
         );
@@ -268,6 +269,7 @@ void main() {
 
       expect(backup.toLowerCase().contains('cvv'), false);
       expect(backup.toLowerCase().contains('expiry'), false);
+      expect((data['bankAccounts'] as List).single['last4'], '7788');
     },
   );
 
@@ -340,6 +342,7 @@ void main() {
 
     expect(result.counts['bankAccounts'], 1);
     expect(banks.length, 1);
+    expect(banks.single.last4, '7788');
     expect(txns.length, 1);
     expect(cards.length, 1);
   });
@@ -401,10 +404,11 @@ void main() {
     expect(cardsCsv.contains('ICICI'), true);
 
     expect(
-      accountsCsv.contains('entityType,id,name,bankName,accountType'),
+      accountsCsv.contains('entityType,id,name,bankName,accountType,last4'),
       true,
     );
     expect(accountsCsv.contains('HDFC'), true);
+    expect(accountsCsv.contains('7788'), true);
   });
 
   test('import/export normalizes and preserves recoverable fields', () async {

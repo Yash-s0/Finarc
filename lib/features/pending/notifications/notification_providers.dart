@@ -343,7 +343,7 @@ class IngestionDiagnosticsController
         notificationsDuplicateSuppressed:
             state.notificationsDuplicateSuppressed + 1,
         notificationsNearDuplicateSuppressed:
-            (entry.reason == 'near_duplicate_same_amount_counterparty_40s')
+            (entry.reason == 'near_duplicate_same_amount_counterparty_8m')
             ? state.notificationsNearDuplicateSuppressed + 1
             : state.notificationsNearDuplicateSuppressed,
       );

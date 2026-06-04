@@ -20,6 +20,7 @@ class _AddEditAccountScreenState extends ConsumerState<AddEditAccountScreen> {
   final _bank = TextEditingController();
   final _name = TextEditingController();
   final _balance = TextEditingController(text: '0');
+  final _last4 = TextEditingController();
   final _color = TextEditingController();
   bool _isCash = false;
   String _accountType = 'savings';
@@ -37,6 +38,7 @@ class _AddEditAccountScreenState extends ConsumerState<AddEditAccountScreen> {
     _bank.dispose();
     _name.dispose();
     _balance.dispose();
+    _last4.dispose();
     _color.dispose();
     super.dispose();
   }
@@ -88,6 +90,20 @@ class _AddEditAccountScreenState extends ConsumerState<AddEditAccountScreen> {
                       label: 'Bank name',
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) return 'Required';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    FinarcTextField(
+                      controller: _last4,
+                      label: 'Account last 4 digits (optional)',
+                      keyboardType: TextInputType.number,
+                      validator: (v) {
+                        final value = (v ?? '').trim();
+                        if (value.isEmpty) return null;
+                        if (!RegExp(r'^\d{4}$').hasMatch(value)) {
+                          return 'Enter exactly 4 digits';
+                        }
                         return null;
                       },
                     ),
@@ -171,6 +187,7 @@ class _AddEditAccountScreenState extends ConsumerState<AddEditAccountScreen> {
         accountName: _name.text.trim(),
         accountType: _accountType,
         currentBalance: double.tryParse(_balance.text) ?? 0,
+        last4: _last4.text.trim().isEmpty ? null : _last4.text.trim(),
         colorOrIcon: _color.text.trim().isEmpty ? null : _color.text.trim(),
       );
     }

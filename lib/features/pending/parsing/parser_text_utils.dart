@@ -325,6 +325,16 @@ class ParserTextUtils {
       ' avl',
       ' txn',
       ' transaction',
+      ' that was fast',
+      ' tap to check',
+      ' check your latest bank balance',
+      ' check balance',
+      ' open link',
+      ' mark as read',
+      ' not you',
+      ' pay before last date',
+      ' avoid charges',
+      ' http',
     ];
 
     var boundary = -1;
@@ -339,7 +349,26 @@ class ParserTextUtils {
   }
 
   static String _cleanMerchant(String raw) {
-    return compactSpaces(raw.replaceAll(RegExp(r"[^A-Za-z0-9&.\-' ]"), ''));
+    var cleaned = compactSpaces(
+      raw.replaceAll(RegExp(r"[^A-Za-z0-9&.\-' ]"), ' '),
+    );
+    const noisePhrases = [
+      'that was fast',
+      'avoid charges',
+      'check balance',
+      'tap to check',
+      'open link',
+      'mark as read',
+      'not you',
+      'pay before last date',
+    ];
+    for (final phrase in noisePhrases) {
+      final idx = cleaned.toLowerCase().indexOf(phrase);
+      if (idx != -1) {
+        cleaned = compactSpaces(cleaned.substring(0, idx));
+      }
+    }
+    return cleaned;
   }
 }
 

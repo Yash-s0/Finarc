@@ -204,6 +204,40 @@ void main() {
     expect(duplicate, isNotNull);
   });
 
+  test('detect duplicate does not flag same merchant hours later', () async {
+    await db
+        .into(db.transactions)
+        .insert(
+          TransactionsCompanion.insert(
+            type: TransactionType.upi,
+            amount: 500,
+            title: 'Swiggy',
+            category: 'Food',
+            transactionDate: DateTime(2026, 5, 30, 10, 0),
+            paymentSourceType: PaymentSourceType.upi,
+            paymentSourceId: 1,
+          ),
+        );
+
+    final id = await service.createPendingTransaction(
+      amount: 500,
+      merchant: 'Swiggy',
+      categorySuggestion: 'Food',
+      paymentSourceTypeSuggestion: PaymentSourceType.upi,
+      paymentSourceIdSuggestion: 1,
+      transactionDate: DateTime(2026, 5, 30, 15, 0),
+      sourceType: 'appNotification',
+      rawText: 'Paid ₹500 to Swiggy via UPI',
+      confidenceScore: 0.8,
+    );
+
+    final pending = await (db.select(
+      db.pendingTransactions,
+    )..where((p) => p.id.equals(id))).getSingle();
+    final duplicate = await service.detectPossibleDuplicate(pending);
+    expect(duplicate, null);
+  });
+
   test(
     'confirm card payment pending settles bill and records cardPayment',
     () async {

@@ -183,7 +183,11 @@ void main() {
           );
     }
 
-    Future<int> createBank({required String bankName, String? accountName}) {
+    Future<int> createBank({
+      required String bankName,
+      String? accountName,
+      String? last4,
+    }) {
       return db
           .into(db.bankAccounts)
           .insert(
@@ -191,6 +195,7 @@ void main() {
               bankName: bankName,
               accountName: accountName ?? '$bankName Savings',
               accountType: 'savings',
+              last4: drift.Value(last4),
               currentBalance: const drift.Value(50000),
             ),
           );
@@ -989,7 +994,7 @@ void main() {
     );
 
     test(
-      'suppresses same amount/person/type duplicate within 40 seconds',
+      'suppresses same amount/person/type duplicate within 8 minutes',
       () async {
         final first = await service.processPayload(
           NotificationPayload(
@@ -1015,14 +1020,14 @@ void main() {
         expect(debugEntries.last.decision, 'duplicate');
         expect(
           debugEntries.last.reason,
-          'near_duplicate_same_amount_counterparty_40s',
+          'near_duplicate_same_amount_counterparty_8m',
         );
         final rows = await db.select(db.pendingTransactions).get();
         expect(rows.length, 1);
       },
     );
 
-    test('allows same amount/person/type after 45 seconds', () async {
+    test('allows same amount/person/type after 30 minutes', () async {
       final first = await service.processPayload(
         NotificationPayload(
           packageName: 'com.phonepe.app',
@@ -1036,7 +1041,7 @@ void main() {
         NotificationPayload(
           packageName: 'com.phonepe.app',
           sourceType: 'appNotification',
-          receivedAt: DateTime(2026, 5, 30, 14, 0, 45),
+          receivedAt: DateTime(2026, 5, 30, 14, 30, 0),
           title: 'PhonePe',
           body: 'Sent ₹700 to Rahul via UPI from account',
         ),
@@ -1107,7 +1112,7 @@ void main() {
     });
 
     test(
-      'different UPI refs within 40 seconds are marked possible duplicate',
+      'different UPI refs within 8 minutes are marked possible duplicate',
       () async {
         final first = await service.processPayload(
           NotificationPayload(
@@ -1135,12 +1140,95 @@ void main() {
         expect(debugEntries.last.decision, 'pending-created');
         expect(
           debugEntries.last.possibleDuplicateReason,
-          'possible_duplicate_different_reference_within_40s',
+          'possible_duplicate_different_reference_within_8m',
         );
         final rows = await db.select(db.pendingTransactions).get();
         expect(rows.length, 2);
       },
     );
+
+    test('source matching uses bank name and account last4', () async {
+      final matchedBankId = await createBank(
+        bankName: 'Kotak',
+        accountName: 'Primary',
+        last4: '0754',
+      );
+      await createBank(
+        bankName: 'Kotak',
+        accountName: 'Secondary',
+        last4: '9988',
+      );
+
+      final ids = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.google.android.apps.messaging',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 30, 12, 0),
+          title: 'VM-KOTAKB-S',
+          body:
+              'Sent Rs.1.00 from Kotak Bank AC X0754 to yas21606-4@okaxis on 30-05-26. UPI Ref 123938960566.',
+        ),
+      );
+
+      expect(ids, hasLength(1));
+      final pending = await (db.select(
+        db.pendingTransactions,
+      )..where((p) => p.id.equals(ids.first))).getSingle();
+      expect(pending.paymentSourceIdSuggestion, matchedBankId);
+      expect(pending.rawText, contains('X0754'));
+    });
+
+    test('same amount and merchant hours apart are not duplicates', () async {
+      final first = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.phonepe.app',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 30, 10, 0, 0),
+          title: 'PhonePe',
+          body: 'Paid ₹500 to Swiggy via UPI',
+        ),
+      );
+      final second = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.phonepe.app',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 30, 15, 0, 0),
+          title: 'PhonePe',
+          body: 'Paid ₹500 to Swiggy via UPI',
+        ),
+      );
+
+      expect(first.length, 1);
+      expect(second.length, 1);
+      final rows = await db.select(db.pendingTransactions).get();
+      expect(rows.length, 2);
+    });
+
+    test('same amount different merchants are not duplicates', () async {
+      final first = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.phonepe.app',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 30, 18, 0, 0),
+          title: 'PhonePe',
+          body: 'Paid ₹187 to Zepto via UPI',
+        ),
+      );
+      final second = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.phonepe.app',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 30, 18, 2, 0),
+          title: 'PhonePe',
+          body: 'Paid ₹187 to Swiggy via UPI',
+        ),
+      );
+
+      expect(first.length, 1);
+      expect(second.length, 1);
+      final rows = await db.select(db.pendingTransactions).get();
+      expect(rows.length, 2);
+    });
 
     test('detection disabled prevents ingestion', () async {
       final pendingService = PendingService(db, TransactionEngine(db));

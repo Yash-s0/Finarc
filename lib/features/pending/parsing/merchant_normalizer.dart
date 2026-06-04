@@ -19,7 +19,7 @@ class MerchantNormalizer {
   };
 
   static final RegExp _noisePattern = RegExp(
-    r'\b(UPI|REF|TXN|INFO|AVL\s*BAL|A\/C|CARD|PAYMENT|DEBITED|CREDITED)\b',
+    r'\b(UPI|REF|TXN|INFO|AVL\s*BAL|A\/C|CARD|PAYMENT|DEBITED|CREDITED|THAT|FAST|CHECK|BALANCE|TAP|OPEN|LINK|MARK|READ|NOT|YOU|AVOID|CHARGES)\b',
     caseSensitive: false,
   );
 

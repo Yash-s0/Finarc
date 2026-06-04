@@ -102,7 +102,7 @@ class NotificationIngestionService {
   final void Function(NotificationDebugEntry entry) appendDebug;
   final CardBillDueNotificationService cardBillDueNotificationService;
   final CardPaymentNotificationService cardPaymentNotificationService;
-  static const Duration _nearDuplicateWindow = Duration(seconds: 40);
+  static const Duration _nearDuplicateWindow = Duration(minutes: 8);
 
   Future<List<int>> processPayload(NotificationPayload payload) async {
     if (!isDetectionEnabled()) {
@@ -309,7 +309,7 @@ class NotificationIngestionService {
         decision: postIngestNearDuplicate.suppress ? 'duplicate' : 'parsed',
         reason: postIngestNearDuplicate.suppress
             ? (postIngestNearDuplicate.reason ??
-                  'near_duplicate_same_amount_counterparty_40s')
+                  'near_duplicate_same_amount_counterparty_8m')
             : 'parser-no-candidate',
         parseResult: postIngestNearDuplicate.suppress
             ? 'duplicate-suppressed'
@@ -319,7 +319,7 @@ class NotificationIngestionService {
         candidateCount: candidateCount,
         duplicateDecision: postIngestNearDuplicate.suppress
             ? (postIngestNearDuplicate.reason ??
-                  'near_duplicate_same_amount_counterparty_40s')
+                  'near_duplicate_same_amount_counterparty_8m')
             : null,
         transactionDateChosen: bestCandidate?.transactionDate,
       );
@@ -446,13 +446,13 @@ class NotificationIngestionService {
           return const _NearDuplicateDecision(
             suppress: false,
             possibleDuplicate: true,
-            reason: 'possible_duplicate_different_reference_within_40s',
+            reason: 'possible_duplicate_different_reference_within_8m',
           );
         }
         return const _NearDuplicateDecision(
           suppress: true,
           possibleDuplicate: false,
-          reason: 'near_duplicate_same_amount_counterparty_40s',
+          reason: 'near_duplicate_same_amount_counterparty_8m',
         );
       }
     }

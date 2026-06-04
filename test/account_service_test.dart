@@ -21,6 +21,7 @@ void main() {
             bankName: 'A',
             accountName: 'A1',
             accountType: 'savings',
+            last4: const Value('1111'),
             currentBalance: const Value(10000),
           ),
         );
@@ -31,6 +32,7 @@ void main() {
             bankName: 'B',
             accountName: 'B1',
             accountType: 'current',
+            last4: const Value('2222'),
             currentBalance: const Value(5000),
           ),
         );
@@ -107,6 +109,23 @@ void main() {
 
     expect(cash.currentBalance, 2500);
     expect(recon.title, 'Reconciliation Adjustment');
+  });
+
+  test('bank account last4 is persisted on create and update', () async {
+    final createdId = await service.createBankAccount(
+      bankName: 'Kotak',
+      accountName: 'Salary',
+      accountType: 'savings',
+      currentBalance: 12000,
+      last4: '0754',
+    );
+
+    await service.updateBankAccount(createdId, last4: '4455');
+
+    final account = await (db.select(
+      db.bankAccounts,
+    )..where((b) => b.id.equals(createdId))).getSingle();
+    expect(account.last4, '4455');
   });
 
   test('liquid balance totals are correct', () async {

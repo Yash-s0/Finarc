@@ -89,7 +89,7 @@ class NotificationDiagnosticsScreen extends ConsumerWidget {
                       ),
                       _counterRow(
                         context,
-                        'Near-duplicates blocked (40s)',
+                        'Near-duplicates blocked (8m)',
                         ref
                             .watch(ingestionDiagnosticsProvider)
                             .notificationsNearDuplicateSuppressed,
