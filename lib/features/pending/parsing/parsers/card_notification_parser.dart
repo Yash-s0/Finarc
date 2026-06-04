@@ -13,6 +13,10 @@ class CardNotificationParser implements TransactionParser {
   @override
   bool canParse(ParserInput input) {
     final t = input.fullText.toLowerCase();
+    if (ParserTextUtils.looksLikeCardBillDueMessage(input.fullText) ||
+        ParserTextUtils.looksLikeCardPaymentSettlementMessage(input.fullText)) {
+      return false;
+    }
     return t.contains('card') &&
         (t.contains('spent') ||
             t.contains('used for') ||
@@ -22,6 +26,15 @@ class CardNotificationParser implements TransactionParser {
 
   @override
   ParserResult parse(ParserInput input) {
+    if (ParserTextUtils.looksLikeCardBillDueMessage(input.fullText) ||
+        ParserTextUtils.looksLikeCardPaymentSettlementMessage(input.fullText)) {
+      return ParserResult(
+        candidates: const [],
+        warnings: const ['Skipped bill due/card payment settlement message'],
+        parserName: parserName,
+        parsedAt: DateTime.now(),
+      );
+    }
     final text = input.fullText;
     final amount = ParserTextUtils.extractAmount(text);
     if (amount == null) {

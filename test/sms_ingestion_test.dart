@@ -99,11 +99,12 @@ void main() {
     late AppDatabase db;
     late SmsIngestionService smsService;
     late PendingIngestionService pendingIngestion;
+    late PendingService pendingService;
     late _FakeNotifier notifier;
 
     setUp(() {
       db = AppDatabase(NativeDatabase.memory());
-      final pendingService = PendingService(db, TransactionEngine(db));
+      pendingService = PendingService(db, TransactionEngine(db));
       final registry = TransactionParserRegistry(
         parsers: [
           UpiNotificationParser(),
@@ -267,6 +268,7 @@ void main() {
       final notificationService = NotificationIngestionService(
         database: db,
         pendingIngestionService: pendingIngestion,
+        pendingService: pendingService,
         keywordFilter: NotificationKeywordFilter(),
         fingerprint: NotificationFingerprint(),
         localNotifier: notifier,

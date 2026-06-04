@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../../core/utils/formatters.dart';
 import '../../expenses/models/transaction_types.dart';
 import '../parsing/confidence_level.dart';
 import '../parsing/counterparty_normalizer.dart';
@@ -9,7 +10,9 @@ import '../parsing/parser_confidence_scorer.dart';
 import '../parsing/parser_text_utils.dart';
 import '../parsing/pending_ingestion_service.dart';
 import '../parsing/transaction_direction_classifier.dart';
+import '../data/pending_service.dart';
 import 'card_bill_due_notification_service.dart';
+import 'card_payment_notification_service.dart';
 import 'notification_fingerprint.dart';
 import 'notification_keyword_filter.dart';
 import 'notification_local_notifier.dart';
@@ -69,6 +72,7 @@ class NotificationIngestionService {
   NotificationIngestionService({
     required this.database,
     required this.pendingIngestionService,
+    required this.pendingService,
     required this.keywordFilter,
     required this.fingerprint,
     required this.localNotifier,
@@ -76,12 +80,20 @@ class NotificationIngestionService {
     required this.shouldShowDetectionNotifications,
     required this.appendDebug,
     CardBillDueNotificationService? cardBillDueNotificationService,
+    CardPaymentNotificationService? cardPaymentNotificationService,
   }) : cardBillDueNotificationService =
            cardBillDueNotificationService ??
-           CardBillDueNotificationService(database: database);
+           CardBillDueNotificationService(database: database),
+       cardPaymentNotificationService =
+           cardPaymentNotificationService ??
+           CardPaymentNotificationService(
+             database: database,
+             pendingService: pendingService,
+           );
 
   final AppDatabase database;
   final PendingIngestionService pendingIngestionService;
+  final PendingService pendingService;
   final NotificationKeywordFilter keywordFilter;
   final NotificationFingerprint fingerprint;
   final NotificationLocalNotifier localNotifier;
@@ -89,6 +101,7 @@ class NotificationIngestionService {
   final bool Function() shouldShowDetectionNotifications;
   final void Function(NotificationDebugEntry entry) appendDebug;
   final CardBillDueNotificationService cardBillDueNotificationService;
+  final CardPaymentNotificationService cardPaymentNotificationService;
   static const Duration _nearDuplicateWindow = Duration(seconds: 40);
 
   Future<List<int>> processPayload(NotificationPayload payload) async {
@@ -146,6 +159,43 @@ class NotificationIngestionService {
         candidateCount: 0,
       );
       return const [];
+    }
+
+    final cardPaymentResult = await cardPaymentNotificationService
+        .handleIfCardPayment(payload);
+    if (cardPaymentResult != null) {
+      var localNotificationSent = false;
+      if (cardPaymentResult.pendingId != null &&
+          shouldShowDetectionNotifications()) {
+        await localNotifier.showDetected(
+          title: 'Card payment detected',
+          body:
+              '${inr(cardPaymentResult.parsed.amount)} • ${cardPaymentResult.parsed.merchantLabel} • Settlement',
+          route: '/pending',
+          pendingId: cardPaymentResult.pendingId,
+          showActions: true,
+        );
+        localNotificationSent = true;
+      }
+
+      _log(
+        payload,
+        decision: cardPaymentResult.action == 'mergedIntoPending'
+            ? 'duplicate'
+            : 'pending-created',
+        reason: 'card-payment-${cardPaymentResult.action}',
+        parseResult: 'card-payment-notification',
+        providerName: filterResult.providerName,
+        senderFilterResult: filterResult.senderFilterResult,
+        candidateCount: cardPaymentResult.pendingId == null ? 0 : 1,
+        localNotificationSent: localNotificationSent,
+        confidenceScore: 0.98,
+        confidenceLevel: ConfidenceLevel.high.label,
+        transactionDateChosen: cardPaymentResult.parsed.transactionDate,
+      );
+      return cardPaymentResult.pendingId == null
+          ? const []
+          : [cardPaymentResult.pendingId!];
     }
 
     final parserResult = pendingIngestionService.previewParserInput(

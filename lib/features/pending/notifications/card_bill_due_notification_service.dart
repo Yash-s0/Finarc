@@ -6,6 +6,7 @@ import '../../../core/utils/formatters.dart';
 import '../../alerts/data/alert_service.dart';
 import '../../alerts/data/alert_types.dart';
 import '../../cards/data/billing_service.dart';
+import '../parsing/parser_text_utils.dart';
 import 'notification_payload.dart';
 
 class CardBillDueNotification {
@@ -57,11 +58,11 @@ class CardBillDueNotificationService {
   final DateTime Function() _now;
 
   static final RegExp _totalDuePattern = RegExp(
-    r'(?:pay\s+)?total\s+amount\s+due(?:\s+of)?(?:\s+is)?\s*(?:inr|rs\.?|₹)\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)',
+    r'(?:pay\s+)?total(?:\s+amount)?\s+due(?:\s+of)?(?:\s+is)?\s*(?:inr|rs\.?|₹)\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)',
     caseSensitive: false,
   );
   static final RegExp _minimumDuePattern = RegExp(
-    r'minimum\s+amount\s+due(?:\s+of)?(?:\s+is)?\s*(?:inr|rs\.?|₹)\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)',
+    r'(?:min|minimum)(?:\s+amount)?\s+due(?:\s+of)?(?:\s+is)?\s*(?:inr|rs\.?|₹)\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)',
     caseSensitive: false,
   );
   static final RegExp _genericAmountDuePattern = RegExp(
@@ -635,35 +636,7 @@ class CardBillDueNotificationService {
   }
 
   bool _isBillDueMessage(String text) {
-    final lower = text.toLowerCase();
-    final dueKeywords = [
-      'total amount due',
-      'minimum amount due',
-      'amount due',
-      'pay total amount due',
-      'due by',
-      'due date',
-    ];
-    final cardKeywords = [
-      'credit card xx',
-      'credit card ending',
-      'credit card',
-    ];
-    final complianceKeywords = [
-      'ignore if paid',
-      'delay/non-payment',
-      'credit bureaus',
-    ];
-
-    final dueHits = dueKeywords.where(lower.contains).length;
-    final hasCard =
-        cardKeywords.any(lower.contains) ||
-        RegExp(r'card\s*[x*]{2,}\d{4}', caseSensitive: false).hasMatch(text);
-    final hasCompliance = complianceKeywords.any(lower.contains);
-
-    if (!hasCard) return false;
-    if (dueHits >= 2) return true;
-    return dueHits >= 1 && hasCompliance;
+    return ParserTextUtils.looksLikeCardBillDueMessage(text);
   }
 
   double? _extractAmount(String text, RegExp pattern) {

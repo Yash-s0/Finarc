@@ -68,6 +68,7 @@ void main() {
     final notificationIngestionService = NotificationIngestionService(
       database: db,
       pendingIngestionService: pendingIngestion,
+      pendingService: pendingService,
       keywordFilter: NotificationKeywordFilter(),
       fingerprint: NotificationFingerprint(),
       localNotifier: notifier,

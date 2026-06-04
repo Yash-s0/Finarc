@@ -14,6 +14,10 @@ class GenericBankSmsParser implements TransactionParser {
   @override
   bool canParse(ParserInput input) {
     final t = input.fullText.toLowerCase();
+    if (ParserTextUtils.looksLikeCardBillDueMessage(input.fullText) ||
+        ParserTextUtils.looksLikeCardPaymentSettlementMessage(input.fullText)) {
+      return false;
+    }
     return input.sourceType == 'sms' ||
         t.contains('bank') ||
         t.contains('a/c') ||
@@ -38,6 +42,15 @@ class GenericBankSmsParser implements TransactionParser {
 
   @override
   ParserResult parse(ParserInput input) {
+    if (ParserTextUtils.looksLikeCardBillDueMessage(input.fullText) ||
+        ParserTextUtils.looksLikeCardPaymentSettlementMessage(input.fullText)) {
+      return ParserResult(
+        candidates: const [],
+        warnings: const ['Skipped bill due/card payment settlement message'],
+        parserName: parserName,
+        parsedAt: DateTime.now(),
+      );
+    }
     final text = input.fullText;
     final segments = _splitTransactionSegments(text);
     final candidates = <DetectedTransactionCandidate>[];

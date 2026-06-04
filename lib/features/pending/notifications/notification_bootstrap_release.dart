@@ -28,6 +28,7 @@ final _notificationIngestionServiceProvider =
       return NotificationIngestionService(
         database: ref.read(appDatabaseProvider),
         pendingIngestionService: ref.read(pendingIngestionServiceProvider),
+        pendingService: ref.read(pendingServiceProvider),
         keywordFilter: NotificationKeywordFilter(),
         fingerprint: NotificationFingerprint(),
         localNotifier: ref.read(notificationLocalNotifierProvider),

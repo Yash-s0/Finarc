@@ -151,6 +151,58 @@ class ParserTextUtils {
     return input.replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
+  static bool looksLikeCardBillDueMessage(String text) {
+    final lower = text.toLowerCase();
+    final hasCard =
+        lower.contains('credit card') ||
+        RegExp(
+          r'card\s*[x*]{1,}[- ]?\d{4}',
+          caseSensitive: false,
+        ).hasMatch(text);
+    if (!hasCard) return false;
+
+    final duePhrases = [
+      'min due',
+      'minimum due',
+      'total due',
+      'amount due',
+      'payment of credit card',
+      'pay before last date',
+      'avoid charges',
+      'due date',
+      'due by',
+    ];
+    return duePhrases.any(lower.contains);
+  }
+
+  static bool looksLikeCardPaymentSettlementMessage(String text) {
+    final lower = text.toLowerCase();
+    final hasCreditCard = lower.contains('credit card');
+    final hasSettlementReceipt =
+        (lower.contains('payment received') ||
+            lower.contains('received towards your') ||
+            lower.contains('credit card payment received')) &&
+        hasCreditCard;
+    if (hasSettlementReceipt) return true;
+
+    final hasProcessedSettlement =
+        (lower.contains('paid instantly to') ||
+            lower.contains('has been processed') ||
+            lower.contains('credit card bill payment')) &&
+        hasCreditCard;
+    if (hasProcessedSettlement) return true;
+
+    final hasSourceDebit =
+        (lower.contains('sent ') ||
+            lower.contains('paid ') ||
+            lower.contains('debited')) &&
+        (lower.contains('cred.club') ||
+            lower.contains(' to cred') ||
+            lower.contains(' credit card bill') ||
+            RegExp(r'@[a-z]{2,}b\b', caseSensitive: false).hasMatch(lower));
+    return hasSourceDebit;
+  }
+
   static String? extractMerchantAfterKeyword(
     String text,
     List<String> keywords,

@@ -183,6 +183,19 @@ void main() {
           );
     }
 
+    Future<int> createBank({required String bankName, String? accountName}) {
+      return db
+          .into(db.bankAccounts)
+          .insert(
+            BankAccountsCompanion.insert(
+              bankName: bankName,
+              accountName: accountName ?? '$bankName Savings',
+              accountType: 'savings',
+              currentBalance: const drift.Value(50000),
+            ),
+          );
+    }
+
     Future<int> createBill({
       required int cardId,
       required double billedAmount,
@@ -243,6 +256,7 @@ void main() {
       service = NotificationIngestionService(
         database: db,
         pendingIngestionService: pendingIngestion,
+        pendingService: pendingService,
         keywordFilter: NotificationKeywordFilter(),
         fingerprint: NotificationFingerprint(),
         localNotifier: notifier,
@@ -537,6 +551,186 @@ void main() {
       final alerts = await db.select(db.alerts).get();
       expect(alerts.length, 1);
       expect(debugEntries.last.reason, 'card-bill-due-ignoredDuplicate');
+    });
+
+    test(
+      'card bill due min due + total due uses total and creates alert only',
+      () async {
+        final cardId = await createCard(bankName: 'Axis Bank', last4: '1266');
+        final payload = NotificationPayload(
+          packageName: 'com.axis.mobile',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 6, 3, 9, 0),
+          title: 'AXISBK',
+          body:
+              'Payment of Credit Card X1266 is due on 03/06/26. Min due Rs.200.00. Total Due Rs.8384.59. Pay before last date to avoid charges.',
+        );
+
+        final parsed = service.cardBillDueNotificationService.parse(payload);
+        expect(parsed, isNotNull);
+        expect(parsed!.cardLast4, '1266');
+        expect(parsed.minimumAmountDue, 200);
+        expect(parsed.totalAmountDue, 8384.59);
+
+        final ids = await service.processPayload(payload);
+        expect(ids, isEmpty);
+        expect(await db.select(db.pendingTransactions).get(), isEmpty);
+
+        final alerts = await db.select(db.alerts).get();
+        expect(alerts, hasLength(1));
+        expect(alerts.single.payload, contains('"minimumAmountDue":200.0'));
+        expect(alerts.single.payload, contains('"totalAmountDue":8384.59'));
+        expect(debugEntries.last.reason, contains('card-bill-due-'));
+
+        final bills = await (db.select(
+          db.cardBills,
+        )..where((b) => b.cardId.equals(cardId))).get();
+        expect(bills, isNotEmpty);
+        expect(bills.single.billedAmount, 8384.59);
+      },
+    );
+
+    test(
+      'axis payment received towards credit card becomes card payment pending',
+      () async {
+        await createCard(bankName: 'Axis Bank', last4: '0374');
+        final ids = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.axis.mobile',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 5, 31, 11, 0),
+            title: 'AXISBK',
+            body:
+                'Payment of INR 7736.04 has been received towards your Axis Bank Credit Card XX0374 on 31-05-26 - Axis Bank',
+          ),
+        );
+
+        expect(ids, hasLength(1));
+        final pending = await (db.select(
+          db.pendingTransactions,
+        )..where((p) => p.id.equals(ids.first))).getSingle();
+        expect(pending.sourceType, 'cardPaymentNotification');
+        expect(pending.categorySuggestion, 'Transfer');
+        expect(pending.paymentSourceTypeSuggestion, 'bank');
+        expect(pending.merchant, 'Axis Card XX0374');
+        expect(pending.rawText, contains('[CARD_PAYMENT|'));
+        expect(debugEntries.last.reason, 'card-payment-pendingCreated');
+      },
+    );
+
+    test(
+      'cred processed credit card payment does not become expense merchant',
+      () async {
+        await createCard(bankName: 'Axis Bank', last4: '0374');
+        final ids = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.dreamplug.androidapp',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 5, 31, 11, 1),
+            title: 'CRED',
+            body:
+                'paid instantly to Axis Bank that was fast: payment of ₹7,736.04 on your Axis Bank credit card XXXX-0374 has been processed. tap to check your latest bank balance.',
+          ),
+        );
+
+        expect(ids, hasLength(1));
+        final pending = await (db.select(
+          db.pendingTransactions,
+        )..where((p) => p.id.equals(ids.first))).getSingle();
+        expect(pending.sourceType, 'cardPaymentNotification');
+        expect(pending.merchant, 'Axis Card XX0374');
+        expect(
+          pending.merchant.toLowerCase(),
+          isNot(contains('that was fast')),
+        );
+        expect(pending.merchant.toLowerCase(), isNot(contains('check')));
+        expect(pending.paymentSourceTypeSuggestion, 'bank');
+      },
+    );
+
+    test(
+      'kotak debit to cred club axisb becomes source-side card payment pending',
+      () async {
+        final bankId = await createBank(bankName: 'Kotak');
+        final ids = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.google.android.apps.messaging',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 5, 31, 10, 58),
+            title: 'VM-KOTAKB-S',
+            body:
+                'Sent Rs.7730.04 from Kotak Bank AC XX0754 to cred.club@axisb on 31-05-26. UPI Ref 51718170827.',
+          ),
+        );
+
+        expect(ids, hasLength(1));
+        final pending = await (db.select(
+          db.pendingTransactions,
+        )..where((p) => p.id.equals(ids.first))).getSingle();
+        expect(pending.sourceType, 'cardPaymentNotification');
+        expect(pending.paymentSourceTypeSuggestion, 'bank');
+        expect(pending.paymentSourceIdSuggestion, bankId);
+        expect(pending.merchant, 'Axis Card Payment');
+        expect(pending.rawText, contains('sourceAccountId=$bankId'));
+        expect(pending.rawText, contains('transactionRef=51718170827'));
+      },
+    );
+
+    test('multi-message card payment mapping keeps one logical pending', () async {
+      final bankId = await createBank(bankName: 'Kotak');
+      await createCard(bankName: 'Axis Bank', last4: '0374');
+
+      final debitIds = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.google.android.apps.messaging',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 31, 10, 58),
+          title: 'VM-KOTAKB-S',
+          body:
+              'Sent Rs.7730.04 from Kotak Bank AC XX0754 to cred.club@axisb on 31-05-26. UPI Ref 51718170827.',
+        ),
+      );
+      final receiptIds = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.axis.mobile',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 31, 11, 0),
+          title: 'AXISBK',
+          body:
+              'Payment of INR 7736.04 has been received towards your Axis Bank Credit Card XX0374 on 31-05-26 - Axis Bank',
+        ),
+      );
+      final processedIds = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.dreamplug.androidapp',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 31, 11, 1),
+          title: 'CRED',
+          body:
+              'paid instantly to Axis Bank that was fast: payment of ₹7,736.04 on your Axis Bank credit card XXXX-0374 has been processed. tap to check your latest bank balance.',
+        ),
+      );
+
+      expect(debitIds, hasLength(1));
+      expect(receiptIds, isEmpty);
+      expect(processedIds, isEmpty);
+
+      final rows = await db.select(db.pendingTransactions).get();
+      expect(rows, hasLength(1));
+      expect(rows.single.sourceType, 'cardPaymentNotification');
+      expect(rows.single.paymentSourceIdSuggestion, bankId);
+      expect(rows.single.amount, 7736.04);
+      expect(rows.single.merchant, 'Axis Card XX0374');
+      expect(
+        rows.single.rawText,
+        contains('kinds=sourceDebit%2CdestinationReceipt%2CprocessorProcessed'),
+      );
+      expect(rows.single.rawText, contains('cred.club@axisb'));
+      expect(
+        rows.single.rawText,
+        contains('received towards your Axis Bank Credit Card XX0374'),
+      );
+      expect(rows.single.rawText, contains('has been processed'));
     });
 
     test(
@@ -967,6 +1161,7 @@ void main() {
       final disabledService = NotificationIngestionService(
         database: db,
         pendingIngestionService: pendingIngestion,
+        pendingService: pendingService,
         keywordFilter: NotificationKeywordFilter(),
         fingerprint: NotificationFingerprint(),
         localNotifier: localNotifier,
@@ -1012,6 +1207,7 @@ void main() {
         final configuredService = NotificationIngestionService(
           database: db,
           pendingIngestionService: pendingIngestion,
+          pendingService: pendingService,
           keywordFilter: NotificationKeywordFilter(),
           fingerprint: NotificationFingerprint(),
           localNotifier: localNotifier,

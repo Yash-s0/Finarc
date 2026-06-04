@@ -2,9 +2,11 @@ import 'package:drift/drift.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/logging/app_log_service.dart';
+import '../../cards/data/billing_service.dart';
 import '../../expenses/data/transaction_engine.dart';
 import '../../expenses/models/transaction_types.dart';
 import '../models/pending_models.dart';
+import '../notifications/card_payment_pending_codec.dart';
 import '../parsing/transaction_direction_classifier.dart';
 
 class PendingConfirmationException implements Exception {
@@ -72,6 +74,16 @@ class PendingService {
     final pending = await (_db.select(
       _db.pendingTransactions,
     )..where((p) => p.id.equals(pendingId))).getSingle();
+    final cardPaymentData = CardPaymentPendingCodec.tryDecode(pending.rawText);
+    if (cardPaymentData != null) {
+      await _confirmCardPaymentPending(
+        pending: pending,
+        pendingId: pendingId,
+        editedData: editedData,
+        metadata: cardPaymentData,
+      );
+      return;
+    }
     final detectedType = _resolveDetectedType(pending, editedData);
     await _validateConfirmationInput(
       pendingId: pendingId,
@@ -203,6 +215,112 @@ class PendingService {
       reason: reason,
       userMessage: userMessage,
       missingFields: missing,
+    );
+  }
+
+  Future<void> _confirmCardPaymentPending({
+    required PendingTransaction pending,
+    required int pendingId,
+    required PendingEditData editedData,
+    required CardPaymentPendingData metadata,
+  }) async {
+    final missing = <String>[];
+    if (editedData.amount <= 0) missing.add('amount');
+    if (editedData.paymentSourceId == null) missing.add('paymentSourceId');
+    final cardId =
+        metadata.destinationCardId ??
+        await _resolveCardId(
+          issuer: metadata.issuer,
+          cardLast4: metadata.cardLast4,
+        );
+    if (cardId == null) missing.add('destinationCardId');
+
+    if (missing.isNotEmpty) {
+      final reason = missing.contains('destinationCardId')
+          ? 'missing-destination-card'
+          : 'missing-payment-source';
+      await _logConfirmFailure(
+        pendingId: pendingId,
+        detectedType: TransactionType.cardPayment,
+        reason: reason,
+        missingFields: missing,
+      );
+      throw PendingConfirmationException(
+        pendingId: pendingId,
+        detectedType: TransactionType.cardPayment,
+        reason: reason,
+        userMessage: reason == 'missing-destination-card'
+            ? 'Destination credit card could not be determined for this card payment.'
+            : 'Payment source is required for this card payment.',
+        missingFields: missing,
+      );
+    }
+
+    final duplicate = await _detectPossibleCardPaymentDuplicate(
+      amount: editedData.amount,
+      paymentSourceType: editedData.paymentSourceType,
+      paymentSourceId: editedData.paymentSourceId!,
+      cardId: cardId!,
+      transactionDate: editedData.transactionDate,
+    );
+    if (duplicate != null) {
+      await _logConfirmFailure(
+        pendingId: pendingId,
+        detectedType: TransactionType.cardPayment,
+        reason: 'possible-duplicate-transaction',
+      );
+      throw PendingConfirmationException(
+        pendingId: pendingId,
+        detectedType: TransactionType.cardPayment,
+        reason: 'possible-duplicate-transaction',
+        userMessage: 'Possible duplicate card payment found.',
+      );
+    }
+
+    try {
+      await BillingService(_db).settleCardFromAccountTransfer(
+        cardId: cardId,
+        paymentSourceType: editedData.paymentSourceType,
+        paymentSourceId: editedData.paymentSourceId!,
+        amount: editedData.amount,
+        transactionDate: editedData.transactionDate,
+        notes: editedData.notes,
+      );
+    } on ArgumentError catch (error) {
+      final message = error.message?.toString() ?? error.toString();
+      final reason = _validationReasonFromEngineMessage(message);
+      final userMessage = _userMessageForValidationReason(
+        reason,
+        detectedType: TransactionType.cardPayment,
+      );
+      await _logConfirmFailure(
+        pendingId: pendingId,
+        detectedType: TransactionType.cardPayment,
+        reason: reason,
+        missingFields: _missingFieldsForReason(reason),
+      );
+      throw PendingConfirmationException(
+        pendingId: pendingId,
+        detectedType: TransactionType.cardPayment,
+        reason: reason,
+        userMessage: userMessage,
+        missingFields: _missingFieldsForReason(reason),
+      );
+    }
+
+    await (_db.update(
+      _db.pendingTransactions,
+    )..where((p) => p.id.equals(pendingId))).write(
+      PendingTransactionsCompanion(
+        merchant: Value(editedData.merchant),
+        paymentSourceTypeSuggestion: Value(editedData.paymentSourceType),
+        paymentSourceIdSuggestion: Value(editedData.paymentSourceId),
+        amount: Value(editedData.amount),
+        transactionDate: Value(editedData.transactionDate),
+        notes: Value(editedData.notes),
+        status: const Value('confirmed'),
+        updatedAt: Value(DateTime.now()),
+      ),
     );
   }
 
@@ -430,6 +548,61 @@ class PendingService {
       if (sameSource && similarity >= 0.6) return txn;
     }
     return null;
+  }
+
+  Future<Transaction?> _detectPossibleCardPaymentDuplicate({
+    required double amount,
+    required String paymentSourceType,
+    required int paymentSourceId,
+    required int cardId,
+    required DateTime transactionDate,
+  }) async {
+    final rangeStart = transactionDate.subtract(const Duration(hours: 24));
+    final rangeEnd = transactionDate.add(const Duration(hours: 24));
+    final rows =
+        await (_db.select(_db.transactions)..where(
+              (t) =>
+                  t.type.equals(TransactionType.cardPayment) &
+                  t.amount.equals(amount) &
+                  t.paymentSourceType.equals(paymentSourceType) &
+                  t.paymentSourceId.equals(paymentSourceId) &
+                  t.destinationAccountId.equals(cardId) &
+                  t.transactionDate.isBiggerOrEqualValue(rangeStart) &
+                  t.transactionDate.isSmallerOrEqualValue(rangeEnd),
+            ))
+            .get();
+    return rows.isEmpty ? null : rows.first;
+  }
+
+  Future<int?> _resolveCardId({String? issuer, String? cardLast4}) async {
+    if (cardLast4 == null) return null;
+    final cards = await (_db.select(
+      _db.creditCards,
+    )..where((c) => c.last4.equals(cardLast4))).get();
+    if (cards.isEmpty) return null;
+    if (issuer == null || issuer.trim().isEmpty) {
+      return cards.length == 1 ? cards.first.id : null;
+    }
+    final normalizedIssuer = _normalizeLookup(issuer);
+    final matches = cards
+        .where((card) {
+          final bank = _normalizeLookup(card.bankName);
+          final nickname = _normalizeLookup(card.nickname);
+          return bank == normalizedIssuer || nickname == normalizedIssuer;
+        })
+        .toList(growable: false);
+    if (matches.length == 1) return matches.first.id;
+    return null;
+  }
+
+  String? _normalizeLookup(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+    final normalized = value
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]'), '')
+        .trim();
+    if (normalized.isEmpty) return null;
+    return normalized;
   }
 
   double _titleSimilarity(String a, String b) {

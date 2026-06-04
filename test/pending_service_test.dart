@@ -7,6 +7,7 @@ import 'package:finarc/features/expenses/data/transaction_engine.dart';
 import 'package:finarc/features/expenses/models/transaction_types.dart';
 import 'package:finarc/features/pending/data/pending_service.dart';
 import 'package:finarc/features/pending/models/pending_models.dart';
+import 'package:finarc/features/pending/notifications/card_payment_pending_codec.dart';
 
 void main() {
   late AppDatabase db;
@@ -202,6 +203,79 @@ void main() {
     final duplicate = await service.detectPossibleDuplicate(pending);
     expect(duplicate, isNotNull);
   });
+
+  test(
+    'confirm card payment pending settles bill and records cardPayment',
+    () async {
+      await db
+          .into(db.cardBills)
+          .insert(
+            CardBillsCompanion.insert(
+              cardId: 1,
+              cycleStartDate: Value(DateTime(2026, 5, 1)),
+              cycleEndDate: Value(DateTime(2026, 5, 31)),
+              billingDate: Value(DateTime(2026, 5, 31)),
+              dueDate: Value(DateTime(2026, 6, 20)),
+              billedAmount: 1000,
+              paidAmount: const Value(0),
+              status: const Value('billed'),
+            ),
+          );
+
+      final pendingId = await service.createPendingTransaction(
+        amount: 1000,
+        merchant: 'Bank Card XX1234',
+        categorySuggestion: 'Transfer',
+        paymentSourceTypeSuggestion: PaymentSourceType.bank,
+        paymentSourceIdSuggestion: 1,
+        transactionDate: DateTime(2026, 6, 4, 9, 0),
+        sourceType: 'cardPaymentNotification',
+        rawText: CardPaymentPendingCodec.wrap(
+          rawText:
+              'Payment of INR 1000 has been received towards your Bank Credit Card XX1234 on 04-06-26.',
+          data: const CardPaymentPendingData(
+            issuer: 'Bank',
+            cardLast4: '1234',
+            destinationCardId: 1,
+            sourceTypeSuggestion: PaymentSourceType.bank,
+            kinds: ['destinationReceipt'],
+          ),
+        ),
+        confidenceScore: 0.98,
+      );
+
+      await service.confirmPendingTransaction(
+        pendingId,
+        PendingEditData(
+          amount: 1000,
+          merchant: 'Bank Card XX1234',
+          category: 'Transfer',
+          paymentSourceType: PaymentSourceType.bank,
+          paymentSourceId: 1,
+          transactionDate: DateTime(2026, 6, 4, 9, 0),
+        ),
+      );
+
+      final pending = await (db.select(
+        db.pendingTransactions,
+      )..where((p) => p.id.equals(pendingId))).getSingle();
+      final bank = await (db.select(
+        db.bankAccounts,
+      )..where((b) => b.id.equals(1))).getSingle();
+      final card = await (db.select(
+        db.creditCards,
+      )..where((c) => c.id.equals(1))).getSingle();
+      final cardPayments = await (db.select(
+        db.transactions,
+      )..where((t) => t.type.equals(TransactionType.cardPayment))).get();
+
+      expect(pending.status, 'confirmed');
+      expect(bank.currentBalance, closeTo(9000, 0.001));
+      expect(card.currentOutstanding, closeTo(0, 0.001));
+      expect(cardPayments, hasLength(1));
+      expect(cardPayments.single.amount, 1000);
+    },
+  );
 
   test(
     'pending for-others confirmation computes recoverable base and keeps full card charge',

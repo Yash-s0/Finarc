@@ -15,6 +15,15 @@ class GenericFallbackParser implements TransactionParser {
 
   @override
   ParserResult parse(ParserInput input) {
+    if (ParserTextUtils.looksLikeCardBillDueMessage(input.fullText) ||
+        ParserTextUtils.looksLikeCardPaymentSettlementMessage(input.fullText)) {
+      return ParserResult(
+        candidates: const [],
+        warnings: const ['Skipped bill due/card payment settlement message'],
+        parserName: parserName,
+        parsedAt: DateTime.now(),
+      );
+    }
     final amount = ParserTextUtils.extractAmount(input.fullText);
     if (amount == null) {
       return ParserResult(
