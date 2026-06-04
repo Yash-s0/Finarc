@@ -285,7 +285,7 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
     }
 
     final amount = double.tryParse(_amount.text) ?? 0;
-    await ref
+    final result = await ref
         .read(accountServiceProvider)
         .transferBetweenAccounts(
           sourceType: _fromType,
@@ -300,8 +300,23 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
     ref.invalidate(accountsOverviewProvider);
     ref.invalidate(expenseListProvider);
     if (!mounted) return;
+    if (result.transferredAmount <= 0.009) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result.message ?? 'No transfer was applied for the selected card.',
+          ),
+        ),
+      );
+      return;
+    }
+    if (result.message != null && result.message!.trim().isNotEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(result.message!)));
+    }
     this.context.push(
-      '/accounts/transfer/success?amount=$amount&from=$_fromType&to=$_toType',
+      '/accounts/transfer/success?amount=${result.transferredAmount}&from=$_fromType&to=$_toType',
     );
   }
 

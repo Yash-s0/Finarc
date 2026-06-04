@@ -195,13 +195,21 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
                               context,
                               billAmount: pendingAmount,
                               onConfirm: () async {
-                                await ref.read(markBillPaidProvider)(
+                                final result = await ref.read(
+                                  markBillPaidProvider,
+                                )(
                                   widget.billId,
                                   _selectedBankAccountId,
                                   pendingAmount,
                                 );
                                 if (!mounted) return;
                                 Navigator.of(this.context).pop();
+                                if (result.message != null &&
+                                    result.message!.trim().isNotEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(result.message!)),
+                                  );
+                                }
                                 ref.invalidate(
                                   cardDetailProvider(widget.cardId),
                                 );
@@ -237,8 +245,11 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
                       date: t.transactionDate,
                       source: 'Card • Statement #${widget.billId}',
                     ),
-                    amount: '-${inr(t.amount)}',
-                    amountColor: AppColors.darkError,
+                    amount:
+                        '${t.type == 'refund' ? '+' : '-'}${inr(t.amount)}',
+                    amountColor: t.type == 'refund'
+                        ? AppColors.darkSuccess
+                        : AppColors.darkError,
                     badges: [
                       FinarcTransactionPresentation.billedBadge(billed: true),
                     ],

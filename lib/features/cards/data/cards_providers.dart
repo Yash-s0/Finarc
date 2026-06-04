@@ -163,11 +163,12 @@ final billDetailProvider = FutureProvider.family((ref, int billId) async {
 
 final markBillPaidProvider = Provider((ref) {
   return (int billId, int? bankAccountId, double amount) async {
-    await ref
+    final result = await ref
         .read(billingServiceProvider)
         .markBillAsPaid(billId, bankAccountId, amount);
     await ref.read(alertEvaluationActionsProvider).evaluateAll();
     ref.invalidate(cardsOverviewProvider);
+    return result;
   };
 });
 

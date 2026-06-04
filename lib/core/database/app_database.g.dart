@@ -1865,6 +1865,37 @@ class $TransactionsTable extends Transactions
         type: DriftSqlType.string,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _cashbackDestinationTypeMeta =
+      const VerificationMeta('cashbackDestinationType');
+  @override
+  late final GeneratedColumn<String> cashbackDestinationType =
+      GeneratedColumn<String>(
+        'cashback_destination_type',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _cashbackDestinationIdMeta =
+      const VerificationMeta('cashbackDestinationId');
+  @override
+  late final GeneratedColumn<int> cashbackDestinationId = GeneratedColumn<int>(
+    'cashback_destination_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _relatedTransactionIdMeta =
+      const VerificationMeta('relatedTransactionId');
+  @override
+  late final GeneratedColumn<int> relatedTransactionId = GeneratedColumn<int>(
+    'related_transaction_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1920,6 +1951,9 @@ class $TransactionsTable extends Transactions
     personalShareAmount,
     splitGroupId,
     transactionImpactType,
+    cashbackDestinationType,
+    cashbackDestinationId,
+    relatedTransactionId,
     createdAt,
     updatedAt,
   ];
@@ -2186,6 +2220,33 @@ class $TransactionsTable extends Transactions
         ),
       );
     }
+    if (data.containsKey('cashback_destination_type')) {
+      context.handle(
+        _cashbackDestinationTypeMeta,
+        cashbackDestinationType.isAcceptableOrUnknown(
+          data['cashback_destination_type']!,
+          _cashbackDestinationTypeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('cashback_destination_id')) {
+      context.handle(
+        _cashbackDestinationIdMeta,
+        cashbackDestinationId.isAcceptableOrUnknown(
+          data['cashback_destination_id']!,
+          _cashbackDestinationIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('related_transaction_id')) {
+      context.handle(
+        _relatedTransactionIdMeta,
+        relatedTransactionId.isAcceptableOrUnknown(
+          data['related_transaction_id']!,
+          _relatedTransactionIdMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -2323,6 +2384,18 @@ class $TransactionsTable extends Transactions
         DriftSqlType.string,
         data['${effectivePrefix}transaction_impact_type'],
       ),
+      cashbackDestinationType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cashback_destination_type'],
+      ),
+      cashbackDestinationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}cashback_destination_id'],
+      ),
+      relatedTransactionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}related_transaction_id'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -2370,6 +2443,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   final double? personalShareAmount;
   final int? splitGroupId;
   final String? transactionImpactType;
+  final String? cashbackDestinationType;
+  final int? cashbackDestinationId;
+  final int? relatedTransactionId;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Transaction({
@@ -2402,6 +2478,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     this.personalShareAmount,
     this.splitGroupId,
     this.transactionImpactType,
+    this.cashbackDestinationType,
+    this.cashbackDestinationId,
+    this.relatedTransactionId,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -2468,6 +2547,17 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     }
     if (!nullToAbsent || transactionImpactType != null) {
       map['transaction_impact_type'] = Variable<String>(transactionImpactType);
+    }
+    if (!nullToAbsent || cashbackDestinationType != null) {
+      map['cashback_destination_type'] = Variable<String>(
+        cashbackDestinationType,
+      );
+    }
+    if (!nullToAbsent || cashbackDestinationId != null) {
+      map['cashback_destination_id'] = Variable<int>(cashbackDestinationId);
+    }
+    if (!nullToAbsent || relatedTransactionId != null) {
+      map['related_transaction_id'] = Variable<int>(relatedTransactionId);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -2537,6 +2627,15 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       transactionImpactType: transactionImpactType == null && nullToAbsent
           ? const Value.absent()
           : Value(transactionImpactType),
+      cashbackDestinationType: cashbackDestinationType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cashbackDestinationType),
+      cashbackDestinationId: cashbackDestinationId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cashbackDestinationId),
+      relatedTransactionId: relatedTransactionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(relatedTransactionId),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -2597,6 +2696,15 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       transactionImpactType: serializer.fromJson<String?>(
         json['transactionImpactType'],
       ),
+      cashbackDestinationType: serializer.fromJson<String?>(
+        json['cashbackDestinationType'],
+      ),
+      cashbackDestinationId: serializer.fromJson<int?>(
+        json['cashbackDestinationId'],
+      ),
+      relatedTransactionId: serializer.fromJson<int?>(
+        json['relatedTransactionId'],
+      ),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -2642,6 +2750,11 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       'transactionImpactType': serializer.toJson<String?>(
         transactionImpactType,
       ),
+      'cashbackDestinationType': serializer.toJson<String?>(
+        cashbackDestinationType,
+      ),
+      'cashbackDestinationId': serializer.toJson<int?>(cashbackDestinationId),
+      'relatedTransactionId': serializer.toJson<int?>(relatedTransactionId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -2677,6 +2790,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     Value<double?> personalShareAmount = const Value.absent(),
     Value<int?> splitGroupId = const Value.absent(),
     Value<String?> transactionImpactType = const Value.absent(),
+    Value<String?> cashbackDestinationType = const Value.absent(),
+    Value<int?> cashbackDestinationId = const Value.absent(),
+    Value<int?> relatedTransactionId = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Transaction(
@@ -2733,6 +2849,15 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     transactionImpactType: transactionImpactType.present
         ? transactionImpactType.value
         : this.transactionImpactType,
+    cashbackDestinationType: cashbackDestinationType.present
+        ? cashbackDestinationType.value
+        : this.cashbackDestinationType,
+    cashbackDestinationId: cashbackDestinationId.present
+        ? cashbackDestinationId.value
+        : this.cashbackDestinationId,
+    relatedTransactionId: relatedTransactionId.present
+        ? relatedTransactionId.value
+        : this.relatedTransactionId,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -2811,6 +2936,15 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       transactionImpactType: data.transactionImpactType.present
           ? data.transactionImpactType.value
           : this.transactionImpactType,
+      cashbackDestinationType: data.cashbackDestinationType.present
+          ? data.cashbackDestinationType.value
+          : this.cashbackDestinationType,
+      cashbackDestinationId: data.cashbackDestinationId.present
+          ? data.cashbackDestinationId.value
+          : this.cashbackDestinationId,
+      relatedTransactionId: data.relatedTransactionId.present
+          ? data.relatedTransactionId.value
+          : this.relatedTransactionId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -2848,6 +2982,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ..write('personalShareAmount: $personalShareAmount, ')
           ..write('splitGroupId: $splitGroupId, ')
           ..write('transactionImpactType: $transactionImpactType, ')
+          ..write('cashbackDestinationType: $cashbackDestinationType, ')
+          ..write('cashbackDestinationId: $cashbackDestinationId, ')
+          ..write('relatedTransactionId: $relatedTransactionId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -2885,6 +3022,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     personalShareAmount,
     splitGroupId,
     transactionImpactType,
+    cashbackDestinationType,
+    cashbackDestinationId,
+    relatedTransactionId,
     createdAt,
     updatedAt,
   ]);
@@ -2921,6 +3061,9 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           other.personalShareAmount == this.personalShareAmount &&
           other.splitGroupId == this.splitGroupId &&
           other.transactionImpactType == this.transactionImpactType &&
+          other.cashbackDestinationType == this.cashbackDestinationType &&
+          other.cashbackDestinationId == this.cashbackDestinationId &&
+          other.relatedTransactionId == this.relatedTransactionId &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -2955,6 +3098,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   final Value<double?> personalShareAmount;
   final Value<int?> splitGroupId;
   final Value<String?> transactionImpactType;
+  final Value<String?> cashbackDestinationType;
+  final Value<int?> cashbackDestinationId;
+  final Value<int?> relatedTransactionId;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const TransactionsCompanion({
@@ -2987,6 +3133,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.personalShareAmount = const Value.absent(),
     this.splitGroupId = const Value.absent(),
     this.transactionImpactType = const Value.absent(),
+    this.cashbackDestinationType = const Value.absent(),
+    this.cashbackDestinationId = const Value.absent(),
+    this.relatedTransactionId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -3020,6 +3169,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.personalShareAmount = const Value.absent(),
     this.splitGroupId = const Value.absent(),
     this.transactionImpactType = const Value.absent(),
+    this.cashbackDestinationType = const Value.absent(),
+    this.cashbackDestinationId = const Value.absent(),
+    this.relatedTransactionId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : type = Value(type),
@@ -3059,6 +3211,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Expression<double>? personalShareAmount,
     Expression<int>? splitGroupId,
     Expression<String>? transactionImpactType,
+    Expression<String>? cashbackDestinationType,
+    Expression<int>? cashbackDestinationId,
+    Expression<int>? relatedTransactionId,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -3101,6 +3256,12 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       if (splitGroupId != null) 'split_group_id': splitGroupId,
       if (transactionImpactType != null)
         'transaction_impact_type': transactionImpactType,
+      if (cashbackDestinationType != null)
+        'cashback_destination_type': cashbackDestinationType,
+      if (cashbackDestinationId != null)
+        'cashback_destination_id': cashbackDestinationId,
+      if (relatedTransactionId != null)
+        'related_transaction_id': relatedTransactionId,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -3136,6 +3297,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Value<double?>? personalShareAmount,
     Value<int?>? splitGroupId,
     Value<String?>? transactionImpactType,
+    Value<String?>? cashbackDestinationType,
+    Value<int?>? cashbackDestinationId,
+    Value<int?>? relatedTransactionId,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -3173,6 +3337,11 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       splitGroupId: splitGroupId ?? this.splitGroupId,
       transactionImpactType:
           transactionImpactType ?? this.transactionImpactType,
+      cashbackDestinationType:
+          cashbackDestinationType ?? this.cashbackDestinationType,
+      cashbackDestinationId:
+          cashbackDestinationId ?? this.cashbackDestinationId,
+      relatedTransactionId: relatedTransactionId ?? this.relatedTransactionId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -3282,6 +3451,19 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
         transactionImpactType.value,
       );
     }
+    if (cashbackDestinationType.present) {
+      map['cashback_destination_type'] = Variable<String>(
+        cashbackDestinationType.value,
+      );
+    }
+    if (cashbackDestinationId.present) {
+      map['cashback_destination_id'] = Variable<int>(
+        cashbackDestinationId.value,
+      );
+    }
+    if (relatedTransactionId.present) {
+      map['related_transaction_id'] = Variable<int>(relatedTransactionId.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -3323,6 +3505,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
           ..write('personalShareAmount: $personalShareAmount, ')
           ..write('splitGroupId: $splitGroupId, ')
           ..write('transactionImpactType: $transactionImpactType, ')
+          ..write('cashbackDestinationType: $cashbackDestinationType, ')
+          ..write('cashbackDestinationId: $cashbackDestinationId, ')
+          ..write('relatedTransactionId: $relatedTransactionId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -13715,6 +13900,9 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       Value<double?> personalShareAmount,
       Value<int?> splitGroupId,
       Value<String?> transactionImpactType,
+      Value<String?> cashbackDestinationType,
+      Value<int?> cashbackDestinationId,
+      Value<int?> relatedTransactionId,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -13749,6 +13937,9 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<double?> personalShareAmount,
       Value<int?> splitGroupId,
       Value<String?> transactionImpactType,
+      Value<String?> cashbackDestinationType,
+      Value<int?> cashbackDestinationId,
+      Value<int?> relatedTransactionId,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -13904,6 +14095,21 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<String> get transactionImpactType => $composableBuilder(
     column: $table.transactionImpactType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cashbackDestinationType => $composableBuilder(
+    column: $table.cashbackDestinationType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get cashbackDestinationId => $composableBuilder(
+    column: $table.cashbackDestinationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get relatedTransactionId => $composableBuilder(
+    column: $table.relatedTransactionId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -14072,6 +14278,21 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get cashbackDestinationType => $composableBuilder(
+    column: $table.cashbackDestinationType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get cashbackDestinationId => $composableBuilder(
+    column: $table.cashbackDestinationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get relatedTransactionId => $composableBuilder(
+    column: $table.relatedTransactionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -14223,6 +14444,21 @@ class $$TransactionsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get cashbackDestinationType => $composableBuilder(
+    column: $table.cashbackDestinationType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get cashbackDestinationId => $composableBuilder(
+    column: $table.cashbackDestinationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get relatedTransactionId => $composableBuilder(
+    column: $table.relatedTransactionId,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -14290,6 +14526,9 @@ class $$TransactionsTableTableManager
                 Value<double?> personalShareAmount = const Value.absent(),
                 Value<int?> splitGroupId = const Value.absent(),
                 Value<String?> transactionImpactType = const Value.absent(),
+                Value<String?> cashbackDestinationType = const Value.absent(),
+                Value<int?> cashbackDestinationId = const Value.absent(),
+                Value<int?> relatedTransactionId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => TransactionsCompanion(
@@ -14322,6 +14561,9 @@ class $$TransactionsTableTableManager
                 personalShareAmount: personalShareAmount,
                 splitGroupId: splitGroupId,
                 transactionImpactType: transactionImpactType,
+                cashbackDestinationType: cashbackDestinationType,
+                cashbackDestinationId: cashbackDestinationId,
+                relatedTransactionId: relatedTransactionId,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -14356,6 +14598,9 @@ class $$TransactionsTableTableManager
                 Value<double?> personalShareAmount = const Value.absent(),
                 Value<int?> splitGroupId = const Value.absent(),
                 Value<String?> transactionImpactType = const Value.absent(),
+                Value<String?> cashbackDestinationType = const Value.absent(),
+                Value<int?> cashbackDestinationId = const Value.absent(),
+                Value<int?> relatedTransactionId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => TransactionsCompanion.insert(
@@ -14388,6 +14633,9 @@ class $$TransactionsTableTableManager
                 personalShareAmount: personalShareAmount,
                 splitGroupId: splitGroupId,
                 transactionImpactType: transactionImpactType,
+                cashbackDestinationType: cashbackDestinationType,
+                cashbackDestinationId: cashbackDestinationId,
+                relatedTransactionId: relatedTransactionId,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),

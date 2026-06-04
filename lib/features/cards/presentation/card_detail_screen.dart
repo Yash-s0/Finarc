@@ -264,6 +264,7 @@ class CardDetailScreen extends ConsumerWidget {
                     else
                       ...vm.recentTransactions.map((t) {
                         final billed = t.cardBillId != null;
+                        final isRefund = t.type == 'refund';
                         return FinarcTransactionTile(
                           title: t.title,
                           subtitle: t.category,
@@ -273,8 +274,10 @@ class CardDetailScreen extends ConsumerWidget {
                                 ? 'Card • Statement #${t.cardBillId}'
                                 : 'Card',
                           ),
-                          amount: '-${inr(t.amount)}',
-                          amountColor: AppColors.darkError,
+                          amount: '${isRefund ? '+' : '-'}${inr(t.amount)}',
+                          amountColor: isRefund
+                              ? AppColors.darkSuccess
+                              : AppColors.darkError,
                           amountMeta: billed && t.cardBillId != null
                               ? 'Stmt #${t.cardBillId}'
                               : null,
@@ -376,6 +379,7 @@ class CardDetailScreen extends ConsumerWidget {
         else
           ...transactions.map((t) {
             final billed = forceBilledState ?? (t.cardBillId != null);
+            final isRefund = t.type == 'refund';
             return FinarcTransactionTile(
               title: t.title,
               subtitle: t.category,
@@ -385,8 +389,10 @@ class CardDetailScreen extends ConsumerWidget {
                     ? 'Card • Statement #${t.cardBillId}'
                     : 'Card',
               ),
-              amount: '-${inr(t.amount)}',
-              amountColor: AppColors.darkError,
+              amount: '${isRefund ? '+' : '-'}${inr(t.amount)}',
+              amountColor: isRefund
+                  ? AppColors.darkSuccess
+                  : AppColors.darkError,
               amountMeta: billed && t.cardBillId != null
                   ? 'Stmt #${t.cardBillId}'
                   : null,

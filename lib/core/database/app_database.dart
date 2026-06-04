@@ -73,6 +73,9 @@ class Transactions extends Table {
   RealColumn get personalShareAmount => real().nullable()();
   IntColumn get splitGroupId => integer().nullable()();
   TextColumn get transactionImpactType => text().nullable()();
+  TextColumn get cashbackDestinationType => text().nullable()();
+  IntColumn get cashbackDestinationId => integer().nullable()();
+  IntColumn get relatedTransactionId => integer().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }
@@ -320,7 +323,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 16;
+  int get schemaVersion => 17;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -513,6 +516,14 @@ class AppDatabase extends _$AppDatabase {
       if (from < 16) {
         await normalizeRecoverableDataBackfill();
       }
+      if (from < 17) {
+        await m.addColumn(
+          transactions,
+          transactions.cashbackDestinationType,
+        );
+        await m.addColumn(transactions, transactions.cashbackDestinationId);
+        await m.addColumn(transactions, transactions.relatedTransactionId);
+      }
       await globalAppLogService.log(
         category: 'migration',
         message: 'upgrade-complete',
@@ -649,18 +660,18 @@ WHERE status IS NULL
             (bill.billedAmount - bill.paidAmount).clamp(0, bill.billedAmount),
       );
 
-      final unbilledCharges =
+      final unbilledTransactions =
           await (select(transactions)..where(
                 (t) =>
                     t.paymentSourceType.equals('creditCard') &
                     t.paymentSourceId.equals(card.id) &
-                    t.type.equals('creditCard') &
+                    (t.type.equals('creditCard') | t.type.equals('refund')) &
                     t.cardBillId.isNull(),
               ))
               .get();
-      final unbilledSpends = unbilledCharges.fold<double>(
+      final unbilledSpends = unbilledTransactions.fold<double>(
         0,
-        (sum, t) => sum + t.amount,
+        (sum, t) => sum + (t.type == 'refund' ? -t.amount : t.amount),
       );
 
       final representedOutstanding = billedDue + unbilledSpends;

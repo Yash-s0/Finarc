@@ -157,7 +157,7 @@ void main() {
           ),
         );
 
-    await BillingService(
+    final result = await BillingService(
       db,
       now: () => DateTime(2026, 5, 15),
     ).markBillAsPaid(billId, 1, 1200);
@@ -172,11 +172,92 @@ void main() {
       db.cardBills,
     )..where((b) => b.id.equals(billId))).getSingle();
 
+    expect(result.appliedAmount, 1200);
     expect(bank.currentBalance, 8800);
-    // Canonical outstanding is statement-driven; legacy card.currentOutstanding
-    // is preserved for migration/backward compatibility.
-    expect(card.currentOutstanding, 5000);
+    expect(card.currentOutstanding, 3800);
     expect(bill.status, 'paid');
     expect(bill.paidAmount, 1200);
+  });
+
+  test('bill overpayment is clamped and only actual due is deducted', () async {
+    final billId = await db.into(db.cardBills).insert(
+      CardBillsCompanion.insert(
+        cardId: 1,
+        cycleStartDate: Value(DateTime(2026, 4, 10)),
+        cycleEndDate: Value(DateTime(2026, 5, 10)),
+        billingDate: Value(DateTime(2026, 5, 10)),
+        dueDate: Value(DateTime(2026, 5, 20)),
+        billedAmount: 1200,
+        paidAmount: const Value(0),
+        status: const Value('billed'),
+      ),
+    );
+
+    final result = await BillingService(
+      db,
+      now: () => DateTime(2026, 5, 15),
+    ).markBillAsPaid(billId, 1, 2000);
+
+    final bank = await (db.select(
+      db.bankAccounts,
+    )..where((b) => b.id.equals(1))).getSingle();
+    final bill = await (db.select(
+      db.cardBills,
+    )..where((b) => b.id.equals(billId))).getSingle();
+
+    expect(result.wasClamped, isTrue);
+    expect(result.appliedAmount, 1200);
+    expect(bank.currentBalance, 8800);
+    expect(bill.paidAmount, 1200);
+    expect(bill.status, 'paid');
+  });
+
+  test('transfer to credit card settles billed due only', () async {
+    await (db.update(db.creditCards)..where((c) => c.id.equals(1))).write(
+      const CreditCardsCompanion(currentOutstanding: Value(1200)),
+    );
+    await db.into(db.cardBills).insert(
+      CardBillsCompanion.insert(
+        cardId: 1,
+        cycleStartDate: Value(DateTime(2026, 4, 10)),
+        cycleEndDate: Value(DateTime(2026, 5, 10)),
+        billingDate: Value(DateTime(2026, 5, 10)),
+        dueDate: Value(DateTime(2026, 5, 20)),
+        billedAmount: 1200,
+        paidAmount: const Value(0),
+        status: const Value('billed'),
+      ),
+    );
+
+    final result = await service.transferBetweenAccounts(
+      sourceType: 'bank',
+      sourceId: 1,
+      destinationType: 'creditCard',
+      destinationId: 1,
+      amount: 2000,
+      transactionDate: DateTime(2026, 5, 24),
+      notes: 'card settle',
+    );
+
+    final bank = await (db.select(
+      db.bankAccounts,
+    )..where((b) => b.id.equals(1))).getSingle();
+    final card = await (db.select(
+      db.creditCards,
+    )..where((c) => c.id.equals(1))).getSingle();
+    final bill = await (db.select(db.cardBills)..where(
+      (b) => b.cardId.equals(1) & b.status.equals('paid'),
+    )).getSingle();
+    final cardPayments = await (db.select(
+      db.transactions,
+    )..where((t) => t.type.equals('cardPayment'))).get();
+
+    expect(result.transferredAmount, 1200);
+    expect(result.message, isA<String>());
+    expect(bank.currentBalance, 8800);
+    expect(card.currentOutstanding, 0);
+    expect(bill.paidAmount, 1200);
+    expect(cardPayments, hasLength(1));
+    expect(cardPayments.single.amount, 1200);
   });
 }

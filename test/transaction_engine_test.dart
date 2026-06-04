@@ -145,6 +145,27 @@ void main() {
     expect(engine.netExpense(txn), 900);
   });
 
+  test('cashback destination metadata is persisted', () async {
+    await engine.addTransaction(
+      AddTransactionInput(
+        type: TransactionType.creditCard,
+        amount: 1000,
+        title: 'Order',
+        category: 'Shopping',
+        transactionDate: DateTime(2026, 5, 24),
+        paymentSourceType: PaymentSourceType.creditCard,
+        paymentSourceId: cardId,
+        cashbackAmount: 100,
+        cashbackDestinationType: 'bank',
+        cashbackDestinationId: bankId,
+      ),
+    );
+
+    final txn = await (db.select(db.transactions)..limit(1)).getSingle();
+    expect(txn.cashbackDestinationType, 'bank');
+    expect(txn.cashbackDestinationId, bankId);
+  });
+
   test('for-others transaction auto-calculates recoverable amount', () async {
     await engine.addTransaction(
       AddTransactionInput(
@@ -335,5 +356,46 @@ void main() {
       db.creditCards,
     )..where((c) => c.id.equals(cardId))).getSingle();
     expect(card.currentOutstanding, 5000);
+  });
+
+  test('linked refund reduces recoverable amount on original transaction', () async {
+    await engine.addTransaction(
+      AddTransactionInput(
+        type: TransactionType.creditCard,
+        amount: 1000,
+        title: 'Shared order',
+        category: 'Shopping',
+        transactionDate: DateTime(2026, 5, 24),
+        paymentSourceType: PaymentSourceType.creditCard,
+        paymentSourceId: cardId,
+        isForOthers: true,
+        recoverablePartyName: 'Rahul',
+      ),
+    );
+    final original = await (db.select(
+      db.transactions,
+    )..where((t) => t.title.equals('Shared order'))).getSingle();
+
+    await engine.addTransaction(
+      AddTransactionInput(
+        type: TransactionType.refund,
+        amount: 400,
+        title: 'Shared order refund',
+        category: 'Refund',
+        transactionDate: DateTime(2026, 5, 25),
+        paymentSourceType: PaymentSourceType.creditCard,
+        paymentSourceId: cardId,
+        relatedTransactionId: original.id,
+      ),
+    );
+
+    final updated = await (db.select(
+      db.transactions,
+    )..where((t) => t.id.equals(original.id))).getSingle();
+
+    expect(updated.recoverableBaseAmount, closeTo(600, 0.01));
+    expect(updated.recoverableAmount, closeTo(600, 0.01));
+    expect(updated.recoveredAmount, 0);
+    expect(updated.recoverableStatus, 'unpaid');
   });
 }

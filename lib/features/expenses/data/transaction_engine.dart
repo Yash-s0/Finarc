@@ -29,6 +29,9 @@ class AddTransactionInput {
     this.personalShareAmount,
     this.splitGroupId,
     this.transactionImpactType,
+    this.cashbackDestinationType,
+    this.cashbackDestinationId,
+    this.relatedTransactionId,
   });
 
   final String type;
@@ -54,6 +57,9 @@ class AddTransactionInput {
   final double? personalShareAmount;
   final int? splitGroupId;
   final String? transactionImpactType;
+  final String? cashbackDestinationType;
+  final int? cashbackDestinationId;
+  final int? relatedTransactionId;
 }
 
 class TransactionEngine {
@@ -124,9 +130,19 @@ class TransactionEngine {
               personalShareAmount: Value(input.personalShareAmount),
               splitGroupId: Value(input.splitGroupId),
               transactionImpactType: Value(input.transactionImpactType),
+              cashbackDestinationType: Value(input.cashbackDestinationType),
+              cashbackDestinationId: Value(input.cashbackDestinationId),
+              relatedTransactionId: Value(input.relatedTransactionId),
               updatedAt: Value(DateTime.now()),
             ),
           );
+      if (insertedId != null && input.type == TransactionType.refund) {
+        await _adjustLinkedRecoverableAfterRefund(
+          refundTransactionId: insertedId!,
+          relatedTransactionId: input.relatedTransactionId,
+          refundAmount: input.amount,
+        );
+      }
     });
 
     if (insertedId != null) {
@@ -215,6 +231,9 @@ class TransactionEngine {
                 ? (input.recoveredAt ?? existing.recoveredAt ?? DateTime.now())
                 : null,
           ),
+          cashbackDestinationType: Value(input.cashbackDestinationType),
+          cashbackDestinationId: Value(input.cashbackDestinationId),
+          relatedTransactionId: Value(input.relatedTransactionId),
           updatedAt: Value(DateTime.now()),
         ),
       );
@@ -469,22 +488,87 @@ class TransactionEngine {
     int sourceId,
     double amount,
   ) async {
-    if (sourceType == PaymentSourceType.creditCard) {
-      final card = await (_db.select(
-        _db.creditCards,
-      )..where((c) => c.id.equals(sourceId))).getSingle();
-      await (_db.update(
-        _db.creditCards,
-      )..where((c) => c.id.equals(sourceId))).write(
-        CreditCardsCompanion(
-          currentOutstanding: Value(
-            (card.currentOutstanding - amount).clamp(0, card.creditLimit),
-          ),
-          updatedAt: Value(DateTime.now()),
-        ),
-      );
-      return;
-    }
+    if (sourceType == PaymentSourceType.creditCard) return;
     await _applyIncome(sourceType, sourceId, amount);
+  }
+
+  Future<void> _adjustLinkedRecoverableAfterRefund({
+    required int refundTransactionId,
+    required int? relatedTransactionId,
+    required double refundAmount,
+  }) async {
+    if (relatedTransactionId == null) return;
+    final original = await (_db.select(
+      _db.transactions,
+    )..where((t) => t.id.equals(relatedTransactionId))).getSingleOrNull();
+    if (original == null || !original.isForOthers) return;
+
+    final originalBase =
+        original.recoverableBaseAmount ??
+        (original.amount - original.cashbackAmount)
+            .clamp(0, original.amount)
+            .toDouble();
+    final nextBase = (originalBase - refundAmount)
+        .clamp(0, originalBase)
+        .toDouble();
+    final overRecovered = original.recoveredAmount > nextBase + 0.009;
+    final nextRecovered = original.recoveredAmount.clamp(0, nextBase).toDouble();
+    final nextRemaining = (nextBase - nextRecovered)
+        .clamp(0, nextBase)
+        .toDouble();
+    final nextStatus = nextRemaining <= 0.009
+        ? 'recovered'
+        : nextRecovered <= 0.009
+        ? 'unpaid'
+        : 'partial';
+
+    await (_db.update(
+      _db.transactions,
+    )..where((t) => t.id.equals(original.id))).write(
+      TransactionsCompanion(
+        recoverableBaseAmount: Value(nextBase),
+        recoverableAmount: Value(nextRemaining),
+        recoveredAmount: Value(nextRecovered),
+        recoverableStatus: Value(nextStatus),
+        recoveredAt: Value(nextRecovered > 0 ? original.recoveredAt : null),
+        notes: Value(
+          overRecovered
+              ? _appendReviewNote(
+                  original.notes,
+                  'Refund reduced recoverable below already recovered amount.',
+                )
+              : original.notes,
+        ),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+
+    if (!overRecovered) return;
+    final refund = await (_db.select(
+      _db.transactions,
+    )..where((t) => t.id.equals(refundTransactionId))).getSingleOrNull();
+    if (refund == null) return;
+    await (_db.update(
+      _db.transactions,
+    )..where((t) => t.id.equals(refund.id))).write(
+      TransactionsCompanion(
+        notes: Value(
+          _appendReviewNote(
+            refund.notes,
+            'Refund caused recoverable over-recovery review on linked transaction.',
+          ),
+        ),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  String _appendReviewNote(String? existing, String note) {
+    final trimmed = existing?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return '[Review] $note';
+    }
+    if (trimmed.contains(note)) return trimmed;
+    return '$trimmed\n[Review] $note';
   }
 }

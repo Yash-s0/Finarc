@@ -52,6 +52,32 @@ class CardBillingSnapshot {
   double get totalBilledDue => billedDue;
 }
 
+class CardPaymentResult {
+  const CardPaymentResult({
+    required this.requestedAmount,
+    required this.appliedAmount,
+    required this.remainingDueBefore,
+    required this.remainingDueAfter,
+    required this.paymentSourceType,
+    required this.paymentSourceId,
+    required this.cardId,
+    this.billId,
+    this.wasClamped = false,
+    this.message,
+  });
+
+  final double requestedAmount;
+  final double appliedAmount;
+  final double remainingDueBefore;
+  final double remainingDueAfter;
+  final String paymentSourceType;
+  final int paymentSourceId;
+  final int cardId;
+  final int? billId;
+  final bool wasClamped;
+  final String? message;
+}
+
 class BillingService {
   BillingService(this._db, {DateTime Function()? now})
     : _now = now ?? DateTime.now;
@@ -135,10 +161,10 @@ class BillingService {
     Transaction? current,
   }) async {
     final impactedCardIds = <int>{};
-    if (_isCardCharge(previous)) {
+    if (_isCardAffecting(previous)) {
       impactedCardIds.add(previous!.paymentSourceId);
     }
-    if (_isCardCharge(current)) {
+    if (_isCardAffecting(current)) {
       impactedCardIds.add(current!.paymentSourceId);
     }
     for (final cardId in impactedCardIds) {
@@ -152,6 +178,7 @@ class BillingService {
           await _flagPaidBillNeedsReview(previous.cardBillId!);
         }
         await _reconcileCardBillingAssignments(card);
+        await _syncLegacyOutstanding(card.id);
       });
     }
   }
@@ -209,7 +236,7 @@ class BillingService {
     final unbilledTransactions = await getUnbilledTransactions(card.id);
     final unbilledSpends = unbilledTransactions.fold<double>(
       0,
-      (sum, txn) => sum + txn.amount,
+      (sum, txn) => sum + _billingImpact(txn),
     );
 
     final billedTransactions = latestUnpaidBill == null
@@ -279,7 +306,7 @@ class BillingService {
 
   Future<double> calculateUnbilledSpendsForCard(int cardId) async {
     final transactions = await getUnbilledTransactions(cardId);
-    return transactions.fold<double>(0, (sum, txn) => sum + txn.amount);
+    return transactions.fold<double>(0, (sum, txn) => sum + _billingImpact(txn));
   }
 
   Future<List<Transaction>> getUnbilledTransactions(int cardId) async {
@@ -288,7 +315,7 @@ class BillingService {
             (t) =>
                 t.paymentSourceType.equals('creditCard') &
                 t.paymentSourceId.equals(cardId) &
-                t.type.equals('creditCard') &
+                (t.type.equals('creditCard') | t.type.equals('refund')) &
                 t.cardBillId.isNull(),
           )
           ..orderBy([(t) => OrderingTerm.asc(t.transactionDate)]))
@@ -305,7 +332,7 @@ class BillingService {
                 t.paymentSourceType.equals('creditCard') &
                 t.paymentSourceId.equals(cardId) &
                 t.cardBillId.equals(billId) &
-                t.type.equals('creditCard'),
+                (t.type.equals('creditCard') | t.type.equals('refund')),
           )
           ..orderBy([(t) => OrderingTerm.asc(t.transactionDate)]))
         .get();
@@ -331,7 +358,7 @@ class BillingService {
         .getSingleOrNull();
   }
 
-  Future<void> markBillAsPaid(
+  Future<CardPaymentResult> markBillAsPaid(
     int billId,
     int? bankAccountId,
     double amount,
@@ -341,66 +368,234 @@ class BillingService {
         'Bank account selection is required for card payment',
       );
     }
+    if (amount <= 0) {
+      throw ArgumentError('Amount must be greater than 0');
+    }
 
     final bill = await (_db.select(
       _db.cardBills,
     )..where((b) => b.id.equals(billId))).getSingle();
-
-    final nextPaid = (bill.paidAmount + amount)
-        .clamp(0, bill.billedAmount)
+    final cardBeforePayment = await (_db.select(
+      _db.creditCards,
+    )..where((c) => c.id.equals(bill.cardId))).getSingleOrNull();
+    if (cardBeforePayment != null) {
+      await _db.transaction(() async {
+        await _ensureSyntheticOpeningBill(cardBeforePayment);
+        await _reconcileCardBillingAssignments(cardBeforePayment);
+        await _syncLegacyOutstanding(cardBeforePayment.id);
+      });
+    }
+    final refreshedBill = await (_db.select(
+      _db.cardBills,
+    )..where((b) => b.id.equals(billId))).getSingle();
+    final remainingDueBefore =
+        (refreshedBill.billedAmount - refreshedBill.paidAmount)
+            .clamp(0, refreshedBill.billedAmount)
         .toDouble();
-    final isPaid = nextPaid >= bill.billedAmount;
+    final appliedAmount = amount.clamp(0, remainingDueBefore).toDouble();
+    final wasClamped = appliedAmount + 0.009 < amount;
 
-    await (_db.update(_db.cardBills)..where((b) => b.id.equals(billId))).write(
-      CardBillsCompanion(
-        paidAmount: Value(nextPaid),
-        status: Value(isPaid ? 'paid' : getDueStatus(bill)),
-        paidAt: Value(isPaid ? _now() : null),
-      ),
-    );
-
-    final account = await (_db.select(
-      _db.bankAccounts,
-    )..where((a) => a.id.equals(bankAccountId))).getSingleOrNull();
-    if (account != null) {
-      await (_db.update(
-        _db.bankAccounts,
-      )..where((a) => a.id.equals(account.id))).write(
-        BankAccountsCompanion(
-          currentBalance: Value(account.currentBalance - amount),
-          updatedAt: Value(DateTime.now()),
-        ),
+    if (appliedAmount <= 0.009) {
+      return CardPaymentResult(
+        requestedAmount: amount,
+        appliedAmount: 0,
+        remainingDueBefore: remainingDueBefore,
+        remainingDueAfter: remainingDueBefore,
+        paymentSourceType: 'bank',
+        paymentSourceId: bankAccountId,
+        cardId: refreshedBill.cardId,
+        billId: refreshedBill.id,
+        wasClamped: true,
+        message: 'No payment was applied because this bill has no remaining due.',
       );
     }
 
-    final transferGroupId = 'cardpay_${DateTime.now().microsecondsSinceEpoch}';
-    await _db
-        .into(_db.transactions)
-        .insert(
-          TransactionsCompanion.insert(
-            type: 'cardPayment',
-            amount: amount,
-            title: 'Card Bill Payment',
-            category: 'Transfer',
-            transactionDate: _now(),
-            paymentSourceType: 'bank',
-            paymentSourceId: bankAccountId,
-            transferGroupId: Value(transferGroupId),
-            sourceAccountId: Value(bankAccountId),
-            destinationAccountId: Value(bill.cardId),
-            notes: Value('Bill #${bill.id}'),
-          ),
-        );
+    final nextPaid = refreshedBill.paidAmount + appliedAmount;
+    final remainingDueAfter = (refreshedBill.billedAmount - nextPaid)
+        .clamp(0, refreshedBill.billedAmount)
+        .toDouble();
+    final isPaid = remainingDueAfter <= 0.009;
 
-    final card = await (_db.select(
-      _db.creditCards,
-    )..where((c) => c.id.equals(bill.cardId))).getSingleOrNull();
-    if (card != null) {
-      await _db.transaction(() async {
-        await _ensureSyntheticOpeningBill(card);
+    await _db.transaction(() async {
+      await (_db.update(
+        _db.cardBills,
+      )..where((b) => b.id.equals(billId))).write(
+        CardBillsCompanion(
+          paidAmount: Value(nextPaid),
+          status: Value(
+            isPaid
+                ? 'paid'
+                : getDueStatusFromDate(
+                    isPaid: false,
+                    dueDate: refreshedBill.dueDate,
+                    now: _now(),
+                  ),
+          ),
+          paidAt: Value(isPaid ? _now() : null),
+        ),
+      );
+      await _deductSourceBalance(
+        paymentSourceType: 'bank',
+        paymentSourceId: bankAccountId,
+        amount: appliedAmount,
+      );
+      await _recordCardPaymentTransaction(
+        amount: appliedAmount,
+        paymentSourceType: 'bank',
+        paymentSourceId: bankAccountId,
+        cardId: refreshedBill.cardId,
+        transactionDate: _now(),
+        notes: 'Bill #${refreshedBill.id}',
+      );
+      final card = await (_db.select(
+        _db.creditCards,
+      )..where((c) => c.id.equals(refreshedBill.cardId))).getSingleOrNull();
+      if (card != null) {
         await _reconcileCardBillingAssignments(card);
+        await _syncLegacyOutstanding(card.id);
+      }
+    });
+
+    return CardPaymentResult(
+      requestedAmount: amount,
+      appliedAmount: appliedAmount,
+      remainingDueBefore: remainingDueBefore,
+      remainingDueAfter: remainingDueAfter,
+      paymentSourceType: 'bank',
+      paymentSourceId: bankAccountId,
+      cardId: refreshedBill.cardId,
+      billId: refreshedBill.id,
+      wasClamped: wasClamped,
+      message: wasClamped
+          ? 'Only ${appliedAmount.toStringAsFixed(2)} was applied because the bill due was lower than the entered amount.'
+          : null,
+    );
+  }
+
+  Future<CardPaymentResult> settleCardFromAccountTransfer({
+    required int cardId,
+    required String paymentSourceType,
+    required int paymentSourceId,
+    required double amount,
+    DateTime? transactionDate,
+    String? notes,
+  }) async {
+    if (amount <= 0) {
+      throw ArgumentError('Amount must be greater than 0');
+    }
+    final cardBeforePayment = await (_db.select(
+      _db.creditCards,
+    )..where((c) => c.id.equals(cardId))).getSingleOrNull();
+    if (cardBeforePayment != null) {
+      await _db.transaction(() async {
+        await _ensureSyntheticOpeningBill(cardBeforePayment);
+        await _reconcileCardBillingAssignments(cardBeforePayment);
+        await _syncLegacyOutstanding(cardBeforePayment.id);
       });
     }
+
+    final bills =
+        await (_db.select(_db.cardBills)
+              ..where((b) => b.cardId.equals(cardId))
+              ..orderBy([(b) => OrderingTerm.asc(b.billingDate)]))
+            .get();
+    final unpaidBills = bills
+        .where((bill) => !_isBillPaidLike(bill))
+        .where(
+          (bill) => (bill.billedAmount - bill.paidAmount) > 0.009,
+        )
+        .toList(growable: false);
+    final remainingDueBefore = unpaidBills.fold<double>(
+      0,
+      (sum, bill) =>
+          sum +
+          (bill.billedAmount - bill.paidAmount).clamp(0, bill.billedAmount),
+    );
+    final appliedAmount = amount.clamp(0, remainingDueBefore).toDouble();
+    final wasClamped = appliedAmount + 0.009 < amount;
+
+    if (appliedAmount <= 0.009) {
+      return CardPaymentResult(
+        requestedAmount: amount,
+        appliedAmount: 0,
+        remainingDueBefore: remainingDueBefore,
+        remainingDueAfter: remainingDueBefore,
+        paymentSourceType: paymentSourceType,
+        paymentSourceId: paymentSourceId,
+        cardId: cardId,
+        wasClamped: true,
+        message: 'No payment was applied because this card has no billed due to settle.',
+      );
+    }
+
+    await _db.transaction(() async {
+      await _deductSourceBalance(
+        paymentSourceType: paymentSourceType,
+        paymentSourceId: paymentSourceId,
+        amount: appliedAmount,
+      );
+      var remaining = appliedAmount;
+      for (final bill in unpaidBills) {
+        if (remaining <= 0.009) break;
+        final billRemaining = (bill.billedAmount - bill.paidAmount)
+            .clamp(0, bill.billedAmount)
+            .toDouble();
+        if (billRemaining <= 0.009) continue;
+        final settled = remaining < billRemaining ? remaining : billRemaining;
+        final nextPaid = bill.paidAmount + settled;
+        final nextPending = (bill.billedAmount - nextPaid)
+            .clamp(0, bill.billedAmount)
+            .toDouble();
+        final nextStatus = nextPending <= 0.009
+            ? 'paid'
+            : getDueStatusFromDate(
+                isPaid: false,
+                dueDate: bill.dueDate,
+                now: _now(),
+              );
+        await (_db.update(
+          _db.cardBills,
+        )..where((b) => b.id.equals(bill.id))).write(
+          CardBillsCompanion(
+            paidAmount: Value(nextPaid),
+            status: Value(nextStatus),
+            paidAt: Value(nextStatus == 'paid' ? _now() : null),
+          ),
+        );
+        remaining -= settled;
+      }
+      await _recordCardPaymentTransaction(
+        amount: appliedAmount,
+        paymentSourceType: paymentSourceType,
+        paymentSourceId: paymentSourceId,
+        cardId: cardId,
+        transactionDate: transactionDate ?? _now(),
+        notes: notes,
+      );
+      final card = await (_db.select(
+        _db.creditCards,
+      )..where((c) => c.id.equals(cardId))).getSingleOrNull();
+      if (card != null) {
+        await _reconcileCardBillingAssignments(card);
+        await _syncLegacyOutstanding(card.id);
+      }
+    });
+
+    return CardPaymentResult(
+      requestedAmount: amount,
+      appliedAmount: appliedAmount,
+      remainingDueBefore: remainingDueBefore,
+      remainingDueAfter: (remainingDueBefore - appliedAmount)
+          .clamp(0, remainingDueBefore)
+          .toDouble(),
+      paymentSourceType: paymentSourceType,
+      paymentSourceId: paymentSourceId,
+      cardId: cardId,
+      wasClamped: wasClamped,
+      message: wasClamped
+          ? 'Only ${appliedAmount.toStringAsFixed(2)} was applied because the billed due was lower than the entered amount.'
+          : null,
+    );
   }
 
   Future<double> calculateAvailableLimit(int cardId) async {
@@ -445,10 +640,21 @@ class BillingService {
     return 'billed';
   }
 
+  bool _isCardAffecting(Transaction? txn) {
+    return txn != null &&
+        txn.paymentSourceType == 'creditCard' &&
+        (txn.type == 'creditCard' || txn.type == 'refund');
+  }
+
   bool _isCardCharge(Transaction? txn) {
     return txn != null &&
         txn.paymentSourceType == 'creditCard' &&
         txn.type == 'creditCard';
+  }
+
+  double _billingImpact(Transaction txn) {
+    if (txn.type == 'refund') return -txn.amount;
+    return txn.amount;
   }
 
   Future<void> _reconcileCardBillingAssignments(
@@ -499,23 +705,41 @@ class BillingService {
       return created;
     }
 
-    final charges =
+    final cardTransactions =
         await (_db.select(_db.transactions)
               ..where(
                 (t) =>
                     t.paymentSourceType.equals('creditCard') &
                     t.paymentSourceId.equals(card.id) &
-                    t.type.equals('creditCard'),
+                    (t.type.equals('creditCard') | t.type.equals('refund')),
               )
               ..orderBy([(t) => OrderingTerm.asc(t.transactionDate)]))
             .get();
 
-    for (final txn in charges) {
+    for (final txn in cardTransactions) {
+      final linkedOriginal = txn.relatedTransactionId == null
+          ? null
+          : await (_db.select(_db.transactions)..where(
+                (t) => t.id.equals(txn.relatedTransactionId!),
+              )).getSingleOrNull();
+      final linkedOriginalBill = linkedOriginal?.cardBillId == null
+          ? null
+          : billById[linkedOriginal!.cardBillId!];
+      if (txn.type == 'refund' &&
+          linkedOriginalBill != null &&
+          _isBillPaidLike(linkedOriginalBill)) {
+        await _flagPaidBillNeedsReview(linkedOriginalBill.id);
+        await (_db.update(_db.transactions)..where((t) => t.id.equals(txn.id)))
+            .write(const TransactionsCompanion(cardBillId: Value(null)));
+        continue;
+      }
+
       final expectedStatement = _billingDateForTransaction(
         card,
         txn.transactionDate,
       );
-      final shouldBeUnbilled = expectedStatement.isAfter(now);
+      final shouldBeUnbilled =
+          linkedOriginalBill == null && expectedStatement.isAfter(now);
       if (shouldBeUnbilled) {
         if (txn.cardBillId != null) {
           final oldBill = billById[txn.cardBillId!];
@@ -529,7 +753,9 @@ class BillingService {
         continue;
       }
 
-      final targetBill = await ensureBill(expectedStatement);
+      final targetBill = txn.type == 'refund' && linkedOriginalBill != null
+          ? linkedOriginalBill
+          : await ensureBill(expectedStatement);
       if (txn.cardBillId == targetBill.id) continue;
 
       if (_isBillPaidLike(targetBill)) {
@@ -558,21 +784,26 @@ class BillingService {
                 (t) =>
                     t.paymentSourceType.equals('creditCard') &
                     t.paymentSourceId.equals(card.id) &
-                    t.type.equals('creditCard') &
+                    (t.type.equals('creditCard') | t.type.equals('refund')) &
                     t.cardBillId.equals(bill.id),
               ))
               .get();
       final hasLegacyUnmappedBillData =
-          billedTxns.isEmpty &&
-          _dateOnly(bill.cycleEndDate) != _dateOnly(bill.billingDate);
+          billedTxns.isEmpty && bill.billedAmount > 0.009;
       if (hasLegacyUnmappedBillData) {
         continue;
       }
-      final nextAmount = billedTxns.fold<double>(0, (sum, t) => sum + t.amount);
+      final nextAmount = billedTxns.fold<double>(
+        0,
+        (sum, t) => sum + _billingImpact(t),
+      ).clamp(0, double.infinity).toDouble();
+      final hasOverpaidAdjustedBill = bill.paidAmount > nextAmount + 0.009;
       final pendingAmount = (nextAmount - bill.paidAmount)
           .clamp(0, nextAmount)
           .toDouble();
-      final nextStatus = pendingAmount <= 0
+      final nextStatus = hasOverpaidAdjustedBill
+          ? 'needsReview'
+          : pendingAmount <= 0
           ? 'paid'
           : getDueStatusFromDate(
               isPaid: false,
@@ -585,7 +816,9 @@ class BillingService {
         CardBillsCompanion(
           billedAmount: Value(nextAmount),
           status: Value(nextStatus),
-          paidAt: Value(nextStatus == 'paid' ? (bill.paidAt ?? _now()) : null),
+          paidAt: Value(
+            nextStatus == 'paid' ? (bill.paidAt ?? _now()) : null,
+          ),
         ),
       );
     }
@@ -651,20 +884,106 @@ class BillingService {
           (bill.billedAmount - bill.paidAmount).clamp(0, bill.billedAmount),
     );
 
-    final unbilledCharges =
+    final unbilledTransactions =
         await (_db.select(_db.transactions)..where(
               (t) =>
                   t.paymentSourceType.equals('creditCard') &
                   t.paymentSourceId.equals(cardId) &
-                  t.type.equals('creditCard') &
+                  (t.type.equals('creditCard') | t.type.equals('refund')) &
                   t.cardBillId.isNull(),
             ))
             .get();
-    final unbilledSpends = unbilledCharges.fold<double>(
+    final unbilledSpends = unbilledTransactions.fold<double>(
       0,
-      (sum, t) => sum + t.amount,
+      (sum, t) => sum + _billingImpact(t),
     );
 
     return billedDue + unbilledSpends;
+  }
+
+  Future<void> _deductSourceBalance({
+    required String paymentSourceType,
+    required int paymentSourceId,
+    required double amount,
+  }) async {
+    if (paymentSourceType == 'cash') {
+      final wallet = await (_db.select(
+        _db.cashWallets,
+      )..where((w) => w.id.equals(paymentSourceId))).getSingleOrNull();
+      if (wallet == null) {
+        throw ArgumentError('Selected cash wallet not found');
+      }
+      await (_db.update(
+        _db.cashWallets,
+      )..where((w) => w.id.equals(paymentSourceId))).write(
+        CashWalletsCompanion(
+          currentBalance: Value(wallet.currentBalance - amount),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+      return;
+    }
+
+    final bank = await (_db.select(
+      _db.bankAccounts,
+    )..where((b) => b.id.equals(paymentSourceId))).getSingleOrNull();
+    if (bank == null) {
+      throw ArgumentError('Selected bank account not found');
+    }
+    await (_db.update(
+      _db.bankAccounts,
+    )..where((b) => b.id.equals(paymentSourceId))).write(
+      BankAccountsCompanion(
+        currentBalance: Value(bank.currentBalance - amount),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  Future<void> _recordCardPaymentTransaction({
+    required double amount,
+    required String paymentSourceType,
+    required int paymentSourceId,
+    required int cardId,
+    required DateTime transactionDate,
+    String? notes,
+  }) async {
+    final transferGroupId = 'cardpay_${DateTime.now().microsecondsSinceEpoch}';
+    await _db.into(_db.transactions).insert(
+      TransactionsCompanion.insert(
+        type: 'cardPayment',
+        amount: amount,
+        title: 'Card Bill Payment',
+        category: 'Transfer',
+        transactionDate: transactionDate,
+        paymentSourceType: paymentSourceType,
+        paymentSourceId: paymentSourceId,
+        transferGroupId: Value(transferGroupId),
+        sourceAccountId: Value(paymentSourceId),
+        destinationAccountId: Value(cardId),
+        notes: Value(notes),
+      ),
+    );
+  }
+
+  Future<void> _syncLegacyOutstanding(int cardId) async {
+    final card = await (_db.select(
+      _db.creditCards,
+    )..where((c) => c.id.equals(cardId))).getSingleOrNull();
+    if (card == null) return;
+    final representedOutstanding = await _calculateRepresentedOutstandingForOpening(
+      cardId,
+    );
+    if ((card.currentOutstanding - representedOutstanding).abs() <= 0.009) {
+      return;
+    }
+    await (_db.update(
+      _db.creditCards,
+    )..where((c) => c.id.equals(cardId))).write(
+      CreditCardsCompanion(
+        currentOutstanding: Value(representedOutstanding),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
   }
 }

@@ -103,6 +103,9 @@ class BackupService {
       'personalShareAmount',
       'splitGroupId',
       'transactionImpactType',
+      'cashbackDestinationType',
+      'cashbackDestinationId',
+      'relatedTransactionId',
       'createdAt',
       'updatedAt',
     ];
@@ -146,6 +149,9 @@ class BackupService {
         row.personalShareAmount,
         row.splitGroupId,
         row.transactionImpactType,
+        row.cashbackDestinationType,
+        row.cashbackDestinationId,
+        row.relatedTransactionId,
         _iso(row.createdAt),
         _iso(row.updatedAt),
       ];
@@ -426,6 +432,9 @@ class BackupService {
       'personalShareAmount': row.personalShareAmount,
       'splitGroupId': row.splitGroupId,
       'transactionImpactType': row.transactionImpactType,
+      'cashbackDestinationType': row.cashbackDestinationType,
+      'cashbackDestinationId': row.cashbackDestinationId,
+      'relatedTransactionId': row.relatedTransactionId,
       'createdAt': _iso(row.createdAt),
       'updatedAt': _iso(row.updatedAt),
     };

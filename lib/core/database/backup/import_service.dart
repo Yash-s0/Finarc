@@ -338,6 +338,13 @@ class ImportService {
                 transactionImpactType: Value(
                   _stringOrNull(row['transactionImpactType']),
                 ),
+                cashbackDestinationType: Value(
+                  _stringOrNull(row['cashbackDestinationType']),
+                ),
+                cashbackDestinationId: Value(
+                  _int(row['cashbackDestinationId']),
+                ),
+                relatedTransactionId: Value(_int(row['relatedTransactionId'])),
                 createdAt: Value(_date(row['createdAt']) ?? DateTime.now()),
                 updatedAt: Value(_date(row['updatedAt']) ?? DateTime.now()),
               ),

@@ -409,6 +409,7 @@ class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
 
   Widget _transactionRow(BuildContext context, Transaction txn) {
     final billed = txn.cardBillId != null;
+    final isRefund = txn.type == 'refund';
     return FinarcTransactionTile(
       title: txn.title,
       subtitle: txn.category,
@@ -418,8 +419,8 @@ class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
             ? 'Card • Statement #${txn.cardBillId}'
             : 'Card',
       ),
-      amount: '-${inr(txn.amount)}',
-      amountColor: AppColors.darkError,
+      amount: '${isRefund ? '+' : '-'}${inr(txn.amount)}',
+      amountColor: isRefund ? AppColors.darkSuccess : AppColors.darkError,
       amountMeta: billed && txn.cardBillId != null
           ? 'Stmt #${txn.cardBillId}'
           : null,

@@ -1,6 +1,19 @@
 import 'package:drift/drift.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../cards/data/billing_service.dart';
+
+class AccountTransferResult {
+  const AccountTransferResult({
+    required this.requestedAmount,
+    required this.transferredAmount,
+    this.message,
+  });
+
+  final double requestedAmount;
+  final double transferredAmount;
+  final String? message;
+}
 
 class AccountService {
   AccountService(this._db);
@@ -105,7 +118,7 @@ class AccountService {
     return await getTotalBankBalance() + await getTotalCashBalance();
   }
 
-  Future<void> transferBetweenAccounts({
+  Future<AccountTransferResult> transferBetweenAccounts({
     required String sourceType,
     required int sourceId,
     required String destinationType,
@@ -116,33 +129,31 @@ class AccountService {
   }) async {
     final transferGroupId = 'tr_${DateTime.now().microsecondsSinceEpoch}';
 
+    if (destinationType == 'creditCard') {
+      final result = await BillingService(_db).settleCardFromAccountTransfer(
+        cardId: destinationId,
+        paymentSourceType: sourceType,
+        paymentSourceId: sourceId,
+        amount: amount,
+        transactionDate: transactionDate,
+        notes: notes,
+      );
+      return AccountTransferResult(
+        requestedAmount: amount,
+        transferredAmount: result.appliedAmount,
+        message: result.message,
+      );
+    }
+
     await _db.transaction(() async {
       await _changeBalance(sourceType, sourceId, -amount);
-      if (destinationType == 'creditCard') {
-        final card = await (_db.select(
-          _db.creditCards,
-        )..where((c) => c.id.equals(destinationId))).getSingle();
-        await (_db.update(
-          _db.creditCards,
-        )..where((c) => c.id.equals(destinationId))).write(
-          CreditCardsCompanion(
-            currentOutstanding: Value(
-              (card.currentOutstanding - amount).clamp(0, card.creditLimit),
-            ),
-            updatedAt: Value(DateTime.now()),
-          ),
-        );
-      } else {
-        await _changeBalance(destinationType, destinationId, amount);
-      }
+      await _changeBalance(destinationType, destinationId, amount);
 
       await _db
           .into(_db.transactions)
           .insert(
             TransactionsCompanion.insert(
-              type: destinationType == 'creditCard'
-                  ? 'cardPayment'
-                  : 'transfer',
+              type: 'transfer',
               amount: amount,
               title: 'Transfer Out',
               category: 'Transfer',
@@ -160,13 +171,9 @@ class AccountService {
           .into(_db.transactions)
           .insert(
             TransactionsCompanion.insert(
-              type: destinationType == 'creditCard'
-                  ? 'cardPayment'
-                  : 'transfer',
+              type: 'transfer',
               amount: amount,
-              title: destinationType == 'creditCard'
-                  ? 'Card Payment In'
-                  : 'Transfer In',
+              title: 'Transfer In',
               category: 'Transfer',
               notes: Value(notes),
               transactionDate: transactionDate,
@@ -178,6 +185,11 @@ class AccountService {
             ),
           );
     });
+
+    return AccountTransferResult(
+      requestedAmount: amount,
+      transferredAmount: amount,
+    );
   }
 
   Future<void> reconcileBalance({
