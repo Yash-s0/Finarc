@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/database_providers.dart';
+import 'wallet_types.dart';
 import 'account_service.dart';
 
 final accountServiceProvider = Provider<AccountService>((ref) {
@@ -65,7 +66,7 @@ final accountDetailProvider = FutureProvider.family((
       db.cashWallets,
     )..where((w) => w.id.equals(id))).getSingle();
     return (
-      name: wallet.walletName,
+      name: WalletType.displayName(wallet),
       balance: wallet.currentBalance,
       txns: txns,
     );

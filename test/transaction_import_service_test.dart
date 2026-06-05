@@ -47,6 +47,18 @@ void main() {
         );
   }
 
+  Future<int> seedAmazonPayWallet() {
+    return db
+        .into(db.cashWallets)
+        .insert(
+          CashWalletsCompanion.insert(
+            walletName: 'Amazon Pay',
+            walletType: const Value('amazonPay'),
+            currentBalance: const Value(2500),
+          ),
+        );
+  }
+
   Future<int> seedCard({String nickname = 'Amazon'}) {
     return db
         .into(db.creditCards)
@@ -347,4 +359,74 @@ void main() {
     expect(result.preview!.validRows, 1);
     expect(result.preview!.invalidRows, 1);
   });
+
+  test(
+    'Amazon Pay import updates wallet balance and stores cashback destination',
+    () async {
+      final walletId = await seedAmazonPayWallet();
+      final jsonText = jsonEncode({
+        'transactions': [
+          {
+            'date': '2026-05-31T14:30:00',
+            'amount': 300,
+            'type': 'expense',
+            'title': 'Amazon Order',
+            'paymentMode': 'amazonPay',
+            'sourceName': 'Amazon Pay',
+            'cashback': 50,
+            'cashbackDestinationType': 'amazonPay',
+            'cashbackDestinationName': 'Amazon Pay',
+          },
+        ],
+      });
+
+      final preview = (await service.parsePreview(jsonText)).preview!;
+      expect(preview.validRows, 1);
+      await service.importValidRows(preview);
+
+      final wallet = await (db.select(
+        db.cashWallets,
+      )..where((w) => w.id.equals(walletId))).getSingle();
+      final txn = await db.select(db.transactions).getSingle();
+      expect(wallet.currentBalance, closeTo(2250, 0.01));
+      expect(txn.cashbackDestinationType, 'amazonPay');
+      expect(txn.cashbackDestinationId, walletId);
+    },
+  );
+
+  test(
+    'unresolved cashback destination becomes warning without blocking import',
+    () async {
+      await seedBank(name: 'Main Account');
+      final jsonText = jsonEncode({
+        'transactions': [
+          {
+            'date': '2026-05-31T14:30:00',
+            'amount': 300,
+            'type': 'expense',
+            'title': 'Fuel',
+            'paymentMode': 'bank',
+            'sourceName': 'Main Account',
+            'cashback': 25,
+            'cashbackDestinationType': 'bank',
+            'cashbackDestinationName': 'Missing Account',
+          },
+        ],
+      });
+
+      final result = await service.parsePreview(jsonText);
+      final row = result.preview!.rows.single;
+      expect(row.isValid, true);
+      expect(
+        row.issues.any(
+          (issue) => issue.message.contains(
+            'cashback destination could not be resolved',
+          ),
+        ),
+        true,
+      );
+      expect(row.resolved!.input.cashbackDestinationType, 'unknown');
+      expect(row.resolved!.input.cashbackDestinationId, isNull);
+    },
+  );
 }

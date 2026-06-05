@@ -1,7 +1,9 @@
 import 'dart:convert';
 
+import '../../accounts/data/wallet_types.dart';
 import '../../../core/database/app_database.dart';
 import '../../expenses/data/transaction_engine.dart';
+import '../../expenses/models/cashback_destination_types.dart';
 import '../../expenses/models/transaction_types.dart';
 import 'transaction_import_models.dart';
 
@@ -158,6 +160,19 @@ class TransactionImportService {
         continue;
       }
 
+      final matchedSourceId = sourceMatch.sourceId!;
+      CashWallet? matchedWallet;
+      if (paymentMode == PaymentSourceType.cash) {
+        for (final wallet in sources.wallets) {
+          if (wallet.id == matchedSourceId) {
+            matchedWallet = wallet;
+            break;
+          }
+        }
+      }
+      final isPhysicalCashWallet =
+          matchedWallet != null &&
+          WalletType.matches(matchedWallet, WalletType.cash);
       final cashback = importType == 'expense'
           ? cashbackRaw.clamp(0, amount).toDouble()
           : 0.0;
@@ -169,7 +184,9 @@ class TransactionImportService {
           ),
         );
       }
-      if (paymentMode == PaymentSourceType.cash && cashbackRaw > 0) {
+      if (paymentMode == PaymentSourceType.cash &&
+          cashbackRaw > 0 &&
+          isPhysicalCashWallet) {
         issues.add(
           const TransactionImportValidationIssue(
             message: 'cashback is ignored for cash mode rows.',
@@ -193,7 +210,14 @@ class TransactionImportService {
           ),
         );
       }
-      final matchedSourceId = sourceMatch.sourceId!;
+      final cashbackDestination = _resolveCashbackDestination(
+        data: data,
+        sources: sources,
+        paymentMode: paymentMode,
+        sourceId: matchedSourceId,
+        cashbackAmount: isPhysicalCashWallet ? 0.0 : cashback,
+      );
+      issues.addAll(cashbackDestination.issues);
 
       final normalizedTitle = _normalize(title);
       final duplicateExists = existingTransactions.any((txn) {
@@ -251,7 +275,7 @@ class TransactionImportService {
         transactionDate: date,
         paymentSourceType: sourceType,
         paymentSourceId: matchedSourceId,
-        cashbackAmount: sourceType == PaymentSourceType.cash ? 0.0 : cashback,
+        cashbackAmount: isPhysicalCashWallet ? 0.0 : cashback,
         isForOthers: forOthers,
         recoverableAmount: forOthers
             ? (recoverableBase - recoveredAmount)
@@ -260,6 +284,8 @@ class TransactionImportService {
             : null,
         recoveredAmount: forOthers ? recoveredAmount : null,
         recoverablePartyName: forOthers ? personName : null,
+        cashbackDestinationType: cashbackDestination.destinationType,
+        cashbackDestinationId: cashbackDestination.destinationId,
       );
 
       if (importType == 'income') {
@@ -354,7 +380,12 @@ class TransactionImportService {
 
   String? _normalizeMode(dynamic value) {
     final text = (value ?? '').toString().trim().toLowerCase();
-    if (text == 'cash' || text == 'wallet' || text == 'wallet/cash') {
+    if (text == 'cash' ||
+        text == 'wallet' ||
+        text == 'wallet/cash' ||
+        text == 'amazonpay' ||
+        text == 'amazon_pay' ||
+        text == 'amazon pay') {
       return PaymentSourceType.cash;
     }
     if (text == 'bank') return PaymentSourceType.bank;
@@ -376,6 +407,13 @@ class TransactionImportService {
     if (value == null) return null;
     if (value is num) return value.toDouble();
     return double.tryParse(value.toString().trim());
+  }
+
+  int? _toInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString().trim());
   }
 
   bool? _toBool(dynamic value) {
@@ -487,8 +525,12 @@ class TransactionImportService {
           .map(
             (wallet) => _SourceCandidate(
               id: wallet.id,
-              label: wallet.walletName,
-              matchTokens: [wallet.walletName],
+              label: WalletType.displayName(wallet),
+              matchTokens: [
+                wallet.walletName,
+                WalletType.displayName(wallet),
+                wallet.walletType,
+              ],
             ),
           )
           .toList(growable: false);
@@ -556,6 +598,181 @@ class TransactionImportService {
   String _normalize(String input) {
     return input.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
   }
+
+  _CashbackDestinationResolution _resolveCashbackDestination({
+    required Map<String, dynamic> data,
+    required _ImportSources sources,
+    required String paymentMode,
+    required int sourceId,
+    required double cashbackAmount,
+  }) {
+    if (cashbackAmount <= 0) {
+      return const _CashbackDestinationResolution();
+    }
+
+    final rawType = data['cashbackDestinationType'];
+    final rawName = data['cashbackDestinationName']?.toString();
+    final rawId = _toInt(data['cashbackDestinationId']);
+    if (rawType == null &&
+        rawId == null &&
+        (rawName == null || rawName.trim().isEmpty)) {
+      return const _CashbackDestinationResolution();
+    }
+
+    final destinationType = _normalizeCashbackDestinationType(rawType);
+    if (destinationType == null) {
+      return const _CashbackDestinationResolution(
+        issues: [
+          TransactionImportValidationIssue(
+            message:
+                'cashbackDestinationType is unknown and destination metadata was ignored.',
+            isWarning: true,
+          ),
+        ],
+      );
+    }
+    if (destinationType == CashbackDestinationType.unknown) {
+      return const _CashbackDestinationResolution(
+        destinationType: CashbackDestinationType.unknown,
+      );
+    }
+    if (destinationType == CashbackDestinationType.creditCard) {
+      if (paymentMode != PaymentSourceType.creditCard) {
+        return const _CashbackDestinationResolution(
+          issues: [
+            TransactionImportValidationIssue(
+              message:
+                  'cashbackDestinationType creditCard requires a card paymentMode row. Metadata was ignored.',
+              isWarning: true,
+            ),
+          ],
+        );
+      }
+      return _CashbackDestinationResolution(
+        destinationType: CashbackDestinationType.creditCard,
+        destinationId: rawId ?? sourceId,
+      );
+    }
+
+    if (rawId != null) {
+      return _CashbackDestinationResolution(
+        destinationType: destinationType,
+        destinationId: rawId,
+      );
+    }
+
+    final destinationMode = CashbackDestinationType.toPaymentSourceType(
+      destinationType,
+    );
+    if (destinationMode == null) {
+      return const _CashbackDestinationResolution();
+    }
+
+    final destinationMatch = _resolveSource(
+      mode: destinationMode,
+      sourceName: rawName,
+      sources: sources,
+    );
+    if (destinationMatch.sourceId == null) {
+      return const _CashbackDestinationResolution(
+        destinationType: CashbackDestinationType.unknown,
+        issues: [
+          TransactionImportValidationIssue(
+            message:
+                'cashback destination could not be resolved. Metadata was preserved as unknown.',
+            isWarning: true,
+          ),
+        ],
+      );
+    }
+
+    if (destinationMode == PaymentSourceType.cash) {
+      final wallet = sources.wallets.firstWhere(
+        (item) => item.id == destinationMatch.sourceId,
+      );
+      if (destinationType == CashbackDestinationType.amazonPay &&
+          !WalletType.matches(wallet, WalletType.amazonPay)) {
+        return const _CashbackDestinationResolution(
+          destinationType: CashbackDestinationType.unknown,
+          issues: [
+            TransactionImportValidationIssue(
+              message:
+                  'cashback destination wallet is not an Amazon Pay wallet. Metadata was preserved as unknown.',
+              isWarning: true,
+            ),
+          ],
+        );
+      }
+      if (destinationType == CashbackDestinationType.cash &&
+          !WalletType.matches(wallet, WalletType.cash)) {
+        return const _CashbackDestinationResolution(
+          destinationType: CashbackDestinationType.unknown,
+          issues: [
+            TransactionImportValidationIssue(
+              message:
+                  'cashback destination wallet is not a cash wallet. Metadata was preserved as unknown.',
+              isWarning: true,
+            ),
+          ],
+        );
+      }
+      if (destinationType == CashbackDestinationType.otherWallet &&
+          !WalletType.matches(wallet, WalletType.otherWallet)) {
+        return const _CashbackDestinationResolution(
+          destinationType: CashbackDestinationType.unknown,
+          issues: [
+            TransactionImportValidationIssue(
+              message:
+                  'cashback destination wallet is not an other wallet. Metadata was preserved as unknown.',
+              isWarning: true,
+            ),
+          ],
+        );
+      }
+    }
+
+    return _CashbackDestinationResolution(
+      destinationType: destinationType,
+      destinationId: destinationMatch.sourceId,
+    );
+  }
+
+  String? _normalizeCashbackDestinationType(dynamic value) {
+    final text = (value ?? '').toString().trim().toLowerCase();
+    switch (text) {
+      case '':
+        return null;
+      case 'unknown':
+      case 'notreceived':
+      case 'not_received':
+      case 'not received':
+        return CashbackDestinationType.unknown;
+      case 'bank':
+        return CashbackDestinationType.bank;
+      case 'cash':
+      case 'cashwallet':
+      case 'cash_wallet':
+        return CashbackDestinationType.cash;
+      case 'amazonpay':
+      case 'amazon_pay':
+      case 'amazon pay':
+        return CashbackDestinationType.amazonPay;
+      case 'wallet':
+      case 'otherwallet':
+      case 'other_wallet':
+      case 'other wallet':
+        return CashbackDestinationType.otherWallet;
+      case 'card':
+      case 'creditcard':
+      case 'credit_card':
+      case 'samecreditcard':
+      case 'same_credit_card':
+      case 'same credit card':
+        return CashbackDestinationType.creditCard;
+      default:
+        return null;
+    }
+  }
 }
 
 class _ImportSources {
@@ -587,5 +804,17 @@ class SourceMatch {
 
   final int? sourceId;
   final String? sourceLabel;
+  final List<TransactionImportValidationIssue> issues;
+}
+
+class _CashbackDestinationResolution {
+  const _CashbackDestinationResolution({
+    this.destinationType,
+    this.destinationId,
+    this.issues = const [],
+  });
+
+  final String? destinationType;
+  final int? destinationId;
   final List<TransactionImportValidationIssue> issues;
 }

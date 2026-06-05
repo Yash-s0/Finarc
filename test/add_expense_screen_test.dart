@@ -121,6 +121,32 @@ void main() {
     expect(saved.paymentSourceId, isNotNull);
   });
 
+  testWidgets('Amazon Pay wallet can be used as cash source', (tester) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    await db
+        .into(db.cashWallets)
+        .insert(
+          CashWalletsCompanion.insert(
+            walletName: 'Amazon Pay',
+            walletType: const drift.Value('amazonPay'),
+            currentBalance: const drift.Value(5000),
+          ),
+        );
+    addTearDown(() async => db.close());
+
+    await tester.pumpWidget(wrap(db, const AddExpenseScreen()));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Amazon Pay'), findsOneWidget);
+    await enterAmount(tester, '300');
+    await tester.tap(find.text('Save Expense'));
+    await tester.pumpAndSettle();
+
+    final saved = await latestTransaction(db);
+    expect(saved, isNotNull);
+    expect(saved!.paymentSourceType, 'cash');
+  });
+
   testWidgets('Add Expense default category remains General when untouched', (
     tester,
   ) async {

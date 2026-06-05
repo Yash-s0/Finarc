@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../cards/data/billing_service.dart';
+import '../models/cashback_destination_types.dart';
 import '../models/transaction_types.dart';
 
 class AddTransactionInput {
@@ -82,6 +83,7 @@ class TransactionEngine {
       } else {
         await _applyExpense(input.paymentSourceType, sourceId, input.amount);
       }
+      await _applyCashbackDestinationEffect(input);
 
       final recoverableBase = _resolveRecoverableBase(input);
       final recoveredAmount = _resolveRecoveredAmount(input, recoverableBase);
@@ -313,6 +315,12 @@ class TransactionEngine {
     if (input.cashbackAmount > input.amount) {
       throw ArgumentError('Cashback cannot exceed total amount');
     }
+    if (CashbackDestinationType.requiresDestinationId(
+          input.cashbackDestinationType,
+        ) &&
+        input.cashbackDestinationId == null) {
+      throw ArgumentError('Cashback destination is incomplete');
+    }
     if (input.paymentSourceType == PaymentSourceType.creditCard &&
         input.type != TransactionType.creditCard &&
         input.type != TransactionType.refund) {
@@ -338,6 +346,7 @@ class TransactionEngine {
     } else {
       await _applyExpense(input.paymentSourceType, sourceId, input.amount);
     }
+    await _applyCashbackDestinationEffect(input);
   }
 
   double _resolveRecoverableBase(AddTransactionInput input) {
@@ -383,6 +392,7 @@ class TransactionEngine {
   }
 
   Future<void> _reverseTransactionEffect(Transaction txn) async {
+    await _reverseCashbackDestinationEffect(txn);
     final sourceId = txn.paymentSourceId;
     if (txn.type == TransactionType.income) {
       await _applyExpense(txn.paymentSourceType, sourceId, txn.amount);
@@ -397,6 +407,38 @@ class TransactionEngine {
       return;
     }
     await _applyIncome(txn.paymentSourceType, sourceId, txn.amount);
+  }
+
+  Future<void> _applyCashbackDestinationEffect(
+    AddTransactionInput input,
+  ) async {
+    if (input.cashbackAmount <= 0) return;
+    if (!CashbackDestinationType.appliesBalanceMutation(
+      input.cashbackDestinationType,
+    )) {
+      return;
+    }
+    final destinationType = CashbackDestinationType.toPaymentSourceType(
+      input.cashbackDestinationType,
+    );
+    final destinationId = input.cashbackDestinationId;
+    if (destinationType == null || destinationId == null) return;
+    await _applyIncome(destinationType, destinationId, input.cashbackAmount);
+  }
+
+  Future<void> _reverseCashbackDestinationEffect(Transaction txn) async {
+    if (txn.cashbackAmount <= 0) return;
+    if (!CashbackDestinationType.appliesBalanceMutation(
+      txn.cashbackDestinationType,
+    )) {
+      return;
+    }
+    final destinationType = CashbackDestinationType.toPaymentSourceType(
+      txn.cashbackDestinationType,
+    );
+    final destinationId = txn.cashbackDestinationId;
+    if (destinationType == null || destinationId == null) return;
+    await _applyExpense(destinationType, destinationId, txn.cashbackAmount);
   }
 
   Future<void> _applyExpense(
@@ -512,7 +554,9 @@ class TransactionEngine {
         .clamp(0, originalBase)
         .toDouble();
     final overRecovered = original.recoveredAmount > nextBase + 0.009;
-    final nextRecovered = original.recoveredAmount.clamp(0, nextBase).toDouble();
+    final nextRecovered = original.recoveredAmount
+        .clamp(0, nextBase)
+        .toDouble();
     final nextRemaining = (nextBase - nextRecovered)
         .clamp(0, nextBase)
         .toDouble();

@@ -95,14 +95,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('₹600'), findsOneWidget);
+    expect(find.text('₹600.00'), findsOneWidget);
     expect(find.text('16.0%'), findsOneWidget);
-    expect(find.text('₹1,000'), findsAtLeastNWidgets(1));
+    expect(find.text('₹1,000.00'), findsAtLeastNWidgets(1));
 
     await tester.drag(find.byType(PageView), const Offset(-320, 0));
     await tester.pumpAndSettle();
 
-    expect(find.text('₹600'), findsNothing);
+    expect(find.text('₹600.00'), findsNothing);
     expect(find.text('16.0%'), findsNothing);
     expect(find.text('0.0%'), findsOneWidget);
     expect(find.text('No active billed statement'), findsOneWidget);

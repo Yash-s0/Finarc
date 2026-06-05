@@ -7,6 +7,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
+import '../data/wallet_types.dart';
 import '../data/accounts_providers.dart';
 
 class AccountsOverviewScreen extends ConsumerWidget {
@@ -173,13 +174,19 @@ class AccountsOverviewScreen extends ConsumerWidget {
                             onTap: () => context.push(
                               '/accounts/detail/cash/${data.wallets[i].id}',
                             ),
-                            title: data.wallets[i].walletName,
-                            subtitle: 'Cash wallet',
+                            title: WalletType.displayName(data.wallets[i]),
+                            subtitle: WalletType.subtitle(data.wallets[i]),
                             meta:
                                 'Updated ${_shortDate(data.wallets[i].updatedAt)}',
                             amount: inr(data.wallets[i].currentBalance),
-                            icon: Icons.account_balance_wallet_outlined,
-                            badge: 'CASH',
+                            icon:
+                                WalletType.matches(
+                                  data.wallets[i],
+                                  WalletType.amazonPay,
+                                )
+                                ? Icons.shopping_bag_outlined
+                                : Icons.account_balance_wallet_outlined,
+                            badge: WalletType.badge(data.wallets[i]),
                             iconColor: AppColors.darkWarning,
                           ),
                           if (i != data.wallets.length - 1)

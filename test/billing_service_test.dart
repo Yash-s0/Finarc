@@ -242,50 +242,56 @@ void main() {
     },
   );
 
-  test('card refund reduces unbilled outstanding when linked txn is unbilled', () async {
-    final now = DateTime.now();
-    final lastDay = DateTime(now.year, now.month + 1, 0).day;
-    final billingDay = now.day < lastDay ? now.day + 1 : now.day;
-    final cardId = await createCard(
-      billingDay: billingDay,
-      dueDay: 7,
-      outstanding: 0,
-    );
-    await (db.update(db.creditCards)..where((c) => c.id.equals(cardId))).write(
-      const CreditCardsCompanion(currentOutstanding: Value(600)),
-    );
-    final originalTxnId = await db.into(db.transactions).insert(
-      TransactionsCompanion.insert(
-        type: TransactionType.creditCard,
-        amount: 1000,
-        title: 'Order',
-        category: 'Shopping',
-        transactionDate: now,
-        paymentSourceType: PaymentSourceType.creditCard,
-        paymentSourceId: cardId,
-      ),
-    );
-    await db.into(db.transactions).insert(
-      TransactionsCompanion.insert(
-        type: TransactionType.refund,
-        amount: 400,
-        title: 'Order Refund',
-        category: 'Refund',
-        transactionDate: now,
-        paymentSourceType: PaymentSourceType.creditCard,
-        paymentSourceId: cardId,
-      ),
-    );
+  test(
+    'card refund reduces unbilled outstanding when linked txn is unbilled',
+    () async {
+      final now = DateTime.now();
+      final lastDay = DateTime(now.year, now.month + 1, 0).day;
+      final billingDay = now.day < lastDay ? now.day + 1 : now.day;
+      final cardId = await createCard(
+        billingDay: billingDay,
+        dueDay: 7,
+        outstanding: 0,
+      );
+      await (db.update(db.creditCards)..where((c) => c.id.equals(cardId)))
+          .write(const CreditCardsCompanion(currentOutstanding: Value(600)));
+      await db
+          .into(db.transactions)
+          .insert(
+            TransactionsCompanion.insert(
+              type: TransactionType.creditCard,
+              amount: 1000,
+              title: 'Order',
+              category: 'Shopping',
+              transactionDate: now,
+              paymentSourceType: PaymentSourceType.creditCard,
+              paymentSourceId: cardId,
+            ),
+          );
+      await db
+          .into(db.transactions)
+          .insert(
+            TransactionsCompanion.insert(
+              type: TransactionType.refund,
+              amount: 400,
+              title: 'Order Refund',
+              category: 'Refund',
+              transactionDate: now,
+              paymentSourceType: PaymentSourceType.creditCard,
+              paymentSourceId: cardId,
+            ),
+          );
 
-    final snapshot = await BillingService(
-      db,
-      now: () => now,
-    ).getCardBillingSnapshotById(cardId);
+      final snapshot = await BillingService(
+        db,
+        now: () => now,
+      ).getCardBillingSnapshotById(cardId);
 
-    expect(snapshot.billedDue, 0);
-    expect(snapshot.unbilledSpends, closeTo(600, 0.01));
-    expect(snapshot.totalOutstanding, closeTo(600, 0.01));
-  });
+      expect(snapshot.billedDue, 0);
+      expect(snapshot.unbilledSpends, closeTo(600, 0.01));
+      expect(snapshot.totalOutstanding, closeTo(600, 0.01));
+    },
+  );
 
   test('card refund reduces billed due when linked bill is unpaid', () async {
     final now = DateTime.now();
@@ -296,46 +302,54 @@ void main() {
       outstanding: 0,
     );
     final service = BillingService(db, now: () => now);
-    final billId = await db.into(db.cardBills).insert(
-      CardBillsCompanion.insert(
-        cardId: cardId,
-        cycleStartDate: Value(DateTime(now.year, now.month - 1, billingDay)),
-        cycleEndDate: Value(DateTime(now.year, now.month, billingDay)),
-        billingDate: Value(DateTime(now.year, now.month, billingDay)),
-        dueDate: Value(DateTime(now.year, now.month, billingDay + 7)),
-        billedAmount: 600,
-        paidAmount: const Value(0),
-        status: const Value('billed'),
-      ),
-    );
+    final billId = await db
+        .into(db.cardBills)
+        .insert(
+          CardBillsCompanion.insert(
+            cardId: cardId,
+            cycleStartDate: Value(
+              DateTime(now.year, now.month - 1, billingDay),
+            ),
+            cycleEndDate: Value(DateTime(now.year, now.month, billingDay)),
+            billingDate: Value(DateTime(now.year, now.month, billingDay)),
+            dueDate: Value(DateTime(now.year, now.month, billingDay + 7)),
+            billedAmount: 600,
+            paidAmount: const Value(0),
+            status: const Value('billed'),
+          ),
+        );
     await (db.update(db.creditCards)..where((c) => c.id.equals(cardId))).write(
       const CreditCardsCompanion(currentOutstanding: Value(600)),
     );
-    final originalTxnId = await db.into(db.transactions).insert(
-      TransactionsCompanion.insert(
-        type: TransactionType.creditCard,
-        amount: 1000,
-        title: 'Original charge',
-        category: 'Shopping',
-        transactionDate: DateTime(now.year, now.month, billingDay),
-        paymentSourceType: PaymentSourceType.creditCard,
-        paymentSourceId: cardId,
-        cardBillId: Value(billId),
-      ),
-    );
-    await db.into(db.transactions).insert(
-      TransactionsCompanion.insert(
-        type: TransactionType.refund,
-        amount: 400,
-        title: 'Refund',
-        category: 'Refund',
-        transactionDate: now,
-        paymentSourceType: PaymentSourceType.creditCard,
-        paymentSourceId: cardId,
-        cardBillId: Value(billId),
-        relatedTransactionId: Value(originalTxnId),
-      ),
-    );
+    final originalTxnId = await db
+        .into(db.transactions)
+        .insert(
+          TransactionsCompanion.insert(
+            type: TransactionType.creditCard,
+            amount: 1000,
+            title: 'Original charge',
+            category: 'Shopping',
+            transactionDate: DateTime(now.year, now.month, billingDay),
+            paymentSourceType: PaymentSourceType.creditCard,
+            paymentSourceId: cardId,
+            cardBillId: Value(billId),
+          ),
+        );
+    await db
+        .into(db.transactions)
+        .insert(
+          TransactionsCompanion.insert(
+            type: TransactionType.refund,
+            amount: 400,
+            title: 'Refund',
+            category: 'Refund',
+            transactionDate: now,
+            paymentSourceType: PaymentSourceType.creditCard,
+            paymentSourceId: cardId,
+            cardBillId: Value(billId),
+            relatedTransactionId: Value(originalTxnId),
+          ),
+        );
 
     final snapshot = await service.getCardBillingSnapshotById(cardId);
 
@@ -346,14 +360,16 @@ void main() {
   test('refund against already paid bill marks bill needsReview', () async {
     final now = DateTime.now();
     final billingDay = now.day > 1 ? now.day - 1 : 1;
-    final bankId = await db.into(db.bankAccounts).insert(
-      BankAccountsCompanion.insert(
-        bankName: 'Bank',
-        accountName: 'Main',
-        accountType: 'savings',
-        currentBalance: const Value(10000),
-      ),
-    );
+    final bankId = await db
+        .into(db.bankAccounts)
+        .insert(
+          BankAccountsCompanion.insert(
+            bankName: 'Bank',
+            accountName: 'Main',
+            accountType: 'savings',
+            currentBalance: const Value(10000),
+          ),
+        );
     final cardId = await createCard(
       billingDay: billingDay,
       dueDay: 7,
@@ -391,5 +407,62 @@ void main() {
 
     expect(reviewed.status, 'needsReview');
     expect(refund.cardBillId == null, isTrue);
+  });
+
+  test('partial cash payment updates snapshot and records cardPayment transaction', () async {
+    final cardId = await createCard(
+      billingDay: 20,
+      dueDay: 7,
+      outstanding: 1200,
+    );
+    final walletId = await db
+        .into(db.cashWallets)
+        .insert(
+          CashWalletsCompanion.insert(
+            walletName: 'Cash',
+            currentBalance: const Value(3000),
+          ),
+        );
+    final billId = await db
+        .into(db.cardBills)
+        .insert(
+          CardBillsCompanion.insert(
+            cardId: cardId,
+            cycleStartDate: Value(DateTime(2026, 4, 21)),
+            cycleEndDate: Value(DateTime(2026, 5, 20)),
+            billingDate: Value(DateTime(2026, 5, 20)),
+            dueDate: Value(DateTime(2026, 6, 7)),
+            billedAmount: 1200,
+            paidAmount: const Value(0),
+            status: const Value('billed'),
+          ),
+        );
+    final service = BillingService(db, now: () => DateTime(2026, 6, 5));
+
+    final result = await service.markBillAsPaid(
+      billId,
+      walletId,
+      200,
+      paymentSourceType: PaymentSourceType.cash,
+      transactionDate: DateTime(2026, 6, 4),
+      notes: 'cash ref',
+    );
+
+    final wallet = await (db.select(
+      db.cashWallets,
+    )..where((w) => w.id.equals(walletId))).getSingle();
+    final payment = await (db.select(
+      db.transactions,
+    )..where((t) => t.type.equals(TransactionType.cardPayment))).getSingle();
+    final snapshot = await service.getCardBillingSnapshotById(cardId);
+
+    expect(result.appliedAmount, 200);
+    expect(result.remainingDueAfter, 1000);
+    expect(wallet.currentBalance, 2800);
+    expect(payment.paymentSourceType, PaymentSourceType.cash);
+    expect(payment.amount, 200);
+    expect(payment.notes, 'cash ref');
+    expect(snapshot.billedDue, 1000);
+    expect(snapshot.totalOutstanding, 1000);
   });
 }

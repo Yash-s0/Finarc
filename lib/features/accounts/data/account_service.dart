@@ -79,12 +79,14 @@ class AccountService {
   Future<int> createCashWallet({
     required String walletName,
     required double currentBalance,
+    String walletType = 'cash',
   }) {
     return _db
         .into(_db.cashWallets)
         .insert(
           CashWalletsCompanion.insert(
             walletName: walletName,
+            walletType: Value(walletType),
             currentBalance: Value(currentBalance),
           ),
         );
@@ -93,6 +95,7 @@ class AccountService {
   Future<void> updateCashWallet(
     int id, {
     String? walletName,
+    String? walletType,
     double? currentBalance,
   }) {
     return (_db.update(_db.cashWallets)..where((c) => c.id.equals(id))).write(
@@ -100,6 +103,9 @@ class AccountService {
         walletName: walletName == null
             ? const Value.absent()
             : Value(walletName),
+        walletType: walletType == null
+            ? const Value.absent()
+            : Value(walletType),
         currentBalance: currentBalance == null
             ? const Value.absent()
             : Value(currentBalance),

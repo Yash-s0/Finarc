@@ -117,7 +117,7 @@ class _EditPendingTransactionScreenState
               );
             }
             if (!_initialized) {
-              _amount.text = pending.amount.toStringAsFixed(0);
+              _amount.text = moneyInput(pending.amount);
               _merchant.text = pending.merchant;
               _category.text = pending.categorySuggestion;
               _sourceType = pending.paymentSourceTypeSuggestion;
@@ -127,7 +127,7 @@ class _EditPendingTransactionScreenState
               if (_sourceType == PaymentSourceType.cash) {
                 _cashbackOn = false;
               }
-              _cashback.text = (pending.cashbackAmount ?? 0).toStringAsFixed(0);
+              _cashback.text = moneyInput(pending.cashbackAmount ?? 0);
               _recoverableParty.text = pending.recoverablePartyName ?? '';
               _forOthers = _recoverableParty.text.trim().isNotEmpty;
               _notes.text = pending.notes ?? '';

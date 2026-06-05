@@ -55,6 +55,15 @@ void main() {
             currentBalance: const Value(5000),
           ),
         );
+    await db
+        .into(db.cashWallets)
+        .insert(
+          CashWalletsCompanion.insert(
+            walletName: 'Amazon Pay',
+            walletType: const Value('amazonPay'),
+            currentBalance: const Value(1500),
+          ),
+        );
 
     await db
         .into(db.creditCards)
@@ -156,29 +165,29 @@ void main() {
     final breakdown = await netWorthService.calculate();
 
     // Banks: 100000 - 1000 - 1000 = 98000
-    // Cash: 5000
+    // Cash + wallets: 6500
     // Recoverables: 1000
     // Split receivable/payable net from group: receivable 500, payable 0
-    // Assets = 98000 + 5000 + 1000 + 500 = 104500
+    // Assets = 98000 + 6500 + 1000 + 500 = 106000
     // Liabilities = card 20000 + loans 120000 + split payables 0 = 140000
-    // Net worth = -35500
+    // Net worth = -34000
     expect(breakdown.bankBalance, closeTo(98000, 0.01));
-    expect(breakdown.cashBalance, closeTo(5000, 0.01));
+    expect(breakdown.cashBalance, closeTo(6500, 0.01));
     expect(breakdown.recoverables, closeTo(1000, 0.01));
     expect(breakdown.splitReceivables, closeTo(500, 0.01));
     expect(breakdown.splitPayables, closeTo(0, 0.01));
     expect(breakdown.cardDues, closeTo(20000, 0.01));
     expect(breakdown.loanOutstanding, closeTo(120000, 0.01));
-    expect(breakdown.totalAssets, closeTo(104500, 0.01));
+    expect(breakdown.totalAssets, closeTo(106000, 0.01));
     expect(breakdown.totalLiabilities, closeTo(140000, 0.01));
-    expect(breakdown.netWorth, closeTo(-35500, 0.01));
+    expect(breakdown.netWorth, closeTo(-34000, 0.01));
   });
 
   test('debt ratio and monthly EMI burden are calculated', () async {
     final breakdown = await netWorthService.calculate();
 
     expect(breakdown.monthlyEmiBurden, closeTo(8500, 0.01));
-    expect(breakdown.debtRatio, closeTo(140000 / 104500, 0.0001));
+    expect(breakdown.debtRatio, closeTo(140000 / 106000, 0.0001));
   });
 
   test(
@@ -205,8 +214,8 @@ void main() {
     );
 
     final breakdown = await netWorthService.calculate();
-    expect(breakdown.cardLiability, closeTo(21500, 0.01));
-    expect(breakdown.totalLiabilities, closeTo(141500, 0.01));
+    expect(breakdown.cardLiability, closeTo(23000, 0.01));
+    expect(breakdown.totalLiabilities, closeTo(143000, 0.01));
   });
 
   test('loan payments reduce outstanding and affect liabilities', () async {

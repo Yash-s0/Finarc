@@ -348,7 +348,7 @@ void main() {
 
     expect(find.text('Name: Asha'), findsOneWidget);
     expect(find.text('Company: Acme Corp'), findsOneWidget);
-    expect(find.text('Monthly salary: ₹75,000'), findsOneWidget);
+    expect(find.text('Monthly salary: ₹75,000.00'), findsOneWidget);
     expect(find.text('Salary credit day: 7'), findsOneWidget);
   });
 

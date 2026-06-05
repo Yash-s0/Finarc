@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/database/app_database.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/numeric_input_formatters.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
+import '../../accounts/data/wallet_types.dart';
+import '../../expenses/models/transaction_types.dart';
 import '../data/cards_providers.dart';
 
 class BillDetailScreen extends ConsumerStatefulWidget {
@@ -24,7 +29,21 @@ class BillDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
-  int? _selectedBankAccountId;
+  final _paymentFormKey = GlobalKey<FormState>();
+  final _amountController = TextEditingController();
+  final _noteController = TextEditingController();
+  int? _selectedPaymentSourceId;
+  String _paymentSourceType = PaymentSourceType.bank;
+  DateTime _paymentDate = DateTime.now();
+  bool _isFullPayment = true;
+  bool _isSaving = false;
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    _noteController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -80,6 +99,13 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
         final pendingAmount = (bill.billedAmount - bill.paidAmount)
             .clamp(0, bill.billedAmount)
             .toDouble();
+        final paymentSources = _paymentSourcesFor(
+          accounts: data.accounts,
+          wallets: data.wallets,
+          sourceType: _paymentSourceType,
+        );
+        final hasAnyPaymentSource =
+            data.accounts.isNotEmpty || data.wallets.isNotEmpty;
         final tone = _toneForStatus(bill.status);
 
         return FinarcScaffold(
@@ -120,7 +146,7 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
                     ),
                     _metricLine(
                       context,
-                      'Pending amount',
+                      'Remaining due',
                       inr(pendingAmount),
                       valueColor: pendingAmount == 0
                           ? AppColors.darkSuccess
@@ -146,83 +172,48 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const FinarcSectionHeader(title: 'Payment Source'),
+                    const FinarcSectionHeader(title: 'Payment'),
                     const SizedBox(height: AppSpacing.sm),
-                    DropdownButtonFormField<int>(
-                      initialValue: _selectedBankAccountId,
-                      decoration: const InputDecoration(
-                        labelText: 'Bank account for payment',
-                      ),
-                      items: data.accounts
-                          .map<DropdownMenuItem<int>>(
-                            (a) => DropdownMenuItem<int>(
-                              value: a.id,
-                              child: Text(
-                                '${a.accountName} (${inr(a.currentBalance)})',
-                              ),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: bill.status == 'paid'
-                          ? null
-                          : (v) => setState(() => _selectedBankAccountId = v),
+                    Text(
+                      pendingAmount <= 0
+                          ? 'This statement is fully paid.'
+                          : bill.paidAmount > 0
+                          ? 'Paid ${inr(bill.paidAmount)} so far. Record another payment for the remaining due.'
+                          : 'Record a full or partial bill payment with source, date, and optional reference.',
+                      style: Theme.of(context).textTheme.bodyMedium,
                     ),
-                    if (data.accounts.isEmpty)
+                    if (!hasAnyPaymentSource)
                       Padding(
                         padding: const EdgeInsets.only(top: AppSpacing.xs),
                         child: Text(
-                          'No bank account available for payment.',
+                          'Add a bank account or cash wallet before recording a card payment.',
                           style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      )
-                    else if (_selectedBankAccountId == null &&
-                        bill.status != 'paid')
-                      Padding(
-                        padding: const EdgeInsets.only(top: AppSpacing.xs),
-                        child: Text(
-                          'Select bank account to pay this bill',
-                          style: Theme.of(context).textTheme.labelMedium
-                              ?.copyWith(color: AppColors.darkWarning),
                         ),
                       ),
                     const SizedBox(height: AppSpacing.sm),
                     FinarcPrimaryButton(
-                      onPressed:
-                          bill.status == 'paid' ||
-                              _selectedBankAccountId == null
+                      onPressed: pendingAmount <= 0 || !hasAnyPaymentSource
                           ? null
-                          : () => _openPaymentConfirmation(
+                          : () => _openPaymentSheet(
                               context,
-                              billAmount: pendingAmount,
-                              onConfirm: () async {
-                                final result = await ref.read(
-                                  markBillPaidProvider,
-                                )(
-                                  widget.billId,
-                                  _selectedBankAccountId,
-                                  pendingAmount,
-                                );
-                                if (!mounted) return;
-                                Navigator.of(this.context).pop();
-                                if (result.message != null &&
-                                    result.message!.trim().isNotEmpty) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text(result.message!)),
-                                  );
-                                }
-                                ref.invalidate(
-                                  cardDetailProvider(widget.cardId),
-                                );
-                                ref.invalidate(
-                                  billDetailProvider(widget.billId),
-                                );
-                              },
+                              data: data,
+                              bill: bill,
+                              remainingDue: pendingAmount,
                             ),
-                      label: bill.status == 'paid'
-                          ? 'Already Paid'
-                          : 'Mark as Paid',
-                      icon: Icons.check_circle_outline,
+                      label: pendingAmount <= 0 ? 'Paid' : 'Record Payment',
+                      icon: pendingAmount <= 0
+                          ? Icons.check_circle_outline
+                          : Icons.payments_outlined,
                     ),
+                    if (paymentSources.isEmpty && hasAnyPaymentSource)
+                      Padding(
+                        padding: const EdgeInsets.only(top: AppSpacing.xs),
+                        child: Text(
+                          'No ${_paymentSourceType == PaymentSourceType.cash ? 'cash wallet' : 'bank account'} available for the selected payment mode.',
+                          style: Theme.of(context).textTheme.labelMedium
+                              ?.copyWith(color: AppColors.darkWarning),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -245,8 +236,7 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
                       date: t.transactionDate,
                       source: 'Card • Statement #${widget.billId}',
                     ),
-                    amount:
-                        '${t.type == 'refund' ? '+' : '-'}${inr(t.amount)}',
+                    amount: '${t.type == 'refund' ? '+' : '-'}${inr(t.amount)}',
                     amountColor: t.type == 'refund'
                         ? AppColors.darkSuccess
                         : AppColors.darkError,
@@ -316,6 +306,306 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
         ),
       ),
       isScrollControlled: true,
+    );
+  }
+
+  Future<void> _openPaymentSheet(
+    BuildContext context, {
+    required ({
+      CardBill bill,
+      List<Transaction> txns,
+      List<BankAccount> accounts,
+      List<CashWallet> wallets,
+    })
+    data,
+    required CardBill bill,
+    required double remainingDue,
+  }) async {
+    _preparePaymentForm(data: data, remainingDue: remainingDue);
+    await FinarcBottomSheet.show<void>(
+      context,
+      child: StatefulBuilder(
+        builder: (context, setSheetState) {
+          final sources = _paymentSourcesFor(
+            accounts: data.accounts,
+            wallets: data.wallets,
+            sourceType: _paymentSourceType,
+          );
+          final selectedSourceId = _resolveSelectedSourceId(sources);
+          final modeOptions = [
+            if (data.accounts.isNotEmpty)
+              const FinarcPaymentModeOption(
+                value: PaymentSourceType.bank,
+                label: 'Bank',
+                icon: Icons.account_balance_rounded,
+              ),
+            if (data.wallets.isNotEmpty)
+              const FinarcPaymentModeOption(
+                value: PaymentSourceType.cash,
+                label: 'Cash Wallet',
+                icon: Icons.wallet_rounded,
+              ),
+          ];
+
+          return ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(context).height * 0.85,
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.xs,
+                AppSpacing.md,
+                AppSpacing.lg,
+              ),
+              child: Form(
+                key: _paymentFormKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                  Text(
+                    'Record Payment',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'Remaining due ${inr(remainingDue)}',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Wrap(
+                    spacing: AppSpacing.xs,
+                    children: [
+                      ChoiceChip(
+                        label: const Text('Full Payment'),
+                        selected: _isFullPayment,
+                        onSelected: (selected) {
+                          if (!selected) return;
+                          setSheetState(() {
+                            _isFullPayment = true;
+                            _amountController.text = moneyInput(remainingDue);
+                          });
+                        },
+                      ),
+                      ChoiceChip(
+                        label: const Text('Partial Payment'),
+                        selected: !_isFullPayment,
+                        onSelected: (selected) {
+                          if (!selected) return;
+                          setSheetState(() => _isFullPayment = false);
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  FinarcTextField(
+                    controller: _amountController,
+                    label: 'Payment amount',
+                    readOnly: _isFullPayment,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d*\.?\d{0,2}$'),
+                      ),
+                      StripLeadingZeroFormatter(),
+                    ],
+                    validator: (value) {
+                      final parsed = double.tryParse(value ?? '');
+                      if (parsed == null || parsed <= 0) {
+                        return 'Payment amount must be greater than 0';
+                      }
+                      if (parsed > remainingDue + 0.009) {
+                        return 'Payment amount cannot exceed remaining due';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  FinarcPaymentSelector(
+                    title: 'Payment Source',
+                    selectedMode: _paymentSourceType,
+                    modes: modeOptions,
+                    onModeChanged: (value) {
+                      setSheetState(() {
+                        _paymentSourceType = value;
+                        _selectedPaymentSourceId = null;
+                      });
+                    },
+                    sources: sources,
+                    selectedSourceId: selectedSourceId,
+                    onSourceChanged: (value) =>
+                        setSheetState(() => _selectedPaymentSourceId = value),
+                    sourceLabel: _paymentSourceType == PaymentSourceType.cash
+                        ? 'Cash wallet'
+                        : 'Bank account',
+                    singleSourcePrefix: _paymentSourceType == PaymentSourceType.cash
+                        ? 'Using wallet'
+                        : 'Using account',
+                    sourceValidator: (value) {
+                      if (sources.isEmpty) {
+                        return 'Add a payment source first';
+                      }
+                      if (sources.length > 1 && value == null) {
+                        return 'Select payment source';
+                      }
+                      return null;
+                    },
+                    compactModeTiles: true,
+                    modeTestPrefix: 'card-payment-mode',
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  InkWell(
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: _paymentDate,
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                      );
+                      if (picked == null) return;
+                      setSheetState(() => _paymentDate = picked);
+                    },
+                    child: InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: 'Payment date',
+                      ),
+                      child: Text(_dateText(_paymentDate)),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  FinarcTextField(
+                    controller: _noteController,
+                    label: 'Note / Reference (optional)',
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FinarcSecondaryButton(
+                          onPressed: _isSaving
+                              ? null
+                              : () => Navigator.of(context).pop(),
+                          label: 'Cancel',
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: FinarcPrimaryButton(
+                          onPressed: _isSaving
+                              ? null
+                              : () => _submitPayment(
+                                  context,
+                                  selectedSourceId: selectedSourceId,
+                                  remainingDue: remainingDue,
+                                ),
+                          label: _isSaving ? 'Saving...' : 'Confirm',
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+      isScrollControlled: true,
+    );
+  }
+
+  void _preparePaymentForm({
+    required ({
+      CardBill bill,
+      List<Transaction> txns,
+      List<BankAccount> accounts,
+      List<CashWallet> wallets,
+    })
+    data,
+    required double remainingDue,
+  }) {
+    if (data.accounts.isEmpty && data.wallets.isNotEmpty) {
+      _paymentSourceType = PaymentSourceType.cash;
+    } else {
+      _paymentSourceType = PaymentSourceType.bank;
+    }
+    _selectedPaymentSourceId = null;
+    _paymentDate = DateTime.now();
+    _isFullPayment = true;
+    _isSaving = false;
+    _amountController.text = moneyInput(remainingDue);
+    _noteController.clear();
+  }
+
+  int? _resolveSelectedSourceId(List<FinarcPaymentSourceOption> sources) {
+    if (sources.isEmpty) return null;
+    if (sources.length == 1) {
+      return sources.first.id;
+    }
+    if (sources.any((source) => source.id == _selectedPaymentSourceId)) {
+      return _selectedPaymentSourceId;
+    }
+    return null;
+  }
+
+  List<FinarcPaymentSourceOption> _paymentSourcesFor({
+    required List<BankAccount> accounts,
+    required List<CashWallet> wallets,
+    required String sourceType,
+  }) {
+    if (sourceType == PaymentSourceType.cash) {
+      return wallets
+          .map(
+            (wallet) => FinarcPaymentSourceOption(
+              id: wallet.id,
+              label:
+                  '${WalletType.displayName(wallet)} • ${inr(wallet.currentBalance)}',
+            ),
+          )
+          .toList(growable: false);
+    }
+    return accounts
+        .map(
+          (account) => FinarcPaymentSourceOption(
+            id: account.id,
+            label: '${account.accountName} • ${inr(account.currentBalance)}',
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  Future<void> _submitPayment(
+    BuildContext context, {
+    required int? selectedSourceId,
+    required double remainingDue,
+  }) async {
+    if (!_paymentFormKey.currentState!.validate()) return;
+    if (selectedSourceId == null) return;
+
+    setState(() => _isSaving = true);
+    final amount = double.parse(_amountController.text);
+    final result = await ref.read(markBillPaidProvider)(
+      billId: widget.billId,
+      paymentSourceId: selectedSourceId,
+      paymentSourceType: _paymentSourceType,
+      amount: amount,
+      paymentDate: _paymentDate,
+      notes: _noteController.text.trim(),
+    );
+    if (!mounted) return;
+    setState(() => _isSaving = false);
+    Navigator.of(context).pop();
+    ref.invalidate(cardDetailProvider(widget.cardId));
+    ref.invalidate(billDetailProvider(widget.billId));
+    final message =
+        result.message ??
+        'Recorded ${inr(result.appliedAmount)}. Remaining due ${inr(result.remainingDueAfter)}.';
+    ScaffoldMessenger.of(this.context).showSnackBar(
+      SnackBar(content: Text(message)),
     );
   }
 

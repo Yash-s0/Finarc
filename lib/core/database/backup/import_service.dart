@@ -253,6 +253,7 @@ class ImportService {
               CashWalletsCompanion(
                 id: Value(_int(row['id']) ?? 0),
                 walletName: Value(_string(row['walletName'])),
+                walletType: Value(_string(row['walletType'], fallback: 'cash')),
                 currentBalance: Value(_double(row['currentBalance']) ?? 0),
                 createdAt: Value(_date(row['createdAt']) ?? DateTime.now()),
                 updatedAt: Value(_date(row['updatedAt']) ?? DateTime.now()),

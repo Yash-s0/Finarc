@@ -291,14 +291,13 @@ class AlertEngine {
     if (!settings.recurringMerchantAlertsEnabled) return;
 
     final now = DateTime.now();
-    final start = DateTime(now.year, now.month, 1);
-    final end = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+    final start = now.subtract(const Duration(days: 30));
 
     final txns = await _db.select(_db.transactions).get();
     final merchantCount = <String, int>{};
 
     for (final t in txns) {
-      if (t.transactionDate.isBefore(start) || t.transactionDate.isAfter(end)) {
+      if (t.transactionDate.isBefore(start) || t.transactionDate.isAfter(now)) {
         continue;
       }
       if (!_isLifestyleSpend(t)) continue;
@@ -316,11 +315,10 @@ class AlertEngine {
         alertType: AlertType.recurringMerchant,
         title: 'Recurring merchant alert',
         body:
-            'You spent at ${topEntry.key} ${topEntry.value} times this month.',
+            'You spent at ${topEntry.key} ${topEntry.value} times in the last 30 days.',
         priority: AlertPriority.info,
         actionRoute: '/analytics',
-        dedupeKey:
-            'recurring_${now.year}_${now.month}_${topEntry.key.toLowerCase()}',
+        dedupeKey: 'recurring_${topEntry.key.toLowerCase()}',
       ),
       dedupeWindow: const Duration(days: 14),
     );

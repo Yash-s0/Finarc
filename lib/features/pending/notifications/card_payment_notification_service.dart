@@ -79,9 +79,8 @@ class CardPaymentHandlingResult {
 class CardPaymentNotificationService {
   CardPaymentNotificationService({
     required AppDatabase database,
-    required PendingService pendingService,
-  }) : _db = database,
-       _pendingService = pendingService;
+    required this._pendingService,
+  }) : _db = database;
 
   final AppDatabase _db;
   final PendingService _pendingService;

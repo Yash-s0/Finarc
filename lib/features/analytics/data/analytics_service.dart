@@ -592,12 +592,11 @@ class AnalyticsService {
     final targetDay = DateTime(date.year, date.month, date.day);
     var total = 0.0;
     for (final loan in loans) {
-      final loanCreatedDay = DateTime(
-        loan.createdAt.year,
-        loan.createdAt.month,
-        loan.createdAt.day,
+      final loanKnownStartDay = _loanKnownStartDay(
+        loan: loan,
+        loanPayments: loanPayments,
       );
-      if (loanCreatedDay.isAfter(targetDay)) {
+      if (loanKnownStartDay.isAfter(targetDay)) {
         continue;
       }
 
@@ -629,5 +628,31 @@ class AnalyticsService {
       total += outstandingAt;
     }
     return total;
+  }
+
+  DateTime _loanKnownStartDay({
+    required Loan loan,
+    required List<LoanPayment> loanPayments,
+  }) {
+    final candidates = <DateTime>[
+      if (loan.startDate != null)
+        DateTime(
+          loan.startDate!.year,
+          loan.startDate!.month,
+          loan.startDate!.day,
+        ),
+      DateTime(loan.createdAt.year, loan.createdAt.month, loan.createdAt.day),
+      ...loanPayments
+          .where((payment) => payment.loanId == loan.id)
+          .map(
+            (payment) => DateTime(
+              payment.paymentDate.year,
+              payment.paymentDate.month,
+              payment.paymentDate.day,
+            ),
+          ),
+    ]..sort();
+
+    return candidates.first;
   }
 }

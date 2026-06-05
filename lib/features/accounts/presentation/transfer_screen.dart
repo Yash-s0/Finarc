@@ -254,11 +254,13 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
 
     final sources = ref.read(paymentSourcesProvider).valueOrNull;
     final fromConfig = sourceConfigForMode(
-      sources ?? const PaymentSourcesData(banks: [], cards: [], cashWallets: []),
+      sources ??
+          const PaymentSourcesData(banks: [], cards: [], cashWallets: []),
       _fromType,
     );
     final toConfig = sourceConfigForMode(
-      sources ?? const PaymentSourcesData(banks: [], cards: [], cashWallets: []),
+      sources ??
+          const PaymentSourcesData(banks: [], cards: [], cashWallets: []),
       _toType,
       destination: true,
     );
@@ -301,7 +303,7 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
     ref.invalidate(expenseListProvider);
     if (!mounted) return;
     if (result.transferredAmount <= 0.009) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(this.context).showSnackBar(
         SnackBar(
           content: Text(
             result.message ?? 'No transfer was applied for the selected card.',
@@ -312,7 +314,7 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
     }
     if (result.message != null && result.message!.trim().isNotEmpty) {
       ScaffoldMessenger.of(
-        context,
+        this.context,
       ).showSnackBar(SnackBar(content: Text(result.message!)));
     }
     this.context.push(

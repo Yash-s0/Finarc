@@ -14,6 +14,7 @@ void main() {
   late int bankId;
   late int cardId;
   late int cashId;
+  late int amazonPayId;
 
   setUp(() async {
     db = AppDatabase(NativeDatabase.memory());
@@ -52,6 +53,15 @@ void main() {
             currentBalance: const Value(3000),
           ),
         );
+    amazonPayId = await db
+        .into(db.cashWallets)
+        .insert(
+          CashWalletsCompanion.insert(
+            walletName: 'Amazon Pay',
+            walletType: const Value('amazonPay'),
+            currentBalance: const Value(1500),
+          ),
+        );
   });
 
   tearDown(() async {
@@ -75,6 +85,25 @@ void main() {
       db.cashWallets,
     )..where((w) => w.id.equals(cashId))).getSingle();
     expect(wallet.currentBalance, 2500);
+  });
+
+  test('Amazon Pay expense reduces wallet balance', () async {
+    await engine.addTransaction(
+      AddTransactionInput(
+        type: TransactionType.cash,
+        amount: 200,
+        title: 'Amazon Pay spend',
+        category: 'Shopping',
+        transactionDate: DateTime(2026, 5, 24),
+        paymentSourceType: PaymentSourceType.cash,
+        paymentSourceId: amazonPayId,
+      ),
+    );
+
+    final wallet = await (db.select(
+      db.cashWallets,
+    )..where((w) => w.id.equals(amazonPayId))).getSingle();
+    expect(wallet.currentBalance, 1300);
   });
 
   test('UPI expense reduces selected bank', () async {
@@ -168,6 +197,56 @@ void main() {
     expect(txn.cashbackDestinationType, 'bank');
     expect(txn.cashbackDestinationId, bankId);
   });
+
+  test('cashback to Amazon Pay increases selected wallet balance', () async {
+    await engine.addTransaction(
+      AddTransactionInput(
+        type: TransactionType.creditCard,
+        amount: 1000,
+        title: 'Order',
+        category: 'Shopping',
+        transactionDate: DateTime(2026, 5, 24),
+        paymentSourceType: PaymentSourceType.creditCard,
+        paymentSourceId: cardId,
+        cashbackAmount: 100,
+        cashbackDestinationType: 'amazonPay',
+        cashbackDestinationId: amazonPayId,
+      ),
+    );
+
+    final wallet = await (db.select(
+      db.cashWallets,
+    )..where((w) => w.id.equals(amazonPayId))).getSingle();
+    expect(wallet.currentBalance, 1600);
+  });
+
+  test(
+    'cashback to same credit card stores metadata without bill mutation',
+    () async {
+      await engine.addTransaction(
+        AddTransactionInput(
+          type: TransactionType.creditCard,
+          amount: 1000,
+          title: 'Card cashback',
+          category: 'Shopping',
+          transactionDate: DateTime(2026, 5, 24),
+          paymentSourceType: PaymentSourceType.creditCard,
+          paymentSourceId: cardId,
+          cashbackAmount: 100,
+          cashbackDestinationType: 'creditCard',
+          cashbackDestinationId: cardId,
+        ),
+      );
+
+      final card = await (db.select(
+        db.creditCards,
+      )..where((c) => c.id.equals(cardId))).getSingle();
+      final txn = await (db.select(db.transactions)..limit(1)).getSingle();
+      expect(card.currentOutstanding, 6000);
+      expect(txn.cashbackDestinationType, 'creditCard');
+      expect(txn.cashbackDestinationId, cardId);
+    },
+  );
 
   test('for-others transaction auto-calculates recoverable amount', () async {
     await engine.addTransaction(
@@ -340,6 +419,25 @@ void main() {
       db.cashWallets,
     )..where((w) => w.id.equals(cashId))).getSingle();
     expect(wallet.currentBalance, 4000);
+  });
+
+  test('income increases Amazon Pay wallet', () async {
+    await engine.addTransaction(
+      AddTransactionInput(
+        type: TransactionType.income,
+        amount: 300,
+        title: 'Amazon Pay refund',
+        category: 'Refund',
+        transactionDate: DateTime(2026, 5, 24),
+        paymentSourceType: PaymentSourceType.cash,
+        paymentSourceId: amazonPayId,
+      ),
+    );
+
+    final wallet = await (db.select(
+      db.cashWallets,
+    )..where((w) => w.id.equals(amazonPayId))).getSingle();
+    expect(wallet.currentBalance, 1800);
   });
 
   test('income does not affect card outstanding', () async {

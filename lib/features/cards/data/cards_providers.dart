@@ -158,14 +158,29 @@ final billDetailProvider = FutureProvider.family((ref, int billId) async {
       .read(billingServiceProvider)
       .getBilledTransactions(bill.cardId, billId);
   final accounts = await db.select(db.bankAccounts).get();
-  return (bill: bill, txns: txns, accounts: accounts);
+  final wallets = await db.select(db.cashWallets).get();
+  return (bill: bill, txns: txns, accounts: accounts, wallets: wallets);
 });
 
 final markBillPaidProvider = Provider((ref) {
-  return (int billId, int? bankAccountId, double amount) async {
+  return ({
+    required int billId,
+    required int? paymentSourceId,
+    required String paymentSourceType,
+    required double amount,
+    DateTime? paymentDate,
+    String? notes,
+  }) async {
     final result = await ref
         .read(billingServiceProvider)
-        .markBillAsPaid(billId, bankAccountId, amount);
+        .markBillAsPaid(
+          billId,
+          paymentSourceId,
+          amount,
+          paymentSourceType: paymentSourceType,
+          transactionDate: paymentDate,
+          notes: notes,
+        );
     await ref.read(alertEvaluationActionsProvider).evaluateAll();
     ref.invalidate(cardsOverviewProvider);
     return result;

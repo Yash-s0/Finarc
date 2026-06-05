@@ -95,4 +95,27 @@ void main() {
 
     expect(firstCardTop - gridTop, lessThanOrEqualTo(1));
   });
+
+  testWidgets('metric cards preserve decimal amounts', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 320,
+            child: DashboardMetricGrid(data: snapshot),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final values = tester
+        .widgetList<FinarcMetricCard>(find.byType(FinarcMetricCard))
+        .map((widget) => widget.value)
+        .toList(growable: false);
+
+    expect(values, contains('₹1,57,893.18'));
+    expect(values, contains('₹17,435.00'));
+    expect(values, contains('₹3,879.59'));
+  });
 }

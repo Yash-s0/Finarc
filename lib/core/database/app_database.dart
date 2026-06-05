@@ -24,6 +24,7 @@ class BankAccounts extends Table {
 class CashWallets extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get walletName => text()();
+  TextColumn get walletType => text().withDefault(const Constant('cash'))();
   RealColumn get currentBalance => real().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
@@ -325,7 +326,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 19;
+  int get schemaVersion => 20;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -528,6 +529,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 19) {
         await m.addColumn(loans, loans.lenderType);
+      }
+      if (from < 20) {
+        await m.addColumn(cashWallets, cashWallets.walletType);
       }
       await globalAppLogService.log(
         category: 'migration',

@@ -296,7 +296,7 @@ class BackupService {
         row.id,
         row.walletName,
         null,
-        'cash',
+        row.walletType,
         row.currentBalance,
         null,
         _iso(row.createdAt),
@@ -377,6 +377,7 @@ class BackupService {
   static Map<String, dynamic> _mapCashWallet(CashWallet row) => {
     'id': row.id,
     'walletName': row.walletName,
+    'walletType': row.walletType,
     'currentBalance': row.currentBalance,
     'createdAt': _iso(row.createdAt),
     'updatedAt': _iso(row.updatedAt),

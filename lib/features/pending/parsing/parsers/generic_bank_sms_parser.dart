@@ -67,8 +67,11 @@ class GenericBankSmsParser implements TransactionParser {
 
       final hintLast4 = ParserTextUtils.extractLast4Hint(segment);
       final accountHint = ParserTextUtils.extractAccountHint(segment);
+      final amazonPayHint = _amazonPayHint(segment);
       final paymentSourceHint =
-          accountHint ?? (hintLast4 == null ? null : 'ending $hintLast4');
+          amazonPayHint ??
+          accountHint ??
+          (hintLast4 == null ? null : 'ending $hintLast4');
       final ref = ParserTextUtils.extractTransactionReference(segment);
       final parsedDateTime = ParserTextUtils.extractDateTime(
         segment,
@@ -318,12 +321,27 @@ class GenericBankSmsParser implements TransactionParser {
     required String? accountHint,
   }) {
     final lower = segment.toLowerCase();
+    if (lower.contains('amazon pay') ||
+        lower.contains('amazonpay') ||
+        lower.contains('amazon pay balance')) {
+      return PaymentSourceType.cash;
+    }
     if (lower.contains('card')) return PaymentSourceType.creditCard;
     if (direction == _TxnDirection.income && accountHint != null) {
       return PaymentSourceType.bank;
     }
     if (lower.contains('upi')) return PaymentSourceType.upi;
     return PaymentSourceType.bank;
+  }
+
+  String? _amazonPayHint(String segment) {
+    final lower = segment.toLowerCase();
+    if (lower.contains('amazon pay') ||
+        lower.contains('amazonpay') ||
+        lower.contains('amazon pay balance')) {
+      return 'amazonpay';
+    }
+    return null;
   }
 
   String _categoryForSegment({

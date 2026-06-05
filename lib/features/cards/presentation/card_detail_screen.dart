@@ -69,6 +69,10 @@ class CardDetailScreen extends ConsumerWidget {
         final card = vm.card;
         final dueLabel = _dueLabel(vm.dueCountdownDays);
         final tone = _toneForStatus(vm.billStatus);
+        final paidAmount = vm.currentBill?.paidAmount ?? 0;
+        final remainingDue = vm.currentDueAmount;
+        final hasActiveBill = vm.currentBill != null;
+        final canRecordPayment = hasActiveBill && remainingDue > 0.009;
 
         return DefaultTabController(
           length: 4,
@@ -235,18 +239,33 @@ class CardDetailScreen extends ConsumerWidget {
                                 child: Text(
                                   vm.currentBill == null
                                       ? 'Next statement will be generated automatically.'
-                                      : 'Due on ${_dateText(vm.currentBill!.dueDate)}',
+                                      : paidAmount > 0
+                                          ? 'Paid ${inr(paidAmount)} • Remaining ${inr(remainingDue)}'
+                                          : 'Due on ${_dateText(vm.currentBill!.dueDate)}',
                                   style: Theme.of(context).textTheme.bodyMedium,
                                 ),
                               ),
                               if (vm.currentBill != null)
-                                FinarcSecondaryButton(
-                                  onPressed: () => context.push(
-                                    '/cards/$cardId/bills/${vm.currentBill!.id}',
-                                  ),
-                                  label: 'Bill Detail',
-                                  icon: Icons.receipt_long_outlined,
-                                ),
+                                canRecordPayment
+                                    ? FinarcPrimaryButton(
+                                        onPressed: () => context.push(
+                                          '/cards/$cardId/bills/${vm.currentBill!.id}',
+                                        ),
+                                        label: 'Record Payment',
+                                        icon: Icons.payments_outlined,
+                                        expand: false,
+                                      )
+                                    : FinarcSecondaryButton(
+                                        onPressed: () => context.push(
+                                          '/cards/$cardId/bills/${vm.currentBill!.id}',
+                                        ),
+                                        label: remainingDue <= 0.009
+                                            ? 'Paid'
+                                            : 'Bill Detail',
+                                        icon: remainingDue <= 0.009
+                                            ? Icons.check_circle_outline
+                                            : Icons.receipt_long_outlined,
+                                      ),
                             ],
                           ),
                         ],

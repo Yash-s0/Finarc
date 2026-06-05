@@ -360,16 +360,21 @@ class BillingService {
 
   Future<CardPaymentResult> markBillAsPaid(
     int billId,
-    int? bankAccountId,
+    int? paymentSourceId,
     double amount,
-  ) async {
-    if (bankAccountId == null) {
-      throw ArgumentError(
-        'Bank account selection is required for card payment',
-      );
+    {
+    String paymentSourceType = 'bank',
+    DateTime? transactionDate,
+    String? notes,
+  }) async {
+    if (paymentSourceId == null) {
+      throw ArgumentError('Payment source selection is required');
     }
     if (amount <= 0) {
       throw ArgumentError('Amount must be greater than 0');
+    }
+    if (paymentSourceType != 'bank' && paymentSourceType != 'cash') {
+      throw ArgumentError('Unsupported payment source type');
     }
 
     final bill = await (_db.select(
@@ -401,8 +406,8 @@ class BillingService {
         appliedAmount: 0,
         remainingDueBefore: remainingDueBefore,
         remainingDueAfter: remainingDueBefore,
-        paymentSourceType: 'bank',
-        paymentSourceId: bankAccountId,
+        paymentSourceType: paymentSourceType,
+        paymentSourceId: paymentSourceId,
         cardId: refreshedBill.cardId,
         billId: refreshedBill.id,
         wasClamped: true,
@@ -431,21 +436,23 @@ class BillingService {
                     now: _now(),
                   ),
           ),
-          paidAt: Value(isPaid ? _now() : null),
+          paidAt: Value(isPaid ? (transactionDate ?? _now()) : null),
         ),
       );
       await _deductSourceBalance(
-        paymentSourceType: 'bank',
-        paymentSourceId: bankAccountId,
+        paymentSourceType: paymentSourceType,
+        paymentSourceId: paymentSourceId,
         amount: appliedAmount,
       );
       await _recordCardPaymentTransaction(
         amount: appliedAmount,
-        paymentSourceType: 'bank',
-        paymentSourceId: bankAccountId,
+        paymentSourceType: paymentSourceType,
+        paymentSourceId: paymentSourceId,
         cardId: refreshedBill.cardId,
-        transactionDate: _now(),
-        notes: 'Bill #${refreshedBill.id}',
+        transactionDate: transactionDate ?? _now(),
+        notes: notes?.trim().isNotEmpty == true
+            ? notes!.trim()
+            : 'Bill #${refreshedBill.id}',
       );
       final card = await (_db.select(
         _db.creditCards,
@@ -461,8 +468,8 @@ class BillingService {
       appliedAmount: appliedAmount,
       remainingDueBefore: remainingDueBefore,
       remainingDueAfter: remainingDueAfter,
-      paymentSourceType: 'bank',
-      paymentSourceId: bankAccountId,
+      paymentSourceType: paymentSourceType,
+      paymentSourceId: paymentSourceId,
       cardId: refreshedBill.cardId,
       billId: refreshedBill.id,
       wasClamped: wasClamped,

@@ -1,15 +1,19 @@
 import 'package:intl/intl.dart';
 
-final _inrPattern = NumberFormat.decimalPattern('en_IN');
+final _inrPattern = NumberFormat.currency(
+  locale: 'en_IN',
+  symbol: '₹',
+  decimalDigits: 2,
+);
 final _timePattern = DateFormat('h:mm a');
 final _dayMonthPattern = DateFormat('d MMM');
 final _dayMonthYearPattern = DateFormat('d MMM yyyy');
 
 String inr(num value) {
-  final sign = value < 0 ? '-' : '';
-  final abs = value.abs();
-  return '$sign₹${_inrPattern.format(abs)}';
+  return _inrPattern.format(value);
 }
+
+String moneyInput(num value) => value.toStringAsFixed(2);
 
 String transactionDateLabel(
   DateTime date, {

@@ -256,7 +256,8 @@ class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
         error: (e, _) =>
             FinarcCard(child: Text('Unable to load selected card: $e')),
         data: (vm) {
-          final hasDues = vm.currentDueAmount > 0;
+          final hasActiveBill = vm.currentBill != null;
+          final hasDues = hasActiveBill && vm.currentDueAmount > 0.009;
           return Column(
             children: [
               GridView.count(
@@ -339,6 +340,8 @@ class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
                               Text(
                                 vm.currentBill == null
                                     ? 'No active billed statement'
+                                    : vm.currentBill!.paidAmount > 0
+                                    ? 'Paid ${inr(vm.currentBill!.paidAmount)} • Remaining ${inr(vm.currentDueAmount)}'
                                     : 'Due ${_dateText(vm.currentBill!.dueDate)}',
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
@@ -350,14 +353,19 @@ class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
                           child: hasDues
                               ? FinarcPrimaryButton(
                                   onPressed: () =>
-                                      context.push('/cards/$selectedCardId'),
+                                      context.push(
+                                        '/cards/$selectedCardId/bills/${vm.currentBill!.id}',
+                                      ),
                                   label: 'Pay Now',
                                   expand: false,
                                 )
                               : FinarcSecondaryButton(
-                                  onPressed: () =>
-                                      context.push('/cards/$selectedCardId'),
-                                  label: 'Mark Paid',
+                                  onPressed: hasActiveBill
+                                      ? () => context.push(
+                                            '/cards/$selectedCardId/bills/${vm.currentBill!.id}',
+                                          )
+                                      : null,
+                                  label: hasActiveBill ? 'Paid' : 'No Bill',
                                 ),
                         ),
                       ],

@@ -1,0 +1,200 @@
+import 'package:drift/drift.dart';
+import 'package:drift/native.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:finarc/core/database/app_database.dart';
+import 'package:finarc/core/database/database_providers.dart';
+import 'package:finarc/features/cards/presentation/bill_detail_screen.dart';
+
+void main() {
+  late AppDatabase db;
+
+  setUp(() {
+    db = AppDatabase(NativeDatabase.memory());
+  });
+
+  tearDown(() async {
+    await db.close();
+  });
+
+  Future<int> createCard({double currentOutstanding = 1200}) {
+    return db
+        .into(db.creditCards)
+        .insert(
+          CreditCardsCompanion.insert(
+            bankName: 'Axis',
+            nickname: 'Rewards',
+            last4: '0374',
+            maskedNumber: '**** **** **** 0374',
+            creditLimit: 50000,
+            billingDay: 10,
+            dueDay: 20,
+            currentOutstanding: Value(currentOutstanding),
+          ),
+        );
+  }
+
+  Future<int> createBill(int cardId, {double billedAmount = 1200}) {
+    return db
+        .into(db.cardBills)
+        .insert(
+          CardBillsCompanion.insert(
+            cardId: cardId,
+            cycleStartDate: Value(DateTime(2026, 4, 11)),
+            cycleEndDate: Value(DateTime(2026, 5, 10)),
+            billingDate: Value(DateTime(2026, 5, 10)),
+            dueDate: Value(DateTime(2026, 5, 20)),
+            billedAmount: billedAmount,
+            paidAmount: const Value(0),
+            status: const Value('billed'),
+          ),
+        );
+  }
+
+  Widget wrap(Widget child) {
+    return ProviderScope(
+      overrides: [
+        appDatabaseProvider.overrideWithValue(db),
+        seedProvider.overrideWith((ref) async {}),
+      ],
+      child: MaterialApp(home: child),
+    );
+  }
+
+  testWidgets('bill detail shows payment action and full payment defaults to remaining due', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await db
+        .into(db.bankAccounts)
+        .insert(
+          BankAccountsCompanion.insert(
+            bankName: 'HDFC',
+            accountName: 'Main',
+            accountType: 'savings',
+            currentBalance: const Value(5000),
+          ),
+        );
+    final cardId = await createCard();
+    final billId = await createBill(cardId);
+
+    await tester.pumpWidget(
+      wrap(BillDetailScreen(cardId: cardId, billId: billId)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Record Payment'), findsOneWidget);
+
+    await tester.tap(find.text('Record Payment'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('1200.00'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Confirm'));
+    await tester.tap(find.text('Confirm'));
+    await tester.pumpAndSettle();
+
+    final bill = await (db.select(
+      db.cardBills,
+    )..where((b) => b.id.equals(billId))).getSingle();
+    final payment = await (db.select(
+      db.transactions,
+    )..where((t) => t.type.equals('cardPayment'))).getSingle();
+
+    expect(bill.status, 'paid');
+    expect(bill.paidAmount, 1200);
+    expect(payment.amount, 1200);
+  });
+
+  testWidgets('partial payment reduces remaining due and supports cash wallet source', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await db
+        .into(db.cashWallets)
+        .insert(
+          CashWalletsCompanion.insert(
+            walletName: 'Cash',
+            currentBalance: const Value(2500),
+          ),
+        );
+    final cardId = await createCard();
+    final billId = await createBill(cardId);
+
+    await tester.pumpWidget(
+      wrap(BillDetailScreen(cardId: cardId, billId: billId)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Record Payment'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Partial Payment'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Payment amount'),
+      '200.00',
+    );
+
+    await tester.ensureVisible(find.text('Confirm'));
+    await tester.tap(find.text('Confirm'));
+    await tester.pumpAndSettle();
+
+    final bill = await (db.select(
+      db.cardBills,
+    )..where((b) => b.id.equals(billId))).getSingle();
+    final wallet = await (db.select(db.cashWallets)..where((w) => w.id.equals(1)))
+        .getSingle();
+
+    expect(bill.paidAmount, 200);
+    expect(wallet.currentBalance, 2300);
+  });
+
+  testWidgets('overpayment is blocked in the payment form', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await db
+        .into(db.bankAccounts)
+        .insert(
+          BankAccountsCompanion.insert(
+            bankName: 'ICICI',
+            accountName: 'Salary',
+            accountType: 'savings',
+            currentBalance: const Value(5000),
+          ),
+        );
+    final cardId = await createCard();
+    final billId = await createBill(cardId);
+
+    await tester.pumpWidget(
+      wrap(BillDetailScreen(cardId: cardId, billId: billId)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Record Payment'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Partial Payment'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Payment amount'),
+      '1300.00',
+    );
+
+    await tester.ensureVisible(find.text('Confirm'));
+    await tester.tap(find.text('Confirm'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Payment amount cannot exceed remaining due'),
+      findsOneWidget,
+    );
+
+    final bill = await (db.select(
+      db.cardBills,
+    )..where((b) => b.id.equals(billId))).getSingle();
+    expect(bill.paidAmount, 0);
+  });
+}

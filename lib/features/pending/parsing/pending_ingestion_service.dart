@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../../accounts/data/wallet_types.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/logging/app_log_service.dart';
 import '../../expenses/models/transaction_types.dart';
@@ -325,8 +326,31 @@ class PendingIngestionService {
     required String? sourceHint,
   }) async {
     if (sourceHint == null || sourceHint.trim().isEmpty) return null;
-    if (sourceType == PaymentSourceType.creditCard ||
-        sourceType == PaymentSourceType.cash) {
+    if (sourceType == PaymentSourceType.creditCard) {
+      return null;
+    }
+    if (sourceType == PaymentSourceType.cash) {
+      final wallets = await _db.select(_db.cashWallets).get();
+      if (wallets.isEmpty) return null;
+      final normalizedHint = sourceHint.trim().toLowerCase().replaceAll(
+        RegExp(r'[^a-z0-9]'),
+        '',
+      );
+      for (final wallet in wallets) {
+        if (normalizedHint.contains('amazonpay') &&
+            WalletType.matches(wallet, WalletType.amazonPay)) {
+          return wallet.id;
+        }
+        final walletName = wallet.walletName.toLowerCase().replaceAll(
+          RegExp(r'[^a-z0-9]'),
+          '',
+        );
+        if (walletName.isNotEmpty &&
+            (normalizedHint.contains(walletName) ||
+                walletName.contains(normalizedHint))) {
+          return wallet.id;
+        }
+      }
       return null;
     }
 

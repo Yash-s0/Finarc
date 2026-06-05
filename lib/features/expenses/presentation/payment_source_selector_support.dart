@@ -1,3 +1,4 @@
+import '../../accounts/data/wallet_types.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/finarc/finarc_payment_selector.dart';
 import '../data/expenses_providers.dart';
@@ -29,11 +30,16 @@ PaymentSourceSelectionConfig sourceConfigForMode(
   if (mode == PaymentSourceType.cash) {
     return PaymentSourceSelectionConfig(
       options: sources.cashWallets
-          .map((w) => FinarcPaymentSourceOption(id: w.id, label: w.walletName))
+          .map(
+            (w) => FinarcPaymentSourceOption(
+              id: w.id,
+              label: WalletType.displayName(w),
+            ),
+          )
           .toList(growable: false),
       fieldLabel: destination ? 'Destination cash source' : 'Cash source',
-      emptyMessage: 'No cash wallet found. Add one from Accounts.',
-      emptyCtaLabel: 'Add cash wallet',
+      emptyMessage: 'No wallet found. Add one from Accounts.',
+      emptyCtaLabel: 'Add wallet',
       emptyCtaRoute: '/accounts/add?type=cash',
       singlePrefix: destination ? 'Receiving into' : 'Using cash source',
     );

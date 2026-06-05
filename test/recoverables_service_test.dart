@@ -5,7 +5,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:finarc/core/database/app_database.dart';
 import 'package:finarc/core/database/database_providers.dart';
-import 'package:finarc/features/cards/data/billing_service.dart';
 import 'package:finarc/features/dashboard/data/dashboard_providers.dart';
 import 'package:finarc/features/expenses/data/transaction_engine.dart';
 import 'package:finarc/features/expenses/models/transaction_types.dart';

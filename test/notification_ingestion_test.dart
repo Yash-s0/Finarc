@@ -300,6 +300,38 @@ void main() {
       },
     );
 
+    test(
+      'Amazon Pay notification suggests Amazon Pay wallet when available',
+      () async {
+        final walletId = await db
+            .into(db.cashWallets)
+            .insert(
+              CashWalletsCompanion.insert(
+                walletName: 'Amazon Pay',
+                walletType: const drift.Value('amazonPay'),
+                currentBalance: const drift.Value(1800),
+              ),
+            );
+
+        final ids = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.amazon.mshop.android.shopping',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 5, 24, 12, 0),
+            title: 'Amazon Pay',
+            body: 'Paid using Amazon Pay balance: Rs 250 at Swiggy',
+          ),
+        );
+
+        expect(ids.length, 1);
+        final pending = await (db.select(
+          db.pendingTransactions,
+        )..where((t) => t.id.equals(ids.first))).getSingle();
+        expect(pending.paymentSourceTypeSuggestion, 'cash');
+        expect(pending.paymentSourceIdSuggestion, walletId);
+      },
+    );
+
     test('ignores non-transaction notifications', () async {
       final ids = await service.processPayload(
         NotificationPayload(

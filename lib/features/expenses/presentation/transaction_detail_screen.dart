@@ -8,10 +8,12 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/numeric_input_formatters.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
+import '../../accounts/data/wallet_types.dart';
 import '../../analytics/data/analytics_providers.dart';
 import '../../dashboard/data/dashboard_providers.dart';
 import '../data/expenses_providers.dart';
 import '../data/transaction_engine.dart';
+import '../models/cashback_destination_types.dart';
 import '../models/transaction_types.dart';
 import '../../recoverables/data/recoverables_service.dart';
 import 'payment_source_selector_support.dart';
@@ -36,6 +38,7 @@ class TransactionDetailScreen extends ConsumerStatefulWidget {
 
 class _TransactionDetailScreenState
     extends ConsumerState<TransactionDetailScreen> {
+  static const _sameSourceCashbackDestination = '_sameSource';
   static const _allModes = [
     FinarcPaymentModeOption(
       value: PaymentSourceType.cash,
@@ -97,6 +100,8 @@ class _TransactionDetailScreenState
   String _sourceType = PaymentSourceType.cash;
   int? _sourceId;
   String _type = TransactionType.cash;
+  String _cashbackDestinationType = CashbackDestinationType.unknown;
+  int? _cashbackDestinationId;
   bool _initialized = false;
 
   @override
@@ -144,13 +149,18 @@ class _TransactionDetailScreenState
               _recoverableParty.text = txn.recoverablePartyName ?? '';
               _forOthers = _recoverableParty.text.trim().isNotEmpty;
               _type = txn.type;
+              _cashbackDestinationType =
+                  txn.cashbackDestinationType ??
+                  CashbackDestinationType.unknown;
+              _cashbackDestinationId = txn.cashbackDestinationId;
               _initialized = true;
             }
 
             final formAmount = double.tryParse(_amount.text) ?? txn.amount;
-            final formCashback = _sourceType == PaymentSourceType.cash
-                ? 0.0
-                : (double.tryParse(_cashback.text) ?? txn.cashbackAmount);
+            final cashbackSupported = _supportsCashback(sources);
+            final formCashback = cashbackSupported
+                ? (double.tryParse(_cashback.text) ?? txn.cashbackAmount)
+                : 0.0;
             final recoverableBase = _forOthers
                 ? (formAmount - formCashback).clamp(0, formAmount).toDouble()
                 : 0.0;
@@ -167,6 +177,7 @@ class _TransactionDetailScreenState
               destination: txn.type == TransactionType.income,
             );
             _syncSourceSelection(sourceConfig.options);
+            _syncCashbackDestinationSelection(sources);
             final emptyState = sourceConfig.options.isEmpty
                 ? FinarcPaymentSourceEmptyState(
                     message: sourceConfig.emptyMessage!,
@@ -333,7 +344,7 @@ class _TransactionDetailScreenState
                     readOnly: true,
                   ),
                   const SizedBox(height: AppSpacing.xs),
-                  if (_sourceType != PaymentSourceType.cash)
+                  if (cashbackSupported) ...[
                     FinarcTextField(
                       controller: _cashback,
                       label: 'Cashback',
@@ -342,7 +353,42 @@ class _TransactionDetailScreenState
                       ),
                       inputFormatters: [StripLeadingZeroFormatter()],
                       readOnly: !editable,
+                      onChanged: !editable ? null : (_) => setState(() {}),
                     ),
+                    if (formCashback > 0) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      DropdownButtonFormField<String>(
+                        initialValue: _cashbackDestinationType,
+                        decoration: const InputDecoration(
+                          labelText: 'Cashback destination',
+                        ),
+                        items: _cashbackDestinationMenuItems(),
+                        onChanged: !editable
+                            ? null
+                            : (value) => setState(() {
+                                _cashbackDestinationType =
+                                    value ?? CashbackDestinationType.unknown;
+                                _cashbackDestinationId = null;
+                              }),
+                      ),
+                      if (_shouldShowCashbackDestinationSourcePicker) ...[
+                        const SizedBox(height: AppSpacing.xs),
+                        DropdownButtonFormField<int>(
+                          initialValue: _cashbackDestinationId,
+                          decoration: InputDecoration(
+                            labelText: _cashbackDestinationSourceLabel,
+                          ),
+                          items: _cashbackDestinationSourceItems(sources),
+                          onChanged: !editable
+                              ? null
+                              : (value) => setState(
+                                  () => _cashbackDestinationId = value,
+                                ),
+                        ),
+                      ],
+                    ],
+                    const SizedBox(height: AppSpacing.xs),
+                  ],
                   const SizedBox(height: AppSpacing.xs),
                   Row(
                     children: [
@@ -471,9 +517,13 @@ class _TransactionDetailScreenState
 
     try {
       final amount = double.parse(_amount.text);
-      final cashback = _sourceType == PaymentSourceType.cash
-          ? 0.0
-          : (double.tryParse(_cashback.text) ?? 0.0);
+      final cashback =
+          _supportsCashback(
+            sources ??
+                const PaymentSourcesData(banks: [], cards: [], cashWallets: []),
+          )
+          ? (double.tryParse(_cashback.text) ?? 0.0)
+          : 0.0;
       final recoverableParty = _recoverableParty.text.trim();
       final forOthers = recoverableParty.isNotEmpty;
       final recoverableBase = forOthers
@@ -496,6 +546,22 @@ class _TransactionDetailScreenState
               paymentSourceType: _sourceType,
               paymentSourceId: sourceId,
               cashbackAmount: cashback,
+              cashbackDestinationType: _resolvedCashbackDestinationType(
+                sources ??
+                    const PaymentSourcesData(
+                      banks: [],
+                      cards: [],
+                      cashWallets: [],
+                    ),
+              ),
+              cashbackDestinationId: _resolvedCashbackDestinationId(
+                sources ??
+                    const PaymentSourcesData(
+                      banks: [],
+                      cards: [],
+                      cashWallets: [],
+                    ),
+              ),
               isForOthers: forOthers,
               recoverableAmount: forOthers
                   ? (recoverableBase - recoveredAmount)
@@ -516,6 +582,176 @@ class _TransactionDetailScreenState
         context,
       ).showSnackBar(SnackBar(content: Text('Unable to update: $e')));
     }
+  }
+
+  bool _supportsCashback(PaymentSourcesData sources) {
+    if (_sourceType != PaymentSourceType.cash) return true;
+    final walletId = resolveAutoSelectedSourceId(
+      _sourceId,
+      sourceConfigForMode(sources, _sourceType).options,
+    );
+    if (walletId == null) return false;
+    for (final wallet in sources.cashWallets) {
+      if (wallet.id == walletId) {
+        return !WalletType.matches(wallet, WalletType.cash);
+      }
+    }
+    return false;
+  }
+
+  void _syncCashbackDestinationSelection(PaymentSourcesData sources) {
+    if (!_shouldShowCashbackDestinationSourcePicker) return;
+    final items = _cashbackDestinationSourceItems(sources);
+    final exists = items.any((item) => item.value == _cashbackDestinationId);
+    if (exists || items.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _cashbackDestinationId = items.first.value);
+    });
+  }
+
+  List<DropdownMenuItem<String>> _cashbackDestinationMenuItems() {
+    final items = <DropdownMenuItem<String>>[
+      const DropdownMenuItem(
+        value: CashbackDestinationType.unknown,
+        child: Text('Unknown / not received yet'),
+      ),
+    ];
+    if (_sourceId != null) {
+      items.add(
+        const DropdownMenuItem(
+          value: _sameSourceCashbackDestination,
+          child: Text('Same source'),
+        ),
+      );
+    }
+    items.addAll(const [
+      DropdownMenuItem(
+        value: CashbackDestinationType.bank,
+        child: Text('Bank account'),
+      ),
+      DropdownMenuItem(
+        value: CashbackDestinationType.cash,
+        child: Text('Cash wallet'),
+      ),
+      DropdownMenuItem(
+        value: CashbackDestinationType.amazonPay,
+        child: Text('Amazon Pay wallet'),
+      ),
+      DropdownMenuItem(
+        value: CashbackDestinationType.otherWallet,
+        child: Text('Other wallet'),
+      ),
+    ]);
+    if (_sourceType == PaymentSourceType.creditCard && _sourceId != null) {
+      items.add(
+        const DropdownMenuItem(
+          value: CashbackDestinationType.creditCard,
+          child: Text('Same credit card'),
+        ),
+      );
+    }
+    return items;
+  }
+
+  List<DropdownMenuItem<int>> _cashbackDestinationSourceItems(
+    PaymentSourcesData sources,
+  ) {
+    switch (_cashbackDestinationType) {
+      case CashbackDestinationType.bank:
+        return sources.banks
+            .map(
+              (bank) => DropdownMenuItem(
+                value: bank.id,
+                child: Text('${bank.accountName} • ${bank.bankName}'),
+              ),
+            )
+            .toList(growable: false);
+      case CashbackDestinationType.cash:
+      case CashbackDestinationType.amazonPay:
+      case CashbackDestinationType.otherWallet:
+        return sources.cashWallets
+            .where((wallet) {
+              if (_cashbackDestinationType == CashbackDestinationType.cash) {
+                return WalletType.matches(wallet, WalletType.cash);
+              }
+              if (_cashbackDestinationType ==
+                  CashbackDestinationType.amazonPay) {
+                return WalletType.matches(wallet, WalletType.amazonPay);
+              }
+              return WalletType.matches(wallet, WalletType.otherWallet);
+            })
+            .map(
+              (wallet) => DropdownMenuItem(
+                value: wallet.id,
+                child: Text(WalletType.displayName(wallet)),
+              ),
+            )
+            .toList(growable: false);
+      case CashbackDestinationType.creditCard:
+      case CashbackDestinationType.unknown:
+      case _sameSourceCashbackDestination:
+      default:
+        return const [];
+    }
+  }
+
+  bool get _shouldShowCashbackDestinationSourcePicker {
+    return _cashbackDestinationType != CashbackDestinationType.unknown &&
+        _cashbackDestinationType != CashbackDestinationType.creditCard &&
+        _cashbackDestinationType != _sameSourceCashbackDestination;
+  }
+
+  String get _cashbackDestinationSourceLabel {
+    switch (_cashbackDestinationType) {
+      case CashbackDestinationType.bank:
+        return 'Select bank account';
+      case CashbackDestinationType.cash:
+        return 'Select cash wallet';
+      case CashbackDestinationType.amazonPay:
+        return 'Select Amazon Pay wallet';
+      case CashbackDestinationType.otherWallet:
+        return 'Select other wallet';
+      default:
+        return 'Select destination';
+    }
+  }
+
+  String? _resolvedCashbackDestinationType(PaymentSourcesData sources) {
+    final cashback = double.tryParse(_cashback.text.trim()) ?? 0;
+    if (cashback <= 0) return null;
+    if (_cashbackDestinationType == _sameSourceCashbackDestination) {
+      if (_sourceType == PaymentSourceType.bank ||
+          _sourceType == PaymentSourceType.upi) {
+        return CashbackDestinationType.bank;
+      }
+      if (_sourceType == PaymentSourceType.creditCard) {
+        return CashbackDestinationType.creditCard;
+      }
+      for (final wallet in sources.cashWallets) {
+        if (wallet.id == _sourceId) {
+          return switch (WalletType.normalize(wallet.walletType)) {
+            WalletType.amazonPay => CashbackDestinationType.amazonPay,
+            WalletType.otherWallet => CashbackDestinationType.otherWallet,
+            _ => CashbackDestinationType.cash,
+          };
+        }
+      }
+      return CashbackDestinationType.unknown;
+    }
+    return _cashbackDestinationType == CashbackDestinationType.unknown
+        ? CashbackDestinationType.unknown
+        : _cashbackDestinationType;
+  }
+
+  int? _resolvedCashbackDestinationId(PaymentSourcesData sources) {
+    final type = _resolvedCashbackDestinationType(sources);
+    if (type == null || type == CashbackDestinationType.unknown) return null;
+    if (type == CashbackDestinationType.creditCard ||
+        _cashbackDestinationType == _sameSourceCashbackDestination) {
+      return _sourceId;
+    }
+    return _cashbackDestinationId;
   }
 
   Future<void> _markRecovered(int transactionId) async {

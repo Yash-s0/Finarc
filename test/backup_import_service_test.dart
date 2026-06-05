@@ -49,7 +49,8 @@ void main() {
         .into(db.cashWallets)
         .insert(
           CashWalletsCompanion.insert(
-            walletName: 'Cash Wallet',
+            walletName: 'Amazon Pay',
+            walletType: const Value('amazonPay'),
             currentBalance: const Value(1200),
           ),
         );
@@ -81,6 +82,8 @@ void main() {
             paymentSourceType: 'creditCard',
             paymentSourceId: cardId,
             cashbackAmount: const Value(99),
+            cashbackDestinationType: const Value('amazonPay'),
+            cashbackDestinationId: Value(walletId),
             isForOthers: const Value(true),
             recoverableAmount: const Value(300),
             detectedSourceType: const Value('sms'),
@@ -272,6 +275,11 @@ void main() {
       expect(backup.toLowerCase().contains('expiry'), false);
       expect((data['bankAccounts'] as List).single['last4'], '7788');
       expect((data['loans'] as List).single['lenderType'], 'company');
+      expect((data['cashWallets'] as List).single['walletType'], 'amazonPay');
+      expect(
+        (data['transactions'] as List).single['cashbackDestinationType'],
+        'amazonPay',
+      );
     },
   );
 
@@ -339,13 +347,16 @@ void main() {
     final result = await importService.importBackupReplaceAll(backup);
 
     final banks = await db.select(db.bankAccounts).get();
+    final wallets = await db.select(db.cashWallets).get();
     final txns = await db.select(db.transactions).get();
     final cards = await db.select(db.creditCards).get();
 
     expect(result.counts['bankAccounts'], 1);
     expect(banks.length, 1);
     expect(banks.single.last4, '7788');
+    expect(wallets.single.walletType, 'amazonPay');
     expect(txns.length, 1);
+    expect(txns.single.cashbackDestinationType, 'amazonPay');
     expect(cards.length, 1);
     final loans = await db.select(db.loans).get();
     expect(loans.single.lenderType, 'company');

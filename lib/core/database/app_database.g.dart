@@ -601,6 +601,18 @@ class $CashWalletsTable extends CashWallets
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _walletTypeMeta = const VerificationMeta(
+    'walletType',
+  );
+  @override
+  late final GeneratedColumn<String> walletType = GeneratedColumn<String>(
+    'wallet_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('cash'),
+  );
   static const VerificationMeta _currentBalanceMeta = const VerificationMeta(
     'currentBalance',
   );
@@ -641,6 +653,7 @@ class $CashWalletsTable extends CashWallets
   List<GeneratedColumn> get $columns => [
     id,
     walletName,
+    walletType,
     currentBalance,
     createdAt,
     updatedAt,
@@ -667,6 +680,12 @@ class $CashWalletsTable extends CashWallets
       );
     } else if (isInserting) {
       context.missing(_walletNameMeta);
+    }
+    if (data.containsKey('wallet_type')) {
+      context.handle(
+        _walletTypeMeta,
+        walletType.isAcceptableOrUnknown(data['wallet_type']!, _walletTypeMeta),
+      );
     }
     if (data.containsKey('current_balance')) {
       context.handle(
@@ -706,6 +725,10 @@ class $CashWalletsTable extends CashWallets
         DriftSqlType.string,
         data['${effectivePrefix}wallet_name'],
       )!,
+      walletType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}wallet_type'],
+      )!,
       currentBalance: attachedDatabase.typeMapping.read(
         DriftSqlType.double,
         data['${effectivePrefix}current_balance'],
@@ -730,12 +753,14 @@ class $CashWalletsTable extends CashWallets
 class CashWallet extends DataClass implements Insertable<CashWallet> {
   final int id;
   final String walletName;
+  final String walletType;
   final double currentBalance;
   final DateTime createdAt;
   final DateTime updatedAt;
   const CashWallet({
     required this.id,
     required this.walletName,
+    required this.walletType,
     required this.currentBalance,
     required this.createdAt,
     required this.updatedAt,
@@ -745,6 +770,7 @@ class CashWallet extends DataClass implements Insertable<CashWallet> {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['wallet_name'] = Variable<String>(walletName);
+    map['wallet_type'] = Variable<String>(walletType);
     map['current_balance'] = Variable<double>(currentBalance);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -755,6 +781,7 @@ class CashWallet extends DataClass implements Insertable<CashWallet> {
     return CashWalletsCompanion(
       id: Value(id),
       walletName: Value(walletName),
+      walletType: Value(walletType),
       currentBalance: Value(currentBalance),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -769,6 +796,7 @@ class CashWallet extends DataClass implements Insertable<CashWallet> {
     return CashWallet(
       id: serializer.fromJson<int>(json['id']),
       walletName: serializer.fromJson<String>(json['walletName']),
+      walletType: serializer.fromJson<String>(json['walletType']),
       currentBalance: serializer.fromJson<double>(json['currentBalance']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -780,6 +808,7 @@ class CashWallet extends DataClass implements Insertable<CashWallet> {
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'walletName': serializer.toJson<String>(walletName),
+      'walletType': serializer.toJson<String>(walletType),
       'currentBalance': serializer.toJson<double>(currentBalance),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -789,12 +818,14 @@ class CashWallet extends DataClass implements Insertable<CashWallet> {
   CashWallet copyWith({
     int? id,
     String? walletName,
+    String? walletType,
     double? currentBalance,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => CashWallet(
     id: id ?? this.id,
     walletName: walletName ?? this.walletName,
+    walletType: walletType ?? this.walletType,
     currentBalance: currentBalance ?? this.currentBalance,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -805,6 +836,9 @@ class CashWallet extends DataClass implements Insertable<CashWallet> {
       walletName: data.walletName.present
           ? data.walletName.value
           : this.walletName,
+      walletType: data.walletType.present
+          ? data.walletType.value
+          : this.walletType,
       currentBalance: data.currentBalance.present
           ? data.currentBalance.value
           : this.currentBalance,
@@ -818,6 +852,7 @@ class CashWallet extends DataClass implements Insertable<CashWallet> {
     return (StringBuffer('CashWallet(')
           ..write('id: $id, ')
           ..write('walletName: $walletName, ')
+          ..write('walletType: $walletType, ')
           ..write('currentBalance: $currentBalance, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -826,14 +861,21 @@ class CashWallet extends DataClass implements Insertable<CashWallet> {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, walletName, currentBalance, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+    id,
+    walletName,
+    walletType,
+    currentBalance,
+    createdAt,
+    updatedAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is CashWallet &&
           other.id == this.id &&
           other.walletName == this.walletName &&
+          other.walletType == this.walletType &&
           other.currentBalance == this.currentBalance &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -842,12 +884,14 @@ class CashWallet extends DataClass implements Insertable<CashWallet> {
 class CashWalletsCompanion extends UpdateCompanion<CashWallet> {
   final Value<int> id;
   final Value<String> walletName;
+  final Value<String> walletType;
   final Value<double> currentBalance;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const CashWalletsCompanion({
     this.id = const Value.absent(),
     this.walletName = const Value.absent(),
+    this.walletType = const Value.absent(),
     this.currentBalance = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -855,6 +899,7 @@ class CashWalletsCompanion extends UpdateCompanion<CashWallet> {
   CashWalletsCompanion.insert({
     this.id = const Value.absent(),
     required String walletName,
+    this.walletType = const Value.absent(),
     this.currentBalance = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -862,6 +907,7 @@ class CashWalletsCompanion extends UpdateCompanion<CashWallet> {
   static Insertable<CashWallet> custom({
     Expression<int>? id,
     Expression<String>? walletName,
+    Expression<String>? walletType,
     Expression<double>? currentBalance,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -869,6 +915,7 @@ class CashWalletsCompanion extends UpdateCompanion<CashWallet> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (walletName != null) 'wallet_name': walletName,
+      if (walletType != null) 'wallet_type': walletType,
       if (currentBalance != null) 'current_balance': currentBalance,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -878,6 +925,7 @@ class CashWalletsCompanion extends UpdateCompanion<CashWallet> {
   CashWalletsCompanion copyWith({
     Value<int>? id,
     Value<String>? walletName,
+    Value<String>? walletType,
     Value<double>? currentBalance,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -885,6 +933,7 @@ class CashWalletsCompanion extends UpdateCompanion<CashWallet> {
     return CashWalletsCompanion(
       id: id ?? this.id,
       walletName: walletName ?? this.walletName,
+      walletType: walletType ?? this.walletType,
       currentBalance: currentBalance ?? this.currentBalance,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -899,6 +948,9 @@ class CashWalletsCompanion extends UpdateCompanion<CashWallet> {
     }
     if (walletName.present) {
       map['wallet_name'] = Variable<String>(walletName.value);
+    }
+    if (walletType.present) {
+      map['wallet_type'] = Variable<String>(walletType.value);
     }
     if (currentBalance.present) {
       map['current_balance'] = Variable<double>(currentBalance.value);
@@ -917,6 +969,7 @@ class CashWalletsCompanion extends UpdateCompanion<CashWallet> {
     return (StringBuffer('CashWalletsCompanion(')
           ..write('id: $id, ')
           ..write('walletName: $walletName, ')
+          ..write('walletType: $walletType, ')
           ..write('currentBalance: $currentBalance, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -13480,6 +13533,7 @@ typedef $$CashWalletsTableCreateCompanionBuilder =
     CashWalletsCompanion Function({
       Value<int> id,
       required String walletName,
+      Value<String> walletType,
       Value<double> currentBalance,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -13488,6 +13542,7 @@ typedef $$CashWalletsTableUpdateCompanionBuilder =
     CashWalletsCompanion Function({
       Value<int> id,
       Value<String> walletName,
+      Value<String> walletType,
       Value<double> currentBalance,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -13509,6 +13564,11 @@ class $$CashWalletsTableFilterComposer
 
   ColumnFilters<String> get walletName => $composableBuilder(
     column: $table.walletName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get walletType => $composableBuilder(
+    column: $table.walletType,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -13547,6 +13607,11 @@ class $$CashWalletsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get walletType => $composableBuilder(
+    column: $table.walletType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<double> get currentBalance => $composableBuilder(
     column: $table.currentBalance,
     builder: (column) => ColumnOrderings(column),
@@ -13577,6 +13642,11 @@ class $$CashWalletsTableAnnotationComposer
 
   GeneratedColumn<String> get walletName => $composableBuilder(
     column: $table.walletName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get walletType => $composableBuilder(
+    column: $table.walletType,
     builder: (column) => column,
   );
 
@@ -13625,12 +13695,14 @@ class $$CashWalletsTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 Value<String> walletName = const Value.absent(),
+                Value<String> walletType = const Value.absent(),
                 Value<double> currentBalance = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => CashWalletsCompanion(
                 id: id,
                 walletName: walletName,
+                walletType: walletType,
                 currentBalance: currentBalance,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -13639,12 +13711,14 @@ class $$CashWalletsTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 required String walletName,
+                Value<String> walletType = const Value.absent(),
                 Value<double> currentBalance = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => CashWalletsCompanion.insert(
                 id: id,
                 walletName: walletName,
+                walletType: walletType,
                 currentBalance: currentBalance,
                 createdAt: createdAt,
                 updatedAt: updatedAt,

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
+import '../data/wallet_types.dart';
 import '../data/accounts_providers.dart';
 
 class AddEditAccountScreen extends ConsumerStatefulWidget {
@@ -24,12 +25,18 @@ class _AddEditAccountScreenState extends ConsumerState<AddEditAccountScreen> {
   final _color = TextEditingController();
   bool _isCash = false;
   String _accountType = 'savings';
+  String _walletType = WalletType.cash;
 
   @override
   void initState() {
     super.initState();
     if (widget.initialType == 'cash') {
       _isCash = true;
+    }
+    if (widget.initialType == WalletType.amazonPay) {
+      _isCash = true;
+      _walletType = WalletType.amazonPay;
+      _name.text = 'Amazon Pay';
     }
   }
 
@@ -69,8 +76,24 @@ class _AddEditAccountScreenState extends ConsumerState<AddEditAccountScreen> {
                       ),
                       FinarcActionChip(
                         label: 'Cash Wallet',
-                        selected: _isCash,
-                        onTap: () => setState(() => _isCash = true),
+                        selected: _isCash && _walletType == WalletType.cash,
+                        onTap: () => setState(() {
+                          _isCash = true;
+                          _walletType = WalletType.cash;
+                        }),
+                      ),
+                      FinarcActionChip(
+                        label: 'Amazon Pay',
+                        selected:
+                            _isCash && _walletType == WalletType.amazonPay,
+                        onTap: () => setState(() {
+                          _isCash = true;
+                          _walletType = WalletType.amazonPay;
+                          if (_name.text.trim().isEmpty ||
+                              _name.text.trim() == 'Cash') {
+                            _name.text = 'Amazon Pay';
+                          }
+                        }),
                       ),
                     ],
                   ),
@@ -111,7 +134,11 @@ class _AddEditAccountScreenState extends ConsumerState<AddEditAccountScreen> {
                   ],
                   FinarcTextField(
                     controller: _name,
-                    label: _isCash ? 'Wallet name' : 'Account nickname',
+                    label: _isCash
+                        ? (_walletType == WalletType.amazonPay
+                              ? 'Wallet name'
+                              : 'Wallet name')
+                        : 'Account nickname',
                     validator: (v) {
                       if (v == null || v.trim().isEmpty) return 'Required';
                       return null;
@@ -179,6 +206,7 @@ class _AddEditAccountScreenState extends ConsumerState<AddEditAccountScreen> {
     if (_isCash) {
       await service.createCashWallet(
         walletName: _name.text.trim(),
+        walletType: _walletType,
         currentBalance: double.tryParse(_balance.text) ?? 0,
       );
     } else {

@@ -45,6 +45,15 @@ void main() {
           ),
         );
     await db
+        .into(db.cashWallets)
+        .insert(
+          CashWalletsCompanion.insert(
+            walletName: 'Amazon Pay',
+            walletType: const Value('amazonPay'),
+            currentBalance: const Value(800),
+          ),
+        );
+    await db
         .into(db.creditCards)
         .insert(
           CreditCardsCompanion.insert(
@@ -128,14 +137,27 @@ void main() {
     expect(account.last4, '4455');
   });
 
+  test('Amazon Pay wallet type is persisted on create', () async {
+    final walletId = await service.createCashWallet(
+      walletName: 'Amazon Pay',
+      walletType: 'amazonPay',
+      currentBalance: 500,
+    );
+
+    final wallet = await (db.select(
+      db.cashWallets,
+    )..where((w) => w.id.equals(walletId))).getSingle();
+    expect(wallet.walletType, 'amazonPay');
+  });
+
   test('liquid balance totals are correct', () async {
     final bank = await service.getTotalBankBalance();
     final cash = await service.getTotalCashBalance();
     final combined = await service.getCombinedLiquidBalance();
 
     expect(bank, 15000);
-    expect(cash, 2000);
-    expect(combined, 17000);
+    expect(cash, 2800);
+    expect(combined, 17800);
   });
 
   test('cash and bank transaction effects through transfer engine', () async {
@@ -199,18 +221,20 @@ void main() {
   });
 
   test('bill overpayment is clamped and only actual due is deducted', () async {
-    final billId = await db.into(db.cardBills).insert(
-      CardBillsCompanion.insert(
-        cardId: 1,
-        cycleStartDate: Value(DateTime(2026, 4, 10)),
-        cycleEndDate: Value(DateTime(2026, 5, 10)),
-        billingDate: Value(DateTime(2026, 5, 10)),
-        dueDate: Value(DateTime(2026, 5, 20)),
-        billedAmount: 1200,
-        paidAmount: const Value(0),
-        status: const Value('billed'),
-      ),
-    );
+    final billId = await db
+        .into(db.cardBills)
+        .insert(
+          CardBillsCompanion.insert(
+            cardId: 1,
+            cycleStartDate: Value(DateTime(2026, 4, 10)),
+            cycleEndDate: Value(DateTime(2026, 5, 10)),
+            billingDate: Value(DateTime(2026, 5, 10)),
+            dueDate: Value(DateTime(2026, 5, 20)),
+            billedAmount: 1200,
+            paidAmount: const Value(0),
+            status: const Value('billed'),
+          ),
+        );
 
     final result = await BillingService(
       db,
@@ -235,18 +259,20 @@ void main() {
     await (db.update(db.creditCards)..where((c) => c.id.equals(1))).write(
       const CreditCardsCompanion(currentOutstanding: Value(1200)),
     );
-    await db.into(db.cardBills).insert(
-      CardBillsCompanion.insert(
-        cardId: 1,
-        cycleStartDate: Value(DateTime(2026, 4, 10)),
-        cycleEndDate: Value(DateTime(2026, 5, 10)),
-        billingDate: Value(DateTime(2026, 5, 10)),
-        dueDate: Value(DateTime(2026, 5, 20)),
-        billedAmount: 1200,
-        paidAmount: const Value(0),
-        status: const Value('billed'),
-      ),
-    );
+    await db
+        .into(db.cardBills)
+        .insert(
+          CardBillsCompanion.insert(
+            cardId: 1,
+            cycleStartDate: Value(DateTime(2026, 4, 10)),
+            cycleEndDate: Value(DateTime(2026, 5, 10)),
+            billingDate: Value(DateTime(2026, 5, 10)),
+            dueDate: Value(DateTime(2026, 5, 20)),
+            billedAmount: 1200,
+            paidAmount: const Value(0),
+            status: const Value('billed'),
+          ),
+        );
 
     final result = await service.transferBetweenAccounts(
       sourceType: 'bank',
@@ -264,9 +290,9 @@ void main() {
     final card = await (db.select(
       db.creditCards,
     )..where((c) => c.id.equals(1))).getSingle();
-    final bill = await (db.select(db.cardBills)..where(
-      (b) => b.cardId.equals(1) & b.status.equals('paid'),
-    )).getSingle();
+    final bill = await (db.select(
+      db.cardBills,
+    )..where((b) => b.cardId.equals(1) & b.status.equals('paid'))).getSingle();
     final cardPayments = await (db.select(
       db.transactions,
     )..where((t) => t.type.equals('cardPayment'))).get();
