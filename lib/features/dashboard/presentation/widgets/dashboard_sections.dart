@@ -286,6 +286,8 @@ class DashboardMetricGrid extends StatelessWidget {
         final useSingleColumn = constraints.maxWidth < 290;
         return GridView.builder(
           shrinkWrap: true,
+          primary: false,
+          padding: EdgeInsets.zero,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: useSingleColumn ? 1 : 2,
@@ -477,6 +479,8 @@ class RecentTransactionsSection extends StatelessWidget {
                   )
                 : Scrollbar(
                     child: ListView.separated(
+                      primary: false,
+                      padding: EdgeInsets.zero,
                       physics: const BouncingScrollPhysics(),
                       itemCount: items.length,
                       separatorBuilder: (_, _) =>

@@ -62,4 +62,37 @@ void main() {
     expect((firstRect.top - secondRect.top).abs(), lessThan(1));
     expect(thirdRect.top, greaterThan(firstRect.bottom));
   });
+
+  testWidgets('metric grid does not add automatic top scroll padding', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(320, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(
+          padding: EdgeInsets.only(top: 32, bottom: 16),
+        ),
+        child: const MaterialApp(
+          home: Scaffold(
+            body: Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(
+                width: 320,
+                child: DashboardMetricGrid(data: snapshot),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final cards = find.byType(FinarcMetricCard);
+    final gridTop = tester.getTopLeft(find.byType(DashboardMetricGrid)).dy;
+    final firstCardTop = tester.getTopLeft(cards.first).dy;
+
+    expect(firstCardTop - gridTop, lessThanOrEqualTo(1));
+  });
 }

@@ -188,7 +188,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                       ),
                     ),
                   ],
-                  const SizedBox(height: 0),
+                  const SizedBox(height: AppSpacing.xs),
                   DashboardMetricGrid(data: data),
                   const SizedBox(height: AppSpacing.xs),
                   DashboardAlertsSection(
