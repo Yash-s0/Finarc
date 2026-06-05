@@ -283,15 +283,15 @@ class DashboardMetricGrid extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isNarrow = constraints.maxWidth < 360;
+        final useSingleColumn = constraints.maxWidth < 290;
         return GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: isNarrow ? 1 : 2,
+            crossAxisCount: useSingleColumn ? 1 : 2,
             crossAxisSpacing: AppSpacing.xs,
-            mainAxisSpacing: AppSpacing.xs,
-            mainAxisExtent: isNarrow ? 94 : 116,
+            mainAxisSpacing: 4,
+            mainAxisExtent: useSingleColumn ? 86 : 92,
           ),
           itemCount: cards.length,
           itemBuilder: (context, index) => cards[index],

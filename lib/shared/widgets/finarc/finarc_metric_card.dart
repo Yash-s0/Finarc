@@ -17,6 +17,7 @@ class FinarcMetricCard extends StatelessWidget {
     this.iconColor,
     this.iconBackgroundColor,
     this.minHeight,
+    this.titleMaxLines = 1,
   });
 
   final String title;
@@ -27,19 +28,24 @@ class FinarcMetricCard extends StatelessWidget {
   final Color? iconColor;
   final Color? iconBackgroundColor;
   final double? minHeight;
+  final int titleMaxLines;
 
   @override
   Widget build(BuildContext context) {
     return FinarcCard(
       onTap: onTap,
-      padding: const EdgeInsets.all(AppSpacing.sm),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: 8,
+      ),
       child: ConstrainedBox(
-        constraints: BoxConstraints(minHeight: minHeight ?? 84),
+        constraints: BoxConstraints(minHeight: minHeight ?? 74),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (icon != null) ...[
                   Container(
@@ -62,7 +68,7 @@ class FinarcMetricCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     title,
-                    maxLines: 1,
+                    maxLines: titleMaxLines,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.labelMedium,
                   ),
@@ -70,15 +76,19 @@ class FinarcMetricCard extends StatelessWidget {
                 ?trailing,
               ],
             ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.amountStyle(
-                color: Theme.of(context).colorScheme.onSurface,
-                size: 15.5,
-                weight: FontWeight.w700,
+            const SizedBox(height: AppSpacing.sm),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.amountStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  size: 15.5,
+                  weight: FontWeight.w700,
+                ),
               ),
             ),
           ],

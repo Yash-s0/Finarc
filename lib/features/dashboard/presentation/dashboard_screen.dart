@@ -53,7 +53,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       AppSpacing.md,
       AppSpacing.md + topInset,
       AppSpacing.md,
-      AppSpacing.md + bottomInset + 104,
+      AppSpacing.sm + bottomInset + 72,
     );
   }
 
@@ -188,20 +188,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                       ),
                     ),
                   ],
-                  const SizedBox(height: AppSpacing.sm),
+                  const SizedBox(height: AppSpacing.xs),
                   DashboardMetricGrid(data: data),
-                  const SizedBox(height: AppSpacing.sm),
+                  const SizedBox(height: AppSpacing.xs),
                   DashboardAlertsSection(
                     pendingCount: data.pendingCount,
                     dueSoonBillsCount: data.dueSoonBillsCount,
                   ),
                   if (data.pendingCount > 0 || data.dueSoonBillsCount > 0)
-                    const SizedBox(height: AppSpacing.sm),
+                    const SizedBox(height: AppSpacing.xs),
                   FinarcCard(
                     onTap: () => context.push('/accounts'),
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.sm,
-                      vertical: AppSpacing.sm,
+                      vertical: 8,
                     ),
                     child: Row(
                       children: [
@@ -225,7 +225,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                       ],
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.sm),
+                  const SizedBox(height: AppSpacing.xs),
                   RecentTransactionsSection(data: data),
                 ],
               ),
