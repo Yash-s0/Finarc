@@ -141,6 +141,301 @@ void main() {
     expect(bank.currentBalance, 9000);
   });
 
+  test(
+    'deleting split expense with linked real transaction is blocked',
+    () async {
+      final shares = service.calculateExactSplit({youId: 300, rahulId: 700});
+      final splitExpenseId = await service.addSplitExpense(
+        AddSplitExpenseInput(
+          groupId: groupId,
+          title: 'Villa booking',
+          totalAmount: 1000,
+          paidByMemberId: youId,
+          splitType: 'exact',
+          expenseDate: DateTime.now(),
+          category: 'Travel',
+          shares: shares,
+          paymentSourceType: PaymentSourceType.bank,
+          paymentSourceId: bankId,
+        ),
+      );
+
+      await expectLater(
+        service.deleteSplitExpense(splitExpenseId),
+        throwsA(
+          isA<SplitActionBlockedException>().having(
+            (e) => e.message,
+            'message',
+            SplitService.splitDeleteMessage,
+          ),
+        ),
+      );
+    },
+  );
+
+  test(
+    'blocked split delete leaves expense shares transaction and balance unchanged',
+    () async {
+      final shares = service.calculateExactSplit({youId: 300, rahulId: 700});
+      final splitExpenseId = await service.addSplitExpense(
+        AddSplitExpenseInput(
+          groupId: groupId,
+          title: 'Villa booking',
+          totalAmount: 1000,
+          paidByMemberId: youId,
+          splitType: 'exact',
+          expenseDate: DateTime.now(),
+          category: 'Travel',
+          shares: shares,
+          paymentSourceType: PaymentSourceType.bank,
+          paymentSourceId: bankId,
+        ),
+      );
+      final beforeExpense = await (db.select(
+        db.splitExpenses,
+      )..where((e) => e.id.equals(splitExpenseId))).getSingle();
+      final beforeShares = await (db.select(
+        db.splitExpenseShares,
+      )..where((s) => s.splitExpenseId.equals(splitExpenseId))).get();
+      final beforeTxn =
+          await (db.select(db.transactions)
+                ..where((t) => t.id.equals(beforeExpense.linkedTransactionId!)))
+              .getSingle();
+      final beforeBank = await (db.select(
+        db.bankAccounts,
+      )..where((b) => b.id.equals(bankId))).getSingle();
+
+      await expectLater(
+        service.deleteSplitExpense(splitExpenseId),
+        throwsA(isA<SplitActionBlockedException>()),
+      );
+
+      final afterExpense = await (db.select(
+        db.splitExpenses,
+      )..where((e) => e.id.equals(splitExpenseId))).getSingle();
+      final afterShares = await (db.select(
+        db.splitExpenseShares,
+      )..where((s) => s.splitExpenseId.equals(splitExpenseId))).get();
+      final afterTxn =
+          await (db.select(db.transactions)
+                ..where((t) => t.id.equals(beforeExpense.linkedTransactionId!)))
+              .getSingle();
+      final afterBank = await (db.select(
+        db.bankAccounts,
+      )..where((b) => b.id.equals(bankId))).getSingle();
+
+      expect(afterExpense.id, beforeExpense.id);
+      expect(
+        afterShares.map((s) => s.id).toList(),
+        beforeShares.map((s) => s.id).toList(),
+      );
+      expect(afterTxn.id, beforeTxn.id);
+      expect(afterBank.currentBalance, beforeBank.currentBalance);
+    },
+  );
+
+  test(
+    'deleting split expense without linked transaction is blocked consistently',
+    () async {
+      final shares = service.calculateExactSplit({youId: 300, rahulId: 700});
+      final splitExpenseId = await service.addSplitExpense(
+        AddSplitExpenseInput(
+          groupId: groupId,
+          title: 'Dinner',
+          totalAmount: 1000,
+          paidByMemberId: rahulId,
+          splitType: 'exact',
+          expenseDate: DateTime.now(),
+          category: 'Food',
+          shares: shares,
+        ),
+      );
+
+      await expectLater(
+        service.deleteSplitExpense(splitExpenseId),
+        throwsA(
+          isA<SplitActionBlockedException>().having(
+            (e) => e.message,
+            'message',
+            SplitService.splitDeleteMessage,
+          ),
+        ),
+      );
+      expect(
+        await (db.select(
+          db.splitExpenses,
+        )..where((e) => e.id.equals(splitExpenseId))).getSingleOrNull(),
+        isNot(equals(null)),
+      );
+    },
+  );
+
+  test(
+    'unsafe split edit of amount share payer source and date is blocked',
+    () async {
+      final expenseDate = DateTime(2026, 6, 1);
+      final shares = service.calculateExactSplit({youId: 300, rahulId: 700});
+      final splitExpenseId = await service.addSplitExpense(
+        AddSplitExpenseInput(
+          groupId: groupId,
+          title: 'Villa booking',
+          totalAmount: 1000,
+          paidByMemberId: youId,
+          splitType: 'exact',
+          expenseDate: expenseDate,
+          category: 'Travel',
+          shares: shares,
+          paymentSourceType: PaymentSourceType.bank,
+          paymentSourceId: bankId,
+        ),
+      );
+
+      await expectLater(
+        service.updateSplitExpense(
+          splitExpenseId,
+          AddSplitExpenseInput(
+            groupId: groupId,
+            title: 'Villa booking updated',
+            totalAmount: 1200,
+            paidByMemberId: rahulId,
+            splitType: 'equal',
+            expenseDate: expenseDate.add(const Duration(days: 1)),
+            category: 'Travel',
+            shares: service.calculateEqualSplit(
+              memberIds: [youId, rahulId],
+              totalAmount: 1200,
+            ),
+            paymentSourceType: PaymentSourceType.cash,
+            paymentSourceId: bankId,
+            notes: 'unsafe change',
+          ),
+        ),
+        throwsA(
+          isA<SplitActionBlockedException>().having(
+            (e) => e.message,
+            'message',
+            SplitService.splitFinancialEditMessage,
+          ),
+        ),
+      );
+    },
+  );
+
+  test('metadata-only split edit updates title and notes safely', () async {
+    final expenseDate = DateTime(2026, 6, 1);
+    final shares = service.calculateExactSplit({youId: 300, rahulId: 700});
+    final splitExpenseId = await service.addSplitExpense(
+      AddSplitExpenseInput(
+        groupId: groupId,
+        title: 'Villa booking',
+        totalAmount: 1000,
+        paidByMemberId: youId,
+        splitType: 'exact',
+        expenseDate: expenseDate,
+        category: 'Travel',
+        shares: shares,
+        paymentSourceType: PaymentSourceType.bank,
+        paymentSourceId: bankId,
+        notes: 'old note',
+      ),
+    );
+
+    final beforeTxn = await (db.select(
+      db.transactions,
+    )..where((t) => t.linkedSplitExpenseId.equals(splitExpenseId))).getSingle();
+    final beforeBank = await (db.select(
+      db.bankAccounts,
+    )..where((b) => b.id.equals(bankId))).getSingle();
+
+    await service.updateSplitExpense(
+      splitExpenseId,
+      AddSplitExpenseInput(
+        groupId: groupId,
+        title: 'Villa booking renamed',
+        totalAmount: 1000,
+        paidByMemberId: youId,
+        splitType: 'exact',
+        expenseDate: expenseDate,
+        category: 'Travel',
+        shares: shares,
+        paymentSourceType: PaymentSourceType.bank,
+        paymentSourceId: bankId,
+        notes: 'new note',
+      ),
+    );
+
+    final updatedExpense = await (db.select(
+      db.splitExpenses,
+    )..where((e) => e.id.equals(splitExpenseId))).getSingle();
+    final afterTxn = await (db.select(
+      db.transactions,
+    )..where((t) => t.linkedSplitExpenseId.equals(splitExpenseId))).getSingle();
+    final afterBank = await (db.select(
+      db.bankAccounts,
+    )..where((b) => b.id.equals(bankId))).getSingle();
+
+    expect(updatedExpense.title, 'Villa booking renamed');
+    expect(updatedExpense.notes, 'new note');
+    expect(updatedExpense.category, 'Travel');
+    expect(updatedExpense.expenseDate, expenseDate);
+    expect(afterTxn.id, beforeTxn.id);
+    expect(afterBank.currentBalance, beforeBank.currentBalance);
+  });
+
+  test('blocked split edit does not orphan linked transaction', () async {
+    final expenseDate = DateTime(2026, 6, 1);
+    final shares = service.calculateExactSplit({youId: 300, rahulId: 700});
+    final splitExpenseId = await service.addSplitExpense(
+      AddSplitExpenseInput(
+        groupId: groupId,
+        title: 'Resort',
+        totalAmount: 1000,
+        paidByMemberId: youId,
+        splitType: 'exact',
+        expenseDate: expenseDate,
+        category: 'Travel',
+        shares: shares,
+        paymentSourceType: PaymentSourceType.bank,
+        paymentSourceId: bankId,
+      ),
+    );
+    final expense = await (db.select(
+      db.splitExpenses,
+    )..where((e) => e.id.equals(splitExpenseId))).getSingle();
+
+    await expectLater(
+      service.updateSplitExpense(
+        splitExpenseId,
+        AddSplitExpenseInput(
+          groupId: groupId,
+          title: 'Resort',
+          totalAmount: 999,
+          paidByMemberId: youId,
+          splitType: 'exact',
+          expenseDate: expenseDate,
+          category: 'Travel',
+          shares: shares,
+          paymentSourceType: PaymentSourceType.bank,
+          paymentSourceId: bankId,
+        ),
+      ),
+      throwsA(isA<SplitActionBlockedException>()),
+    );
+
+    expect(
+      await (db.select(db.transactions)
+            ..where((t) => t.id.equals(expense.linkedTransactionId!)))
+          .getSingleOrNull(),
+      isNot(equals(null)),
+    );
+    expect(
+      await (db.select(
+        db.splitExpenses,
+      )..where((e) => e.id.equals(splitExpenseId))).getSingleOrNull(),
+      isNot(equals(null)),
+    );
+  });
+
   test('someone else paid creates payable without personal outflow', () async {
     final shares = service.calculateExactSplit({youId: 300, rahulId: 700});
 

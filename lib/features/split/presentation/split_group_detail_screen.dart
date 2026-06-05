@@ -7,6 +7,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
 import '../data/split_providers.dart';
+import '../data/split_service.dart';
 
 class SplitGroupDetailScreen extends ConsumerWidget {
   const SplitGroupDetailScreen({super.key, required this.groupId});
@@ -244,6 +245,19 @@ class SplitGroupDetailScreen extends ConsumerWidget {
               const SizedBox(height: AppSpacing.md),
               const FinarcSectionHeader(title: 'Recent Group Expenses'),
               const SizedBox(height: AppSpacing.xs),
+              const FinarcCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Split expense edit/delete is under development.'),
+                    SizedBox(height: 4),
+                    Text(
+                      'You can add new expenses normally. Safe financial edit/delete will be available soon.',
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
               if (data.expenses.isEmpty)
                 const FinarcEmptyState(
                   title: 'No group expenses',
@@ -255,6 +269,13 @@ class SplitGroupDetailScreen extends ConsumerWidget {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: AppSpacing.xs),
                     child: FinarcTransactionTile(
+                      onTap: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(SplitService.splitEditSoonMessage),
+                          ),
+                        );
+                      },
                       title: expense.title,
                       subtitle: expense.category,
                       meta: FinarcTransactionPresentation.meta(
@@ -267,6 +288,11 @@ class SplitGroupDetailScreen extends ConsumerWidget {
                         FinarcStatusBadge(
                           label: expense.splitType.toUpperCase(),
                           tone: FinarcStatusTone.info,
+                          compact: true,
+                        ),
+                        const FinarcStatusBadge(
+                          label: 'Edit/Delete soon',
+                          tone: FinarcStatusTone.warning,
                           compact: true,
                         ),
                       ],

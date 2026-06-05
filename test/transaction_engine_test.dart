@@ -5,10 +5,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:finarc/core/database/app_database.dart';
 import 'package:finarc/features/expenses/data/transaction_engine.dart';
 import 'package:finarc/features/expenses/models/transaction_types.dart';
+import 'package:finarc/features/split/data/split_service.dart';
 
 void main() {
   late AppDatabase db;
   late TransactionEngine engine;
+  late SplitService splitService;
   late int bankId;
   late int cardId;
   late int cashId;
@@ -16,6 +18,7 @@ void main() {
   setUp(() async {
     db = AppDatabase(NativeDatabase.memory());
     engine = TransactionEngine(db);
+    splitService = SplitService(db, engine);
 
     bankId = await db
         .into(db.bankAccounts)
@@ -358,44 +361,81 @@ void main() {
     expect(card.currentOutstanding, 5000);
   });
 
-  test('linked refund reduces recoverable amount on original transaction', () async {
-    await engine.addTransaction(
-      AddTransactionInput(
-        type: TransactionType.creditCard,
-        amount: 1000,
-        title: 'Shared order',
-        category: 'Shopping',
-        transactionDate: DateTime(2026, 5, 24),
-        paymentSourceType: PaymentSourceType.creditCard,
-        paymentSourceId: cardId,
-        isForOthers: true,
-        recoverablePartyName: 'Rahul',
+  test(
+    'linked refund reduces recoverable amount on original transaction',
+    () async {
+      await engine.addTransaction(
+        AddTransactionInput(
+          type: TransactionType.creditCard,
+          amount: 1000,
+          title: 'Shared order',
+          category: 'Shopping',
+          transactionDate: DateTime(2026, 5, 24),
+          paymentSourceType: PaymentSourceType.creditCard,
+          paymentSourceId: cardId,
+          isForOthers: true,
+          recoverablePartyName: 'Rahul',
+        ),
+      );
+      final original = await (db.select(
+        db.transactions,
+      )..where((t) => t.title.equals('Shared order'))).getSingle();
+
+      await engine.addTransaction(
+        AddTransactionInput(
+          type: TransactionType.refund,
+          amount: 400,
+          title: 'Shared order refund',
+          category: 'Refund',
+          transactionDate: DateTime(2026, 5, 25),
+          paymentSourceType: PaymentSourceType.creditCard,
+          paymentSourceId: cardId,
+          relatedTransactionId: original.id,
+        ),
+      );
+
+      final updated = await (db.select(
+        db.transactions,
+      )..where((t) => t.id.equals(original.id))).getSingle();
+
+      expect(updated.recoverableBaseAmount, closeTo(600, 0.01));
+      expect(updated.recoverableAmount, closeTo(600, 0.01));
+      expect(updated.recoveredAmount, 0);
+      expect(updated.recoverableStatus, 'unpaid');
+    },
+  );
+
+  test('split-linked transaction is not editable', () async {
+    final groupId = await splitService.createGroup('Trip');
+    final youId = await splitService.addMember(
+      groupId,
+      name: 'You',
+      isCurrentUser: true,
+    );
+    final rahulId = await splitService.addMember(groupId, name: 'Rahul');
+
+    final splitExpenseId = await splitService.addSplitExpense(
+      AddSplitExpenseInput(
+        groupId: groupId,
+        title: 'Stay',
+        totalAmount: 1000,
+        paidByMemberId: youId,
+        splitType: 'exact',
+        expenseDate: DateTime(2026, 5, 24),
+        category: 'Travel',
+        shares: [
+          SplitShareInput(memberId: youId, exactAmount: 300),
+          SplitShareInput(memberId: rahulId, exactAmount: 700),
+        ],
+        paymentSourceType: PaymentSourceType.bank,
+        paymentSourceId: bankId,
       ),
     );
-    final original = await (db.select(
+
+    final txn = await (db.select(
       db.transactions,
-    )..where((t) => t.title.equals('Shared order'))).getSingle();
+    )..where((t) => t.linkedSplitExpenseId.equals(splitExpenseId))).getSingle();
 
-    await engine.addTransaction(
-      AddTransactionInput(
-        type: TransactionType.refund,
-        amount: 400,
-        title: 'Shared order refund',
-        category: 'Refund',
-        transactionDate: DateTime(2026, 5, 25),
-        paymentSourceType: PaymentSourceType.creditCard,
-        paymentSourceId: cardId,
-        relatedTransactionId: original.id,
-      ),
-    );
-
-    final updated = await (db.select(
-      db.transactions,
-    )..where((t) => t.id.equals(original.id))).getSingle();
-
-    expect(updated.recoverableBaseAmount, closeTo(600, 0.01));
-    expect(updated.recoverableAmount, closeTo(600, 0.01));
-    expect(updated.recoveredAmount, 0);
-    expect(updated.recoverableStatus, 'unpaid');
+    expect(engine.isEditable(txn), isFalse);
   });
 }

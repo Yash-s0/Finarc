@@ -63,8 +63,26 @@ class BalanceTransfer {
   final double amount;
 }
 
+class SplitActionBlockedException implements Exception {
+  const SplitActionBlockedException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 class SplitService {
   SplitService(this._db, this._engine);
+
+  static const splitFinancialEditMessage =
+      'Editing split financial details is under development. You can edit title/notes for now.';
+  static const splitDeleteMessage =
+      'Deleting this split safely is under development.';
+  static const splitDeleteSoonMessage =
+      'Safe split delete will be available soon.';
+  static const splitEditSoonMessage =
+      'Safe edit/delete for split expenses will be available soon.';
 
   final AppDatabase _db;
   final TransactionEngine _engine;
@@ -338,27 +356,48 @@ class SplitService {
     int splitExpenseId,
     AddSplitExpenseInput input,
   ) async {
-    // For safety in phase 10, only metadata edits are supported.
+    final existing = await (_db.select(
+      _db.splitExpenses,
+    )..where((s) => s.id.equals(splitExpenseId))).getSingleOrNull();
+    if (existing == null) {
+      throw ArgumentError('Split expense not found');
+    }
+    final existingShares = await (_db.select(
+      _db.splitExpenseShares,
+    )..where((s) => s.splitExpenseId.equals(splitExpenseId))).get();
+    final linkedTxn = existing.linkedTransactionId == null
+        ? null
+        : await (_db.select(_db.transactions)
+                ..where((t) => t.id.equals(existing.linkedTransactionId!)))
+              .getSingleOrNull();
+
+    if (!_isMetadataOnlyExpenseUpdate(
+      existing: existing,
+      existingShares: existingShares,
+      input: input,
+      linkedTxn: linkedTxn,
+    )) {
+      throw const SplitActionBlockedException(splitFinancialEditMessage);
+    }
+
     await (_db.update(
       _db.splitExpenses,
     )..where((s) => s.id.equals(splitExpenseId))).write(
       SplitExpensesCompanion(
         title: Value(input.title),
-        category: Value(input.category),
         notes: Value(input.notes),
-        expenseDate: Value(input.expenseDate),
         updatedAt: Value(DateTime.now()),
       ),
     );
   }
 
   Future<void> deleteSplitExpense(int splitExpenseId) async {
-    await (_db.delete(
-      _db.splitExpenseShares,
-    )..where((s) => s.splitExpenseId.equals(splitExpenseId))).go();
-    await (_db.delete(
+    final existing = await (_db.select(
       _db.splitExpenses,
-    )..where((s) => s.id.equals(splitExpenseId))).go();
+    )..where((s) => s.id.equals(splitExpenseId))).getSingleOrNull();
+    if (existing == null) return;
+
+    throw const SplitActionBlockedException(splitDeleteMessage);
   }
 
   Future<List<GroupMemberBalance>> getGroupBalances(int groupId) async {
@@ -579,4 +618,61 @@ class SplitService {
         ))
         .getSingleOrNull();
   }
+
+  bool _isMetadataOnlyExpenseUpdate({
+    required SplitExpense existing,
+    required List<SplitExpenseShare> existingShares,
+    required AddSplitExpenseInput input,
+    required Transaction? linkedTxn,
+  }) {
+    if (input.groupId != existing.groupId) return false;
+    if ((input.totalAmount - existing.totalAmount).abs() > 0.009) return false;
+    if (input.paidByMemberId != existing.paidByMemberId) return false;
+    if (input.splitType != existing.splitType) return false;
+    if (input.category != existing.category) return false;
+    if (!_isSameDateTime(input.expenseDate, existing.expenseDate)) return false;
+    if (!_sharesMatch(existingShares, input.shares)) return false;
+    if (!_paymentSourceMatchesLinkedTxn(input, linkedTxn)) return false;
+    return true;
+  }
+
+  bool _sharesMatch(
+    List<SplitExpenseShare> existingShares,
+    List<SplitShareInput> nextShares,
+  ) {
+    if (existingShares.length != nextShares.length) return false;
+    final existingSorted = [...existingShares]
+      ..sort((a, b) => a.memberId.compareTo(b.memberId));
+    final nextSorted = [...nextShares]
+      ..sort((a, b) => a.memberId.compareTo(b.memberId));
+
+    for (var i = 0; i < existingSorted.length; i++) {
+      final existing = existingSorted[i];
+      final next = nextSorted[i];
+      if (existing.memberId != next.memberId) return false;
+      if ((existing.exactAmount - next.exactAmount).abs() > 0.009) return false;
+      final existingPct = existing.percentage ?? 0;
+      final nextPct = next.percentage ?? 0;
+      if ((existingPct - nextPct).abs() > 0.009) return false;
+    }
+    return true;
+  }
+
+  bool _paymentSourceMatchesLinkedTxn(
+    AddSplitExpenseInput input,
+    Transaction? linkedTxn,
+  ) {
+    if (linkedTxn == null) {
+      return input.paymentSourceType == null && input.paymentSourceId == null;
+    }
+    return input.paymentSourceType == linkedTxn.paymentSourceType &&
+        input.paymentSourceId == linkedTxn.paymentSourceId;
+  }
+
+  bool _isSameDateTime(DateTime a, DateTime b) =>
+      a.year == b.year &&
+      a.month == b.month &&
+      a.day == b.day &&
+      a.hour == b.hour &&
+      a.minute == b.minute;
 }
