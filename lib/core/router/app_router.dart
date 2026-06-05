@@ -13,6 +13,7 @@ import '../../features/cards/presentation/cards_overview_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/dashboard/presentation/net_worth_breakdown_screen.dart';
 import '../../features/recoverables/presentation/recoverables_breakdown_screen.dart';
+import '../../features/recoverables/presentation/recoverable_person_detail_screen.dart';
 import '../../features/expenses/presentation/expenses_screen.dart';
 import '../../features/expenses/presentation/add_expense_screen.dart';
 import '../../features/expenses/presentation/add_income_screen.dart';
@@ -351,6 +352,20 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/recoverables',
       builder: (_, _) => const RecoverablesBreakdownScreen(),
+    ),
+    GoRoute(
+      path: '/recoverables/person',
+      builder: (_, state) {
+        final partyName = state.uri.queryParameters['name']?.trim() ?? '';
+        if (partyName.isEmpty) {
+          return const RouteFallbackScreen(
+            title: 'Invalid recoverable link',
+            message: 'Recoverable person name is missing.',
+            backRoute: '/recoverables',
+          );
+        }
+        return RecoverablePersonDetailScreen(partyName: partyName);
+      },
     ),
     GoRoute(path: '/alerts', builder: (_, _) => const AlertsCenterScreen()),
     GoRoute(
