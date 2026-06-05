@@ -542,6 +542,7 @@ class ImportService {
                 id: Value(_int(row['id']) ?? 0),
                 title: Value(_string(row['title'])),
                 lenderName: Value(_string(row['lenderName'])),
+                lenderType: Value(_stringOrNull(row['lenderType'])),
                 loanType: Value(_string(row['loanType'], fallback: 'other')),
                 principalAmount: Value(_double(row['principalAmount']) ?? 0),
                 currentOutstanding: Value(

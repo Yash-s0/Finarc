@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../expenses/models/transaction_types.dart';
 
 class LoanType {
   static const personal = 'personal';
@@ -22,18 +23,29 @@ class LoanType {
   ];
 }
 
+class LoanLenderType {
+  static const company = 'company';
+  static const bankNbfc = 'bank_nbfc';
+  static const person = 'person';
+  static const other = 'other';
+
+  static const all = [company, bankNbfc, person, other];
+}
+
 class EmiSchedule {
   const EmiSchedule({
     required this.loan,
     required this.nextDate,
     required this.daysUntilDue,
     required this.status,
+    required this.remainingAmount,
   });
 
   final Loan loan;
   final DateTime nextDate;
   final int daysUntilDue;
   final String status;
+  final double remainingAmount;
 }
 
 class LoanService {
@@ -46,6 +58,7 @@ class LoanService {
   Future<int> createLoan({
     required String title,
     required String lenderName,
+    String? lenderType,
     required String loanType,
     required double principalAmount,
     required double currentOutstanding,
@@ -76,6 +89,7 @@ class LoanService {
           LoansCompanion.insert(
             title: title,
             lenderName: lenderName,
+            lenderType: Value(lenderType),
             loanType: Value(loanType),
             principalAmount: principalAmount,
             currentOutstanding: currentOutstanding,
@@ -96,6 +110,7 @@ class LoanService {
     int id, {
     String? title,
     String? lenderName,
+    String? lenderType,
     String? loanType,
     double? principalAmount,
     double? currentOutstanding,
@@ -126,6 +141,9 @@ class LoanService {
         lenderName: lenderName == null
             ? const Value.absent()
             : Value(lenderName),
+        lenderType: lenderType == null
+            ? const Value.absent()
+            : Value(lenderType),
         loanType: loanType == null ? const Value.absent() : Value(loanType),
         principalAmount: principalAmount == null
             ? const Value.absent()
@@ -182,14 +200,8 @@ class LoanService {
     )..where((l) => l.id.equals(id))).getSingleOrNull();
   }
 
-  DateTime? calculateNextEmiDate(Loan loan, {DateTime? date}) {
-    final now = _dateOnly(date ?? _now());
-    final day = loan.emiDay;
-    final emiAmount = loan.emiAmount;
-    if (day == null || emiAmount == null || emiAmount <= 0) return null;
-
-    final thisMonthDue = _withSafeDay(now.year, now.month, day);
-    return thisMonthDue;
+  Future<DateTime?> calculateNextEmiDate(Loan loan, {DateTime? date}) async {
+    return (await _calculateEmiSchedule(loan, date: date))?.nextDate;
   }
 
   Future<List<EmiSchedule>> getUpcomingEmis({
@@ -202,27 +214,9 @@ class LoanService {
 
     final results = <EmiSchedule>[];
     for (final loan in loans) {
-      final dueDate = calculateNextEmiDate(loan, date: now);
-      if (dueDate == null) continue;
-      final isPaidForMonth = await _isMonthPaid(
-        loan.id,
-        dueDate.year,
-        dueDate.month,
-      );
-      if (isPaidForMonth) continue;
-
-      if (dueDate.isAfter(horizon)) continue;
-
-      final days = dueDate.difference(now).inDays;
-      final status = _emiStatus(days);
-      results.add(
-        EmiSchedule(
-          loan: loan,
-          nextDate: dueDate,
-          daysUntilDue: days,
-          status: status,
-        ),
-      );
+      final schedule = await _calculateEmiSchedule(loan, date: now);
+      if (schedule == null || schedule.nextDate.isAfter(horizon)) continue;
+      results.add(schedule);
     }
 
     results.sort((a, b) => a.nextDate.compareTo(b.nextDate));
@@ -232,14 +226,14 @@ class LoanService {
   Future<List<EmiSchedule>> getOverdueEmis({DateTime? now}) async {
     final date = _dateOnly(now ?? _now());
     final all = await getUpcomingEmis(from: date, withinDays: 3650);
-    return all.where((e) => e.daysUntilDue < 0).toList(growable: false);
+    return all.where((e) => e.status == 'overdue').toList(growable: false);
   }
 
   Future<int> markEmiPaid({
     required int loanId,
     required double amount,
     required String paymentSourceType,
-    required int paymentSourceId,
+    int? paymentSourceId,
     DateTime? paymentDate,
     String? notes,
   }) {
@@ -258,7 +252,7 @@ class LoanService {
     required double amount,
     required DateTime paymentDate,
     required String paymentSourceType,
-    required int paymentSourceId,
+    int? paymentSourceId,
     String? notes,
   }) async {
     if (amount <= 0) throw ArgumentError('Amount must be greater than 0');
@@ -268,11 +262,20 @@ class LoanService {
         _db.loans,
       )..where((l) => l.id.equals(loanId))).getSingle();
 
-      await _deductSourceBalance(
-        paymentSourceType: paymentSourceType,
-        paymentSourceId: paymentSourceId,
-        amount: amount,
-      );
+      final usesSalaryDeduction =
+          paymentSourceType == PaymentSourceType.salaryDeduction;
+
+      if (!usesSalaryDeduction) {
+        final resolvedSourceId = paymentSourceId;
+        if (resolvedSourceId == null) {
+          throw ArgumentError('Payment source is required');
+        }
+        await _deductSourceBalance(
+          paymentSourceType: paymentSourceType,
+          paymentSourceId: resolvedSourceId,
+          amount: amount,
+        );
+      }
 
       final transactionId = await _db
           .into(_db.transactions)
@@ -285,7 +288,7 @@ class LoanService {
               notes: Value(notes),
               transactionDate: paymentDate,
               paymentSourceType: paymentSourceType,
-              paymentSourceId: paymentSourceId,
+              paymentSourceId: paymentSourceId ?? 0,
               transactionImpactType: const Value('loanRepayment'),
             ),
           );
@@ -350,38 +353,100 @@ class LoanService {
   }
 
   String emiDueLabel(EmiSchedule schedule) {
-    if (schedule.daysUntilDue < 0) {
+    if (schedule.status == 'overdue') {
       return 'overdue';
     }
-    if (schedule.daysUntilDue == 0) {
+    if (schedule.status == 'dueToday') {
       return 'dueToday';
     }
-    if (schedule.daysUntilDue <= 2) {
+    if (schedule.status == 'partial') {
+      return 'partial';
+    }
+    if (schedule.status == 'dueSoon') {
       return 'dueSoon';
     }
     return 'upcoming';
   }
 
-  String _emiStatus(int daysUntilDue) {
+  String _emiStatus(int daysUntilDue, {required bool isPartial}) {
     if (daysUntilDue < 0) return 'overdue';
     if (daysUntilDue == 0) return 'dueToday';
+    if (isPartial) return 'partial';
     if (daysUntilDue <= 2) return 'dueSoon';
     return 'upcoming';
   }
 
-  Future<bool> _isMonthPaid(int loanId, int year, int month) async {
-    final payment =
-        await (_db.select(_db.loanPayments)
-              ..where(
-                (p) =>
-                    p.loanId.equals(loanId) &
-                    p.paymentDate.year.equals(year) &
-                    p.paymentDate.month.equals(month),
-              )
-              ..limit(1))
-            .getSingleOrNull();
-    return payment != null;
+  Future<EmiSchedule?> _calculateEmiSchedule(
+    Loan loan, {
+    DateTime? date,
+  }) async {
+    final now = _dateOnly(date ?? _now());
+    final day = loan.emiDay;
+    final emiAmount = loan.emiAmount;
+    if (loan.closedAt != null || loan.currentOutstanding <= 0) return null;
+    if (day == null || emiAmount == null || emiAmount <= 0) return null;
+
+    final thisMonthDue = _withSafeDay(now.year, now.month, day);
+    final thisMonthPaid = await _monthPaidAmount(loan.id, now.year, now.month);
+    final thisMonthRemaining = _remainingForEmi(
+      emiAmount: emiAmount,
+      paidAmount: thisMonthPaid,
+      outstanding: loan.currentOutstanding,
+    );
+
+    if (!_isZero(thisMonthRemaining)) {
+      final days = thisMonthDue.difference(now).inDays;
+      return EmiSchedule(
+        loan: loan,
+        nextDate: thisMonthDue,
+        daysUntilDue: days,
+        status: _emiStatus(days, isPartial: thisMonthPaid > 0),
+        remainingAmount: thisMonthRemaining,
+      );
+    }
+
+    final nextMonthDate = DateTime(now.year, now.month + 1, 1);
+    final nextDue = _withSafeDay(nextMonthDate.year, nextMonthDate.month, day);
+    final nextMonthRemaining = emiAmount
+        .clamp(0, loan.currentOutstanding)
+        .toDouble();
+    if (_isZero(nextMonthRemaining)) return null;
+
+    final days = nextDue.difference(now).inDays;
+    return EmiSchedule(
+      loan: loan,
+      nextDate: nextDue,
+      daysUntilDue: days,
+      status: _emiStatus(days, isPartial: false),
+      remainingAmount: nextMonthRemaining,
+    );
   }
+
+  Future<double> _monthPaidAmount(int loanId, int year, int month) async {
+    final payments =
+        await (_db.select(_db.loanPayments)..where(
+              (p) =>
+                  p.loanId.equals(loanId) &
+                  p.paymentDate.year.equals(year) &
+                  p.paymentDate.month.equals(month),
+            ))
+            .get();
+    return payments.fold<double>(0, (sum, p) => sum + p.amount);
+  }
+
+  double _remainingForEmi({
+    required double emiAmount,
+    required double paidAmount,
+    required double outstanding,
+  }) {
+    final cappedDue = emiAmount.clamp(0, outstanding).toDouble();
+    final remaining = cappedDue - paidAmount;
+    return remaining <= _amountTolerance ? 0 : remaining;
+  }
+
+  bool _isZero(double value) => value.abs() <= _amountTolerance;
+
+  static const double _amountTolerance = 0.01;
 
   DateTime _withSafeDay(int year, int month, int day) {
     final safeDay = day.clamp(1, DateTime(year, month + 1, 0).day);

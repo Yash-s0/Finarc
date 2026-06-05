@@ -129,7 +129,7 @@ class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
             ),
             const SizedBox(height: AppSpacing.sm),
             SizedBox(
-              height: 188,
+              height: 204,
               child: PageView.builder(
                 controller: _pageController,
                 itemCount: summaries.length,
@@ -185,7 +185,6 @@ class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
             if (_activeTab == 0)
               ..._overviewWidgets(
                 context,
-                data,
                 selectedDetailState,
                 selected.card.id,
               )
@@ -242,121 +241,131 @@ class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
 
   List<Widget> _overviewWidgets(
     BuildContext context,
-    ({
-      List<CreditCard> cards,
-      double billedDue,
-      double totalOutstanding,
-      double totalLimit,
-      double utilization,
-      double unbilled,
-      List<CardOverviewSummary> cardSummaries,
-    })
-    data,
     AsyncValue<CardDetailViewModel> selectedDetailState,
     int selectedCardId,
   ) {
     return [
-      GridView.count(
-        crossAxisCount: 2,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        childAspectRatio: 1.9,
-        crossAxisSpacing: AppSpacing.xs,
-        mainAxisSpacing: AppSpacing.xs,
-        children: [
-          FinarcMetricCard(
-            title: 'Total Card Dues',
-            value: inr(data.billedDue),
-            icon: Icons.warning_amber_rounded,
-            iconColor: AppColors.darkWarning,
-            iconBackgroundColor: AppColors.darkWarning.withValues(alpha: 0.14),
-          ),
-          FinarcMetricCard(
-            title: 'Unbilled',
-            value: inr(data.unbilled),
-            icon: Icons.receipt_long_rounded,
-            iconColor: AppColors.darkBlue,
-            iconBackgroundColor: AppColors.darkBlue.withValues(alpha: 0.14),
-          ),
-          FinarcMetricCard(
-            title: 'Outstanding',
-            value: inr(data.totalOutstanding),
-            icon: Icons.account_balance_wallet_rounded,
-            iconColor: AppColors.darkAccent,
-            iconBackgroundColor: AppColors.darkAccent.withValues(alpha: 0.14),
-          ),
-          FinarcMetricCard(
-            title: 'Utilization',
-            value: '${(data.utilization * 100).toStringAsFixed(1)}%',
-            icon: Icons.pie_chart_outline_rounded,
-            iconColor: AppColors.darkMint,
-            iconBackgroundColor: AppColors.darkMint.withValues(alpha: 0.14),
-          ),
-        ],
-      ),
-      const SizedBox(height: AppSpacing.sm),
       selectedDetailState.when(
-        loading: () => const FinarcLoadingSkeleton(height: 132),
+        loading: () => Column(
+          children: const [
+            FinarcLoadingSkeleton(height: 188),
+            SizedBox(height: AppSpacing.sm),
+            FinarcLoadingSkeleton(height: 132),
+          ],
+        ),
         error: (e, _) =>
             FinarcCard(child: Text('Unable to load selected card: $e')),
         data: (vm) {
           final hasDues = vm.currentDueAmount > 0;
-          return FinarcCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                FinarcSectionHeader(
-                  title: 'Current Bill',
-                  trailing: FinarcStatusBadge(
-                    label: vm.billStatus.toUpperCase(),
-                    tone: _toneForStatus(vm.billStatus),
-                    compact: true,
+          return Column(
+            children: [
+              GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                childAspectRatio: 1.9,
+                crossAxisSpacing: AppSpacing.xs,
+                mainAxisSpacing: AppSpacing.xs,
+                children: [
+                  FinarcMetricCard(
+                    title: 'Total Card Dues',
+                    value: inr(vm.currentDueAmount),
+                    icon: Icons.warning_amber_rounded,
+                    iconColor: AppColors.darkWarning,
+                    iconBackgroundColor: AppColors.darkWarning.withValues(
+                      alpha: 0.14,
+                    ),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Row(
+                  FinarcMetricCard(
+                    title: 'Unbilled',
+                    value: inr(vm.unbilledAmount),
+                    icon: Icons.receipt_long_rounded,
+                    iconColor: AppColors.darkBlue,
+                    iconBackgroundColor: AppColors.darkBlue.withValues(
+                      alpha: 0.14,
+                    ),
+                  ),
+                  FinarcMetricCard(
+                    title: 'Outstanding',
+                    value: inr(vm.totalOutstanding),
+                    icon: Icons.account_balance_wallet_rounded,
+                    iconColor: AppColors.darkAccent,
+                    iconBackgroundColor: AppColors.darkAccent.withValues(
+                      alpha: 0.14,
+                    ),
+                  ),
+                  FinarcMetricCard(
+                    title: 'Utilization',
+                    value: '${(vm.utilization * 100).toStringAsFixed(1)}%',
+                    icon: Icons.pie_chart_outline_rounded,
+                    iconColor: AppColors.darkMint,
+                    iconBackgroundColor: AppColors.darkMint.withValues(
+                      alpha: 0.14,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              FinarcCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            inr(vm.currentDueAmount),
-                            style: AppTextStyles.amountStyle(
-                              color: Theme.of(context).colorScheme.onSurface,
-                              size: 24,
-                              weight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            vm.currentBill == null
-                                ? 'No active billed statement'
-                                : 'Due ${_dateText(vm.currentBill!.dueDate)}',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
+                    FinarcSectionHeader(
+                      title: 'Current Bill',
+                      trailing: FinarcStatusBadge(
+                        label: vm.billStatus.toUpperCase(),
+                        tone: _toneForStatus(vm.billStatus),
+                        compact: true,
                       ),
                     ),
-                    const SizedBox(width: AppSpacing.xs),
-                    Expanded(
-                      child: hasDues
-                          ? FinarcPrimaryButton(
-                              onPressed: () =>
-                                  context.push('/cards/$selectedCardId'),
-                              label: 'Pay Now',
-                              expand: false,
-                            )
-                          : FinarcSecondaryButton(
-                              onPressed: () =>
-                                  context.push('/cards/$selectedCardId'),
-                              label: 'Mark Paid',
-                            ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                inr(vm.currentDueAmount),
+                                style: AppTextStyles.amountStyle(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
+                                  size: 24,
+                                  weight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                vm.currentBill == null
+                                    ? 'No active billed statement'
+                                    : 'Due ${_dateText(vm.currentBill!.dueDate)}',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Expanded(
+                          child: hasDues
+                              ? FinarcPrimaryButton(
+                                  onPressed: () =>
+                                      context.push('/cards/$selectedCardId'),
+                                  label: 'Pay Now',
+                                  expand: false,
+                                )
+                              : FinarcSecondaryButton(
+                                  onPressed: () =>
+                                      context.push('/cards/$selectedCardId'),
+                                  label: 'Mark Paid',
+                                ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           );
         },
       ),

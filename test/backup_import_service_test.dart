@@ -212,6 +212,7 @@ void main() {
           LoansCompanion.insert(
             title: 'Vehicle Loan',
             lenderName: 'HDFC',
+            lenderType: const Value('company'),
             loanType: const Value('vehicle'),
             principalAmount: 80000,
             currentOutstanding: 50000,
@@ -270,6 +271,7 @@ void main() {
       expect(backup.toLowerCase().contains('cvv'), false);
       expect(backup.toLowerCase().contains('expiry'), false);
       expect((data['bankAccounts'] as List).single['last4'], '7788');
+      expect((data['loans'] as List).single['lenderType'], 'company');
     },
   );
 
@@ -345,6 +347,8 @@ void main() {
     expect(banks.single.last4, '7788');
     expect(txns.length, 1);
     expect(cards.length, 1);
+    final loans = await db.select(db.loans).get();
+    expect(loans.single.lenderType, 'company');
   });
 
   test('import handles missing optional arrays', () async {

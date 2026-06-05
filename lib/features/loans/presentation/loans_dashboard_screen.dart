@@ -218,12 +218,14 @@ class _EmiRow extends StatelessWidget {
       'overdue' => FinarcStatusTone.error,
       'dueToday' => FinarcStatusTone.warning,
       'dueSoon' => FinarcStatusTone.warning,
+      'partial' => FinarcStatusTone.warning,
       _ => FinarcStatusTone.info,
     };
 
     final dueLabel = switch (schedule.status) {
       'overdue' => '${schedule.daysUntilDue.abs()}d overdue',
       'dueToday' => 'Due today',
+      'partial' => 'Partial',
       'dueSoon' => 'Due in ${schedule.daysUntilDue}d',
       _ => 'Upcoming',
     };
@@ -247,7 +249,7 @@ class _EmiRow extends StatelessWidget {
           ),
         ),
         Text(
-          inr(schedule.loan.emiAmount ?? 0),
+          inr(schedule.remainingAmount),
           style: AppTextStyles.amountStyle(
             color: Theme.of(context).colorScheme.onSurface,
             size: 14,

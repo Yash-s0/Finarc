@@ -366,6 +366,39 @@ void main() {
   );
 
   test(
+    'company loan deductions are excluded from lifestyle spending',
+    () async {
+      await db
+          .into(db.transactions)
+          .insert(
+            TransactionsCompanion.insert(
+              type: TransactionType.loanEmi,
+              amount: 5000,
+              title: 'Company Loan Deduction',
+              category: 'Loan EMI',
+              transactionDate: DateTime(2026, 5, 18),
+              paymentSourceType: PaymentSourceType.salaryDeduction,
+              paymentSourceId: 0,
+              transactionImpactType: const Value('loanRepayment'),
+            ),
+          );
+
+      final snapshot = await service.buildSnapshot(
+        period: AnalyticsPeriod.thisMonth,
+        now: DateTime(2026, 5, 25),
+      );
+
+      expect(snapshot.spending.totalSpending, closeTo(2100, 0.001));
+      expect(
+        snapshot.spending.topMerchants.any(
+          (entry) => entry.name == 'Company Loan Deduction',
+        ),
+        false,
+      );
+    },
+  );
+
+  test(
     'income is included in income analytics and excluded from spending',
     () async {
       final snapshot = await service.buildSnapshot(

@@ -8494,6 +8494,17 @@ class $LoansTable extends Loans with TableInfo<$LoansTable, Loan> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _lenderTypeMeta = const VerificationMeta(
+    'lenderType',
+  );
+  @override
+  late final GeneratedColumn<String> lenderType = GeneratedColumn<String>(
+    'lender_type',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _loanTypeMeta = const VerificationMeta(
     'loanType',
   );
@@ -8652,6 +8663,7 @@ class $LoansTable extends Loans with TableInfo<$LoansTable, Loan> {
     id,
     title,
     lenderName,
+    lenderType,
     loanType,
     principalAmount,
     currentOutstanding,
@@ -8697,6 +8709,12 @@ class $LoansTable extends Loans with TableInfo<$LoansTable, Loan> {
       );
     } else if (isInserting) {
       context.missing(_lenderNameMeta);
+    }
+    if (data.containsKey('lender_type')) {
+      context.handle(
+        _lenderTypeMeta,
+        lenderType.isAcceptableOrUnknown(data['lender_type']!, _lenderTypeMeta),
+      );
     }
     if (data.containsKey('loan_type')) {
       context.handle(
@@ -8822,6 +8840,10 @@ class $LoansTable extends Loans with TableInfo<$LoansTable, Loan> {
         DriftSqlType.string,
         data['${effectivePrefix}lender_name'],
       )!,
+      lenderType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}lender_type'],
+      ),
       loanType: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}loan_type'],
@@ -8891,6 +8913,7 @@ class Loan extends DataClass implements Insertable<Loan> {
   final int id;
   final String title;
   final String lenderName;
+  final String? lenderType;
   final String loanType;
   final double principalAmount;
   final double currentOutstanding;
@@ -8909,6 +8932,7 @@ class Loan extends DataClass implements Insertable<Loan> {
     required this.id,
     required this.title,
     required this.lenderName,
+    this.lenderType,
     required this.loanType,
     required this.principalAmount,
     required this.currentOutstanding,
@@ -8930,6 +8954,9 @@ class Loan extends DataClass implements Insertable<Loan> {
     map['id'] = Variable<int>(id);
     map['title'] = Variable<String>(title);
     map['lender_name'] = Variable<String>(lenderName);
+    if (!nullToAbsent || lenderType != null) {
+      map['lender_type'] = Variable<String>(lenderType);
+    }
     map['loan_type'] = Variable<String>(loanType);
     map['principal_amount'] = Variable<double>(principalAmount);
     map['current_outstanding'] = Variable<double>(currentOutstanding);
@@ -8970,6 +8997,9 @@ class Loan extends DataClass implements Insertable<Loan> {
       id: Value(id),
       title: Value(title),
       lenderName: Value(lenderName),
+      lenderType: lenderType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lenderType),
       loanType: Value(loanType),
       principalAmount: Value(principalAmount),
       currentOutstanding: Value(currentOutstanding),
@@ -9014,6 +9044,7 @@ class Loan extends DataClass implements Insertable<Loan> {
       id: serializer.fromJson<int>(json['id']),
       title: serializer.fromJson<String>(json['title']),
       lenderName: serializer.fromJson<String>(json['lenderName']),
+      lenderType: serializer.fromJson<String?>(json['lenderType']),
       loanType: serializer.fromJson<String>(json['loanType']),
       principalAmount: serializer.fromJson<double>(json['principalAmount']),
       currentOutstanding: serializer.fromJson<double>(
@@ -9039,6 +9070,7 @@ class Loan extends DataClass implements Insertable<Loan> {
       'id': serializer.toJson<int>(id),
       'title': serializer.toJson<String>(title),
       'lenderName': serializer.toJson<String>(lenderName),
+      'lenderType': serializer.toJson<String?>(lenderType),
       'loanType': serializer.toJson<String>(loanType),
       'principalAmount': serializer.toJson<double>(principalAmount),
       'currentOutstanding': serializer.toJson<double>(currentOutstanding),
@@ -9060,6 +9092,7 @@ class Loan extends DataClass implements Insertable<Loan> {
     int? id,
     String? title,
     String? lenderName,
+    Value<String?> lenderType = const Value.absent(),
     String? loanType,
     double? principalAmount,
     double? currentOutstanding,
@@ -9078,6 +9111,7 @@ class Loan extends DataClass implements Insertable<Loan> {
     id: id ?? this.id,
     title: title ?? this.title,
     lenderName: lenderName ?? this.lenderName,
+    lenderType: lenderType.present ? lenderType.value : this.lenderType,
     loanType: loanType ?? this.loanType,
     principalAmount: principalAmount ?? this.principalAmount,
     currentOutstanding: currentOutstanding ?? this.currentOutstanding,
@@ -9102,6 +9136,9 @@ class Loan extends DataClass implements Insertable<Loan> {
       lenderName: data.lenderName.present
           ? data.lenderName.value
           : this.lenderName,
+      lenderType: data.lenderType.present
+          ? data.lenderType.value
+          : this.lenderType,
       loanType: data.loanType.present ? data.loanType.value : this.loanType,
       principalAmount: data.principalAmount.present
           ? data.principalAmount.value
@@ -9135,6 +9172,7 @@ class Loan extends DataClass implements Insertable<Loan> {
           ..write('id: $id, ')
           ..write('title: $title, ')
           ..write('lenderName: $lenderName, ')
+          ..write('lenderType: $lenderType, ')
           ..write('loanType: $loanType, ')
           ..write('principalAmount: $principalAmount, ')
           ..write('currentOutstanding: $currentOutstanding, ')
@@ -9158,6 +9196,7 @@ class Loan extends DataClass implements Insertable<Loan> {
     id,
     title,
     lenderName,
+    lenderType,
     loanType,
     principalAmount,
     currentOutstanding,
@@ -9180,6 +9219,7 @@ class Loan extends DataClass implements Insertable<Loan> {
           other.id == this.id &&
           other.title == this.title &&
           other.lenderName == this.lenderName &&
+          other.lenderType == this.lenderType &&
           other.loanType == this.loanType &&
           other.principalAmount == this.principalAmount &&
           other.currentOutstanding == this.currentOutstanding &&
@@ -9200,6 +9240,7 @@ class LoansCompanion extends UpdateCompanion<Loan> {
   final Value<int> id;
   final Value<String> title;
   final Value<String> lenderName;
+  final Value<String?> lenderType;
   final Value<String> loanType;
   final Value<double> principalAmount;
   final Value<double> currentOutstanding;
@@ -9218,6 +9259,7 @@ class LoansCompanion extends UpdateCompanion<Loan> {
     this.id = const Value.absent(),
     this.title = const Value.absent(),
     this.lenderName = const Value.absent(),
+    this.lenderType = const Value.absent(),
     this.loanType = const Value.absent(),
     this.principalAmount = const Value.absent(),
     this.currentOutstanding = const Value.absent(),
@@ -9237,6 +9279,7 @@ class LoansCompanion extends UpdateCompanion<Loan> {
     this.id = const Value.absent(),
     required String title,
     required String lenderName,
+    this.lenderType = const Value.absent(),
     this.loanType = const Value.absent(),
     required double principalAmount,
     required double currentOutstanding,
@@ -9259,6 +9302,7 @@ class LoansCompanion extends UpdateCompanion<Loan> {
     Expression<int>? id,
     Expression<String>? title,
     Expression<String>? lenderName,
+    Expression<String>? lenderType,
     Expression<String>? loanType,
     Expression<double>? principalAmount,
     Expression<double>? currentOutstanding,
@@ -9278,6 +9322,7 @@ class LoansCompanion extends UpdateCompanion<Loan> {
       if (id != null) 'id': id,
       if (title != null) 'title': title,
       if (lenderName != null) 'lender_name': lenderName,
+      if (lenderType != null) 'lender_type': lenderType,
       if (loanType != null) 'loan_type': loanType,
       if (principalAmount != null) 'principal_amount': principalAmount,
       if (currentOutstanding != null) 'current_outstanding': currentOutstanding,
@@ -9299,6 +9344,7 @@ class LoansCompanion extends UpdateCompanion<Loan> {
     Value<int>? id,
     Value<String>? title,
     Value<String>? lenderName,
+    Value<String?>? lenderType,
     Value<String>? loanType,
     Value<double>? principalAmount,
     Value<double>? currentOutstanding,
@@ -9318,6 +9364,7 @@ class LoansCompanion extends UpdateCompanion<Loan> {
       id: id ?? this.id,
       title: title ?? this.title,
       lenderName: lenderName ?? this.lenderName,
+      lenderType: lenderType ?? this.lenderType,
       loanType: loanType ?? this.loanType,
       principalAmount: principalAmount ?? this.principalAmount,
       currentOutstanding: currentOutstanding ?? this.currentOutstanding,
@@ -9346,6 +9393,9 @@ class LoansCompanion extends UpdateCompanion<Loan> {
     }
     if (lenderName.present) {
       map['lender_name'] = Variable<String>(lenderName.value);
+    }
+    if (lenderType.present) {
+      map['lender_type'] = Variable<String>(lenderType.value);
     }
     if (loanType.present) {
       map['loan_type'] = Variable<String>(loanType.value);
@@ -9398,6 +9448,7 @@ class LoansCompanion extends UpdateCompanion<Loan> {
           ..write('id: $id, ')
           ..write('title: $title, ')
           ..write('lenderName: $lenderName, ')
+          ..write('lenderType: $lenderType, ')
           ..write('loanType: $loanType, ')
           ..write('principalAmount: $principalAmount, ')
           ..write('currentOutstanding: $currentOutstanding, ')
@@ -17056,6 +17107,7 @@ typedef $$LoansTableCreateCompanionBuilder =
       Value<int> id,
       required String title,
       required String lenderName,
+      Value<String?> lenderType,
       Value<String> loanType,
       required double principalAmount,
       required double currentOutstanding,
@@ -17076,6 +17128,7 @@ typedef $$LoansTableUpdateCompanionBuilder =
       Value<int> id,
       Value<String> title,
       Value<String> lenderName,
+      Value<String?> lenderType,
       Value<String> loanType,
       Value<double> principalAmount,
       Value<double> currentOutstanding,
@@ -17112,6 +17165,11 @@ class $$LoansTableFilterComposer extends Composer<_$AppDatabase, $LoansTable> {
 
   ColumnFilters<String> get lenderName => $composableBuilder(
     column: $table.lenderName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lenderType => $composableBuilder(
+    column: $table.lenderType,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -17210,6 +17268,11 @@ class $$LoansTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get lenderType => $composableBuilder(
+    column: $table.lenderType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get loanType => $composableBuilder(
     column: $table.loanType,
     builder: (column) => ColumnOrderings(column),
@@ -17301,6 +17364,11 @@ class $$LoansTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get lenderType => $composableBuilder(
+    column: $table.lenderType,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get loanType =>
       $composableBuilder(column: $table.loanType, builder: (column) => column);
 
@@ -17385,6 +17453,7 @@ class $$LoansTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<String> title = const Value.absent(),
                 Value<String> lenderName = const Value.absent(),
+                Value<String?> lenderType = const Value.absent(),
                 Value<String> loanType = const Value.absent(),
                 Value<double> principalAmount = const Value.absent(),
                 Value<double> currentOutstanding = const Value.absent(),
@@ -17403,6 +17472,7 @@ class $$LoansTableTableManager
                 id: id,
                 title: title,
                 lenderName: lenderName,
+                lenderType: lenderType,
                 loanType: loanType,
                 principalAmount: principalAmount,
                 currentOutstanding: currentOutstanding,
@@ -17423,6 +17493,7 @@ class $$LoansTableTableManager
                 Value<int> id = const Value.absent(),
                 required String title,
                 required String lenderName,
+                Value<String?> lenderType = const Value.absent(),
                 Value<String> loanType = const Value.absent(),
                 required double principalAmount,
                 required double currentOutstanding,
@@ -17441,6 +17512,7 @@ class $$LoansTableTableManager
                 id: id,
                 title: title,
                 lenderName: lenderName,
+                lenderType: lenderType,
                 loanType: loanType,
                 principalAmount: principalAmount,
                 currentOutstanding: currentOutstanding,

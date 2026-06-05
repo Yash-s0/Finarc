@@ -190,6 +190,7 @@ class Loans extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get title => text()();
   TextColumn get lenderName => text()();
+  TextColumn get lenderType => text().nullable()();
   TextColumn get loanType => text().withDefault(const Constant('other'))();
   RealColumn get principalAmount => real()();
   RealColumn get currentOutstanding => real()();
@@ -324,7 +325,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 18;
+  int get schemaVersion => 19;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -518,15 +519,15 @@ class AppDatabase extends _$AppDatabase {
         await normalizeRecoverableDataBackfill();
       }
       if (from < 17) {
-        await m.addColumn(
-          transactions,
-          transactions.cashbackDestinationType,
-        );
+        await m.addColumn(transactions, transactions.cashbackDestinationType);
         await m.addColumn(transactions, transactions.cashbackDestinationId);
         await m.addColumn(transactions, transactions.relatedTransactionId);
       }
       if (from < 18) {
         await m.addColumn(bankAccounts, bankAccounts.last4);
+      }
+      if (from < 19) {
+        await m.addColumn(loans, loans.lenderType);
       }
       await globalAppLogService.log(
         category: 'migration',

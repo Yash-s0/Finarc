@@ -15,4 +15,5 @@ class PaymentSourceType {
   static const upi = 'upi';
   static const bank = 'bank';
   static const creditCard = 'creditCard';
+  static const salaryDeduction = 'salaryDeduction';
 }

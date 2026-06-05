@@ -230,63 +230,73 @@ class DashboardMetricGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 1.9,
-      crossAxisSpacing: AppSpacing.xs,
-      mainAxisSpacing: AppSpacing.xs,
-      children: [
-        FinarcMetricCard(
-          title: 'Bank Balance',
-          value: inr(data.bankBalance),
-          icon: Icons.account_balance_rounded,
-          iconColor: AppColors.darkMint,
-          iconBackgroundColor: AppColors.darkMint.withValues(alpha: 0.14),
-          onTap: () => context.push('/accounts'),
-        ),
-        FinarcMetricCard(
-          title: 'Card Dues',
-          value: inr(data.cardDues),
-          icon: Icons.credit_card_rounded,
-          iconColor: AppColors.darkError,
-          iconBackgroundColor: AppColors.darkError.withValues(alpha: 0.14),
-          onTap: () => context.push('/cards'),
-        ),
-        FinarcMetricCard(
-          title: 'Cash In Hand',
-          value: inr(data.cashInHand),
-          icon: Icons.wallet_rounded,
-          iconColor: AppColors.darkWarning,
-          iconBackgroundColor: AppColors.darkWarning.withValues(alpha: 0.14),
-          onTap: () => context.push('/accounts'),
-        ),
-        FinarcMetricCard(
-          title: 'Loans',
-          value: inr(data.loansOutstanding),
-          icon: Icons.account_balance_wallet_outlined,
-          iconColor: AppColors.darkOrange,
-          iconBackgroundColor: AppColors.darkOrange.withValues(alpha: 0.14),
-          onTap: () => context.push('/loans'),
-        ),
-        FinarcMetricCard(
-          title: 'Recoverable',
-          value: inr(data.recoverableAmount),
-          icon: Icons.call_received_rounded,
-          iconColor: AppColors.darkBlue,
-          iconBackgroundColor: AppColors.darkBlue.withValues(alpha: 0.14),
-          onTap: () => context.push('/recoverables'),
-        ),
-        FinarcMetricCard(
-          title: 'Monthly Spends',
-          value: inr(data.monthlySpends),
-          icon: Icons.calendar_month_rounded,
-          iconColor: AppColors.darkPink,
-          iconBackgroundColor: AppColors.darkPink.withValues(alpha: 0.14),
-          onTap: () => context.push('/analytics'),
-        ),
-      ],
+    final cards = [
+      FinarcMetricCard(
+        title: 'Bank Balance',
+        value: inr(data.bankBalance),
+        icon: Icons.account_balance_rounded,
+        iconColor: AppColors.darkMint,
+        iconBackgroundColor: AppColors.darkMint.withValues(alpha: 0.14),
+        onTap: () => context.push('/accounts'),
+      ),
+      FinarcMetricCard(
+        title: 'Card Dues',
+        value: inr(data.cardDues),
+        icon: Icons.credit_card_rounded,
+        iconColor: AppColors.darkError,
+        iconBackgroundColor: AppColors.darkError.withValues(alpha: 0.14),
+        onTap: () => context.push('/cards'),
+      ),
+      FinarcMetricCard(
+        title: 'Cash In Hand',
+        value: inr(data.cashInHand),
+        icon: Icons.wallet_rounded,
+        iconColor: AppColors.darkWarning,
+        iconBackgroundColor: AppColors.darkWarning.withValues(alpha: 0.14),
+        onTap: () => context.push('/accounts'),
+      ),
+      FinarcMetricCard(
+        title: 'Loans',
+        value: inr(data.loansOutstanding),
+        icon: Icons.account_balance_wallet_outlined,
+        iconColor: AppColors.darkOrange,
+        iconBackgroundColor: AppColors.darkOrange.withValues(alpha: 0.14),
+        onTap: () => context.push('/loans'),
+      ),
+      FinarcMetricCard(
+        title: 'Recoverable',
+        value: inr(data.recoverableAmount),
+        icon: Icons.call_received_rounded,
+        iconColor: AppColors.darkBlue,
+        iconBackgroundColor: AppColors.darkBlue.withValues(alpha: 0.14),
+        onTap: () => context.push('/recoverables'),
+      ),
+      FinarcMetricCard(
+        title: 'Monthly Spends',
+        value: inr(data.monthlySpends),
+        icon: Icons.calendar_month_rounded,
+        iconColor: AppColors.darkPink,
+        iconBackgroundColor: AppColors.darkPink.withValues(alpha: 0.14),
+        onTap: () => context.push('/analytics'),
+      ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 360;
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: isNarrow ? 1 : 2,
+            crossAxisSpacing: AppSpacing.xs,
+            mainAxisSpacing: AppSpacing.xs,
+            mainAxisExtent: isNarrow ? 94 : 116,
+          ),
+          itemCount: cards.length,
+          itemBuilder: (context, index) => cards[index],
+        );
+      },
     );
   }
 }
@@ -302,6 +312,7 @@ class PendingConfirmationsCard extends StatelessWidget {
     return FinarcCard(
       onTap: () => context.push('/pending'),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const CircleAvatar(
             radius: 18,
@@ -309,15 +320,22 @@ class PendingConfirmationsCard extends StatelessWidget {
             child: Icon(Icons.notification_important_outlined, size: 18),
           ),
           const SizedBox(width: AppSpacing.sm),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Pending Confirmations'),
-                SizedBox(height: 2),
+                Text(
+                  'Pending Confirmations',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 4),
                 Text(
                   'Detected spends waiting for your confirmation',
-                  style: TextStyle(fontSize: 12),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
             ),
@@ -343,6 +361,7 @@ class DueSoonCard extends StatelessWidget {
     return FinarcCard(
       onTap: () => context.push('/cards'),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const CircleAvatar(
             radius: 18,
@@ -352,7 +371,9 @@ class DueSoonCard extends StatelessWidget {
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
-              '$count card bill(s) due soon',
+              dashboardDueSoonLabel(count),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.titleSmall,
             ),
           ),
@@ -361,6 +382,58 @@ class DueSoonCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class DashboardAlertsSection extends StatelessWidget {
+  const DashboardAlertsSection({
+    super.key,
+    required this.pendingCount,
+    required this.dueSoonBillsCount,
+  });
+
+  final int pendingCount;
+  final int dueSoonBillsCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final cards = <Widget>[
+      if (pendingCount > 0)
+        PendingConfirmationsCard(pendingCount: pendingCount),
+      if (dueSoonBillsCount > 0) DueSoonCard(count: dueSoonBillsCount),
+    ];
+    if (cards.isEmpty) return const SizedBox.shrink();
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final stackVertically = constraints.maxWidth < 380 || cards.length == 1;
+        if (stackVertically) {
+          return Column(
+            children: [
+              for (var i = 0; i < cards.length; i++) ...[
+                cards[i],
+                if (i != cards.length - 1)
+                  const SizedBox(height: AppSpacing.xs),
+              ],
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            for (var i = 0; i < cards.length; i++) ...[
+              Expanded(child: cards[i]),
+              if (i != cards.length - 1) const SizedBox(width: AppSpacing.xs),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+String dashboardDueSoonLabel(int count) {
+  final noun = count == 1 ? 'bill' : 'bills';
+  return '$count card $noun due soon';
 }
 
 class RecentTransactionsSection extends StatelessWidget {

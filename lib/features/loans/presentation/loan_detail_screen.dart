@@ -111,6 +111,13 @@ class LoanDetailScreen extends ConsumerWidget {
                       data.loan.lenderName,
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
+                    if (data.loan.lenderType != null) ...[
+                      const SizedBox(height: AppSpacing.xxs),
+                      Text(
+                        _lenderTypeLabel(data.loan.lenderType!),
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
                     const SizedBox(height: AppSpacing.sm),
                     Text(
                       inr(data.loan.currentOutstanding),
@@ -158,6 +165,16 @@ class LoanDetailScreen extends ConsumerWidget {
                                 ? '-'
                                 : _dueText(data.overdueEmi!))
                           : _dueText(data.nextEmi!),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    _kv(
+                      context,
+                      'Due amount',
+                      inr(
+                        data.overdueEmi?.remainingAmount ??
+                            data.nextEmi?.remainingAmount ??
+                            0,
+                      ),
                     ),
                   ],
                 ),
@@ -300,12 +317,28 @@ class LoanDetailScreen extends ConsumerWidget {
   }
 
   static String _dueText(EmiSchedule schedule) {
-    if (schedule.daysUntilDue < 0) {
+    if (schedule.status == 'overdue') {
       return '${schedule.daysUntilDue.abs()} day(s) overdue';
     }
-    if (schedule.daysUntilDue == 0) {
+    if (schedule.status == 'dueToday') {
       return 'Due today';
     }
+    if (schedule.status == 'partial') {
+      return '${inr(schedule.remainingAmount)} remaining';
+    }
     return 'Due in ${schedule.daysUntilDue} day(s)';
+  }
+
+  static String _lenderTypeLabel(String type) {
+    switch (type) {
+      case LoanLenderType.company:
+        return 'Company';
+      case LoanLenderType.bankNbfc:
+        return 'Bank / NBFC';
+      case LoanLenderType.person:
+        return 'Person';
+      default:
+        return 'Other';
+    }
   }
 }

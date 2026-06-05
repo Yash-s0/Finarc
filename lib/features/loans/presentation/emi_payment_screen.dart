@@ -8,6 +8,7 @@ import '../../../shared/widgets/finarc/finarc_widgets.dart';
 import '../../expenses/data/expenses_providers.dart';
 import '../../expenses/models/transaction_types.dart';
 import '../../expenses/presentation/payment_source_selector_support.dart';
+import '../data/loan_service.dart';
 import '../data/loans_providers.dart';
 
 class EmiPaymentScreen extends ConsumerStatefulWidget {
@@ -45,6 +46,9 @@ class _EmiPaymentScreenState extends ConsumerState<EmiPaymentScreen> {
   DateTime _date = DateTime.now();
   String _sourceType = 'bank';
   int? _sourceId;
+
+  bool get _isSalaryDeduction =>
+      _sourceType == PaymentSourceType.salaryDeduction;
 
   @override
   void initState() {
@@ -114,6 +118,26 @@ class _EmiPaymentScreenState extends ConsumerState<EmiPaymentScreen> {
         if (_amount.text.isEmpty) {
           _amount.text = (loanData.loan.emiAmount ?? 0).toStringAsFixed(0);
         }
+        final isCompanyLoan =
+            loanData.loan.lenderType == LoanLenderType.company;
+        final modeOptions = [
+          ..._modeOptions,
+          if (isCompanyLoan)
+            const FinarcPaymentModeOption(
+              value: PaymentSourceType.salaryDeduction,
+              label: 'Company Deduction',
+              icon: Icons.badge_outlined,
+            ),
+        ];
+        if (!isCompanyLoan && _isSalaryDeduction) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            setState(() {
+              _sourceType = PaymentSourceType.bank;
+              _sourceId = null;
+            });
+          });
+        }
 
         return FinarcScaffold(
           appBar: const FinarcAppBar(title: 'Pay EMI'),
@@ -162,50 +186,71 @@ class _EmiPaymentScreenState extends ConsumerState<EmiPaymentScreen> {
                         },
                       ),
                       const SizedBox(height: AppSpacing.sm),
-                      sources.when(
-                        loading: () => const FinarcLoadingSkeleton(height: 56),
-                        error: (e, _) => Text(
-                          'Unable to load payment sources.',
+                      if (_isSalaryDeduction) ...[
+                        FinarcPaymentSelector(
+                          title: 'Payment Source',
+                          selectedMode: _sourceType,
+                          modes: modeOptions,
+                          onModeChanged: (v) => setState(() {
+                            _sourceType = v;
+                            _sourceId = null;
+                          }),
+                          sources: const [],
+                          selectedSourceId: null,
+                          onSourceChanged: (_) {},
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          'Use this if EMI is deducted before salary reaches your bank.',
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
-                        data: (sourceData) {
-                          final sourceConfig = sourceConfigForMode(
-                            sourceData,
-                            _sourceType,
-                          );
-                          _syncSourceSelection(sourceConfig.options);
-                          final emptyState = sourceConfig.options.isEmpty
-                              ? FinarcPaymentSourceEmptyState(
-                                  message: sourceConfig.emptyMessage!,
-                                  ctaLabel: sourceConfig.emptyCtaLabel!,
-                                  onTap: () =>
-                                      context.push(sourceConfig.emptyCtaRoute!),
-                                )
-                              : null;
-                          return FinarcPaymentSelector(
-                            title: 'Payment Source',
-                            selectedMode: _sourceType,
-                            modes: _modeOptions,
-                            onModeChanged: (v) => setState(() {
-                              _sourceType = v;
-                              _sourceId = null;
-                            }),
-                            sources: sourceConfig.options,
-                            selectedSourceId: _sourceId,
-                            onSourceChanged: (value) =>
-                                setState(() => _sourceId = value),
-                            sourceLabel: sourceConfig.fieldLabel,
-                            singleSourcePrefix: sourceConfig.singlePrefix,
-                            emptyState: emptyState,
-                            sourceValidator: (value) {
-                              if (sourceConfig.options.length <= 1) {
-                                return null;
-                              }
-                              return value == null ? 'Select source' : null;
-                            },
-                          );
-                        },
-                      ),
+                      ] else
+                        sources.when(
+                          loading: () =>
+                              const FinarcLoadingSkeleton(height: 56),
+                          error: (e, _) => Text(
+                            'Unable to load payment sources.',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          data: (sourceData) {
+                            final sourceConfig = sourceConfigForMode(
+                              sourceData,
+                              _sourceType,
+                            );
+                            _syncSourceSelection(sourceConfig.options);
+                            final emptyState = sourceConfig.options.isEmpty
+                                ? FinarcPaymentSourceEmptyState(
+                                    message: sourceConfig.emptyMessage!,
+                                    ctaLabel: sourceConfig.emptyCtaLabel!,
+                                    onTap: () => context.push(
+                                      sourceConfig.emptyCtaRoute!,
+                                    ),
+                                  )
+                                : null;
+                            return FinarcPaymentSelector(
+                              title: 'Payment Source',
+                              selectedMode: _sourceType,
+                              modes: modeOptions,
+                              onModeChanged: (v) => setState(() {
+                                _sourceType = v;
+                                _sourceId = null;
+                              }),
+                              sources: sourceConfig.options,
+                              selectedSourceId: _sourceId,
+                              onSourceChanged: (value) =>
+                                  setState(() => _sourceId = value),
+                              sourceLabel: sourceConfig.fieldLabel,
+                              singleSourcePrefix: sourceConfig.singlePrefix,
+                              emptyState: emptyState,
+                              sourceValidator: (value) {
+                                if (sourceConfig.options.length <= 1) {
+                                  return null;
+                                }
+                                return value == null ? 'Select source' : null;
+                              },
+                            );
+                          },
+                        ),
                       const SizedBox(height: AppSpacing.sm),
                       FinarcTextField(
                         label: 'Payment date',
@@ -252,6 +297,26 @@ class _EmiPaymentScreenState extends ConsumerState<EmiPaymentScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    final amount = double.parse(_amount.text);
+    if (_isSalaryDeduction) {
+      await ref
+          .read(loanActionsProvider)
+          .markEmiPaid(
+            loanId: widget.loanId,
+            amount: amount,
+            paymentSourceType: PaymentSourceType.salaryDeduction,
+            paymentDate: _date,
+            notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+          );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('EMI deduction recorded: ${inr(amount)}')),
+      );
+      context.pop();
+      return;
+    }
+
     final sources = ref.read(paymentSourcesProvider).valueOrNull;
     final sourceConfig = sourceConfigForMode(
       sources ??
@@ -270,7 +335,6 @@ class _EmiPaymentScreenState extends ConsumerState<EmiPaymentScreen> {
       return;
     }
 
-    final amount = double.parse(_amount.text);
     await ref
         .read(loanActionsProvider)
         .markEmiPaid(

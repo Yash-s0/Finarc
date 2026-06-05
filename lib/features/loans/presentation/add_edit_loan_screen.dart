@@ -30,6 +30,7 @@ class _AddEditLoanScreenState extends ConsumerState<AddEditLoanScreen> {
   final _notes = TextEditingController();
 
   String _loanType = LoanType.personal;
+  String _lenderType = LoanLenderType.company;
   bool _initialized = false;
 
   @override
@@ -68,6 +69,7 @@ class _AddEditLoanScreenState extends ConsumerState<AddEditLoanScreen> {
           _linkedAccountId.text = value.loan.linkedAccountId?.toString() ?? '';
           _notes.text = value.loan.notes ?? '';
           _loanType = value.loan.loanType;
+          _lenderType = value.loan.lenderType ?? LoanLenderType.company;
         }
       }
     }
@@ -101,6 +103,26 @@ class _AddEditLoanScreenState extends ConsumerState<AddEditLoanScreen> {
                           label: 'Lender name',
                           hint: 'HDFC / Friend name',
                           validator: _required,
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        Text(
+                          'Lender type',
+                          style: Theme.of(context).textTheme.labelMedium,
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: LoanLenderType.all
+                              .map(
+                                (type) => FinarcActionChip(
+                                  label: _lenderTypeLabel(type),
+                                  selected: _lenderType == type,
+                                  onTap: () =>
+                                      setState(() => _lenderType = type),
+                                ),
+                              )
+                              .toList(growable: false),
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         Text(
@@ -236,7 +258,9 @@ class _AddEditLoanScreenState extends ConsumerState<AddEditLoanScreen> {
 
     if (principal <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Principal amount must be greater than 0')),
+        const SnackBar(
+          content: Text('Principal amount must be greater than 0'),
+        ),
       );
       return;
     }
@@ -288,6 +312,7 @@ class _AddEditLoanScreenState extends ConsumerState<AddEditLoanScreen> {
       await actions.createLoan(
         title: _title.text.trim(),
         lenderName: _lender.text.trim(),
+        lenderType: _lenderType,
         loanType: _loanType,
         principalAmount: principal,
         currentOutstanding: outstanding,
@@ -303,6 +328,7 @@ class _AddEditLoanScreenState extends ConsumerState<AddEditLoanScreen> {
         widget.loanId!,
         title: _title.text.trim(),
         lenderName: _lender.text.trim(),
+        lenderType: _lenderType,
         loanType: _loanType,
         principalAmount: principal,
         currentOutstanding: outstanding,
@@ -327,5 +353,18 @@ class _AddEditLoanScreenState extends ConsumerState<AddEditLoanScreen> {
   int? _parseInt(String text) {
     if (text.trim().isEmpty) return null;
     return int.tryParse(text.trim());
+  }
+
+  String _lenderTypeLabel(String type) {
+    switch (type) {
+      case LoanLenderType.company:
+        return 'Company';
+      case LoanLenderType.bankNbfc:
+        return 'Bank / NBFC';
+      case LoanLenderType.person:
+        return 'Person';
+      default:
+        return 'Other';
+    }
   }
 }

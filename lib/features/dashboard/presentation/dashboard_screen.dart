@@ -48,11 +48,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   EdgeInsets _pagePadding(BuildContext context) {
     final topInset = MediaQuery.paddingOf(context).top;
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
     return EdgeInsets.fromLTRB(
       AppSpacing.md,
       AppSpacing.md + topInset,
       AppSpacing.md,
-      AppSpacing.md,
+      AppSpacing.md + bottomInset + 104,
     );
   }
 
@@ -162,20 +163,25 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                     FinarcCard(
                       padding: const EdgeInsets.symmetric(
                         horizontal: AppSpacing.sm,
-                        vertical: AppSpacing.xs,
+                        vertical: AppSpacing.sm,
                       ),
                       child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          const Icon(
-                            Icons.event_available_rounded,
-                            color: AppColors.darkMint,
-                            size: 14,
+                          const CircleAvatar(
+                            radius: 16,
+                            backgroundColor: AppColors.darkMint,
+                            child: Icon(
+                              Icons.event_available_rounded,
+                              color: AppColors.darkSurfaceLow,
+                              size: 16,
+                            ),
                           ),
                           const SizedBox(width: AppSpacing.xs),
                           Expanded(
                             child: Text(
                               _salaryInsight(salaryCreditDay),
-                              style: Theme.of(context).textTheme.bodySmall,
+                              style: Theme.of(context).textTheme.bodyMedium,
                             ),
                           ),
                         ],
@@ -185,21 +191,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                   const SizedBox(height: AppSpacing.sm),
                   DashboardMetricGrid(data: data),
                   const SizedBox(height: AppSpacing.sm),
-                  Row(
-                    children: [
-                      if (data.pendingCount > 0)
-                        Expanded(
-                          child: PendingConfirmationsCard(
-                            pendingCount: data.pendingCount,
-                          ),
-                        ),
-                      if (data.pendingCount > 0 && data.dueSoonBillsCount > 0)
-                        const SizedBox(width: AppSpacing.xs),
-                      if (data.dueSoonBillsCount > 0)
-                        Expanded(
-                          child: DueSoonCard(count: data.dueSoonBillsCount),
-                        ),
-                    ],
+                  DashboardAlertsSection(
+                    pendingCount: data.pendingCount,
+                    dueSoonBillsCount: data.dueSoonBillsCount,
                   ),
                   if (data.pendingCount > 0 || data.dueSoonBillsCount > 0)
                     const SizedBox(height: AppSpacing.sm),

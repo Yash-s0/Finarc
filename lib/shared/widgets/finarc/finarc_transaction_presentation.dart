@@ -16,6 +16,8 @@ class FinarcTransactionPresentation {
         return 'Wallet';
       case 'transfer':
         return 'Transfer';
+      case 'salaryDeduction':
+        return 'Salary Deduction';
       default:
         return sourceType.toUpperCase();
     }

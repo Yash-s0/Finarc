@@ -154,6 +154,7 @@ final loanActionsProvider = Provider((ref) {
   Future<int> createLoan({
     required String title,
     required String lenderName,
+    String? lenderType,
     required String loanType,
     required double principalAmount,
     required double currentOutstanding,
@@ -169,6 +170,7 @@ final loanActionsProvider = Provider((ref) {
     final id = await service.createLoan(
       title: title,
       lenderName: lenderName,
+      lenderType: lenderType,
       loanType: loanType,
       principalAmount: principalAmount,
       currentOutstanding: currentOutstanding,
@@ -192,6 +194,7 @@ final loanActionsProvider = Provider((ref) {
     int id, {
     String? title,
     String? lenderName,
+    String? lenderType,
     String? loanType,
     double? principalAmount,
     double? currentOutstanding,
@@ -208,6 +211,7 @@ final loanActionsProvider = Provider((ref) {
       id,
       title: title,
       lenderName: lenderName,
+      lenderType: lenderType,
       loanType: loanType,
       principalAmount: principalAmount,
       currentOutstanding: currentOutstanding,
@@ -240,7 +244,7 @@ final loanActionsProvider = Provider((ref) {
     required int loanId,
     required double amount,
     required String paymentSourceType,
-    required int paymentSourceId,
+    int? paymentSourceId,
     DateTime? paymentDate,
     String? notes,
   }) async {

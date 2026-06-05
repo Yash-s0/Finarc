@@ -559,6 +559,7 @@ class BackupService {
     'id': row.id,
     'title': row.title,
     'lenderName': row.lenderName,
+    'lenderType': row.lenderType,
     'loanType': row.loanType,
     'principalAmount': row.principalAmount,
     'currentOutstanding': row.currentOutstanding,
