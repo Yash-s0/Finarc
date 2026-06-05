@@ -76,4 +76,60 @@ void main() {
       isTrue,
     );
   });
+
+  testWidgets('recent transactions section does not reserve max height for empty state', (
+    tester,
+  ) async {
+    final snapshot = const DashboardSnapshot(
+      netWorth: 0,
+      bankBalance: 0,
+      cardDues: 0,
+      cardOutstanding: 0,
+      cashInHand: 0,
+      monthlySpends: 0,
+      pendingCount: 0,
+      loansOutstanding: 0,
+      recoverableAmount: 0,
+      splitReceivableAmount: 0,
+      splitPayableAmount: 0,
+      recentTransactions: [],
+      dueSoonBillsCount: 0,
+      bankAccountCount: 0,
+      cashWalletCount: 0,
+      cardCount: 0,
+      notificationDetectionEnabled: true,
+      totalAssets: 0,
+      totalLiabilities: 0,
+      payableAmount: 0,
+      debtRatio: 0,
+      monthlyEmiBurden: 0,
+      unreadAlertsCount: 0,
+      latestImportantAlert: null,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: RecentTransactionsSection(data: snapshot),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('No transactions yet'), findsOneWidget);
+    expect(
+      tester
+          .widgetList<SizedBox>(find.byType(SizedBox))
+          .any((box) => box.height == 164),
+      isTrue,
+    );
+    expect(
+      tester
+          .widgetList<SizedBox>(find.byType(SizedBox))
+          .any((box) => box.height == 320),
+      isFalse,
+    );
+  });
 }

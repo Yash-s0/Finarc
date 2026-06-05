@@ -21,7 +21,7 @@ class _AppShellState extends State<AppShell> {
   static const double _bottomNavHeight = 60;
   static const double _fabSize = 50;
   static const double _fabBottomPad = 12; // ~0.5cm-ish gap above nav
-  static const double _homeBodyBottomInset = 56;
+  static const double _homeBodyBottomInset = 0;
 
   void _openQuickActions() {
     FinarcBottomSheet.show<void>(

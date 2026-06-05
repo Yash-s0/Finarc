@@ -439,11 +439,23 @@ String dashboardDueSoonLabel(int count) {
 class RecentTransactionsSection extends StatelessWidget {
   const RecentTransactionsSection({super.key, required this.data});
 
+  static const double _maxListHeight = 320;
+  static const double _emptyStateHeight = 164;
+  static const double _compactTileEstimate = 72;
+
   final DashboardSnapshot data;
 
   @override
   Widget build(BuildContext context) {
     final items = data.recentTransactions;
+    final listHeight = items.isEmpty
+        ? _emptyStateHeight
+        : (_compactTileEstimate * items.length) +
+              (AppSpacing.xs * (items.length - 1))
+            .clamp(0, _maxListHeight);
+    final contentHeight = items.isEmpty
+        ? _emptyStateHeight
+        : listHeight.clamp(0, _maxListHeight).toDouble();
     return FinarcCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -457,7 +469,7 @@ class RecentTransactionsSection extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.xs),
           SizedBox(
-            height: 320,
+            height: contentHeight,
             child: items.isEmpty
                 ? const FinarcEmptyState(
                     title: 'No transactions yet',

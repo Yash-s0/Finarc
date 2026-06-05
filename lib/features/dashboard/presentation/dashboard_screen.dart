@@ -53,7 +53,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       AppSpacing.md,
       AppSpacing.md + topInset,
       AppSpacing.md,
-      AppSpacing.sm + bottomInset + 72,
+      AppSpacing.xs + bottomInset + 52,
     );
   }
 
@@ -188,7 +188,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                       ),
                     ),
                   ],
-                  const SizedBox(height: AppSpacing.xs),
+                  const SizedBox(height: 0),
                   DashboardMetricGrid(data: data),
                   const SizedBox(height: AppSpacing.xs),
                   DashboardAlertsSection(
