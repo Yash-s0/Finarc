@@ -116,7 +116,7 @@ class _EmiPaymentScreenState extends ConsumerState<EmiPaymentScreen> {
       ),
       data: (loanData) {
         if (_amount.text.isEmpty) {
-          _amount.text = (loanData.loan.emiAmount ?? 0).toStringAsFixed(0);
+          _amount.text = moneyInput(loanData.loan.emiAmount ?? 0);
         }
         final isCompanyLoan =
             loanData.loan.lenderType == LoanLenderType.company;

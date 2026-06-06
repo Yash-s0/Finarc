@@ -107,4 +107,32 @@ void main() {
     expect(find.text('0.0%'), findsOneWidget);
     expect(find.text('No active billed statement'), findsOneWidget);
   });
+
+  testWidgets('unbilled-only cards do not show a pay now action', (
+    tester,
+  ) async {
+    await createCard(
+      bankName: 'Axis',
+      nickname: 'Neo',
+      last4: '1111',
+      dueDay: 7,
+    );
+
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+          seedProvider.overrideWith((ref) async {}),
+        ],
+        child: const MaterialApp(home: Scaffold(body: CardsOverviewScreen())),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pay Now'), findsNothing);
+    expect(find.text('No Bill'), findsOneWidget);
+  });
 }

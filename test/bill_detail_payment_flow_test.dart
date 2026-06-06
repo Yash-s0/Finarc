@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:finarc/core/database/app_database.dart';
 import 'package:finarc/core/database/database_providers.dart';
 import 'package:finarc/features/cards/presentation/bill_detail_screen.dart';
+import 'package:finarc/shared/widgets/finarc/finarc_primary_button.dart';
 
 void main() {
   late AppDatabase db;
@@ -63,95 +64,102 @@ void main() {
     );
   }
 
-  testWidgets('bill detail shows payment action and full payment defaults to remaining due', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(800, 1000));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    await db
-        .into(db.bankAccounts)
-        .insert(
-          BankAccountsCompanion.insert(
-            bankName: 'HDFC',
-            accountName: 'Main',
-            accountType: 'savings',
-            currentBalance: const Value(5000),
-          ),
-        );
-    final cardId = await createCard();
-    final billId = await createBill(cardId);
+  testWidgets(
+    'bill detail shows payment action and full payment defaults to remaining due',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(800, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await db
+          .into(db.bankAccounts)
+          .insert(
+            BankAccountsCompanion.insert(
+              bankName: 'HDFC',
+              accountName: 'Main',
+              accountType: 'savings',
+              currentBalance: const Value(5000),
+            ),
+          );
+      final cardId = await createCard();
+      final billId = await createBill(cardId);
 
-    await tester.pumpWidget(
-      wrap(BillDetailScreen(cardId: cardId, billId: billId)),
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        wrap(BillDetailScreen(cardId: cardId, billId: billId)),
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.text('Record Payment'), findsOneWidget);
+      expect(find.text('Record Payment'), findsOneWidget);
 
-    await tester.tap(find.text('Record Payment'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('Record Payment'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('1200.00'), findsOneWidget);
+      expect(find.text('1200.00'), findsOneWidget);
 
-    await tester.ensureVisible(find.text('Confirm'));
-    await tester.tap(find.text('Confirm'));
-    await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Confirm'));
+      await tester.tap(find.text('Confirm'));
+      await tester.pumpAndSettle();
 
-    final bill = await (db.select(
-      db.cardBills,
-    )..where((b) => b.id.equals(billId))).getSingle();
-    final payment = await (db.select(
-      db.transactions,
-    )..where((t) => t.type.equals('cardPayment'))).getSingle();
+      final bill = await (db.select(
+        db.cardBills,
+      )..where((b) => b.id.equals(billId))).getSingle();
+      final payment = await (db.select(
+        db.transactions,
+      )..where((t) => t.type.equals('cardPayment'))).getSingle();
 
-    expect(bill.status, 'paid');
-    expect(bill.paidAmount, 1200);
-    expect(payment.amount, 1200);
-  });
+      expect(bill.status, 'paid');
+      expect(bill.paidAmount, 1200);
+      expect(payment.amount, 1200);
+    },
+  );
 
-  testWidgets('partial payment reduces remaining due and supports cash wallet source', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(800, 1000));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    await db
-        .into(db.cashWallets)
-        .insert(
-          CashWalletsCompanion.insert(
-            walletName: 'Cash',
-            currentBalance: const Value(2500),
-          ),
-        );
-    final cardId = await createCard();
-    final billId = await createBill(cardId);
+  testWidgets(
+    'partial payment reduces remaining due and supports cash wallet source',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(800, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await db
+          .into(db.cashWallets)
+          .insert(
+            CashWalletsCompanion.insert(
+              walletName: 'Cash',
+              currentBalance: const Value(2500),
+            ),
+          );
+      final cardId = await createCard();
+      final billId = await createBill(cardId);
 
-    await tester.pumpWidget(
-      wrap(BillDetailScreen(cardId: cardId, billId: billId)),
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        wrap(BillDetailScreen(cardId: cardId, billId: billId)),
+      );
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Record Payment'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Partial Payment'));
-    await tester.pumpAndSettle();
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Payment amount'),
-      '200.00',
-    );
+      await tester.tap(find.text('Record Payment'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Partial Payment'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Payment amount'),
+        '200.00',
+      );
 
-    await tester.ensureVisible(find.text('Confirm'));
-    await tester.tap(find.text('Confirm'));
-    await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Confirm'));
+      await tester.tap(find.text('Confirm'));
+      await tester.pumpAndSettle();
 
-    final bill = await (db.select(
-      db.cardBills,
-    )..where((b) => b.id.equals(billId))).getSingle();
-    final wallet = await (db.select(db.cashWallets)..where((w) => w.id.equals(1)))
-        .getSingle();
+      final bill = await (db.select(
+        db.cardBills,
+      )..where((b) => b.id.equals(billId))).getSingle();
+      final wallet = await (db.select(
+        db.cashWallets,
+      )..where((w) => w.id.equals(1))).getSingle();
+      final payment = await (db.select(
+        db.transactions,
+      )..where((t) => t.type.equals('cardPayment'))).getSingle();
 
-    expect(bill.paidAmount, 200);
-    expect(wallet.currentBalance, 2300);
-  });
+      expect(bill.paidAmount, 200);
+      expect(wallet.currentBalance, 2300);
+      expect(payment.amount, 200);
+    },
+  );
 
   testWidgets('overpayment is blocked in the payment form', (tester) async {
     await tester.binding.setSurfaceSize(const Size(800, 1000));
@@ -197,4 +205,42 @@ void main() {
     )..where((b) => b.id.equals(billId))).getSingle();
     expect(bill.paidAmount, 0);
   });
+
+  testWidgets(
+    'paid bill disables payment action and keeps paid status visible',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(800, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await db
+          .into(db.bankAccounts)
+          .insert(
+            BankAccountsCompanion.insert(
+              bankName: 'HDFC',
+              accountName: 'Main',
+              accountType: 'savings',
+              currentBalance: const Value(5000),
+            ),
+          );
+      final cardId = await createCard(currentOutstanding: 0);
+      final billId = await createBill(cardId, billedAmount: 8384.59);
+      await (db.update(db.cardBills)..where((b) => b.id.equals(billId))).write(
+        const CardBillsCompanion(
+          paidAmount: Value(8384.59),
+          status: Value('paid'),
+        ),
+      );
+
+      await tester.pumpWidget(
+        wrap(BillDetailScreen(cardId: cardId, billId: billId)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('₹8,384.59'), findsAtLeastNWidgets(2));
+      final paidButton = tester.widget<FinarcPrimaryButton>(
+        find.byType(FinarcPrimaryButton),
+      );
+      expect(paidButton.label, 'Paid');
+      expect(paidButton.onPressed == null, isTrue);
+    },
+  );
 }

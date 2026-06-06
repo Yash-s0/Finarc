@@ -257,58 +257,6 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
     );
   }
 
-  Future<void> _openPaymentConfirmation(
-    BuildContext context, {
-    required double billAmount,
-    required Future<void> Function() onConfirm,
-  }) {
-    return FinarcBottomSheet.show<void>(
-      context,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.md,
-          AppSpacing.xs,
-          AppSpacing.md,
-          AppSpacing.lg,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Confirm Card Payment',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              'Pay ${inr(billAmount)} from selected bank account?',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Row(
-              children: [
-                Expanded(
-                  child: FinarcSecondaryButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    label: 'Cancel',
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: FinarcPrimaryButton(
-                    onPressed: () async => onConfirm(),
-                    label: 'Confirm',
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-      isScrollControlled: true,
-    );
-  }
-
   Future<void> _openPaymentSheet(
     BuildContext context, {
     required ({
@@ -364,150 +312,153 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                  Text(
-                    'Record Payment',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    'Remaining due ${inr(remainingDue)}',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Wrap(
-                    spacing: AppSpacing.xs,
-                    children: [
-                      ChoiceChip(
-                        label: const Text('Full Payment'),
-                        selected: _isFullPayment,
-                        onSelected: (selected) {
-                          if (!selected) return;
-                          setSheetState(() {
-                            _isFullPayment = true;
-                            _amountController.text = moneyInput(remainingDue);
-                          });
-                        },
-                      ),
-                      ChoiceChip(
-                        label: const Text('Partial Payment'),
-                        selected: !_isFullPayment,
-                        onSelected: (selected) {
-                          if (!selected) return;
-                          setSheetState(() => _isFullPayment = false);
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  FinarcTextField(
-                    controller: _amountController,
-                    label: 'Payment amount',
-                    readOnly: _isFullPayment,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
+                    Text(
+                      'Record Payment',
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d*\.?\d{0,2}$'),
-                      ),
-                      StripLeadingZeroFormatter(),
-                    ],
-                    validator: (value) {
-                      final parsed = double.tryParse(value ?? '');
-                      if (parsed == null || parsed <= 0) {
-                        return 'Payment amount must be greater than 0';
-                      }
-                      if (parsed > remainingDue + 0.009) {
-                        return 'Payment amount cannot exceed remaining due';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  FinarcPaymentSelector(
-                    title: 'Payment Source',
-                    selectedMode: _paymentSourceType,
-                    modes: modeOptions,
-                    onModeChanged: (value) {
-                      setSheetState(() {
-                        _paymentSourceType = value;
-                        _selectedPaymentSourceId = null;
-                      });
-                    },
-                    sources: sources,
-                    selectedSourceId: selectedSourceId,
-                    onSourceChanged: (value) =>
-                        setSheetState(() => _selectedPaymentSourceId = value),
-                    sourceLabel: _paymentSourceType == PaymentSourceType.cash
-                        ? 'Cash wallet'
-                        : 'Bank account',
-                    singleSourcePrefix: _paymentSourceType == PaymentSourceType.cash
-                        ? 'Using wallet'
-                        : 'Using account',
-                    sourceValidator: (value) {
-                      if (sources.isEmpty) {
-                        return 'Add a payment source first';
-                      }
-                      if (sources.length > 1 && value == null) {
-                        return 'Select payment source';
-                      }
-                      return null;
-                    },
-                    compactModeTiles: true,
-                    modeTestPrefix: 'card-payment-mode',
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  InkWell(
-                    onTap: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: _paymentDate,
-                        firstDate: DateTime(2000),
-                        lastDate: DateTime.now().add(const Duration(days: 365)),
-                      );
-                      if (picked == null) return;
-                      setSheetState(() => _paymentDate = picked);
-                    },
-                    child: InputDecorator(
-                      decoration: const InputDecoration(
-                        labelText: 'Payment date',
-                      ),
-                      child: Text(_dateText(_paymentDate)),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'Remaining due ${inr(remainingDue)}',
+                      style: Theme.of(context).textTheme.bodyMedium,
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  FinarcTextField(
-                    controller: _noteController,
-                    label: 'Note / Reference (optional)',
-                    maxLines: 2,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: FinarcSecondaryButton(
-                          onPressed: _isSaving
-                              ? null
-                              : () => Navigator.of(context).pop(),
-                          label: 'Cancel',
+                    const SizedBox(height: AppSpacing.md),
+                    Wrap(
+                      spacing: AppSpacing.xs,
+                      children: [
+                        ChoiceChip(
+                          label: const Text('Full Payment'),
+                          selected: _isFullPayment,
+                          onSelected: (selected) {
+                            if (!selected) return;
+                            setSheetState(() {
+                              _isFullPayment = true;
+                              _amountController.text = moneyInput(remainingDue);
+                            });
+                          },
                         ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: FinarcPrimaryButton(
-                          onPressed: _isSaving
-                              ? null
-                              : () => _submitPayment(
-                                  context,
-                                  selectedSourceId: selectedSourceId,
-                                  remainingDue: remainingDue,
-                                ),
-                          label: _isSaving ? 'Saving...' : 'Confirm',
+                        ChoiceChip(
+                          label: const Text('Partial Payment'),
+                          selected: !_isFullPayment,
+                          onSelected: (selected) {
+                            if (!selected) return;
+                            setSheetState(() => _isFullPayment = false);
+                          },
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    FinarcTextField(
+                      controller: _amountController,
+                      label: 'Payment amount',
+                      readOnly: _isFullPayment,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
                       ),
-                    ],
-                  ),
-                ],
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'^\d*\.?\d{0,2}$'),
+                        ),
+                        StripLeadingZeroFormatter(),
+                      ],
+                      validator: (value) {
+                        final parsed = double.tryParse(value ?? '');
+                        if (parsed == null || parsed <= 0) {
+                          return 'Payment amount must be greater than 0';
+                        }
+                        if (parsed > remainingDue + 0.009) {
+                          return 'Payment amount cannot exceed remaining due';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    FinarcPaymentSelector(
+                      title: 'Payment Source',
+                      selectedMode: _paymentSourceType,
+                      modes: modeOptions,
+                      onModeChanged: (value) {
+                        setSheetState(() {
+                          _paymentSourceType = value;
+                          _selectedPaymentSourceId = null;
+                        });
+                      },
+                      sources: sources,
+                      selectedSourceId: selectedSourceId,
+                      onSourceChanged: (value) =>
+                          setSheetState(() => _selectedPaymentSourceId = value),
+                      sourceLabel: _paymentSourceType == PaymentSourceType.cash
+                          ? 'Cash wallet'
+                          : 'Bank account',
+                      singleSourcePrefix:
+                          _paymentSourceType == PaymentSourceType.cash
+                          ? 'Using wallet'
+                          : 'Using account',
+                      sourceValidator: (value) {
+                        if (sources.isEmpty) {
+                          return 'Add a payment source first';
+                        }
+                        if (sources.length > 1 && value == null) {
+                          return 'Select payment source';
+                        }
+                        return null;
+                      },
+                      compactModeTiles: true,
+                      modeTestPrefix: 'card-payment-mode',
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    InkWell(
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: _paymentDate,
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime.now().add(
+                            const Duration(days: 365),
+                          ),
+                        );
+                        if (picked == null) return;
+                        setSheetState(() => _paymentDate = picked);
+                      },
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'Payment date',
+                        ),
+                        child: Text(_dateText(_paymentDate)),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    FinarcTextField(
+                      controller: _noteController,
+                      label: 'Note / Reference (optional)',
+                      maxLines: 2,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: FinarcSecondaryButton(
+                            onPressed: _isSaving
+                                ? null
+                                : () => Navigator.of(context).pop(),
+                            label: 'Cancel',
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: FinarcPrimaryButton(
+                            onPressed: _isSaving
+                                ? null
+                                : () => _submitPayment(
+                                    context,
+                                    selectedSourceId: selectedSourceId,
+                                    remainingDue: remainingDue,
+                                  ),
+                            label: _isSaving ? 'Saving...' : 'Confirm',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -598,15 +549,15 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
     );
     if (!mounted) return;
     setState(() => _isSaving = false);
-    Navigator.of(context).pop();
+    Navigator.of(this.context).pop();
     ref.invalidate(cardDetailProvider(widget.cardId));
     ref.invalidate(billDetailProvider(widget.billId));
     final message =
         result.message ??
         'Recorded ${inr(result.appliedAmount)}. Remaining due ${inr(result.remainingDueAfter)}.';
-    ScaffoldMessenger.of(this.context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      this.context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   static Widget _metricLine(

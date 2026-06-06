@@ -265,7 +265,7 @@ class _RecordRecoveryDialogState extends ConsumerState<_RecordRecoveryDialog> {
   void initState() {
     super.initState();
     _amountController = TextEditingController(
-      text: widget.group.remainingTotal.toStringAsFixed(0),
+      text: moneyInput(widget.group.remainingTotal),
     );
   }
 

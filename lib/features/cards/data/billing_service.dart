@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../../core/utils/formatters.dart';
 
 class BillingCycle {
   const BillingCycle({
@@ -306,7 +307,10 @@ class BillingService {
 
   Future<double> calculateUnbilledSpendsForCard(int cardId) async {
     final transactions = await getUnbilledTransactions(cardId);
-    return transactions.fold<double>(0, (sum, txn) => sum + _billingImpact(txn));
+    return transactions.fold<double>(
+      0,
+      (sum, txn) => sum + _billingImpact(txn),
+    );
   }
 
   Future<List<Transaction>> getUnbilledTransactions(int cardId) async {
@@ -361,8 +365,7 @@ class BillingService {
   Future<CardPaymentResult> markBillAsPaid(
     int billId,
     int? paymentSourceId,
-    double amount,
-    {
+    double amount, {
     String paymentSourceType = 'bank',
     DateTime? transactionDate,
     String? notes,
@@ -396,7 +399,7 @@ class BillingService {
     final remainingDueBefore =
         (refreshedBill.billedAmount - refreshedBill.paidAmount)
             .clamp(0, refreshedBill.billedAmount)
-        .toDouble();
+            .toDouble();
     final appliedAmount = amount.clamp(0, remainingDueBefore).toDouble();
     final wasClamped = appliedAmount + 0.009 < amount;
 
@@ -411,7 +414,8 @@ class BillingService {
         cardId: refreshedBill.cardId,
         billId: refreshedBill.id,
         wasClamped: true,
-        message: 'No payment was applied because this bill has no remaining due.',
+        message:
+            'No payment was applied because this bill has no remaining due.',
       );
     }
 
@@ -474,7 +478,7 @@ class BillingService {
       billId: refreshedBill.id,
       wasClamped: wasClamped,
       message: wasClamped
-          ? 'Only ${appliedAmount.toStringAsFixed(2)} was applied because the bill due was lower than the entered amount.'
+          ? 'Only ${inr(appliedAmount)} was applied because the bill due was lower than the entered amount.'
           : null,
     );
   }
@@ -508,9 +512,7 @@ class BillingService {
             .get();
     final unpaidBills = bills
         .where((bill) => !_isBillPaidLike(bill))
-        .where(
-          (bill) => (bill.billedAmount - bill.paidAmount) > 0.009,
-        )
+        .where((bill) => (bill.billedAmount - bill.paidAmount) > 0.009)
         .toList(growable: false);
     final remainingDueBefore = unpaidBills.fold<double>(
       0,
@@ -531,7 +533,8 @@ class BillingService {
         paymentSourceId: paymentSourceId,
         cardId: cardId,
         wasClamped: true,
-        message: 'No payment was applied because this card has no billed due to settle.',
+        message:
+            'No payment was applied because this card has no billed due to settle.',
       );
     }
 
@@ -600,7 +603,7 @@ class BillingService {
       cardId: cardId,
       wasClamped: wasClamped,
       message: wasClamped
-          ? 'Only ${appliedAmount.toStringAsFixed(2)} was applied because the billed due was lower than the entered amount.'
+          ? 'Only ${inr(appliedAmount)} was applied because the billed due was lower than the entered amount.'
           : null,
     );
   }
@@ -726,9 +729,9 @@ class BillingService {
     for (final txn in cardTransactions) {
       final linkedOriginal = txn.relatedTransactionId == null
           ? null
-          : await (_db.select(_db.transactions)..where(
-                (t) => t.id.equals(txn.relatedTransactionId!),
-              )).getSingleOrNull();
+          : await (_db.select(_db.transactions)
+                  ..where((t) => t.id.equals(txn.relatedTransactionId!)))
+                .getSingleOrNull();
       final linkedOriginalBill = linkedOriginal?.cardBillId == null
           ? null
           : billById[linkedOriginal!.cardBillId!];
@@ -800,10 +803,10 @@ class BillingService {
       if (hasLegacyUnmappedBillData) {
         continue;
       }
-      final nextAmount = billedTxns.fold<double>(
-        0,
-        (sum, t) => sum + _billingImpact(t),
-      ).clamp(0, double.infinity).toDouble();
+      final nextAmount = billedTxns
+          .fold<double>(0, (sum, t) => sum + _billingImpact(t))
+          .clamp(0, double.infinity)
+          .toDouble();
       final hasOverpaidAdjustedBill = bill.paidAmount > nextAmount + 0.009;
       final pendingAmount = (nextAmount - bill.paidAmount)
           .clamp(0, nextAmount)
@@ -823,9 +826,7 @@ class BillingService {
         CardBillsCompanion(
           billedAmount: Value(nextAmount),
           status: Value(nextStatus),
-          paidAt: Value(
-            nextStatus == 'paid' ? (bill.paidAt ?? _now()) : null,
-          ),
+          paidAt: Value(nextStatus == 'paid' ? (bill.paidAt ?? _now()) : null),
         ),
       );
     }
@@ -956,21 +957,23 @@ class BillingService {
     String? notes,
   }) async {
     final transferGroupId = 'cardpay_${DateTime.now().microsecondsSinceEpoch}';
-    await _db.into(_db.transactions).insert(
-      TransactionsCompanion.insert(
-        type: 'cardPayment',
-        amount: amount,
-        title: 'Card Bill Payment',
-        category: 'Transfer',
-        transactionDate: transactionDate,
-        paymentSourceType: paymentSourceType,
-        paymentSourceId: paymentSourceId,
-        transferGroupId: Value(transferGroupId),
-        sourceAccountId: Value(paymentSourceId),
-        destinationAccountId: Value(cardId),
-        notes: Value(notes),
-      ),
-    );
+    await _db
+        .into(_db.transactions)
+        .insert(
+          TransactionsCompanion.insert(
+            type: 'cardPayment',
+            amount: amount,
+            title: 'Card Bill Payment',
+            category: 'Transfer',
+            transactionDate: transactionDate,
+            paymentSourceType: paymentSourceType,
+            paymentSourceId: paymentSourceId,
+            transferGroupId: Value(transferGroupId),
+            sourceAccountId: Value(paymentSourceId),
+            destinationAccountId: Value(cardId),
+            notes: Value(notes),
+          ),
+        );
   }
 
   Future<void> _syncLegacyOutstanding(int cardId) async {
@@ -978,9 +981,8 @@ class BillingService {
       _db.creditCards,
     )..where((c) => c.id.equals(cardId))).getSingleOrNull();
     if (card == null) return;
-    final representedOutstanding = await _calculateRepresentedOutstandingForOpening(
-      cardId,
-    );
+    final representedOutstanding =
+        await _calculateRepresentedOutstandingForOpening(cardId);
     if ((card.currentOutstanding - representedOutstanding).abs() <= 0.009) {
       return;
     }
