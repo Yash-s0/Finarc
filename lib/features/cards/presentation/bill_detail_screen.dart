@@ -29,6 +29,9 @@ class BillDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
+  static const double _embeddedTransactionHeight = 320;
+  static const double _embeddedTransactionEstimate = 76;
+
   final _paymentFormKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
@@ -218,38 +221,53 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
-              const FinarcSectionHeader(title: 'Transactions Included'),
-              const SizedBox(height: AppSpacing.xs),
-              if (data.txns.isEmpty)
-                const FinarcEmptyState(
-                  title: 'No transactions in this bill',
-                  subtitle:
-                      'Statement transactions will appear here after bill generation.',
-                  icon: Icons.receipt_long_outlined,
-                )
-              else
-                ...data.txns.map(
-                  (t) => FinarcTransactionTile(
-                    title: t.title,
-                    subtitle: t.category,
-                    meta: FinarcTransactionPresentation.meta(
-                      date: t.transactionDate,
-                      source: 'Card • Statement #${widget.billId}',
+              FinarcCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const FinarcSectionHeader(title: 'Transactions Included'),
+                    const SizedBox(height: AppSpacing.xs),
+                    FinarcContainedList(
+                      itemCount: data.txns.length,
+                      itemExtentEstimate: _embeddedTransactionEstimate,
+                      maxHeight: _embeddedTransactionHeight,
+                      emptyHeight: 176,
+                      emptyState: const FinarcEmptyState(
+                        title: 'No transactions in this bill',
+                        subtitle:
+                            'Statement transactions will appear here after bill generation.',
+                        icon: Icons.receipt_long_outlined,
+                      ),
+                      itemBuilder: (context, index) {
+                        final t = data.txns[index];
+                        return FinarcTransactionTile(
+                          title: t.title,
+                          subtitle: t.category,
+                          meta: FinarcTransactionPresentation.meta(
+                            date: t.transactionDate,
+                            source: 'Card • Statement #${widget.billId}',
+                          ),
+                          amount:
+                              '${t.type == 'refund' ? '+' : '-'}${inr(t.amount)}',
+                          amountColor: t.type == 'refund'
+                              ? AppColors.darkSuccess
+                              : AppColors.darkError,
+                          badges: [
+                            FinarcTransactionPresentation.billedBadge(
+                              billed: true,
+                            ),
+                          ],
+                          prefix: const CircleAvatar(
+                            radius: 16,
+                            backgroundColor: AppColors.darkPrimarySoft,
+                            child: Icon(Icons.receipt_long_outlined, size: 15),
+                          ),
+                        );
+                      },
                     ),
-                    amount: '${t.type == 'refund' ? '+' : '-'}${inr(t.amount)}',
-                    amountColor: t.type == 'refund'
-                        ? AppColors.darkSuccess
-                        : AppColors.darkError,
-                    badges: [
-                      FinarcTransactionPresentation.billedBadge(billed: true),
-                    ],
-                    prefix: const CircleAvatar(
-                      radius: 16,
-                      backgroundColor: AppColors.darkPrimarySoft,
-                      child: Icon(Icons.receipt_long_outlined, size: 15),
-                    ),
-                  ),
+                  ],
                 ),
+              ),
             ],
           ),
         );

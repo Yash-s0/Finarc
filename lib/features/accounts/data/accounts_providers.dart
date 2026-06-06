@@ -76,3 +76,43 @@ final accountDetailProvider = FutureProvider.family((
   )..where((b) => b.id.equals(id))).getSingle();
   return (name: bank.accountName, balance: bank.currentBalance, txns: txns);
 });
+
+final accountEditorProvider = FutureProvider.family((
+  ref,
+  (String, int) key,
+) async {
+  await ref.watch(seedProvider.future);
+  final db = ref.read(appDatabaseProvider);
+  final type = key.$1;
+  final id = key.$2;
+
+  if (type == 'cash') {
+    final wallet = await (db.select(
+      db.cashWallets,
+    )..where((w) => w.id.equals(id))).getSingle();
+    return (
+      type: 'cash',
+      bankName: null,
+      name: wallet.walletName,
+      accountType: null,
+      balance: wallet.currentBalance,
+      last4: null,
+      colorOrIcon: null,
+      walletType: wallet.walletType,
+    );
+  }
+
+  final bank = await (db.select(
+    db.bankAccounts,
+  )..where((b) => b.id.equals(id))).getSingle();
+  return (
+    type: 'bank',
+    bankName: bank.bankName,
+    name: bank.accountName,
+    accountType: bank.accountType,
+    balance: bank.currentBalance,
+    last4: bank.last4,
+    colorOrIcon: bank.colorOrIcon,
+    walletType: null,
+  );
+});

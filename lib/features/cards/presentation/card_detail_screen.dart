@@ -14,6 +14,9 @@ import '../data/cards_providers.dart';
 class CardDetailScreen extends ConsumerWidget {
   const CardDetailScreen({super.key, required this.cardId});
 
+  static const double _embeddedTransactionHeight = 320;
+  static const double _embeddedTransactionEstimate = 76;
+
   final int cardId;
 
   @override
@@ -240,8 +243,8 @@ class CardDetailScreen extends ConsumerWidget {
                                   vm.currentBill == null
                                       ? 'Next statement will be generated automatically.'
                                       : paidAmount > 0
-                                          ? 'Paid ${inr(paidAmount)} • Remaining ${inr(remainingDue)}'
-                                          : 'Due on ${_dateText(vm.currentBill!.dueDate)}',
+                                      ? 'Paid ${inr(paidAmount)} • Remaining ${inr(remainingDue)}'
+                                      : 'Due on ${_dateText(vm.currentBill!.dueDate)}',
                                   style: Theme.of(context).textTheme.bodyMedium,
                                 ),
                               ),
@@ -272,46 +275,61 @@ class CardDetailScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: AppSpacing.md),
-                    const FinarcSectionHeader(title: 'Recent Transactions'),
-                    const SizedBox(height: AppSpacing.xs),
-                    if (vm.recentTransactions.isEmpty)
-                      const FinarcEmptyState(
-                        title: 'No transactions yet',
-                        subtitle: 'Card spends will appear here once recorded.',
-                        icon: Icons.receipt_long_outlined,
-                      )
-                    else
-                      ...vm.recentTransactions.map((t) {
-                        final billed = t.cardBillId != null;
-                        final isRefund = t.type == 'refund';
-                        return FinarcTransactionTile(
-                          title: t.title,
-                          subtitle: t.category,
-                          meta: FinarcTransactionPresentation.meta(
-                            date: t.transactionDate,
-                            source: billed && t.cardBillId != null
-                                ? 'Card • Statement #${t.cardBillId}'
-                                : 'Card',
+                    FinarcCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const FinarcSectionHeader(
+                            title: 'Recent Transactions',
                           ),
-                          amount: '${isRefund ? '+' : '-'}${inr(t.amount)}',
-                          amountColor: isRefund
-                              ? AppColors.darkSuccess
-                              : AppColors.darkError,
-                          amountMeta: billed && t.cardBillId != null
-                              ? 'Stmt #${t.cardBillId}'
-                              : null,
-                          badges: [
-                            FinarcTransactionPresentation.billedBadge(
-                              billed: billed,
+                          const SizedBox(height: AppSpacing.xs),
+                          FinarcContainedList(
+                            itemCount: vm.recentTransactions.length,
+                            itemExtentEstimate: _embeddedTransactionEstimate,
+                            maxHeight: _embeddedTransactionHeight,
+                            emptyState: const FinarcEmptyState(
+                              title: 'No transactions yet',
+                              subtitle:
+                                  'Card spends will appear here once recorded.',
+                              icon: Icons.receipt_long_outlined,
                             ),
-                          ],
-                          prefix: const CircleAvatar(
-                            radius: 16,
-                            backgroundColor: AppColors.darkPrimarySoft,
-                            child: Icon(Icons.credit_card, size: 15),
+                            itemBuilder: (context, index) {
+                              final t = vm.recentTransactions[index];
+                              final billed = t.cardBillId != null;
+                              final isRefund = t.type == 'refund';
+                              return FinarcTransactionTile(
+                                title: t.title,
+                                subtitle: t.category,
+                                meta: FinarcTransactionPresentation.meta(
+                                  date: t.transactionDate,
+                                  source: billed && t.cardBillId != null
+                                      ? 'Card • Statement #${t.cardBillId}'
+                                      : 'Card',
+                                ),
+                                amount:
+                                    '${isRefund ? '+' : '-'}${inr(t.amount)}',
+                                amountColor: isRefund
+                                    ? AppColors.darkSuccess
+                                    : AppColors.darkError,
+                                amountMeta: billed && t.cardBillId != null
+                                    ? 'Stmt #${t.cardBillId}'
+                                    : null,
+                                badges: [
+                                  FinarcTransactionPresentation.billedBadge(
+                                    billed: billed,
+                                  ),
+                                ],
+                                prefix: const CircleAvatar(
+                                  radius: 16,
+                                  backgroundColor: AppColors.darkPrimarySoft,
+                                  child: Icon(Icons.credit_card, size: 15),
+                                ),
+                              );
+                            },
                           ),
-                        );
-                      }),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
                 _transactionTab(

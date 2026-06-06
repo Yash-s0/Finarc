@@ -137,6 +137,43 @@ void main() {
     expect(account.last4, '4455');
   });
 
+  test(
+    'bank account edit updates name, can clear last4, and keeps txn links',
+    () async {
+      await db
+          .into(db.transactions)
+          .insert(
+            TransactionsCompanion.insert(
+              type: 'expense',
+              amount: 200,
+              title: 'Linked txn',
+              category: 'Food',
+              transactionDate: DateTime(2026, 6, 1),
+              paymentSourceType: 'bank',
+              paymentSourceId: 1,
+            ),
+          );
+
+      await service.updateBankAccount(
+        1,
+        accountName: 'Renamed Account',
+        last4: null,
+        clearLast4: true,
+      );
+
+      final updated = await (db.select(
+        db.bankAccounts,
+      )..where((b) => b.id.equals(1))).getSingle();
+      final linked = await (db.select(
+        db.transactions,
+      )..where((t) => t.paymentSourceId.equals(1))).getSingle();
+
+      expect(updated.accountName, 'Renamed Account');
+      expect(updated.last4, equals(null));
+      expect(linked.paymentSourceId, 1);
+    },
+  );
+
   test('Amazon Pay wallet type is persisted on create', () async {
     final walletId = await service.createCashWallet(
       walletName: 'Amazon Pay',

@@ -12,6 +12,9 @@ import '../data/accounts_providers.dart';
 class AccountDetailScreen extends ConsumerWidget {
   const AccountDetailScreen({super.key, required this.type, required this.id});
 
+  static const double _embeddedTransactionHeight = 320;
+  static const double _embeddedTransactionEstimate = 84;
+
   final String type;
   final int id;
 
@@ -183,55 +186,64 @@ class AccountDetailScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),
-              const FinarcSectionHeader(title: 'Recent Transactions'),
-              const SizedBox(height: AppSpacing.xs),
-              if (data.txns.isEmpty)
-                const FinarcEmptyState(
-                  title: 'No transactions found',
-                  subtitle: 'Transfers and reconciliations will appear here.',
-                  icon: Icons.receipt_long_outlined,
-                )
-              else
-                ...data.txns.map<Widget>((t) {
-                  final sign = t.title.contains('Out') ? '-' : '+';
-                  final color = sign == '-'
-                      ? AppColors.darkError
-                      : AppColors.darkSuccess;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                    child: FinarcTransactionTile(
-                      title: t.title,
-                      subtitle: t.category,
-                      meta: FinarcTransactionPresentation.meta(
-                        date: t.transactionDate,
-                        source: FinarcTransactionPresentation.sourceLabel(
-                          t.paymentSourceType,
-                        ),
+              FinarcCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const FinarcSectionHeader(title: 'Recent Transactions'),
+                    const SizedBox(height: AppSpacing.xs),
+                    FinarcContainedList(
+                      itemCount: data.txns.length,
+                      itemExtentEstimate: _embeddedTransactionEstimate,
+                      maxHeight: _embeddedTransactionHeight,
+                      emptyState: const FinarcEmptyState(
+                        title: 'No transactions found',
+                        subtitle:
+                            'Transfers and reconciliations will appear here.',
+                        icon: Icons.receipt_long_outlined,
                       ),
-                      amount: '$sign${inr(t.amount)}',
-                      amountColor: color,
-                      prefix: CircleAvatar(
-                        radius: 16,
-                        backgroundColor: AppColors.darkPrimarySoft,
-                        child: Icon(
-                          sign == '-'
-                              ? Icons.north_east_rounded
-                              : Icons.south_west_rounded,
-                          size: 15,
-                          color: AppColors.darkAccent,
-                        ),
-                      ),
-                      badges: [
-                        if (t.cashbackAmount > 0)
-                          FinarcTransactionPresentation.cashbackBadge,
-                        if (t.isForOthers)
-                          FinarcTransactionPresentation.recoverableStatusBadge(
-                            t.recoverableStatus,
+                      itemBuilder: (context, index) {
+                        final t = data.txns[index];
+                        final sign = t.title.contains('Out') ? '-' : '+';
+                        final color = sign == '-'
+                            ? AppColors.darkError
+                            : AppColors.darkSuccess;
+                        return FinarcTransactionTile(
+                          title: t.title,
+                          subtitle: t.category,
+                          meta: FinarcTransactionPresentation.meta(
+                            date: t.transactionDate,
+                            source: FinarcTransactionPresentation.sourceLabel(
+                              t.paymentSourceType,
+                            ),
                           ),
-                      ],
+                          amount: '$sign${inr(t.amount)}',
+                          amountColor: color,
+                          prefix: CircleAvatar(
+                            radius: 16,
+                            backgroundColor: AppColors.darkPrimarySoft,
+                            child: Icon(
+                              sign == '-'
+                                  ? Icons.north_east_rounded
+                                  : Icons.south_west_rounded,
+                              size: 15,
+                              color: AppColors.darkAccent,
+                            ),
+                          ),
+                          badges: [
+                            if (t.cashbackAmount > 0)
+                              FinarcTransactionPresentation.cashbackBadge,
+                            if (t.isForOthers)
+                              FinarcTransactionPresentation.recoverableStatusBadge(
+                                t.recoverableStatus,
+                              ),
+                          ],
+                        );
+                      },
                     ),
-                  );
-                }),
+                  ],
+                ),
+              ),
             ],
           );
         },

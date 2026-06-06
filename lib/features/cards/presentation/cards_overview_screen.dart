@@ -20,15 +20,17 @@ class CardsOverviewScreen extends ConsumerStatefulWidget {
 }
 
 class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
+  static const double _embeddedTransactionHeight = 320;
+  static const double _embeddedTransactionEstimate = 72;
+
   final PageController _pageController = PageController(viewportFraction: 0.93);
   int _selectedCardIndex = 0;
   int _activeTab = 0;
 
   EdgeInsets _pagePadding(BuildContext context) {
-    final topInset = MediaQuery.paddingOf(context).top;
     return EdgeInsets.fromLTRB(
       AppSpacing.md,
-      AppSpacing.md + topInset,
+      AppSpacing.md,
       AppSpacing.md,
       AppSpacing.md,
     );
@@ -352,18 +354,17 @@ class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
                         Expanded(
                           child: hasDues
                               ? FinarcPrimaryButton(
-                                  onPressed: () =>
-                                      context.push(
-                                        '/cards/$selectedCardId/bills/${vm.currentBill!.id}',
-                                      ),
+                                  onPressed: () => context.push(
+                                    '/cards/$selectedCardId/bills/${vm.currentBill!.id}',
+                                  ),
                                   label: 'Pay Now',
                                   expand: false,
                                 )
                               : FinarcSecondaryButton(
                                   onPressed: hasActiveBill
                                       ? () => context.push(
-                                            '/cards/$selectedCardId/bills/${vm.currentBill!.id}',
-                                          )
+                                          '/cards/$selectedCardId/bills/${vm.currentBill!.id}',
+                                        )
                                       : null,
                                   label: hasActiveBill ? 'Paid' : 'No Bill',
                                 ),
@@ -409,15 +410,12 @@ class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
             );
           }
 
-          return Column(
-            children: txns
-                .map(
-                  (t) => Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                    child: _transactionRow(context, t),
-                  ),
-                )
-                .toList(),
+          return FinarcContainedList(
+            itemCount: txns.length,
+            itemExtentEstimate: _embeddedTransactionEstimate,
+            maxHeight: _embeddedTransactionHeight,
+            itemBuilder: (context, index) =>
+                _transactionRow(context, txns[index]),
           );
         },
       ),

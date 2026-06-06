@@ -22,6 +22,9 @@ class RecoverablePersonDetailScreen extends ConsumerStatefulWidget {
 
 class _RecoverablePersonDetailScreenState
     extends ConsumerState<RecoverablePersonDetailScreen> {
+  static const double _embeddedTransactionHeight = 320;
+  static const double _embeddedTransactionEstimate = 84;
+
   String _filter = RecoverableSourceFilter.all;
 
   @override
@@ -105,18 +108,27 @@ class _RecoverablePersonDetailScreenState
                 ],
               ),
               const SizedBox(height: AppSpacing.md),
-              const FinarcSectionHeader(title: 'Transactions'),
-              const SizedBox(height: AppSpacing.xs),
-              if (filteredItems.isEmpty)
-                const FinarcEmptyState(
-                  title: 'No items for this filter',
-                  subtitle: 'Try another source tab.',
-                  icon: Icons.filter_alt_off_rounded,
-                )
-              else
-                ...filteredItems.map(
-                  (item) => _RecoverableItemCard(item: item),
+              FinarcCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const FinarcSectionHeader(title: 'Transactions'),
+                    const SizedBox(height: AppSpacing.xs),
+                    FinarcContainedList(
+                      itemCount: filteredItems.length,
+                      itemExtentEstimate: _embeddedTransactionEstimate,
+                      maxHeight: _embeddedTransactionHeight,
+                      emptyState: const FinarcEmptyState(
+                        title: 'No items for this filter',
+                        subtitle: 'Try another source tab.',
+                        icon: Icons.filter_alt_off_rounded,
+                      ),
+                      itemBuilder: (context, index) =>
+                          _RecoverableItemCard(item: filteredItems[index]),
+                    ),
+                  ],
                 ),
+              ),
             ],
           );
         },

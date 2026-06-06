@@ -47,11 +47,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   }
 
   EdgeInsets _pagePadding(BuildContext context) {
-    final topInset = MediaQuery.paddingOf(context).top;
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     return EdgeInsets.fromLTRB(
       AppSpacing.md,
-      AppSpacing.md + topInset,
+      AppSpacing.md,
       AppSpacing.md,
       AppSpacing.xs + bottomInset + 52,
     );

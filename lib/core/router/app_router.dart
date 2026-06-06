@@ -247,7 +247,13 @@ final appRouter = GoRouter(
       path: '/accounts/add',
       builder: (_, state) {
         final type = state.uri.queryParameters['type'];
-        return AddEditAccountScreen(initialType: type);
+        final editType = state.uri.queryParameters['editType'];
+        final editId = int.tryParse(state.uri.queryParameters['editId'] ?? '');
+        return AddEditAccountScreen(
+          initialType: type,
+          editType: editType,
+          editId: editId,
+        );
       },
     ),
     GoRoute(

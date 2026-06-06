@@ -441,8 +441,6 @@ String dashboardDueSoonLabel(int count) {
 class RecentTransactionsSection extends StatelessWidget {
   const RecentTransactionsSection({super.key, required this.data});
 
-  static const double _maxListHeight = 320;
-  static const double _emptyStateHeight = 164;
   static const double _compactTileEstimate = 72;
 
   final DashboardSnapshot data;
@@ -450,14 +448,6 @@ class RecentTransactionsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = data.recentTransactions;
-    final listHeight = items.isEmpty
-        ? _emptyStateHeight
-        : (_compactTileEstimate * items.length) +
-              (AppSpacing.xs * (items.length - 1))
-            .clamp(0, _maxListHeight);
-    final contentHeight = items.isEmpty
-        ? _emptyStateHeight
-        : listHeight.clamp(0, _maxListHeight).toDouble();
     return FinarcCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -470,77 +460,60 @@ class RecentTransactionsSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.xs),
-          SizedBox(
-            height: contentHeight,
-            child: items.isEmpty
-                ? const FinarcEmptyState(
-                    title: 'No transactions yet',
-                    subtitle: 'Add your first expense from quick actions.',
-                  )
-                : Scrollbar(
-                    child: ListView.separated(
-                      primary: false,
-                      padding: EdgeInsets.zero,
-                      physics: const BouncingScrollPhysics(),
-                      itemCount: items.length,
-                      separatorBuilder: (_, _) =>
-                          const SizedBox(height: AppSpacing.xs),
-                      itemBuilder: (context, index) {
-                        final t = items[index];
-                        final isIncome =
-                            t.type == 'income' || t.type == 'refund';
-                        final isCard = t.paymentSourceType == 'creditCard';
-                        final isBilled = t.cardBillId != null;
-                        final tone = isIncome
-                            ? FinarcStatusTone.success
-                            : (isCard
-                                  ? FinarcStatusTone.warning
-                                  : FinarcStatusTone.info);
-                        return FinarcTransactionTile(
-                          title: t.title,
-                          subtitle: t.category,
-                          meta: FinarcTransactionPresentation.meta(
-                            date: t.transactionDate,
-                            source: FinarcTransactionPresentation.sourceLabel(
-                              t.paymentSourceType,
-                            ),
-                          ),
-                          prefix: CircleAvatar(
-                            radius: 15,
-                            backgroundColor: _avatarColor(t.category),
-                            child: Icon(
-                              _categoryIcon(t.category),
-                              size: 14,
-                              color: Colors.white,
-                            ),
-                          ),
-                          amount: '${isIncome ? '+' : '-'}${inr(t.amount)}',
-                          amountColor: isIncome
-                              ? AppColors.darkSuccess
-                              : AppColors.darkError,
-                          statusLabel: isIncome
-                              ? 'Income'
-                              : (isCard
-                                    ? (isBilled ? 'Billed' : 'Unbilled')
-                                    : 'Spent'),
-                          statusTone: tone,
-                          badges: [
-                            if (isCard)
-                              FinarcTransactionPresentation.billedBadge(
-                                billed: isBilled,
-                              ),
-                            if (t.cashbackAmount > 0)
-                              FinarcTransactionPresentation.cashbackBadge,
-                            if (t.isForOthers)
-                              FinarcTransactionPresentation.recoverableStatusBadge(
-                                t.recoverableStatus,
-                              ),
-                          ],
-                          compact: true,
-                        );
-                      },
-                    ),
+          FinarcContainedList(
+            itemCount: items.length,
+            itemExtentEstimate: _compactTileEstimate,
+            emptyState: const FinarcEmptyState(
+              title: 'No transactions yet',
+              subtitle: 'Add your first expense from quick actions.',
+            ),
+            itemBuilder: (context, index) {
+              final t = items[index];
+              final isIncome = t.type == 'income' || t.type == 'refund';
+              final isCard = t.paymentSourceType == 'creditCard';
+              final isBilled = t.cardBillId != null;
+              final tone = isIncome
+                  ? FinarcStatusTone.success
+                  : (isCard ? FinarcStatusTone.warning : FinarcStatusTone.info);
+              return FinarcTransactionTile(
+                title: t.title,
+                subtitle: t.category,
+                meta: FinarcTransactionPresentation.meta(
+                  date: t.transactionDate,
+                  source: FinarcTransactionPresentation.sourceLabel(
+                    t.paymentSourceType,
                   ),
+                ),
+                prefix: CircleAvatar(
+                  radius: 15,
+                  backgroundColor: _avatarColor(t.category),
+                  child: Icon(
+                    _categoryIcon(t.category),
+                    size: 14,
+                    color: Colors.white,
+                  ),
+                ),
+                amount: '${isIncome ? '+' : '-'}${inr(t.amount)}',
+                amountColor: isIncome
+                    ? AppColors.darkSuccess
+                    : AppColors.darkError,
+                statusLabel: isIncome
+                    ? 'Income'
+                    : (isCard ? (isBilled ? 'Billed' : 'Unbilled') : 'Spent'),
+                statusTone: tone,
+                badges: [
+                  if (isCard)
+                    FinarcTransactionPresentation.billedBadge(billed: isBilled),
+                  if (t.cashbackAmount > 0)
+                    FinarcTransactionPresentation.cashbackBadge,
+                  if (t.isForOthers)
+                    FinarcTransactionPresentation.recoverableStatusBadge(
+                      t.recoverableStatus,
+                    ),
+                ],
+                compact: true,
+              );
+            },
           ),
         ],
       ),

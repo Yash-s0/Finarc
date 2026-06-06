@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_spacing.dart';
@@ -7,9 +8,16 @@ import '../data/wallet_types.dart';
 import '../data/accounts_providers.dart';
 
 class AddEditAccountScreen extends ConsumerStatefulWidget {
-  const AddEditAccountScreen({super.key, this.initialType});
+  const AddEditAccountScreen({
+    super.key,
+    this.initialType,
+    this.editType,
+    this.editId,
+  });
 
   final String? initialType;
+  final String? editType;
+  final int? editId;
 
   @override
   ConsumerState<AddEditAccountScreen> createState() =>
@@ -24,16 +32,21 @@ class _AddEditAccountScreenState extends ConsumerState<AddEditAccountScreen> {
   final _last4 = TextEditingController();
   final _color = TextEditingController();
   bool _isCash = false;
+  bool _didLoadEditValues = false;
   String _accountType = 'savings';
   String _walletType = WalletType.cash;
+
+  bool get _isEditing =>
+      widget.editType != null && widget.editId != null && widget.editId! > 0;
 
   @override
   void initState() {
     super.initState();
-    if (widget.initialType == 'cash') {
+    final startingType = widget.editType ?? widget.initialType;
+    if (startingType == 'cash') {
       _isCash = true;
     }
-    if (widget.initialType == WalletType.amazonPay) {
+    if (startingType == WalletType.amazonPay) {
       _isCash = true;
       _walletType = WalletType.amazonPay;
       _name.text = 'Amazon Pay';
@@ -52,8 +65,33 @@ class _AddEditAccountScreenState extends ConsumerState<AddEditAccountScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final editState = _isEditing
+        ? ref.watch(accountEditorProvider((widget.editType!, widget.editId!)))
+        : null;
+
+    if (_isEditing) {
+      return editState!.when(
+        loading: () => const FinarcScaffold(
+          appBar: FinarcAppBar(title: 'Edit Account'),
+          body: Center(child: CircularProgressIndicator()),
+        ),
+        error: (error, _) => FinarcScaffold(
+          appBar: const FinarcAppBar(title: 'Edit Account'),
+          body: Center(child: Text('Error: $error')),
+        ),
+        data: (data) {
+          _hydrateFromEditorData(data);
+          return _buildScaffold(context);
+        },
+      );
+    }
+
+    return _buildScaffold(context);
+  }
+
+  Widget _buildScaffold(BuildContext context) {
     return FinarcScaffold(
-      appBar: const FinarcAppBar(title: 'Add / Edit Account'),
+      appBar: FinarcAppBar(title: _isEditing ? 'Edit Account' : 'Add Account'),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -65,38 +103,48 @@ class _AddEditAccountScreenState extends ConsumerState<AddEditAccountScreen> {
                 children: [
                   const FinarcSectionHeader(title: 'Account Kind'),
                   const SizedBox(height: AppSpacing.sm),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      FinarcActionChip(
-                        label: 'Bank Account',
-                        selected: !_isCash,
-                        onTap: () => setState(() => _isCash = false),
-                      ),
-                      FinarcActionChip(
-                        label: 'Cash Wallet',
-                        selected: _isCash && _walletType == WalletType.cash,
-                        onTap: () => setState(() {
-                          _isCash = true;
-                          _walletType = WalletType.cash;
-                        }),
-                      ),
-                      FinarcActionChip(
-                        label: 'Amazon Pay',
-                        selected:
-                            _isCash && _walletType == WalletType.amazonPay,
-                        onTap: () => setState(() {
-                          _isCash = true;
-                          _walletType = WalletType.amazonPay;
-                          if (_name.text.trim().isEmpty ||
-                              _name.text.trim() == 'Cash') {
-                            _name.text = 'Amazon Pay';
-                          }
-                        }),
-                      ),
-                    ],
-                  ),
+                  if (_isEditing)
+                    Text(
+                      _isCash
+                          ? (_walletType == WalletType.amazonPay
+                                ? 'Amazon Pay wallet'
+                                : 'Cash wallet')
+                          : 'Bank account',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    )
+                  else
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        FinarcActionChip(
+                          label: 'Bank Account',
+                          selected: !_isCash,
+                          onTap: () => setState(() => _isCash = false),
+                        ),
+                        FinarcActionChip(
+                          label: 'Cash Wallet',
+                          selected: _isCash && _walletType == WalletType.cash,
+                          onTap: () => setState(() {
+                            _isCash = true;
+                            _walletType = WalletType.cash;
+                          }),
+                        ),
+                        FinarcActionChip(
+                          label: 'Amazon Pay',
+                          selected:
+                              _isCash && _walletType == WalletType.amazonPay,
+                          onTap: () => setState(() {
+                            _isCash = true;
+                            _walletType = WalletType.amazonPay;
+                            if (_name.text.trim().isEmpty ||
+                                _name.text.trim() == 'Cash') {
+                              _name.text = 'Amazon Pay';
+                            }
+                          }),
+                        ),
+                      ],
+                    ),
                 ],
               ),
             ),
@@ -121,6 +169,8 @@ class _AddEditAccountScreenState extends ConsumerState<AddEditAccountScreen> {
                       controller: _last4,
                       label: 'Account last 4 digits (optional)',
                       keyboardType: TextInputType.number,
+                      maxLength: 4,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       validator: (v) {
                         final value = (v ?? '').trim();
                         if (value.isEmpty) return null;
@@ -190,7 +240,7 @@ class _AddEditAccountScreenState extends ConsumerState<AddEditAccountScreen> {
             const SizedBox(height: AppSpacing.md),
             FinarcPrimaryButton(
               onPressed: _save,
-              label: 'Save Account',
+              label: _isEditing ? 'Save Changes' : 'Save Account',
               icon: Icons.check_circle_outline,
             ),
           ],
@@ -199,28 +249,84 @@ class _AddEditAccountScreenState extends ConsumerState<AddEditAccountScreen> {
     );
   }
 
+  void _hydrateFromEditorData(
+    ({
+      String type,
+      String? bankName,
+      String name,
+      String? accountType,
+      double balance,
+      String? last4,
+      String? colorOrIcon,
+      String? walletType,
+    })
+    data,
+  ) {
+    if (_didLoadEditValues) return;
+    _didLoadEditValues = true;
+    _isCash = data.type == 'cash';
+    _bank.text = data.bankName ?? '';
+    _name.text = data.name;
+    _accountType = data.accountType ?? _accountType;
+    _balance.text = data.balance.toString();
+    _last4.text = data.last4 ?? '';
+    _color.text = data.colorOrIcon ?? '';
+    _walletType = data.walletType ?? _walletType;
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
     final service = ref.read(accountServiceProvider);
+    final balance = double.tryParse(_balance.text) ?? 0;
+    final trimmedLast4 = _last4.text.trim();
     if (_isCash) {
-      await service.createCashWallet(
-        walletName: _name.text.trim(),
-        walletType: _walletType,
-        currentBalance: double.tryParse(_balance.text) ?? 0,
-      );
+      if (_isEditing) {
+        await service.updateCashWallet(
+          widget.editId!,
+          walletName: _name.text.trim(),
+          walletType: _walletType,
+          currentBalance: balance,
+        );
+      } else {
+        await service.createCashWallet(
+          walletName: _name.text.trim(),
+          walletType: _walletType,
+          currentBalance: balance,
+        );
+      }
     } else {
-      await service.createBankAccount(
-        bankName: _bank.text.trim(),
-        accountName: _name.text.trim(),
-        accountType: _accountType,
-        currentBalance: double.tryParse(_balance.text) ?? 0,
-        last4: _last4.text.trim().isEmpty ? null : _last4.text.trim(),
-        colorOrIcon: _color.text.trim().isEmpty ? null : _color.text.trim(),
-      );
+      final colorOrIcon = _color.text.trim().isEmpty
+          ? null
+          : _color.text.trim();
+      if (_isEditing) {
+        await service.updateBankAccount(
+          widget.editId!,
+          bankName: _bank.text.trim(),
+          accountName: _name.text.trim(),
+          accountType: _accountType,
+          last4: trimmedLast4.isEmpty ? null : trimmedLast4,
+          clearLast4: trimmedLast4.isEmpty,
+          currentBalance: balance,
+          colorOrIcon: colorOrIcon,
+        );
+      } else {
+        await service.createBankAccount(
+          bankName: _bank.text.trim(),
+          accountName: _name.text.trim(),
+          accountType: _accountType,
+          currentBalance: balance,
+          last4: trimmedLast4.isEmpty ? null : trimmedLast4,
+          colorOrIcon: colorOrIcon,
+        );
+      }
     }
 
     ref.invalidate(accountsOverviewProvider);
+    if (_isEditing) {
+      ref.invalidate(accountDetailProvider((widget.editType!, widget.editId!)));
+      ref.invalidate(accountEditorProvider((widget.editType!, widget.editId!)));
+    }
     if (!mounted) return;
     Navigator.of(context).pop();
   }

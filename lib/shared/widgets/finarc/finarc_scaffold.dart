@@ -20,7 +20,7 @@ class FinarcScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: appBar,
-      body: SafeArea(top: false, child: body),
+      body: SafeArea(top: appBar == null, bottom: false, child: body),
       floatingActionButton: floatingActionButton,
       floatingActionButtonLocation: floatingActionButtonLocation,
       bottomNavigationBar: bottomNavigationBar,

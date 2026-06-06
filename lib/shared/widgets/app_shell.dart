@@ -97,7 +97,7 @@ class _AppShellState extends State<AppShell> {
           ),
           if (AppModeConfig.showModeBadge)
             Positioned(
-              top: MediaQuery.paddingOf(context).top + 8,
+              top: 8,
               right: 12,
               child: DecoratedBox(
                 decoration: BoxDecoration(

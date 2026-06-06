@@ -22,6 +22,9 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   String _categoryFilter = 'all';
   DateTimeRange? _dateRange;
 
+  static const _quickFilterKey = Key('expenses-quick-filter');
+  static const _resetFiltersKey = Key('expenses-reset-filters');
+
   @override
   void dispose() {
     _search.dispose();
@@ -103,6 +106,12 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                 '${txn.transactionDate.year}-${txn.transactionDate.month.toString().padLeft(2, '0')}-${txn.transactionDate.day.toString().padLeft(2, '0')}';
             grouped.putIfAbsent(key, () => []).add(txn);
           }
+          final hasActiveFilters =
+              _typeFilter != 'all' ||
+              _sourceFilter != 'all' ||
+              _categoryFilter != 'all' ||
+              _dateRange != null ||
+              _search.text.trim().isNotEmpty;
 
           return ListView(
             padding: const EdgeInsets.all(AppSpacing.md),
@@ -144,44 +153,45 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                 ),
               ),
               const SizedBox(height: AppSpacing.xs),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
+              Row(
                 children: [
-                  _filterChip(
-                    'All',
-                    _typeFilter == 'all',
-                    () => setState(() => _typeFilter = 'all'),
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      key: _quickFilterKey,
+                      initialValue: _quickFilterValue,
+                      decoration: const InputDecoration(labelText: 'Filter'),
+                      items: const [
+                        DropdownMenuItem(value: 'all', child: Text('All')),
+                        DropdownMenuItem(
+                          value: 'expense',
+                          child: Text('Expenses'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'income',
+                          child: Text('Income'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'creditCard',
+                          child: Text('Card'),
+                        ),
+                        DropdownMenuItem(value: 'upi', child: Text('UPI')),
+                        DropdownMenuItem(value: 'bank', child: Text('Bank')),
+                        DropdownMenuItem(value: 'cash', child: Text('Cash')),
+                      ],
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() => _applyQuickFilter(value));
+                      },
+                    ),
                   ),
-                  _filterChip(
-                    'Expense',
-                    _typeFilter == 'expense',
-                    () => setState(() => _typeFilter = 'expense'),
-                  ),
-                  _filterChip(
-                    'Income',
-                    _typeFilter == 'income',
-                    () => setState(() => _typeFilter = 'income'),
-                  ),
-                  _filterChip(
-                    'Card',
-                    _sourceFilter == 'creditCard',
-                    () => setState(() => _sourceFilter = 'creditCard'),
-                  ),
-                  _filterChip(
-                    'UPI',
-                    _sourceFilter == 'upi',
-                    () => setState(() => _sourceFilter = 'upi'),
-                  ),
-                  _filterChip('Reset', false, () {
-                    setState(() {
-                      _typeFilter = 'all';
-                      _sourceFilter = 'all';
-                      _categoryFilter = 'all';
-                      _dateRange = null;
-                      _search.clear();
-                    });
-                  }),
+                  if (hasActiveFilters) ...[
+                    const SizedBox(width: AppSpacing.xs),
+                    FinarcSecondaryButton(
+                      key: _resetFiltersKey,
+                      onPressed: () => setState(_resetFilters),
+                      label: 'Reset',
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(height: AppSpacing.xs),
@@ -205,25 +215,6 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                       ],
                       onChanged: (v) =>
                           setState(() => _categoryFilter = v ?? 'all'),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.xs),
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _sourceFilter,
-                      decoration: const InputDecoration(labelText: 'Source'),
-                      items: const [
-                        DropdownMenuItem(value: 'all', child: Text('All')),
-                        DropdownMenuItem(value: 'bank', child: Text('Bank')),
-                        DropdownMenuItem(value: 'upi', child: Text('UPI')),
-                        DropdownMenuItem(value: 'cash', child: Text('Cash')),
-                        DropdownMenuItem(
-                          value: 'creditCard',
-                          child: Text('Card'),
-                        ),
-                      ],
-                      onChanged: (v) =>
-                          setState(() => _sourceFilter = v ?? 'all'),
                     ),
                   ),
                 ],
@@ -418,6 +409,51 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     );
   }
 
+  String get _quickFilterValue {
+    if (_typeFilter == 'expense' && _sourceFilter == 'all') return 'expense';
+    if (_typeFilter == 'income' && _sourceFilter == 'all') return 'income';
+    if (_sourceFilter == 'creditCard' && _typeFilter == 'all') {
+      return 'creditCard';
+    }
+    if (_sourceFilter == 'upi' && _typeFilter == 'all') return 'upi';
+    if (_sourceFilter == 'bank' && _typeFilter == 'all') return 'bank';
+    if (_sourceFilter == 'cash' && _typeFilter == 'all') return 'cash';
+    return 'all';
+  }
+
+  void _applyQuickFilter(String value) {
+    switch (value) {
+      case 'expense':
+        _typeFilter = 'expense';
+        _sourceFilter = 'all';
+        break;
+      case 'income':
+        _typeFilter = 'income';
+        _sourceFilter = 'all';
+        break;
+      case 'creditCard':
+      case 'upi':
+      case 'bank':
+      case 'cash':
+        _typeFilter = 'all';
+        _sourceFilter = value;
+        break;
+      case 'all':
+      default:
+        _typeFilter = 'all';
+        _sourceFilter = 'all';
+        break;
+    }
+  }
+
+  void _resetFilters() {
+    _typeFilter = 'all';
+    _sourceFilter = 'all';
+    _categoryFilter = 'all';
+    _dateRange = null;
+    _search.clear();
+  }
+
   static String _sourceLabel(String? source) {
     switch (source) {
       case 'upiNotification':
@@ -452,9 +488,5 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     if (source == 'upi') return Icons.qr_code_2_rounded;
     if (source == 'bank') return Icons.account_balance;
     return Icons.payments_outlined;
-  }
-
-  Widget _filterChip(String label, bool selected, VoidCallback onTap) {
-    return FinarcActionChip(label: label, selected: selected, onTap: onTap);
   }
 }

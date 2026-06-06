@@ -4,6 +4,7 @@ export 'finarc_app_bar.dart';
 export 'finarc_balance_card.dart';
 export 'finarc_bottom_sheet.dart';
 export 'finarc_card.dart';
+export 'finarc_contained_list.dart';
 export 'finarc_card_preview.dart';
 export 'finarc_empty_state.dart';
 export 'finarc_loading_skeleton.dart';

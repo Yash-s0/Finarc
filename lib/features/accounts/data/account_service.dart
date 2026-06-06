@@ -48,6 +48,7 @@ class AccountService {
     String? accountName,
     String? accountType,
     String? last4,
+    bool clearLast4 = false,
     double? currentBalance,
     String? colorOrIcon,
   }) {
@@ -60,7 +61,9 @@ class AccountService {
         accountType: accountType == null
             ? const Value.absent()
             : Value(accountType),
-        last4: last4 == null ? const Value.absent() : Value(last4),
+        last4: clearLast4
+            ? const Value(null)
+            : (last4 == null ? const Value.absent() : Value(last4)),
         currentBalance: currentBalance == null
             ? const Value.absent()
             : Value(currentBalance),
