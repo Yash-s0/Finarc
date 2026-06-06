@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/app_mode.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
 import '../../../core/utils/numeric_input_formatters.dart';
@@ -37,18 +40,49 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final smsSetupAvailable = AppModeConfig.isPersonalDebug;
     final pages = <Widget>[
       _StepTemplate(
         title: 'Welcome to Finarc',
         subtitle:
             'Track expenses, cards, bills, cash, UPI, splits and loans. Works fully offline, and your data stays on device.',
         icon: Icons.wallet_rounded,
+        supporting: const [
+          _InfoTile(
+            icon: Icons.receipt_long_outlined,
+            title: 'Expenses',
+            description: 'Track daily spends, categories and quick cashflow.',
+          ),
+          _InfoTile(
+            icon: Icons.credit_card_outlined,
+            title: 'Cards & bills',
+            description:
+                'Follow statements, dues and utilization in one place.',
+          ),
+          _InfoTile(
+            icon: Icons.cloud_off_outlined,
+            title: 'Offline-first',
+            description:
+                'Your records stay on-device with no required account.',
+          ),
+        ],
       ),
       _StepTemplate(
         title: 'Privacy-first by design',
         subtitle:
             'No cloud sync in v1. SMS/notification detection is optional. Detected transactions require confirmation. No CVV or card expiry is stored.',
         icon: Icons.privacy_tip_outlined,
+        supporting: const [
+          _BulletPanel(
+            title: 'Trust guardrails',
+            bullets: [
+              'Local-only data storage',
+              'No cloud account required',
+              'Detected transactions stay pending until you confirm',
+              'No CVV or card expiry is stored',
+            ],
+          ),
+        ],
       ),
       _SetupChoicesStep(
         onAddBank: () => context.push('/accounts/add?type=bank'),
@@ -60,18 +94,37 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
         subtitle:
             'You can enable notification and SMS detection later from Profile. It is optional and local-only.',
         icon: Icons.notifications_active_outlined,
+        supporting: [
+          const _BulletPanel(
+            title: 'How it works',
+            bullets: [
+              'Notification detection is optional',
+              'Detected transactions go to Pending first',
+              'You can enable or disable this later from Profile',
+            ],
+          ),
+          if (!smsSetupAvailable)
+            const _InlineInfoCard(
+              icon: Icons.sms_failed_outlined,
+              title: 'SMS setup unavailable in this build',
+              description:
+                  'Play-safe and release builds do not include SMS ingestion.',
+            ),
+        ],
         actions: [
           FinarcSecondaryButton(
             onPressed: () => context.push('/notifications/setup'),
             icon: Icons.notifications_outlined,
             label: 'Notification Setup',
           ),
-          const SizedBox(height: AppSpacing.xs),
-          FinarcSecondaryButton(
-            onPressed: () => context.push('/sms/setup'),
-            icon: Icons.sms_outlined,
-            label: 'SMS Setup',
-          ),
+          if (smsSetupAvailable) ...[
+            const SizedBox(height: AppSpacing.xs),
+            FinarcSecondaryButton(
+              onPressed: () => context.push('/sms/setup'),
+              icon: Icons.sms_outlined,
+              label: 'SMS Setup',
+            ),
+          ],
         ],
       ),
       _ProfileSetupStep(
@@ -251,12 +304,14 @@ class _StepTemplate extends StatelessWidget {
     required this.subtitle,
     required this.icon,
     this.actions,
+    this.supporting,
   });
 
   final String title;
   final String subtitle;
   final IconData icon;
   final List<Widget>? actions;
+  final List<Widget>? supporting;
 
   @override
   Widget build(BuildContext context) {
@@ -276,6 +331,10 @@ class _StepTemplate extends StatelessWidget {
             ],
           ),
         ),
+        if (supporting != null && supporting!.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.sm),
+          ...supporting!,
+        ],
         if (actions != null && actions!.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.sm),
           ...actions!,
@@ -315,6 +374,24 @@ class _SetupChoicesStep extends StatelessWidget {
               ),
             ],
           ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        const _InlineInfoCard(
+          icon: Icons.account_balance_outlined,
+          title: 'Bank account',
+          description: 'Track balances, transfers and salary deposits.',
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        const _InlineInfoCard(
+          icon: Icons.account_balance_wallet_outlined,
+          title: 'Cash wallet',
+          description: 'Track cash on hand and wallet-style balances.',
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        const _InlineInfoCard(
+          icon: Icons.credit_card_outlined,
+          title: 'Credit card',
+          description: 'Track card spends, statements and bill dues.',
         ),
         const SizedBox(height: AppSpacing.sm),
         FinarcPrimaryButton(
@@ -372,6 +449,13 @@ class _ProfileSetupStep extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.sm),
+        const _InlineInfoCard(
+          icon: Icons.insights_outlined,
+          title: 'Local insights only',
+          description:
+              'Salary details are optional and only used for on-device trends and reminders.',
+        ),
+        const SizedBox(height: AppSpacing.sm),
         FinarcTextField(controller: nameController, label: 'Your name'),
         const SizedBox(height: AppSpacing.xs),
         Align(
@@ -398,6 +482,130 @@ class _ProfileSetupStep extends StatelessWidget {
         const SizedBox(height: AppSpacing.sm),
         FinarcTextField(controller: companyController, label: 'Company name'),
       ],
+    );
+  }
+}
+
+class _InfoTile extends StatelessWidget {
+  const _InfoTile({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+      child: _InlineInfoCard(
+        icon: icon,
+        title: title,
+        description: description,
+      ),
+    );
+  }
+}
+
+class _BulletPanel extends StatelessWidget {
+  const _BulletPanel({required this.title, required this.bullets});
+
+  final String title;
+  final List<String> bullets;
+
+  @override
+  Widget build(BuildContext context) {
+    return FinarcCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: AppSpacing.xs),
+          ...bullets.map(
+            (bullet) => Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    margin: const EdgeInsets.only(top: 6),
+                    decoration: const BoxDecoration(
+                      color: AppColors.darkAccent,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Expanded(
+                    child: Text(
+                      bullet,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InlineInfoCard extends StatelessWidget {
+  const _InlineInfoCard({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.darkSurfaceLow,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: AppColors.darkBorder),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.sm),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.darkPrimarySoft,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Icon(icon, color: AppColors.darkAccent, size: 18),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: Theme.of(context).textTheme.titleSmall),
+                  const SizedBox(height: 2),
+                  Text(
+                    description,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

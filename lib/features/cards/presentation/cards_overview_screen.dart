@@ -80,13 +80,13 @@ class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
           );
         }
 
-        final now = DateTime.now();
+        final now = _dateOnly(DateTime.now());
         final summaries = [...data.cardSummaries]
           ..sort(
-            (a, b) => _daysUntilDue(
+            (a, b) => _sortDueDate(
+              a.nextUnpaidDueDate,
               now,
-              a.card.dueDay,
-            ).compareTo(_daysUntilDue(now, b.card.dueDay)),
+            ).compareTo(_sortDueDate(b.nextUnpaidDueDate, now)),
           );
 
         if (_selectedCardIndex >= summaries.length) {
@@ -142,7 +142,8 @@ class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
                 },
                 itemBuilder: (context, index) {
                   final summary = summaries[index];
-                  final dueDays = _daysUntilDue(now, summary.card.dueDay);
+                  final dueDays = _daysUntilDue(now, summary.nextUnpaidDueDate);
+                  final dueLabel = _dueDayLabel(dueDays);
                   return Padding(
                     padding: EdgeInsets.only(
                       right: index == summaries.length - 1 ? 0 : AppSpacing.xs,
@@ -153,8 +154,10 @@ class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
                       maskedNumber: summary.card.maskedNumber,
                       outstanding: inr(summary.totalOutstanding),
                       utilization: summary.utilization,
-                      dueLabel: _dueDayLabel(dueDays),
-                      dueTone: _toneForDueDays(dueDays),
+                      dueLabel: dueLabel,
+                      dueTone: dueLabel == null
+                          ? FinarcStatusTone.neutral
+                          : _toneForDueDays(dueDays!),
                       onTap: () => context.push('/cards/${summary.card.id}'),
                     ),
                   );
@@ -456,22 +459,32 @@ class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
     );
   }
 
-  static int _daysUntilDue(DateTime now, int dueDay) {
-    final day = dueDay.clamp(1, 28);
-    var dueDate = DateTime(now.year, now.month, day);
-    if (!dueDate.isAfter(DateTime(now.year, now.month, now.day))) {
-      dueDate = DateTime(now.year, now.month + 1, day);
-    }
-    return dueDate.difference(DateTime(now.year, now.month, now.day)).inDays;
+  static DateTime _dateOnly(DateTime value) {
+    return DateTime(value.year, value.month, value.day);
   }
 
-  static String _dueDayLabel(int days) {
+  static int? _daysUntilDue(DateTime now, DateTime? dueDate) {
+    if (dueDate == null) return null;
+    return _dateOnly(dueDate).difference(now).inDays;
+  }
+
+  static int _sortDueDate(DateTime? dueDate, DateTime now) {
+    if (dueDate == null) {
+      return 1 << 20;
+    }
+    return _dateOnly(dueDate).difference(now).inDays;
+  }
+
+  static String? _dueDayLabel(int? days) {
+    if (days == null) return null;
+    if (days < 0) return 'Overdue ${days.abs()}d';
     if (days <= 0) return 'Due today';
     if (days == 1) return 'Due tomorrow';
     return 'Due in $days days';
   }
 
   static FinarcStatusTone _toneForDueDays(int days) {
+    if (days < 0) return FinarcStatusTone.error;
     if (days <= 1) return FinarcStatusTone.error;
     if (days <= 4) return FinarcStatusTone.warning;
     return FinarcStatusTone.info;

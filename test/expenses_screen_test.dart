@@ -127,4 +127,17 @@ void main() {
     );
     expect(find.text('Fuel'), findsOneWidget);
   });
+
+  testWidgets('empty filtered state shows only one Add Expense CTA', (
+    tester,
+  ) async {
+    await pumpScreen(tester);
+
+    await tester.enterText(find.byType(TextField), 'does-not-match');
+    await tester.pumpAndSettle();
+
+    expect(find.text('No transactions yet'), findsOneWidget);
+    expect(find.text('Add Expense'), findsOneWidget);
+    expect(find.text('Enable Notification Detection'), findsOneWidget);
+  });
 }

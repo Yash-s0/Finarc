@@ -394,7 +394,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                     ),
                   );
                 }),
-              if (txns.isNotEmpty) ...[
+              if (filtered.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.md),
                 FinarcPrimaryButton(
                   onPressed: () => context.push('/expenses/add'),

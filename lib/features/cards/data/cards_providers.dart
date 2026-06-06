@@ -17,6 +17,7 @@ class CardOverviewSummary {
     required this.totalOutstanding,
     required this.availableLimit,
     required this.utilization,
+    required this.nextUnpaidDueDate,
   });
 
   final CreditCard card;
@@ -25,6 +26,7 @@ class CardOverviewSummary {
   final double totalOutstanding;
   final double availableLimit;
   final double utilization;
+  final DateTime? nextUnpaidDueDate;
 }
 
 final billingServiceProvider = Provider<BillingService>((ref) {
@@ -57,6 +59,7 @@ final cardsOverviewProvider = FutureProvider((ref) async {
         totalOutstanding: snapshot.totalOutstanding,
         availableLimit: snapshot.availableLimit,
         utilization: snapshot.utilizationPercent,
+        nextUnpaidDueDate: snapshot.latestUnpaidBill?.dueDate,
       ),
     );
   }
@@ -183,6 +186,10 @@ final markBillPaidProvider = Provider((ref) {
         );
     await ref.read(alertEvaluationActionsProvider).evaluateAll();
     ref.invalidate(cardsOverviewProvider);
+    ref.invalidate(cardDetailProvider(result.cardId));
+    if (result.billId != null) {
+      ref.invalidate(billDetailProvider(result.billId!));
+    }
     return result;
   };
 });

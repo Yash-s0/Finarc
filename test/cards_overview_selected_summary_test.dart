@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:finarc/core/database/app_database.dart';
 import 'package:finarc/core/database/database_providers.dart';
 import 'package:finarc/features/cards/data/billing_service.dart';
+import 'package:finarc/features/cards/data/cards_providers.dart';
 import 'package:finarc/features/cards/presentation/cards_overview_screen.dart';
 import 'package:finarc/features/expenses/data/transaction_engine.dart';
 import 'package:finarc/features/expenses/models/transaction_types.dart';
@@ -56,6 +57,32 @@ void main() {
         paymentSourceId: cardId,
       ),
     );
+  }
+
+  Future<int> createLegacyBill(
+    int cardId, {
+    required DateTime billingDate,
+    required DateTime dueDate,
+    required double billedAmount,
+    double paidAmount = 0,
+    String status = 'billed',
+  }) {
+    return db
+        .into(db.cardBills)
+        .insert(
+          CardBillsCompanion.insert(
+            cardId: cardId,
+            cycleStartDate: Value(
+              billingDate.subtract(const Duration(days: 29)),
+            ),
+            cycleEndDate: Value(billingDate),
+            billingDate: Value(billingDate),
+            dueDate: Value(dueDate),
+            billedAmount: billedAmount,
+            paidAmount: Value(paidAmount),
+            status: Value(status),
+          ),
+        );
   }
 
   testWidgets('selected card summary metrics update after swipe', (
@@ -133,6 +160,143 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Pay Now'), findsNothing);
+    expect(find.text('No Bill'), findsOneWidget);
+  });
+
+  testWidgets('fully paid bills do not show a due badge on the carousel', (
+    tester,
+  ) async {
+    final cardId = await createCard(
+      bankName: 'ICICI',
+      nickname: 'Amazon',
+      last4: '9000',
+      dueDay: 7,
+    );
+    await createLegacyBill(
+      cardId,
+      billingDate: DateTime(2026, 5, 20),
+      dueDate: DateTime.now().add(const Duration(days: 1)),
+      billedAmount: 1200,
+      paidAmount: 1200,
+      status: 'paid',
+    );
+
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+          seedProvider.overrideWith((ref) async {}),
+        ],
+        child: const MaterialApp(home: Scaffold(body: CardsOverviewScreen())),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Due tomorrow'), findsNothing);
+    expect(find.text('No active billed statement'), findsOneWidget);
+    expect(find.text('No Bill'), findsOneWidget);
+  });
+
+  testWidgets('partial paid bills keep due state and remaining summary', (
+    tester,
+  ) async {
+    final cardId = await createCard(
+      bankName: 'Axis',
+      nickname: 'Neo',
+      last4: '1111',
+      dueDay: 7,
+    );
+    await createLegacyBill(
+      cardId,
+      billingDate: DateTime(2026, 5, 20),
+      dueDate: DateTime.now().add(const Duration(days: 1)),
+      billedAmount: 1200,
+      paidAmount: 200,
+      status: 'billed',
+    );
+
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+          seedProvider.overrideWith((ref) async {}),
+        ],
+        child: const MaterialApp(home: Scaffold(body: CardsOverviewScreen())),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Due tomorrow'), findsOneWidget);
+    expect(find.text('Paid ₹200.00 • Remaining ₹1,000.00'), findsOneWidget);
+    expect(find.text('Pay Now'), findsOneWidget);
+  });
+
+  testWidgets('full payment refreshes carousel badge and current bill state', (
+    tester,
+  ) async {
+    final container = ProviderContainer(
+      overrides: [
+        appDatabaseProvider.overrideWithValue(db),
+        seedProvider.overrideWith((ref) async {}),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await db
+        .into(db.bankAccounts)
+        .insert(
+          BankAccountsCompanion.insert(
+            bankName: 'HDFC',
+            accountName: 'Main',
+            accountType: 'savings',
+            currentBalance: const Value(5000),
+          ),
+        );
+    final cardId = await createCard(
+      bankName: 'ICICI',
+      nickname: 'Amazon',
+      last4: '9000',
+      dueDay: 7,
+    );
+    final billId = await createLegacyBill(
+      cardId,
+      billingDate: DateTime(2026, 5, 20),
+      dueDate: DateTime.now().add(const Duration(days: 1)),
+      billedAmount: 1200,
+      status: 'billed',
+    );
+
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: Scaffold(body: CardsOverviewScreen())),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Due tomorrow'), findsOneWidget);
+    expect(find.text('₹1,200.00'), findsAtLeastNWidgets(1));
+
+    await container.read(markBillPaidProvider)(
+      billId: billId,
+      paymentSourceId: 1,
+      paymentSourceType: 'bank',
+      amount: 1200,
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Due tomorrow'), findsNothing);
+    expect(find.text('No active billed statement'), findsOneWidget);
     expect(find.text('No Bill'), findsOneWidget);
   });
 }
