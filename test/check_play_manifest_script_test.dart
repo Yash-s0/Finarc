@@ -6,40 +6,20 @@ import 'package:path/path.dart' as p;
 void main() {
   final repoRoot = Directory.current.path;
   final scriptPath = p.join(repoRoot, 'scripts', 'check_play_manifest.sh');
+  final fixturesDir = p.join(repoRoot, 'test', 'fixtures', 'manifests');
 
-  Future<ProcessResult> runScriptWithManifest(String manifestContent) async {
-    final tempDir = await Directory.systemTemp.createTemp(
-      'finarc_manifest_check_',
-    );
-    final manifestPath = p.join(tempDir.path, 'AndroidManifest.xml');
-    await File(manifestPath).writeAsString(manifestContent);
-
-    final result = await Process.run(
+  Future<ProcessResult> runScriptWithFixture(String fixtureFileName) {
+    final manifestPath = p.join(fixturesDir, fixtureFileName);
+    return Process.run(
       'bash',
       [scriptPath],
       environment: {'MERGED_MANIFEST_OVERRIDE': manifestPath},
       workingDirectory: repoRoot,
     );
-
-    await tempDir.delete(recursive: true);
-    return result;
   }
 
-  test('allows notification listener and blocks no-SMS manifest', () async {
-    const manifest = '''
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-  <application>
-    <service
-      android:name=".FinarcNotificationListenerService"
-      android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
-      <intent-filter>
-        <action android:name="android.service.notification.NotificationListenerService"/>
-      </intent-filter>
-    </service>
-  </application>
-</manifest>
-''';
-    final result = await runScriptWithManifest(manifest);
+  test('allows valid Play release manifest fixture', () async {
+    final result = await runScriptWithFixture('play_release_valid.xml');
     expect(result.exitCode, 0, reason: '${result.stdout}\n${result.stderr}');
     expect(
       result.stdout.toString(),
@@ -48,26 +28,92 @@ void main() {
   });
 
   test('fails when READ_SMS is present', () async {
-    const manifest = '''
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-  <uses-permission android:name="android.permission.READ_SMS" />
-  <application>
-    <service
-      android:name=".FinarcNotificationListenerService"
-      android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
-      <intent-filter>
-        <action android:name="android.service.notification.NotificationListenerService"/>
-      </intent-filter>
-    </service>
-  </application>
-</manifest>
-''';
-    final result = await runScriptWithManifest(manifest);
+    final result = await runScriptWithFixture(
+      'play_release_invalid_read_sms.xml',
+    );
     expect(result.exitCode, isNot(0));
     expect(
       result.stdout.toString(),
       contains(
         'FAIL: Found forbidden entry in release manifest: READ_SMS permission',
+      ),
+    );
+  });
+
+  test('fails when RECEIVE_SMS is present', () async {
+    final result = await runScriptWithFixture(
+      'play_release_invalid_receive_sms.xml',
+    );
+    expect(result.exitCode, isNot(0));
+    expect(
+      result.stdout.toString(),
+      contains(
+        'FAIL: Found forbidden entry in release manifest: RECEIVE_SMS permission',
+      ),
+    );
+  });
+
+  test('fails when SMS receiver declaration is present', () async {
+    final result = await runScriptWithFixture(
+      'play_release_invalid_sms_receiver.xml',
+    );
+    expect(result.exitCode, isNot(0));
+    expect(
+      result.stdout.toString(),
+      contains(
+        'FAIL: Found forbidden entry in release manifest: FinarcSmsReceiver declaration',
+      ),
+    );
+  });
+
+  test('fails when SMS_RECEIVED intent filter is present', () async {
+    final result = await runScriptWithFixture(
+      'play_release_invalid_sms_received_intent.xml',
+    );
+    expect(result.exitCode, isNot(0));
+    expect(
+      result.stdout.toString(),
+      contains(
+        'FAIL: Found forbidden entry in release manifest: SMS_RECEIVED intent filter',
+      ),
+    );
+  });
+
+  test('fails when notification listener service is missing', () async {
+    final result = await runScriptWithFixture(
+      'play_release_missing_listener_service.xml',
+    );
+    expect(result.exitCode, isNot(0));
+    expect(
+      result.stdout.toString(),
+      contains(
+        'FAIL: Missing required release manifest entry: Notification listener service declaration',
+      ),
+    );
+  });
+
+  test('fails when notification listener permission is missing', () async {
+    final result = await runScriptWithFixture(
+      'play_release_missing_listener_permission.xml',
+    );
+    expect(result.exitCode, isNot(0));
+    expect(
+      result.stdout.toString(),
+      contains(
+        'FAIL: Missing required release manifest entry: Notification listener service permission',
+      ),
+    );
+  });
+
+  test('fails when notification listener action is missing', () async {
+    final result = await runScriptWithFixture(
+      'play_release_missing_listener_action.xml',
+    );
+    expect(result.exitCode, isNot(0));
+    expect(
+      result.stdout.toString(),
+      contains(
+        'FAIL: Missing required release manifest entry: Notification listener intent action',
       ),
     );
   });

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -56,6 +58,16 @@ void main() {
       expect(find.text('Export Full Backup'), findsOneWidget);
       expect(find.text('Import Full Backup'), findsOneWidget);
       expect(find.text('Delete All Data & Start Fresh'), findsOneWidget);
+      expect(
+        find.textContaining('BACKUPS ARE UNENCRYPTED JSON/CSV FILES'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining(
+          'Anyone with file access can read your financial data.',
+        ),
+        findsOneWidget,
+      );
 
       expect(find.textContaining('SMS Access'), findsNothing);
       expect(find.text('Open Debug Logs'), findsNothing);
@@ -63,6 +75,48 @@ void main() {
       expect(find.text('Notification Testing'), findsNothing);
     },
   );
+
+  test('release-safe profile warns before CSV export', () async {
+    final source = await File(
+      'lib/features/profile/presentation/profile_screen_safe.dart',
+    ).readAsString();
+
+    expect(source, contains("title: Text('Export \$label?')"));
+    expect(
+      source,
+      contains('This file contains financial data. Keep it private.'),
+    );
+  });
+
+  test(
+    'restore replace-all warning copy exists in release-safe profile',
+    () async {
+      final source = await File(
+        'lib/features/profile/presentation/profile_screen_safe.dart',
+      ).readAsString();
+
+      expect(
+        source,
+        contains(
+          'This will permanently replace all local Finarc data on this device.',
+        ),
+      );
+      expect(
+        source,
+        contains(
+          'Only import a backup file you trust. Existing local data will be deleted before restore.',
+        ),
+      );
+    },
+  );
+
+  test('android manifest disables platform backups', () async {
+    final manifest = await File(
+      'android/app/src/main/AndroidManifest.xml',
+    ).readAsString();
+
+    expect(manifest, contains('android:allowBackup="false"'));
+  });
 
   test('release router includes transaction import routes', () {
     bool containsRoute(List<RouteBase> routes, String targetPath) {

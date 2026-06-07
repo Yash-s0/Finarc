@@ -20,7 +20,7 @@ Runtime mode is controlled via `--dart-define=APP_MODE=...`.
 - Play-safe release path.
 - No `READ_SMS`/`RECEIVE_SMS`.
 - No SMS receiver registration.
-- No notification-listener service registration.
+- Notification-listener service remains registered.
 - Ingestion appears unavailable in app instead of broken.
 
 ## Build Scripts

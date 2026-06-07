@@ -4,6 +4,7 @@
     <application
         android:label="Finarc"
         android:name="${applicationName}"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher">
         <receiver
             android:name=".FinarcReminderReceiver"

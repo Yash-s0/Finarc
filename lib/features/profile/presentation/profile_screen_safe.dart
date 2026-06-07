@@ -256,7 +256,7 @@ Future<void> _confirmExportFullBackup(
     builder: (context) => AlertDialog(
       title: const Text('Export Unencrypted Backup?'),
       content: const Text(
-        'This creates a readable local JSON backup file. Anyone with access to this file can read your financial data.',
+        'This creates a readable local JSON backup file. This file contains financial data. Keep it private.',
       ),
       actions: [
         TextButton(
@@ -282,9 +282,13 @@ Future<void> _confirmExportFullBackup(
         .read(backupServiceProvider)
         .exportBackupToFile(filePath: outputPath);
     if (!context.mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Backup exported to: $outputPath')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Backup exported. This file contains financial data. Keep it private.',
+        ),
+      ),
+    );
   } catch (error) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(
@@ -300,6 +304,9 @@ Future<void> _exportCsv(
   required String label,
   required Future<String> Function() exporter,
 }) async {
+  final shouldExport = await _confirmCsvExport(context, label);
+  if (shouldExport != true || !context.mounted) return;
+
   final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
   final outputPath = await _buildExportPath('${fileNamePrefix}_$timestamp.csv');
   if (outputPath == null || !context.mounted) return;
@@ -310,9 +317,13 @@ Future<void> _exportCsv(
         .read(backupServiceProvider)
         .writeStringToFile(filePath: outputPath, content: csv);
     if (!context.mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('$label exported to: $outputPath')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '$label exported. This file contains financial data. Keep it private.',
+        ),
+      ),
+    );
   } catch (error) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(
@@ -435,6 +446,11 @@ Future<bool?> _showImportPreviewDialog(
               'This will permanently replace all local Finarc data on this device.',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Only import a backup file you trust. Existing local data will be deleted before restore.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
             const SizedBox(height: AppSpacing.sm),
             Text('Created: ${preview.createdAt?.toLocal().toString() ?? '-'}'),
             Text('Backup version: ${preview.backupVersion}'),
@@ -454,6 +470,28 @@ Future<bool?> _showImportPreviewDialog(
         FilledButton(
           onPressed: () => Navigator.of(context).pop(true),
           child: const Text('Import & Replace'),
+        ),
+      ],
+    ),
+  );
+}
+
+Future<bool?> _confirmCsvExport(BuildContext context, String label) {
+  return showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text('Export $label?'),
+      content: const Text(
+        'This file contains financial data. Keep it private.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Export'),
         ),
       ],
     ),

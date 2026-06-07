@@ -8,23 +8,13 @@ MERGED_MANIFEST="${MERGED_MANIFEST_OVERRIDE:-}"
 
 if [[ -z "$MERGED_MANIFEST" ]]; then
   CANDIDATE_PATHS=(
+    "build/app/intermediates/merged_manifest/playRelease/processPlayReleaseMainManifest/AndroidManifest.xml"
+    "build/app/intermediates/merged_manifests/playRelease/processPlayReleaseManifest/AndroidManifest.xml"
+    "build/app/intermediates/bundle_manifest/playRelease/processApplicationManifestPlayReleaseForBundle/AndroidManifest.xml"
     "build/app/intermediates/merged_manifest/release/processReleaseMainManifest/AndroidManifest.xml"
     "build/app/intermediates/merged_manifests/release/processReleaseManifest/AndroidManifest.xml"
     "build/app/intermediates/bundle_manifest/release/processApplicationManifestReleaseForBundle/AndroidManifest.xml"
   )
-
-  has_manifest=0
-  for p in "${CANDIDATE_PATHS[@]}"; do
-    if [[ -f "$p" ]]; then
-      has_manifest=1
-      break
-    fi
-  done
-
-  if [[ "$has_manifest" -eq 0 ]]; then
-    echo "Merged release manifest not found. Building release appbundle to generate it..."
-    flutter build appbundle --release
-  fi
 
   for p in "${CANDIDATE_PATHS[@]}"; do
     if [[ -f "$p" ]]; then
@@ -35,7 +25,12 @@ if [[ -z "$MERGED_MANIFEST" ]]; then
 fi
 
 if [[ -z "$MERGED_MANIFEST" ]]; then
-  echo "ERROR: Could not find merged release manifest after build."
+  echo "ERROR: Could not find a merged Play/release manifest."
+  echo "Build the release artifact first, then rerun this check."
+  echo "Checked paths:"
+  for p in "${CANDIDATE_PATHS[@]}"; do
+    echo "  - $p"
+  done
   exit 1
 fi
 
