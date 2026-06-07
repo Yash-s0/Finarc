@@ -420,7 +420,7 @@ class DetectionSettingsSection extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.xxs),
               Text(
-                'Reads transaction-like notifications locally and creates pending transactions for review.',
+                'Finarc only checks selected financial notifications and creates pending transactions for your confirmation. Chat and social apps are ignored.',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: AppSpacing.sm),

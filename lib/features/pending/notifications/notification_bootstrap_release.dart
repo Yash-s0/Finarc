@@ -11,6 +11,8 @@ import 'notification_fingerprint.dart';
 import 'notification_ingestion_service.dart';
 import 'notification_keyword_filter.dart';
 import 'notification_payload.dart';
+import 'notification_providers.dart'
+    show paymentAppNotificationsEnabledProvider;
 import 'notification_runtime_providers.dart';
 import 'notification_permission_service.dart';
 
@@ -33,6 +35,8 @@ final _notificationIngestionServiceProvider =
         fingerprint: NotificationFingerprint(),
         localNotifier: ref.read(notificationLocalNotifierProvider),
         isDetectionEnabled: () => true,
+        areOptionalNotificationSourcesEnabled: () =>
+            ref.read(paymentAppNotificationsEnabledProvider),
         shouldShowDetectionNotifications: () => true,
         appendDebug: (_) {},
       );

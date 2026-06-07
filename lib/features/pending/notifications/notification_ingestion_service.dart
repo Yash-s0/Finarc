@@ -17,6 +17,7 @@ import 'notification_fingerprint.dart';
 import 'notification_keyword_filter.dart';
 import 'notification_local_notifier.dart';
 import 'notification_payload.dart';
+import 'notification_provider_catalog.dart';
 
 class NotificationDebugEntry {
   const NotificationDebugEntry({
@@ -77,6 +78,7 @@ class NotificationIngestionService {
     required this.fingerprint,
     required this.localNotifier,
     required this.isDetectionEnabled,
+    bool Function()? areOptionalNotificationSourcesEnabled,
     required this.shouldShowDetectionNotifications,
     required this.appendDebug,
     CardBillDueNotificationService? cardBillDueNotificationService,
@@ -89,7 +91,10 @@ class NotificationIngestionService {
            CardPaymentNotificationService(
              database: database,
              pendingService: pendingService,
-           );
+           ),
+       areOptionalNotificationSourcesEnabled =
+           areOptionalNotificationSourcesEnabled ??
+           _optionalSourcesEnabledByDefault;
 
   final AppDatabase database;
   final PendingIngestionService pendingIngestionService;
@@ -98,11 +103,13 @@ class NotificationIngestionService {
   final NotificationFingerprint fingerprint;
   final NotificationLocalNotifier localNotifier;
   final bool Function() isDetectionEnabled;
+  final bool Function() areOptionalNotificationSourcesEnabled;
   final bool Function() shouldShowDetectionNotifications;
   final void Function(NotificationDebugEntry entry) appendDebug;
   final CardBillDueNotificationService cardBillDueNotificationService;
   final CardPaymentNotificationService cardPaymentNotificationService;
   static const Duration _nearDuplicateWindow = Duration(minutes: 8);
+  static bool _optionalSourcesEnabledByDefault() => true;
 
   Future<List<int>> processPayload(NotificationPayload payload) async {
     if (!isDetectionEnabled()) {
@@ -112,6 +119,17 @@ class NotificationIngestionService {
         reason: 'detection-disabled',
         parseResult: 'ignored-disabled',
       );
+      return const [];
+    }
+
+    if (payload.sourceType != 'sms' &&
+        NotificationProviderCatalog.isBlockedPackage(payload.packageName)) {
+      return const [];
+    }
+
+    if (payload.sourceType != 'sms' &&
+        NotificationProviderCatalog.isOptionalPackage(payload.packageName) &&
+        !areOptionalNotificationSourcesEnabled()) {
       return const [];
     }
 

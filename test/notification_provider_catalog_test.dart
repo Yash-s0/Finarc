@@ -12,6 +12,12 @@ void main() {
     );
     expect(
       NotificationProviderCatalog.providerForPackage(
+        'com.google.android.apps.nbu.paisa.user',
+      )?.category,
+      NotificationSourceCategory.upiPaymentApp,
+    );
+    expect(
+      NotificationProviderCatalog.providerForPackage(
         'com.phonepe.app',
       )?.providerName,
       'PhonePe',
@@ -69,6 +75,42 @@ void main() {
   test('unknown package is rejected', () {
     expect(
       NotificationProviderCatalog.isAllowedPackage('com.whatsapp'),
+      isFalse,
+    );
+  });
+
+  test('blocked chat and social packages are hard blocked', () {
+    expect(
+      NotificationProviderCatalog.isBlockedPackage('com.whatsapp'),
+      isTrue,
+    );
+    expect(
+      NotificationProviderCatalog.isBlockedPackage('org.telegram.messenger'),
+      isTrue,
+    );
+    expect(
+      NotificationProviderCatalog.isBlockedPackage('com.google.android.gm'),
+      isTrue,
+    );
+  });
+
+  test('payment and wallet providers are optional sources', () {
+    expect(
+      NotificationProviderCatalog.isOptionalPackage('com.phonepe.app'),
+      isTrue,
+    );
+    expect(
+      NotificationProviderCatalog.isOptionalPackage(
+        'com.amazon.mshop.android.shopping',
+      ),
+      isTrue,
+    );
+    expect(
+      NotificationProviderCatalog.isOptionalPackage('com.dreamplug.androidapp'),
+      isTrue,
+    );
+    expect(
+      NotificationProviderCatalog.isOptionalPackage('com.snapwork.hdfc'),
       isFalse,
     );
   });

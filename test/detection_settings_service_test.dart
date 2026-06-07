@@ -20,6 +20,7 @@ void main() {
   test('loads defaults and persists updates', () async {
     final initial = await service.load();
     expect(initial.notificationDetectionEnabled, isTrue);
+    expect(initial.paymentAppNotificationsEnabled, isFalse);
     expect(initial.showDetectionNotifications, isTrue);
     expect(initial.reminderEnabled, isFalse);
     expect(initial.smsDetectionEnabled, isFalse);
@@ -27,6 +28,7 @@ void main() {
 
     await service.patch(
       notificationDetectionEnabled: false,
+      paymentAppNotificationsEnabled: true,
       showDetectionNotifications: false,
       reminderEnabled: true,
       dailyReminderEnabled: true,
@@ -47,6 +49,7 @@ void main() {
 
     final updated = await service.load();
     expect(updated.notificationDetectionEnabled, isFalse);
+    expect(updated.paymentAppNotificationsEnabled, isTrue);
     expect(updated.showDetectionNotifications, isFalse);
     expect(updated.reminderEnabled, isTrue);
     expect(updated.dailyReminderEnabled, isTrue);

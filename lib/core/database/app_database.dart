@@ -242,6 +242,8 @@ class AppSettings extends Table {
       boolean().withDefault(const Constant(false))();
   BoolColumn get notificationDetectionEnabled =>
       boolean().withDefault(const Constant(true))();
+  BoolColumn get paymentAppNotificationsEnabled =>
+      boolean().withDefault(const Constant(false))();
   BoolColumn get showDetectionNotifications =>
       boolean().withDefault(const Constant(true))();
   BoolColumn get reminderEnabled =>
@@ -326,7 +328,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 20;
+  int get schemaVersion => 21;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -532,6 +534,12 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 20) {
         await m.addColumn(cashWallets, cashWallets.walletType);
+      }
+      if (from < 21) {
+        await m.addColumn(
+          appSettings,
+          appSettings.paymentAppNotificationsEnabled,
+        );
       }
       await globalAppLogService.log(
         category: 'migration',

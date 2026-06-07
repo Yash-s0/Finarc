@@ -124,6 +124,7 @@ class DetectionSettingsController extends AsyncNotifier<DetectionSettings> {
 
   Future<void> applyChanges({
     bool? notificationDetectionEnabled,
+    bool? paymentAppNotificationsEnabled,
     bool? showDetectionNotifications,
     bool? reminderEnabled,
     bool? dailyReminderEnabled,
@@ -161,6 +162,7 @@ class DetectionSettingsController extends AsyncNotifier<DetectionSettings> {
     final current = await future;
     final next = current.copyWith(
       notificationDetectionEnabled: notificationDetectionEnabled,
+      paymentAppNotificationsEnabled: paymentAppNotificationsEnabled,
       showDetectionNotifications: showDetectionNotifications,
       reminderEnabled: reminderEnabled,
       dailyReminderEnabled: dailyReminderEnabled,
@@ -209,6 +211,11 @@ final detectionSettingsProvider =
 final notificationDetectionEnabledProvider = Provider<bool>((ref) {
   final settings = ref.watch(detectionSettingsProvider).valueOrNull;
   return settings?.notificationDetectionEnabled ?? true;
+});
+
+final paymentAppNotificationsEnabledProvider = Provider<bool>((ref) {
+  final settings = ref.watch(detectionSettingsProvider).valueOrNull;
+  return settings?.paymentAppNotificationsEnabled ?? false;
 });
 
 final showDetectionNotificationsProvider = Provider<bool>((ref) {
@@ -404,6 +411,8 @@ final notificationIngestionServiceProvider =
         localNotifier: ref.read(notificationLocalNotifierProvider),
         isDetectionEnabled: () =>
             ref.read(notificationDetectionEnabledProvider),
+        areOptionalNotificationSourcesEnabled: () =>
+            ref.read(paymentAppNotificationsEnabledProvider),
         shouldShowDetectionNotifications: () =>
             ref.read(showDetectionNotificationsProvider),
         appendDebug: append,

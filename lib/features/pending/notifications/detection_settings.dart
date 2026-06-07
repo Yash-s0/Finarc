@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 class DetectionSettings {
   const DetectionSettings({
     required this.notificationDetectionEnabled,
+    required this.paymentAppNotificationsEnabled,
     required this.showDetectionNotifications,
     required this.reminderEnabled,
     required this.dailyReminderEnabled,
@@ -36,6 +37,7 @@ class DetectionSettings {
   });
 
   final bool notificationDetectionEnabled;
+  final bool paymentAppNotificationsEnabled;
   final bool showDetectionNotifications;
   final bool reminderEnabled;
   final bool dailyReminderEnabled;
@@ -72,6 +74,7 @@ class DetectionSettings {
 
   DetectionSettings copyWith({
     bool? notificationDetectionEnabled,
+    bool? paymentAppNotificationsEnabled,
     bool? showDetectionNotifications,
     bool? reminderEnabled,
     bool? dailyReminderEnabled,
@@ -109,6 +112,8 @@ class DetectionSettings {
     return DetectionSettings(
       notificationDetectionEnabled:
           notificationDetectionEnabled ?? this.notificationDetectionEnabled,
+      paymentAppNotificationsEnabled:
+          paymentAppNotificationsEnabled ?? this.paymentAppNotificationsEnabled,
       showDetectionNotifications:
           showDetectionNotifications ?? this.showDetectionNotifications,
       reminderEnabled: reminderEnabled ?? this.reminderEnabled,
@@ -167,6 +172,7 @@ class DetectionSettings {
   static DetectionSettings defaults() {
     return const DetectionSettings(
       notificationDetectionEnabled: true,
+      paymentAppNotificationsEnabled: false,
       showDetectionNotifications: true,
       reminderEnabled: false,
       dailyReminderEnabled: false,

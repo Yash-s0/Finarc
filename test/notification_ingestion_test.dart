@@ -71,7 +71,7 @@ void main() {
       expect(result.reason, 'ignored-package-not-allowlisted');
     });
 
-    test('accepts messaging app notification from transactional sender', () {
+    test('ignores messaging app notification even if it looks financial', () {
       final filter = NotificationKeywordFilter();
       final payload = NotificationPayload(
         packageName: 'com.google.android.apps.messaging',
@@ -82,24 +82,23 @@ void main() {
       );
 
       final result = filter.evaluate(payload);
-      expect(result.accepted, isTrue);
-      expect(result.reason, 'accepted-messages-transactional-sender');
-      expect(result.senderFilterResult, 'allowed-transactional-sender');
+      expect(result.accepted, isFalse);
+      expect(result.reason, 'ignored-package-not-allowlisted');
     });
 
-    test('blocks messaging app notification from promotional sender', () {
+    test('ignores finance notification without amount', () {
       final filter = NotificationKeywordFilter();
       final payload = NotificationPayload(
-        packageName: 'com.google.android.apps.messaging',
+        packageName: 'com.snapwork.hdfc',
         sourceType: 'appNotification',
         receivedAt: DateTime(2026, 5, 30, 10, 0),
-        title: 'CP-RZRPAY-P',
-        body: 'Offer just for you! cashback if you pay now',
+        title: 'HDFC Bank',
+        body: 'Your card transaction was successful at SWIGGY',
       );
 
       final result = filter.evaluate(payload);
       expect(result.accepted, isFalse);
-      expect(result.reason, 'blocked-promotional-sender');
+      expect(result.reason, 'ignored-no-amount');
     });
   });
 
@@ -266,6 +265,7 @@ void main() {
         fingerprint: NotificationFingerprint(),
         localNotifier: notifier,
         isDetectionEnabled: () => true,
+        areOptionalNotificationSourcesEnabled: () => true,
         shouldShowDetectionNotifications: () => true,
         appendDebug: (entry) => debugEntries.add(entry),
       );
@@ -347,6 +347,60 @@ void main() {
       expect(notifier.shownCount, 0);
     });
 
+    test(
+      'WhatsApp notifications are ignored without storing raw text',
+      () async {
+        final ids = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.whatsapp',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 5, 24, 12, 0),
+            title: 'Ravi',
+            body: '₹12,000 sent yesterday',
+          ),
+        );
+
+        expect(ids, isEmpty);
+        expect(debugEntries, isEmpty);
+        expect(await db.select(db.pendingTransactions).get(), isEmpty);
+      },
+    );
+
+    test(
+      'Telegram notifications are ignored without storing raw text',
+      () async {
+        final ids = await service.processPayload(
+          NotificationPayload(
+            packageName: 'org.telegram.messenger',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 5, 24, 12, 5),
+            title: 'Telegram',
+            body: 'Paid ₹900 for dinner',
+          ),
+        );
+
+        expect(ids, isEmpty);
+        expect(debugEntries, isEmpty);
+        expect(await db.select(db.pendingTransactions).get(), isEmpty);
+      },
+    );
+
+    test('social package with amount is still ignored', () async {
+      final ids = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.instagram.android',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 24, 12, 10),
+          title: 'Instagram',
+          body: 'Rahul sent ₹500 in chat',
+        ),
+      );
+
+      expect(ids, isEmpty);
+      expect(debugEntries, isEmpty);
+      expect(await db.select(db.pendingTransactions).get(), isEmpty);
+    });
+
     test('CRED promo gift card notification is ignored', () async {
       final ids = await service.processPayload(
         NotificationPayload(
@@ -398,6 +452,28 @@ void main() {
       expect(debugEntries.last.reason, 'promotional_offer_detected');
     });
 
+    test(
+      'bank notification still creates pending when transaction-like',
+      () async {
+        final ids = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.snapwork.hdfc',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 5, 31, 9, 12),
+            title: 'HDFC Bank',
+            body: 'INR 2,499 spent at SWIGGY on your card ending 1234',
+          ),
+        );
+
+        expect(ids.length, 1);
+        final pending = await (db.select(
+          db.pendingTransactions,
+        )..where((p) => p.id.equals(ids.first))).getSingle();
+        expect(pending.merchant, 'Swiggy');
+        expect(pending.sourceType, 'appNotification');
+      },
+    );
+
     test('real CRED card transaction still creates pending', () async {
       final ids = await service.processPayload(
         NotificationPayload(
@@ -417,6 +493,24 @@ void main() {
       expect(pending.paymentSourceTypeSuggestion, 'creditCard');
       expect(pending.merchant, 'Myntra');
     });
+
+    test(
+      'notification without amount is ignored for allowed finance app',
+      () async {
+        final ids = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.snapwork.hdfc',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 5, 31, 9, 16),
+            title: 'HDFC Bank',
+            body: 'Your card was used at Myntra',
+          ),
+        );
+
+        expect(ids, isEmpty);
+        expect(debugEntries.last.reason, 'ignored-no-amount');
+      },
+    );
 
     test('ICICI bill due notification is classified and reconciled', () async {
       final cardId = await createCard(bankName: 'ICICI Bank', last4: '9000');
@@ -691,7 +785,7 @@ void main() {
         final bankId = await createBank(bankName: 'Kotak');
         final ids = await service.processPayload(
           NotificationPayload(
-            packageName: 'com.google.android.apps.messaging',
+            packageName: 'com.msf.kbank.mobile',
             sourceType: 'appNotification',
             receivedAt: DateTime(2026, 5, 31, 10, 58),
             title: 'VM-KOTAKB-S',
@@ -719,7 +813,7 @@ void main() {
 
       final debitIds = await service.processPayload(
         NotificationPayload(
-          packageName: 'com.google.android.apps.messaging',
+          packageName: 'com.msf.kbank.mobile',
           sourceType: 'appNotification',
           receivedAt: DateTime(2026, 5, 31, 10, 58),
           title: 'VM-KOTAKB-S',
@@ -817,7 +911,7 @@ void main() {
     test('real salary credited notification creates income pending', () async {
       final ids = await service.processPayload(
         NotificationPayload(
-          packageName: 'com.google.android.apps.messaging',
+          packageName: 'com.msf.kbank.mobile',
           sourceType: 'appNotification',
           receivedAt: DateTime(2026, 5, 31, 9, 30),
           title: 'CP-RZRPAY-S',
@@ -833,35 +927,27 @@ void main() {
       expect(pending.categorySuggestion, 'Income');
     });
 
-    test(
-      'creates pending transactions from messages app transactional sender',
-      () async {
-        final ids = await service.processPayload(
-          NotificationPayload(
-            packageName: 'com.google.android.apps.messaging',
-            sourceType: 'appNotification',
-            receivedAt: DateTime(2026, 5, 30, 12, 0),
-            title: 'VM-KOTAKB-S',
-            body:
-                'Sent Rs.1.00 from Kotak Bank AC X0754 to yas21606-4@okaxis on 30-05-26.UPI Ref 123938960566.',
-          ),
-        );
+    test('blocks messages app transactional sender notifications', () async {
+      final ids = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.google.android.apps.messaging',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 30, 12, 0),
+          title: 'VM-KOTAKB-S',
+          body:
+              'Sent Rs.1.00 from Kotak Bank AC X0754 to yas21606-4@okaxis on 30-05-26.UPI Ref 123938960566.',
+        ),
+      );
 
-        expect(ids.length, 1);
-        final pending = await (db.select(
-          db.pendingTransactions,
-        )..where((p) => p.id.equals(ids.first))).getSingle();
-        expect(pending.sourceType, 'appNotification');
-        expect(pending.merchant.toLowerCase(), contains('yas21606'));
-        expect(pending.merchant.toLowerCase(), contains('okaxis'));
-        expect(pending.categorySuggestion, 'Transfer');
-      },
-    );
+      expect(ids, isEmpty);
+      expect(debugEntries, isEmpty);
+      expect(await db.select(db.pendingTransactions).get(), isEmpty);
+    });
 
     test('received upi notification is parsed as income transfer', () async {
       final ids = await service.processPayload(
         NotificationPayload(
-          packageName: 'com.google.android.apps.messaging',
+          packageName: 'com.msf.kbank.mobile',
           sourceType: 'appNotification',
           receivedAt: DateTime(2026, 5, 30, 12, 2),
           title: 'VM-KOTAKB-S',
@@ -884,7 +970,7 @@ void main() {
     test('parses two RRN entries from one messages notification', () async {
       final ids = await service.processPayload(
         NotificationPayload(
-          packageName: 'com.google.android.apps.messaging',
+          packageName: 'com.msf.kbank.mobile',
           sourceType: 'appNotification',
           receivedAt: DateTime(2026, 5, 30, 12, 5),
           title: 'AD-INDUSB-S',
@@ -906,7 +992,7 @@ void main() {
     test('suppresses duplicate RRN and allows different RRN', () async {
       final first = await service.processPayload(
         NotificationPayload(
-          packageName: 'com.google.android.apps.messaging',
+          packageName: 'com.msf.kbank.mobile',
           sourceType: 'appNotification',
           receivedAt: DateTime(2026, 5, 30, 12, 10),
           title: 'JX-KOTAKB-S',
@@ -916,7 +1002,7 @@ void main() {
       );
       final duplicate = await service.processPayload(
         NotificationPayload(
-          packageName: 'com.google.android.apps.messaging',
+          packageName: 'com.msf.kbank.mobile',
           sourceType: 'appNotification',
           receivedAt: DateTime(2026, 5, 30, 12, 20),
           title: 'JX-KOTAKB-S',
@@ -926,7 +1012,7 @@ void main() {
       );
       final secondUnique = await service.processPayload(
         NotificationPayload(
-          packageName: 'com.google.android.apps.messaging',
+          packageName: 'com.msf.kbank.mobile',
           sourceType: 'appNotification',
           receivedAt: DateTime(2026, 5, 30, 12, 30),
           title: 'VM-KOTAKB-S',
@@ -945,7 +1031,7 @@ void main() {
     test('duplicate repeated body with same UPI ref creates one pending', () async {
       final ids = await service.processPayload(
         NotificationPayload(
-          packageName: 'com.google.android.apps.messaging',
+          packageName: 'com.msf.kbank.mobile',
           sourceType: 'appNotification',
           receivedAt: DateTime(2026, 5, 30, 12, 35),
           title: 'VM-KOTAKB-S',
@@ -1008,7 +1094,7 @@ void main() {
         final receivedAt = DateTime(2026, 5, 30, 21, 17, 42);
         final ids = await service.processPayload(
           NotificationPayload(
-            packageName: 'com.google.android.apps.messaging',
+            packageName: 'com.msf.kbank.mobile',
             sourceType: 'appNotification',
             receivedAt: receivedAt,
             title: 'VM-KOTAKB-S',
@@ -1117,7 +1203,7 @@ void main() {
     test('same UPI reference dedupes even outside 40 second window', () async {
       final first = await service.processPayload(
         NotificationPayload(
-          packageName: 'com.google.android.apps.messaging',
+          packageName: 'com.msf.kbank.mobile',
           sourceType: 'appNotification',
           receivedAt: DateTime(2026, 5, 30, 16, 0, 0),
           title: 'VM-KOTAKB-S',
@@ -1127,7 +1213,7 @@ void main() {
       );
       final duplicate = await service.processPayload(
         NotificationPayload(
-          packageName: 'com.google.android.apps.messaging',
+          packageName: 'com.msf.kbank.mobile',
           sourceType: 'appNotification',
           receivedAt: DateTime(2026, 5, 30, 16, 2, 0),
           title: 'VM-KOTAKB-S',
@@ -1148,7 +1234,7 @@ void main() {
       () async {
         final first = await service.processPayload(
           NotificationPayload(
-            packageName: 'com.google.android.apps.messaging',
+            packageName: 'com.msf.kbank.mobile',
             sourceType: 'appNotification',
             receivedAt: DateTime(2026, 5, 30, 17, 0, 0),
             title: 'VM-KOTAKB-S',
@@ -1158,7 +1244,7 @@ void main() {
         );
         final second = await service.processPayload(
           NotificationPayload(
-            packageName: 'com.google.android.apps.messaging',
+            packageName: 'com.msf.kbank.mobile',
             sourceType: 'appNotification',
             receivedAt: DateTime(2026, 5, 30, 17, 0, 20),
             title: 'VM-KOTAKB-S',
@@ -1193,7 +1279,7 @@ void main() {
 
       final ids = await service.processPayload(
         NotificationPayload(
-          packageName: 'com.google.android.apps.messaging',
+          packageName: 'com.msf.kbank.mobile',
           sourceType: 'appNotification',
           receivedAt: DateTime(2026, 5, 30, 12, 0),
           title: 'VM-KOTAKB-S',
@@ -1286,6 +1372,7 @@ void main() {
         fingerprint: NotificationFingerprint(),
         localNotifier: localNotifier,
         isDetectionEnabled: () => false,
+        areOptionalNotificationSourcesEnabled: () => true,
         shouldShowDetectionNotifications: () => true,
         appendDebug: (_) {},
       );
@@ -1332,6 +1419,7 @@ void main() {
           fingerprint: NotificationFingerprint(),
           localNotifier: localNotifier,
           isDetectionEnabled: () => true,
+          areOptionalNotificationSourcesEnabled: () => true,
           shouldShowDetectionNotifications: () => false,
           appendDebug: (_) {},
         );
@@ -1352,6 +1440,59 @@ void main() {
         expect(pendingRows.length, 1);
       },
     );
+
+    test('UPI/payment app notifications respect opt-in setting', () async {
+      final optionalPendingService = PendingService(db, TransactionEngine(db));
+      final optionalParserRegistry = TransactionParserRegistry(
+        parsers: [
+          UpiNotificationParser(),
+          CardNotificationParser(),
+          GenericBankSmsParser(),
+        ],
+        fallbackParser: GenericFallbackParser(),
+      );
+      final optionalPendingIngestion = PendingIngestionService(
+        db,
+        optionalPendingService,
+        optionalParserRegistry,
+      );
+      final blockedEntries = <NotificationDebugEntry>[];
+      final disabledOptionalService = NotificationIngestionService(
+        database: db,
+        pendingIngestionService: optionalPendingIngestion,
+        pendingService: optionalPendingService,
+        keywordFilter: NotificationKeywordFilter(),
+        fingerprint: NotificationFingerprint(),
+        localNotifier: _FakeLocalNotifier(),
+        isDetectionEnabled: () => true,
+        areOptionalNotificationSourcesEnabled: () => false,
+        shouldShowDetectionNotifications: () => true,
+        appendDebug: blockedEntries.add,
+      );
+
+      final disabledIds = await disabledOptionalService.processPayload(
+        NotificationPayload(
+          packageName: 'com.phonepe.app',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 24, 12, 0),
+          title: 'Paid ₹250',
+          body: 'to Zomato via UPI',
+        ),
+      );
+      expect(disabledIds, isEmpty);
+      expect(blockedEntries, isEmpty);
+
+      final enabledIds = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.phonepe.app',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 24, 12, 5),
+          title: 'Paid ₹250',
+          body: 'to Zomato via UPI',
+        ),
+      );
+      expect(enabledIds.length, 1);
+    });
   });
 
   group('notification route parsing', () {

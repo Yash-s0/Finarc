@@ -22,6 +22,9 @@ class DetectionSettingsService {
         notificationDetectionEnabled: Value(
           settings.notificationDetectionEnabled,
         ),
+        paymentAppNotificationsEnabled: Value(
+          settings.paymentAppNotificationsEnabled,
+        ),
         showDetectionNotifications: Value(settings.showDetectionNotifications),
         reminderEnabled: Value(settings.reminderEnabled),
         dailyReminderEnabled: Value(settings.dailyReminderEnabled),
@@ -66,6 +69,7 @@ class DetectionSettingsService {
 
   Future<void> patch({
     bool? notificationDetectionEnabled,
+    bool? paymentAppNotificationsEnabled,
     bool? showDetectionNotifications,
     bool? reminderEnabled,
     bool? dailyReminderEnabled,
@@ -104,6 +108,7 @@ class DetectionSettingsService {
     await save(
       current.copyWith(
         notificationDetectionEnabled: notificationDetectionEnabled,
+        paymentAppNotificationsEnabled: paymentAppNotificationsEnabled,
         showDetectionNotifications: showDetectionNotifications,
         reminderEnabled: reminderEnabled,
         dailyReminderEnabled: dailyReminderEnabled,
@@ -172,6 +177,7 @@ class DetectionSettingsService {
   DetectionSettings _mapRow(AppSetting row) {
     return DetectionSettings(
       notificationDetectionEnabled: row.notificationDetectionEnabled,
+      paymentAppNotificationsEnabled: row.paymentAppNotificationsEnabled,
       showDetectionNotifications: row.showDetectionNotifications,
       reminderEnabled: row.reminderEnabled,
       dailyReminderEnabled: row.dailyReminderEnabled,

@@ -343,6 +343,7 @@ class BackupService {
     'isDarkMode': row.isDarkMode,
     'appLockEnabled': row.appLockEnabled,
     'notificationDetectionEnabled': row.notificationDetectionEnabled,
+    'paymentAppNotificationsEnabled': row.paymentAppNotificationsEnabled,
     'showDetectionNotifications': row.showDetectionNotifications,
     'reminderEnabled': row.reminderEnabled,
     'dailyReminderEnabled': row.dailyReminderEnabled,

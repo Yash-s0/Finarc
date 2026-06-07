@@ -1,6 +1,5 @@
 import 'notification_payload.dart';
 import 'notification_provider_catalog.dart';
-import 'sms_sender_filter.dart';
 
 class NotificationFilterResult {
   const NotificationFilterResult({
@@ -106,19 +105,6 @@ class NotificationKeywordFilter {
     'refund credited',
   ];
 
-  static const Set<String> _knownMessagingPackages = {
-    'com.google.android.apps.messaging',
-    'com.android.mms',
-    'com.samsung.android.messaging',
-    'com.miui.smsextra',
-    'com.coloros.mms',
-    'com.oneplus.mms',
-    'com.vivo.messaging',
-    'com.huawei.message',
-  };
-
-  static const SmsSenderFilter _smsSenderFilter = SmsSenderFilter();
-
   NotificationFilterResult evaluate(NotificationPayload payload) {
     if (payload.packageName == 'com.example.finarc') {
       return const NotificationFilterResult(
@@ -145,51 +131,6 @@ class NotificationKeywordFilter {
       final provider = NotificationProviderCatalog.providerForPackage(
         payload.packageName,
       );
-      if (_isLikelyMessagingPackage(payload.packageName)) {
-        final senderCandidate =
-            payload.sender ??
-            payload.title ??
-            payload.subText ??
-            payload.appName ??
-            '';
-        final senderResult = _smsSenderFilter.evaluate(senderCandidate);
-        if (!senderResult.accepted) {
-          return NotificationFilterResult(
-            accepted: false,
-            reason: senderResult.reason,
-            providerName: payload.appName ?? 'Messages',
-            senderFilterResult: senderResult.reason,
-          );
-        }
-        final text = payload.combinedText.toLowerCase();
-        final hasKeyword = _transactionKeywords.any(text.contains);
-        if (!hasKeyword) {
-          return NotificationFilterResult(
-            accepted: false,
-            reason: 'blocked-low-confidence',
-            providerName: payload.appName ?? 'Messages',
-            senderFilterResult: senderResult.reason,
-          );
-        }
-        final promoSignal = _promotionalSignal(payload.combinedText);
-        if (promoSignal.blocked) {
-          return NotificationFilterResult(
-            accepted: false,
-            reason: 'promotional_offer_detected',
-            providerName: payload.appName ?? 'Messages',
-            senderFilterResult: senderResult.reason,
-            amountCandidate: promoSignal.amountCandidate,
-            blockedContext: promoSignal.blockedContext,
-          );
-        }
-        return NotificationFilterResult(
-          accepted: true,
-          reason: 'accepted-messages-transactional-sender',
-          providerName: payload.appName ?? 'Messages',
-          senderFilterResult: senderResult.reason,
-        );
-      }
-
       if (provider == null) {
         return const NotificationFilterResult(
           accepted: false,
@@ -220,12 +161,23 @@ class NotificationKeywordFilter {
           blockedContext: promoSignal.blockedContext,
         );
       }
+      final amountCandidate = _extractAmountCandidate(payload.combinedText);
+      if (amountCandidate == null) {
+        return NotificationFilterResult(
+          accepted: false,
+          reason: 'ignored-no-amount',
+          providerId: provider.providerId,
+          providerName: provider.providerName,
+          senderFilterResult: 'not-applicable',
+        );
+      }
       return NotificationFilterResult(
         accepted: true,
         reason: 'accepted-provider-keyword-match',
         providerId: provider.providerId,
         providerName: provider.providerName,
         senderFilterResult: 'not-applicable',
+        amountCandidate: amountCandidate,
       );
     }
 
@@ -252,16 +204,6 @@ class NotificationKeywordFilter {
       reason: 'accepted-keyword-match',
       senderFilterResult: 'not-applicable',
     );
-  }
-
-  bool _isLikelyMessagingPackage(String packageName) {
-    final normalized = packageName.toLowerCase().trim();
-    if (_knownMessagingPackages.contains(normalized)) {
-      return true;
-    }
-    return normalized.contains('messag') ||
-        normalized.contains('mms') ||
-        normalized.contains('sms');
   }
 
   _PromotionalSignal _promotionalSignal(String text) {

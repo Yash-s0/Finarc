@@ -10866,6 +10866,21 @@ class $AppSettingsTable extends AppSettings
         ),
         defaultValue: const Constant(true),
       );
+  static const VerificationMeta _paymentAppNotificationsEnabledMeta =
+      const VerificationMeta('paymentAppNotificationsEnabled');
+  @override
+  late final GeneratedColumn<bool> paymentAppNotificationsEnabled =
+      GeneratedColumn<bool>(
+        'payment_app_notifications_enabled',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("payment_app_notifications_enabled" IN (0, 1))',
+        ),
+        defaultValue: const Constant(false),
+      );
   static const VerificationMeta _showDetectionNotificationsMeta =
       const VerificationMeta('showDetectionNotifications');
   @override
@@ -11329,6 +11344,7 @@ class $AppSettingsTable extends AppSettings
     isDarkMode,
     appLockEnabled,
     notificationDetectionEnabled,
+    paymentAppNotificationsEnabled,
     showDetectionNotifications,
     reminderEnabled,
     dailyReminderEnabled,
@@ -11404,6 +11420,15 @@ class $AppSettingsTable extends AppSettings
         notificationDetectionEnabled.isAcceptableOrUnknown(
           data['notification_detection_enabled']!,
           _notificationDetectionEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('payment_app_notifications_enabled')) {
+      context.handle(
+        _paymentAppNotificationsEnabledMeta,
+        paymentAppNotificationsEnabled.isAcceptableOrUnknown(
+          data['payment_app_notifications_enabled']!,
+          _paymentAppNotificationsEnabledMeta,
         ),
       );
     }
@@ -11744,6 +11769,10 @@ class $AppSettingsTable extends AppSettings
         DriftSqlType.bool,
         data['${effectivePrefix}notification_detection_enabled'],
       )!,
+      paymentAppNotificationsEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}payment_app_notifications_enabled'],
+      )!,
       showDetectionNotifications: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}show_detection_notifications'],
@@ -11898,6 +11927,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
   final bool isDarkMode;
   final bool appLockEnabled;
   final bool notificationDetectionEnabled;
+  final bool paymentAppNotificationsEnabled;
   final bool showDetectionNotifications;
   final bool reminderEnabled;
   final bool dailyReminderEnabled;
@@ -11938,6 +11968,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     required this.isDarkMode,
     required this.appLockEnabled,
     required this.notificationDetectionEnabled,
+    required this.paymentAppNotificationsEnabled,
     required this.showDetectionNotifications,
     required this.reminderEnabled,
     required this.dailyReminderEnabled,
@@ -11982,6 +12013,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     map['app_lock_enabled'] = Variable<bool>(appLockEnabled);
     map['notification_detection_enabled'] = Variable<bool>(
       notificationDetectionEnabled,
+    );
+    map['payment_app_notifications_enabled'] = Variable<bool>(
+      paymentAppNotificationsEnabled,
     );
     map['show_detection_notifications'] = Variable<bool>(
       showDetectionNotifications,
@@ -12059,6 +12093,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       isDarkMode: Value(isDarkMode),
       appLockEnabled: Value(appLockEnabled),
       notificationDetectionEnabled: Value(notificationDetectionEnabled),
+      paymentAppNotificationsEnabled: Value(paymentAppNotificationsEnabled),
       showDetectionNotifications: Value(showDetectionNotifications),
       reminderEnabled: Value(reminderEnabled),
       dailyReminderEnabled: Value(dailyReminderEnabled),
@@ -12124,6 +12159,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       appLockEnabled: serializer.fromJson<bool>(json['appLockEnabled']),
       notificationDetectionEnabled: serializer.fromJson<bool>(
         json['notificationDetectionEnabled'],
+      ),
+      paymentAppNotificationsEnabled: serializer.fromJson<bool>(
+        json['paymentAppNotificationsEnabled'],
       ),
       showDetectionNotifications: serializer.fromJson<bool>(
         json['showDetectionNotifications'],
@@ -12220,6 +12258,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       'notificationDetectionEnabled': serializer.toJson<bool>(
         notificationDetectionEnabled,
       ),
+      'paymentAppNotificationsEnabled': serializer.toJson<bool>(
+        paymentAppNotificationsEnabled,
+      ),
       'showDetectionNotifications': serializer.toJson<bool>(
         showDetectionNotifications,
       ),
@@ -12285,6 +12326,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     bool? isDarkMode,
     bool? appLockEnabled,
     bool? notificationDetectionEnabled,
+    bool? paymentAppNotificationsEnabled,
     bool? showDetectionNotifications,
     bool? reminderEnabled,
     bool? dailyReminderEnabled,
@@ -12326,6 +12368,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     appLockEnabled: appLockEnabled ?? this.appLockEnabled,
     notificationDetectionEnabled:
         notificationDetectionEnabled ?? this.notificationDetectionEnabled,
+    paymentAppNotificationsEnabled:
+        paymentAppNotificationsEnabled ?? this.paymentAppNotificationsEnabled,
     showDetectionNotifications:
         showDetectionNotifications ?? this.showDetectionNotifications,
     reminderEnabled: reminderEnabled ?? this.reminderEnabled,
@@ -12397,6 +12441,10 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       notificationDetectionEnabled: data.notificationDetectionEnabled.present
           ? data.notificationDetectionEnabled.value
           : this.notificationDetectionEnabled,
+      paymentAppNotificationsEnabled:
+          data.paymentAppNotificationsEnabled.present
+          ? data.paymentAppNotificationsEnabled.value
+          : this.paymentAppNotificationsEnabled,
       showDetectionNotifications: data.showDetectionNotifications.present
           ? data.showDetectionNotifications.value
           : this.showDetectionNotifications,
@@ -12514,6 +12562,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           ..write(
             'notificationDetectionEnabled: $notificationDetectionEnabled, ',
           )
+          ..write(
+            'paymentAppNotificationsEnabled: $paymentAppNotificationsEnabled, ',
+          )
           ..write('showDetectionNotifications: $showDetectionNotifications, ')
           ..write('reminderEnabled: $reminderEnabled, ')
           ..write('dailyReminderEnabled: $dailyReminderEnabled, ')
@@ -12565,6 +12616,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     isDarkMode,
     appLockEnabled,
     notificationDetectionEnabled,
+    paymentAppNotificationsEnabled,
     showDetectionNotifications,
     reminderEnabled,
     dailyReminderEnabled,
@@ -12610,6 +12662,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           other.appLockEnabled == this.appLockEnabled &&
           other.notificationDetectionEnabled ==
               this.notificationDetectionEnabled &&
+          other.paymentAppNotificationsEnabled ==
+              this.paymentAppNotificationsEnabled &&
           other.showDetectionNotifications == this.showDetectionNotifications &&
           other.reminderEnabled == this.reminderEnabled &&
           other.dailyReminderEnabled == this.dailyReminderEnabled &&
@@ -12656,6 +12710,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   final Value<bool> isDarkMode;
   final Value<bool> appLockEnabled;
   final Value<bool> notificationDetectionEnabled;
+  final Value<bool> paymentAppNotificationsEnabled;
   final Value<bool> showDetectionNotifications;
   final Value<bool> reminderEnabled;
   final Value<bool> dailyReminderEnabled;
@@ -12696,6 +12751,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.isDarkMode = const Value.absent(),
     this.appLockEnabled = const Value.absent(),
     this.notificationDetectionEnabled = const Value.absent(),
+    this.paymentAppNotificationsEnabled = const Value.absent(),
     this.showDetectionNotifications = const Value.absent(),
     this.reminderEnabled = const Value.absent(),
     this.dailyReminderEnabled = const Value.absent(),
@@ -12737,6 +12793,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.isDarkMode = const Value.absent(),
     this.appLockEnabled = const Value.absent(),
     this.notificationDetectionEnabled = const Value.absent(),
+    this.paymentAppNotificationsEnabled = const Value.absent(),
     this.showDetectionNotifications = const Value.absent(),
     this.reminderEnabled = const Value.absent(),
     this.dailyReminderEnabled = const Value.absent(),
@@ -12778,6 +12835,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Expression<bool>? isDarkMode,
     Expression<bool>? appLockEnabled,
     Expression<bool>? notificationDetectionEnabled,
+    Expression<bool>? paymentAppNotificationsEnabled,
     Expression<bool>? showDetectionNotifications,
     Expression<bool>? reminderEnabled,
     Expression<bool>? dailyReminderEnabled,
@@ -12820,6 +12878,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       if (appLockEnabled != null) 'app_lock_enabled': appLockEnabled,
       if (notificationDetectionEnabled != null)
         'notification_detection_enabled': notificationDetectionEnabled,
+      if (paymentAppNotificationsEnabled != null)
+        'payment_app_notifications_enabled': paymentAppNotificationsEnabled,
       if (showDetectionNotifications != null)
         'show_detection_notifications': showDetectionNotifications,
       if (reminderEnabled != null) 'reminder_enabled': reminderEnabled,
@@ -12889,6 +12949,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Value<bool>? isDarkMode,
     Value<bool>? appLockEnabled,
     Value<bool>? notificationDetectionEnabled,
+    Value<bool>? paymentAppNotificationsEnabled,
     Value<bool>? showDetectionNotifications,
     Value<bool>? reminderEnabled,
     Value<bool>? dailyReminderEnabled,
@@ -12931,6 +12992,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       appLockEnabled: appLockEnabled ?? this.appLockEnabled,
       notificationDetectionEnabled:
           notificationDetectionEnabled ?? this.notificationDetectionEnabled,
+      paymentAppNotificationsEnabled:
+          paymentAppNotificationsEnabled ?? this.paymentAppNotificationsEnabled,
       showDetectionNotifications:
           showDetectionNotifications ?? this.showDetectionNotifications,
       reminderEnabled: reminderEnabled ?? this.reminderEnabled,
@@ -13001,6 +13064,11 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     if (notificationDetectionEnabled.present) {
       map['notification_detection_enabled'] = Variable<bool>(
         notificationDetectionEnabled.value,
+      );
+    }
+    if (paymentAppNotificationsEnabled.present) {
+      map['payment_app_notifications_enabled'] = Variable<bool>(
+        paymentAppNotificationsEnabled.value,
       );
     }
     if (showDetectionNotifications.present) {
@@ -13159,6 +13227,9 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           ..write('appLockEnabled: $appLockEnabled, ')
           ..write(
             'notificationDetectionEnabled: $notificationDetectionEnabled, ',
+          )
+          ..write(
+            'paymentAppNotificationsEnabled: $paymentAppNotificationsEnabled, ',
           )
           ..write('showDetectionNotifications: $showDetectionNotifications, ')
           ..write('reminderEnabled: $reminderEnabled, ')
@@ -18235,6 +18306,7 @@ typedef $$AppSettingsTableCreateCompanionBuilder =
       Value<bool> isDarkMode,
       Value<bool> appLockEnabled,
       Value<bool> notificationDetectionEnabled,
+      Value<bool> paymentAppNotificationsEnabled,
       Value<bool> showDetectionNotifications,
       Value<bool> reminderEnabled,
       Value<bool> dailyReminderEnabled,
@@ -18277,6 +18349,7 @@ typedef $$AppSettingsTableUpdateCompanionBuilder =
       Value<bool> isDarkMode,
       Value<bool> appLockEnabled,
       Value<bool> notificationDetectionEnabled,
+      Value<bool> paymentAppNotificationsEnabled,
       Value<bool> showDetectionNotifications,
       Value<bool> reminderEnabled,
       Value<bool> dailyReminderEnabled,
@@ -18340,6 +18413,11 @@ class $$AppSettingsTableFilterComposer
 
   ColumnFilters<bool> get notificationDetectionEnabled => $composableBuilder(
     column: $table.notificationDetectionEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get paymentAppNotificationsEnabled => $composableBuilder(
+    column: $table.paymentAppNotificationsEnabled,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -18549,6 +18627,12 @@ class $$AppSettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get paymentAppNotificationsEnabled =>
+      $composableBuilder(
+        column: $table.paymentAppNotificationsEnabled,
+        builder: (column) => ColumnOrderings(column),
+      );
+
   ColumnOrderings<bool> get showDetectionNotifications => $composableBuilder(
     column: $table.showDetectionNotifications,
     builder: (column) => ColumnOrderings(column),
@@ -18753,6 +18837,12 @@ class $$AppSettingsTableAnnotationComposer
     column: $table.notificationDetectionEnabled,
     builder: (column) => column,
   );
+
+  GeneratedColumn<bool> get paymentAppNotificationsEnabled =>
+      $composableBuilder(
+        column: $table.paymentAppNotificationsEnabled,
+        builder: (column) => column,
+      );
 
   GeneratedColumn<bool> get showDetectionNotifications => $composableBuilder(
     column: $table.showDetectionNotifications,
@@ -18965,6 +19055,8 @@ class $$AppSettingsTableTableManager
                 Value<bool> isDarkMode = const Value.absent(),
                 Value<bool> appLockEnabled = const Value.absent(),
                 Value<bool> notificationDetectionEnabled = const Value.absent(),
+                Value<bool> paymentAppNotificationsEnabled =
+                    const Value.absent(),
                 Value<bool> showDetectionNotifications = const Value.absent(),
                 Value<bool> reminderEnabled = const Value.absent(),
                 Value<bool> dailyReminderEnabled = const Value.absent(),
@@ -19007,6 +19099,7 @@ class $$AppSettingsTableTableManager
                 isDarkMode: isDarkMode,
                 appLockEnabled: appLockEnabled,
                 notificationDetectionEnabled: notificationDetectionEnabled,
+                paymentAppNotificationsEnabled: paymentAppNotificationsEnabled,
                 showDetectionNotifications: showDetectionNotifications,
                 reminderEnabled: reminderEnabled,
                 dailyReminderEnabled: dailyReminderEnabled,
@@ -19050,6 +19143,8 @@ class $$AppSettingsTableTableManager
                 Value<bool> isDarkMode = const Value.absent(),
                 Value<bool> appLockEnabled = const Value.absent(),
                 Value<bool> notificationDetectionEnabled = const Value.absent(),
+                Value<bool> paymentAppNotificationsEnabled =
+                    const Value.absent(),
                 Value<bool> showDetectionNotifications = const Value.absent(),
                 Value<bool> reminderEnabled = const Value.absent(),
                 Value<bool> dailyReminderEnabled = const Value.absent(),
@@ -19092,6 +19187,7 @@ class $$AppSettingsTableTableManager
                 isDarkMode: isDarkMode,
                 appLockEnabled: appLockEnabled,
                 notificationDetectionEnabled: notificationDetectionEnabled,
+                paymentAppNotificationsEnabled: paymentAppNotificationsEnabled,
                 showDetectionNotifications: showDetectionNotifications,
                 reminderEnabled: reminderEnabled,
                 dailyReminderEnabled: dailyReminderEnabled,

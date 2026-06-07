@@ -42,13 +42,19 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
-                    'Finarc reads transaction notifications locally to suggest expenses. Data stays on your device. You confirm before anything is added.',
+                    'Finarc only checks selected financial notifications and creates pending transactions for your confirmation. Chat and social apps are ignored.',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   const FinarcStatusBadge(
                     label: 'No cloud sync. Data stays on device.',
                     tone: FinarcStatusTone.info,
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  const FinarcStatusBadge(
+                    label: 'BANK APPS ENABLED, CHAT/SOCIAL APPS BLOCKED',
+                    tone: FinarcStatusTone.success,
+                    compact: true,
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   if (!hasNotificationAccess)
@@ -294,6 +300,27 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                     onChanged: (v) => ref
                         .read(detectionSettingsProvider.notifier)
                         .applyChanges(showDetectionNotifications: v),
+                  ),
+                  _toggleRow(
+                    context: context,
+                    label: 'UPI/payment app notifications',
+                    value: settings.paymentAppNotificationsEnabled,
+                    onChanged: notificationIngestionAvailable
+                        ? (v) => ref
+                              .read(detectionSettingsProvider.notifier)
+                              .applyChanges(paymentAppNotificationsEnabled: v)
+                        : null,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      left: AppSpacing.sm,
+                      right: AppSpacing.sm,
+                      bottom: AppSpacing.xs,
+                    ),
+                    child: Text(
+                      'UPI/payment app notifications can improve detection but may create duplicates. You can turn them off anytime.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                   ),
                   _toggleRow(
                     context: context,

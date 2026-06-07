@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
+import 'notification_providers.dart';
 import 'notification_permission_service.dart';
 
 final _notificationPermissionServiceProvider =
@@ -28,7 +29,10 @@ class NotificationAccessSetupScreenSafe extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final accessState = ref.watch(_notificationAccessStateProvider);
-    final availableState = ref.watch(_notificationListenerAvailableStateProvider);
+    final availableState = ref.watch(
+      _notificationListenerAvailableStateProvider,
+    );
+    final settingsState = ref.watch(detectionSettingsProvider);
 
     return FinarcScaffold(
       appBar: const FinarcAppBar(title: 'Notification Access'),
@@ -45,8 +49,13 @@ class NotificationAccessSetupScreenSafe extends ConsumerWidget {
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
-                  'Finarc reads transaction notifications locally. Data stays on your device, and you confirm before anything is added.',
+                  'Finarc only checks selected financial notifications and creates pending transactions for your confirmation. Chat and social apps are ignored.',
                   style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Bank and card issuer notifications stay enabled separately.',
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 const FinarcStatusBadge(
@@ -61,10 +70,54 @@ class NotificationAccessSetupScreenSafe extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const FinarcSectionHeader(title: 'Financial App Sources'),
+                const SizedBox(height: AppSpacing.sm),
+                settingsState.when(
+                  loading: () => const Text('Loading notification settings...'),
+                  error: (e, _) => Text('Settings error: $e'),
+                  data: (settings) => Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'UPI/payment app notifications',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                            const SizedBox(height: AppSpacing.xxs),
+                            Text(
+                              'UPI/payment app notifications can improve detection but may create duplicates. You can turn them off anytime.',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Switch.adaptive(
+                        value: settings.paymentAppNotificationsEnabled,
+                        onChanged: (value) => ref
+                            .read(detectionSettingsProvider.notifier)
+                            .applyChanges(
+                              paymentAppNotificationsEnabled: value,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          FinarcCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 const FinarcSectionHeader(title: 'Status & Access'),
                 const SizedBox(height: AppSpacing.sm),
                 availableState.when(
-                  loading: () => const Text('Checking listener availability...'),
+                  loading: () =>
+                      const Text('Checking listener availability...'),
                   error: (e, _) => Text('Listener status error: $e'),
                   data: (available) => FinarcStatusBadge(
                     label: available

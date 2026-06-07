@@ -174,6 +174,9 @@ class ImportService {
                 notificationDetectionEnabled: Value(
                   _bool(row['notificationDetectionEnabled']) ?? true,
                 ),
+                paymentAppNotificationsEnabled: Value(
+                  _bool(row['paymentAppNotificationsEnabled']) ?? false,
+                ),
                 showDetectionNotifications: Value(
                   _bool(row['showDetectionNotifications']) ?? true,
                 ),
