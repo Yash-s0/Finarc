@@ -1,4 +1,4 @@
-package com.example.finarc
+package com.yashsharma.finarc
 
 import java.util.concurrent.ConcurrentLinkedQueue
 

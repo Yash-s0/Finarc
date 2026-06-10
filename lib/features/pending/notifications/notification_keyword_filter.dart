@@ -106,7 +106,7 @@ class NotificationKeywordFilter {
   ];
 
   NotificationFilterResult evaluate(NotificationPayload payload) {
-    if (payload.packageName == 'com.example.finarc') {
+    if (payload.packageName == 'com.yashsharma.finarc') {
       return const NotificationFilterResult(
         accepted: false,
         reason: 'ignored-own-package',

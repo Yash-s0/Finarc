@@ -1,4 +1,4 @@
-package com.example.finarc
+package com.yashsharma.finarc
 
 import android.Manifest
 import android.app.AlarmManager

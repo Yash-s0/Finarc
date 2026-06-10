@@ -1,4 +1,4 @@
-package com.example.finarc
+package com.yashsharma.finarc
 
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.plugin.common.MethodCall
@@ -54,7 +54,7 @@ private class NoOpIngestionPlatformBridge : IngestionPlatformBridge {
 
 fun createIngestionPlatformBridge(activity: FlutterActivity): IngestionPlatformBridge {
     return try {
-        val clazz = Class.forName("com.example.finarc.PersonalDebugIngestionPlatformBridge")
+        val clazz = Class.forName("com.yashsharma.finarc.PersonalDebugIngestionPlatformBridge")
         val ctor = clazz.getConstructor(FlutterActivity::class.java)
         ctor.newInstance(activity) as IngestionPlatformBridge
     } catch (_: Throwable) {

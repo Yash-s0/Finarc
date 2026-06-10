@@ -1,4 +1,4 @@
-package com.example.finarc
+package com.yashsharma.finarc
 
 import android.content.BroadcastReceiver
 import android.content.Context
