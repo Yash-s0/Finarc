@@ -163,8 +163,6 @@ class _AddIncomeScreenState extends ConsumerState<AddIncomeScreen> {
                               textInputAction: TextInputAction.next,
                               inputFormatters: [StripLeadingZeroFormatter()],
                               onChanged: (_) => setState(() {}),
-                              onFieldSubmitted: (_) =>
-                                  FocusScope.of(context).nextFocus(),
                               decoration: const InputDecoration(
                                 labelText: 'Enter amount',
                                 prefixText: '₹ ',

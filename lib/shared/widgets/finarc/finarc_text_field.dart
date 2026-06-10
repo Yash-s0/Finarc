@@ -56,15 +56,6 @@ class FinarcTextField extends StatelessWidget {
       validator: validator,
       onTap: onTap,
       onChanged: onChanged,
-      onFieldSubmitted: (_) {
-        if (resolvedTextInputAction == TextInputAction.next) {
-          FocusScope.of(context).nextFocus();
-          return;
-        }
-        if (resolvedTextInputAction == TextInputAction.done) {
-          FocusScope.of(context).unfocus();
-        }
-      },
       inputFormatters: inputFormatters,
       decoration: InputDecoration(
         labelText: label,

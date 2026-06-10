@@ -187,8 +187,6 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                               textInputAction: TextInputAction.next,
                               inputFormatters: [StripLeadingZeroFormatter()],
                               onChanged: (_) => setState(() {}),
-                              onFieldSubmitted: (_) =>
-                                  FocusScope.of(context).nextFocus(),
                               style: AppTextStyles.amountStyle(
                                 color: Theme.of(context).colorScheme.onSurface,
                                 size: 40,
