@@ -280,6 +280,7 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
                       controller: _notes,
                       label: 'Notes (optional)',
                       maxLines: 2,
+                      textInputAction: TextInputAction.done,
                     ),
                     const SizedBox(height: AppSpacing.md),
                     FinarcPrimaryButton(

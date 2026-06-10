@@ -217,6 +217,7 @@ class _AddEditLoanScreenState extends ConsumerState<AddEditLoanScreen> {
                           controller: _notes,
                           label: 'Notes',
                           maxLines: 3,
+                          textInputAction: TextInputAction.done,
                         ),
                       ],
                     ),

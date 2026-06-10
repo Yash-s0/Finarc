@@ -233,6 +233,7 @@ class _AddEditAccountScreenState extends ConsumerState<AddEditAccountScreen> {
                   FinarcTextField(
                     controller: _color,
                     label: 'Color/Icon (optional)',
+                    textInputAction: TextInputAction.done,
                   ),
                 ],
               ),

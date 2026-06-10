@@ -277,6 +277,7 @@ class _EmiPaymentScreenState extends ConsumerState<EmiPaymentScreen> {
                         controller: _notes,
                         label: 'Notes',
                         maxLines: 2,
+                        textInputAction: TextInputAction.done,
                       ),
                     ],
                   ),

@@ -480,7 +480,11 @@ class _ProfileSetupStep extends StatelessWidget {
           inputFormatters: [StripLeadingZeroFormatter(allowDecimal: false)],
         ),
         const SizedBox(height: AppSpacing.sm),
-        FinarcTextField(controller: companyController, label: 'Company name'),
+        FinarcTextField(
+          controller: companyController,
+          label: 'Company name',
+          textInputAction: TextInputAction.done,
+        ),
       ],
     );
   }

@@ -50,6 +50,7 @@ class _AddSplitGroupScreenState extends ConsumerState<AddSplitGroupScreen> {
                 FinarcTextField(
                   controller: _memberName,
                   label: 'Add member name (optional)',
+                  textInputAction: TextInputAction.done,
                 ),
               ],
             ),

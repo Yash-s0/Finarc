@@ -8,6 +8,7 @@ class FinarcScaffold extends StatelessWidget {
     this.floatingActionButton,
     this.floatingActionButtonLocation,
     this.bottomNavigationBar,
+    this.safeAreaBottom = true,
   });
 
   final PreferredSizeWidget? appBar;
@@ -15,12 +16,13 @@ class FinarcScaffold extends StatelessWidget {
   final Widget? floatingActionButton;
   final FloatingActionButtonLocation? floatingActionButtonLocation;
   final Widget? bottomNavigationBar;
+  final bool safeAreaBottom;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: appBar,
-      body: SafeArea(top: appBar == null, bottom: false, child: body),
+      body: SafeArea(top: appBar == null, bottom: safeAreaBottom, child: body),
       floatingActionButton: floatingActionButton,
       floatingActionButtonLocation: floatingActionButtonLocation,
       bottomNavigationBar: bottomNavigationBar,

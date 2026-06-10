@@ -17,6 +17,7 @@ class FinarcTextField extends StatelessWidget {
     this.suffixIcon,
     this.prefixIcon,
     this.inputFormatters,
+    this.textInputAction,
   });
 
   final TextEditingController? controller;
@@ -32,18 +33,38 @@ class FinarcTextField extends StatelessWidget {
   final Widget? suffixIcon;
   final Widget? prefixIcon;
   final List<TextInputFormatter>? inputFormatters;
+  final TextInputAction? textInputAction;
+
+  TextInputAction? _resolvedTextInputAction() {
+    if (textInputAction != null) return textInputAction;
+    if (readOnly) return null;
+    if (maxLines == 1) return TextInputAction.next;
+    return TextInputAction.newline;
+  }
 
   @override
   Widget build(BuildContext context) {
+    final resolvedTextInputAction = _resolvedTextInputAction();
+
     return TextFormField(
       controller: controller,
       readOnly: readOnly,
       keyboardType: keyboardType,
+      textInputAction: resolvedTextInputAction,
       maxLines: maxLines,
       maxLength: maxLength,
       validator: validator,
       onTap: onTap,
       onChanged: onChanged,
+      onFieldSubmitted: (_) {
+        if (resolvedTextInputAction == TextInputAction.next) {
+          FocusScope.of(context).nextFocus();
+          return;
+        }
+        if (resolvedTextInputAction == TextInputAction.done) {
+          FocusScope.of(context).unfocus();
+        }
+      },
       inputFormatters: inputFormatters,
       decoration: InputDecoration(
         labelText: label,

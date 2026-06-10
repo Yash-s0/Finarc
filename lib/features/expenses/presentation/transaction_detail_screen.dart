@@ -455,6 +455,7 @@ class _TransactionDetailScreenState
                     label: 'Notes',
                     maxLines: 2,
                     readOnly: !editable,
+                    textInputAction: TextInputAction.done,
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   if (editable)

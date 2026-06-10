@@ -184,8 +184,11 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                                   const TextInputType.numberWithOptions(
                                     decimal: true,
                                   ),
+                              textInputAction: TextInputAction.next,
                               inputFormatters: [StripLeadingZeroFormatter()],
                               onChanged: (_) => setState(() {}),
+                              onFieldSubmitted: (_) =>
+                                  FocusScope.of(context).nextFocus(),
                               style: AppTextStyles.amountStyle(
                                 color: Theme.of(context).colorScheme.onSurface,
                                 size: 40,
@@ -450,6 +453,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                           controller: _notes,
                           label: 'Notes',
                           maxLines: 2,
+                          textInputAction: TextInputAction.done,
                         ),
                       ),
                       const SizedBox(height: AppSpacing.sm),

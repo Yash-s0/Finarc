@@ -151,44 +151,47 @@ class _AppShellState extends State<AppShell> {
             )
           : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.only(top: 4),
-        child: DecoratedBox(
-          decoration: const BoxDecoration(
-            color: AppColors.darkSurfaceLow,
-            border: Border(top: BorderSide(color: AppColors.darkBorder)),
-          ),
-          child: NavigationBar(
-            height: _bottomNavHeight,
-            selectedIndex: widget.navigationShell.currentIndex,
-            onDestinationSelected: (index) {
-              widget.navigationShell.goBranch(
-                index,
-                initialLocation: index == widget.navigationShell.currentIndex,
-              );
-            },
-            destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.home_outlined),
-                label: 'Home',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.receipt_long_outlined),
-                label: 'Expenses',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.credit_card),
-                label: 'Cards',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.call_split_outlined),
-                label: 'Split',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.person_outline),
-                label: 'Profile',
-              ),
-            ],
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: DecoratedBox(
+            decoration: const BoxDecoration(
+              color: AppColors.darkSurfaceLow,
+              border: Border(top: BorderSide(color: AppColors.darkBorder)),
+            ),
+            child: NavigationBar(
+              height: _bottomNavHeight,
+              selectedIndex: widget.navigationShell.currentIndex,
+              onDestinationSelected: (index) {
+                widget.navigationShell.goBranch(
+                  index,
+                  initialLocation: index == widget.navigationShell.currentIndex,
+                );
+              },
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(Icons.home_outlined),
+                  label: 'Home',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.receipt_long_outlined),
+                  label: 'Expenses',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.credit_card),
+                  label: 'Cards',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.call_split_outlined),
+                  label: 'Split',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.person_outline),
+                  label: 'Profile',
+                ),
+              ],
+            ),
           ),
         ),
       ),

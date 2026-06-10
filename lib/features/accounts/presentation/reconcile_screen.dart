@@ -98,6 +98,7 @@ class _ReconcileScreenState extends ConsumerState<ReconcileScreen> {
                       controller: _reason,
                       label: 'Adjustment reason',
                       maxLines: 2,
+                      textInputAction: TextInputAction.done,
                     ),
                   ],
                 ),

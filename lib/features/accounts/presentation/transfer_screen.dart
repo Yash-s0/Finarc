@@ -183,6 +183,7 @@ class _TransferScreenState extends ConsumerState<TransferScreen> {
                         controller: _notes,
                         label: 'Notes (optional)',
                         maxLines: 2,
+                        textInputAction: TextInputAction.done,
                       ),
                     ],
                   ),

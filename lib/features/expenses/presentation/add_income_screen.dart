@@ -160,8 +160,11 @@ class _AddIncomeScreenState extends ConsumerState<AddIncomeScreen> {
                                   const TextInputType.numberWithOptions(
                                     decimal: true,
                                   ),
+                              textInputAction: TextInputAction.next,
                               inputFormatters: [StripLeadingZeroFormatter()],
                               onChanged: (_) => setState(() {}),
+                              onFieldSubmitted: (_) =>
+                                  FocusScope.of(context).nextFocus(),
                               decoration: const InputDecoration(
                                 labelText: 'Enter amount',
                                 prefixText: '₹ ',
@@ -277,6 +280,7 @@ class _AddIncomeScreenState extends ConsumerState<AddIncomeScreen> {
                               controller: _notes,
                               label: 'Notes (optional)',
                               maxLines: 2,
+                              textInputAction: TextInputAction.done,
                             ),
                           ],
                         ),

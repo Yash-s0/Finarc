@@ -449,6 +449,7 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
                       controller: _noteController,
                       label: 'Note / Reference (optional)',
                       maxLines: 2,
+                      textInputAction: TextInputAction.done,
                     ),
                     const SizedBox(height: AppSpacing.md),
                     Row(

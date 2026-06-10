@@ -201,6 +201,7 @@ class _AddSplitSettlementScreenState
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
                             ),
+                            textInputAction: TextInputAction.done,
                             onChanged: (_) => setState(() {}),
                             validator: (v) {
                               final parsed = double.tryParse(v ?? '');
@@ -293,6 +294,7 @@ class _AddSplitSettlementScreenState
                       controller: _notes,
                       label: 'Notes (optional)',
                       maxLines: 2,
+                      textInputAction: TextInputAction.done,
                     ),
                     const SizedBox(height: AppSpacing.md),
                     FinarcPrimaryButton(

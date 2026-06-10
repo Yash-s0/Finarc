@@ -46,6 +46,7 @@ class _CashbackScreenState extends State<CashbackScreen> {
                     decimal: true,
                   ),
                   onTap: () => setState(() {}),
+                  textInputAction: TextInputAction.done,
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 Text(

@@ -357,6 +357,7 @@ class _EditPendingTransactionScreenState
                           controller: _notes,
                           label: 'Notes',
                           maxLines: 2,
+                          textInputAction: TextInputAction.done,
                         ),
                       ],
                     ),

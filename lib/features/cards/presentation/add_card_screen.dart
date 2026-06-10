@@ -157,6 +157,7 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
+                    textInputAction: TextInputAction.done,
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) return null;
                       final parsed = double.tryParse(value.trim());
@@ -208,12 +209,14 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
     TextInputType? keyboardType,
     int? maxLength,
     String? Function(String?)? validator,
+    TextInputAction? textInputAction,
   }) {
     return FinarcTextField(
       controller: controller,
       label: label,
       keyboardType: keyboardType,
       maxLength: maxLength,
+      textInputAction: textInputAction,
       validator:
           validator ??
           (value) {

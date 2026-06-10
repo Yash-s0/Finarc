@@ -122,7 +122,11 @@ Future<void> _showProfileEditSheet(
                 },
               ),
               const SizedBox(height: AppSpacing.xs),
-              FinarcTextField(controller: company, label: 'Company Name'),
+              FinarcTextField(
+                controller: company,
+                label: 'Company Name',
+                textInputAction: TextInputAction.done,
+              ),
               const SizedBox(height: AppSpacing.sm),
               FinarcPrimaryButton(
                 onPressed: () async {
