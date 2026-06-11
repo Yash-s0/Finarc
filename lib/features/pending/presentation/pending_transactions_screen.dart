@@ -52,6 +52,7 @@ class _PendingTransactionsScreenState
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final state = ref.watch(pendingTransactionsProvider);
     final historyState = ref.watch(pendingHistoryProvider);
     final filter = ref.watch(pendingFilterProvider);
@@ -215,15 +216,15 @@ class _PendingTransactionsScreenState
                               amount:
                                   '${isIncome ? '+' : '-'}${inr(item.amount)}',
                               amountColor: isIncome
-                                  ? AppColors.darkSuccess
-                                  : AppColors.darkError,
+                                  ? (isDark ? AppColors.darkSuccess : AppColors.lightSuccess)
+                                  : (isDark ? AppColors.darkError : AppColors.lightError),
                               prefix: CircleAvatar(
                                 radius: 15,
-                                backgroundColor: AppColors.darkPrimarySoft,
+                                backgroundColor: isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft,
                                 child: Icon(
                                   _pendingIcon(item.sourceType),
                                   size: 14,
-                                  color: AppColors.darkAccent,
+                                  color: isDark ? AppColors.darkAccent : AppColors.lightAccent,
                                 ),
                               ),
                               badges: [
@@ -295,11 +296,11 @@ class _PendingTransactionsScreenState
                                   amountColor:
                                       _pendingDirection(item) ==
                                           PendingTransactionDirection.income
-                                      ? AppColors.darkSuccess
-                                      : AppColors.darkError,
+                                      ? (isDark ? AppColors.darkSuccess : AppColors.lightSuccess)
+                                      : (isDark ? AppColors.darkError : AppColors.lightError),
                                   prefix: CircleAvatar(
                                     radius: 15,
-                                    backgroundColor: AppColors.darkSurfaceHigh,
+                                    backgroundColor: isDark ? AppColors.darkSurfaceHigh : AppColors.lightSurfaceHigh,
                                     child: Icon(
                                       _pendingIcon(item.sourceType),
                                       size: 14,
@@ -618,7 +619,7 @@ class _ConfirmTransactionSheet extends ConsumerWidget {
             '${isIncome ? '+' : '-'}${inr(item.amount)}',
             style: AppTextStyles.amountStyle(
               color: isIncome
-                  ? AppColors.darkSuccess
+                  ? (Theme.of(context).brightness == Brightness.dark ? AppColors.darkSuccess : AppColors.lightSuccess)
                   : Theme.of(context).colorScheme.onSurface,
               size: 30,
               weight: FontWeight.w700,
@@ -657,17 +658,17 @@ class _ConfirmTransactionSheet extends ConsumerWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(AppSpacing.sm),
             decoration: BoxDecoration(
-              color: AppColors.darkSurfaceLow,
+              color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh,
               borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(color: AppColors.darkBorder),
+              border: Border.all(color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkBorder : AppColors.lightBorder),
             ),
             child: Text(
               item.rawText,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: AppTextStyles.amountFontFamily,
                 fontSize: 11,
                 height: 1.35,
-                color: AppColors.darkTextMuted,
+                color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
               ),
             ),
           ),
@@ -828,9 +829,9 @@ class _DuplicateWarningSheet extends ConsumerWidget {
         children: [
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.warning_amber_rounded,
-                color: AppColors.darkWarning,
+                color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkWarning : AppColors.lightWarning,
               ),
               const SizedBox(width: AppSpacing.xs),
               Text(
@@ -850,8 +851,8 @@ class _DuplicateWarningSheet extends ConsumerWidget {
             child: LinearProgressIndicator(
               value: similarity,
               minHeight: 7,
-              backgroundColor: AppColors.darkSurfaceLow,
-              valueColor: const AlwaysStoppedAnimation(AppColors.darkWarning),
+              backgroundColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh,
+              valueColor: AlwaysStoppedAnimation(Theme.of(context).brightness == Brightness.dark ? AppColors.darkWarning : AppColors.lightWarning),
             ),
           ),
           const SizedBox(height: AppSpacing.sm),

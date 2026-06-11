@@ -11,6 +11,7 @@ import '../../../shared/widgets/finarc/finarc_widgets.dart';
 import '../../onboarding/data/onboarding_providers.dart';
 import '../../profile/data/profile_settings_providers.dart';
 import '../data/dashboard_providers.dart';
+import '../../../core/theme/theme_controller.dart';
 import 'widgets/dashboard_sections.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -123,6 +124,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           ),
           error: (e, _) => Center(child: Text('Error: $e')),
           data: (data) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
             final freshInstall =
                 data.bankAccountCount == 0 &&
                 data.cashWalletCount == 0 &&
@@ -153,7 +155,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                     now: _now,
                     unreadAlertsCount: data.unreadAlertsCount,
                     onAlertsTap: () => context.push('/alerts'),
-                    onSettingsTap: () => context.push('/profile'),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   NetWorthHeroCard(data: data),
@@ -167,12 +168,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          const CircleAvatar(
+                          CircleAvatar(
                             radius: 16,
-                            backgroundColor: AppColors.darkMint,
+                            backgroundColor: isDark ? AppColors.darkMint : AppColors.lightSuccess,
                             child: Icon(
                               Icons.event_available_rounded,
-                              color: AppColors.darkSurfaceLow,
+                              color: isDark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh,
                               size: 16,
                             ),
                           ),
@@ -204,13 +205,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                     ),
                     child: Row(
                       children: [
-                        const CircleAvatar(
+                        CircleAvatar(
                           radius: 14,
-                          backgroundColor: AppColors.darkPrimarySoft,
+                          backgroundColor: isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft,
                           child: Icon(
                             Icons.account_balance_wallet_outlined,
                             size: 14,
-                            color: AppColors.darkBlue,
+                            color: isDark ? AppColors.darkBlue : AppColors.lightAccent,
                           ),
                         ),
                         const SizedBox(width: AppSpacing.xs),

@@ -17,30 +17,31 @@ class FinarcStatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final (bg, border, fg) = switch (tone) {
       FinarcStatusTone.success => (
-        AppColors.darkSuccess.withValues(alpha: 0.16),
-        AppColors.darkSuccess.withValues(alpha: 0.36),
-        AppColors.darkSuccess,
+        (isDark ? AppColors.darkSuccess : AppColors.lightSuccess).withValues(alpha: 0.16),
+        (isDark ? AppColors.darkSuccess : AppColors.lightSuccess).withValues(alpha: 0.36),
+        isDark ? AppColors.darkSuccess : AppColors.lightSuccess,
       ),
       FinarcStatusTone.warning => (
-        AppColors.darkWarning.withValues(alpha: 0.16),
-        AppColors.darkWarning.withValues(alpha: 0.38),
-        AppColors.darkWarning,
+        (isDark ? AppColors.darkWarning : AppColors.lightWarning).withValues(alpha: 0.16),
+        (isDark ? AppColors.darkWarning : AppColors.lightWarning).withValues(alpha: 0.38),
+        isDark ? AppColors.darkWarning : AppColors.lightWarning,
       ),
       FinarcStatusTone.error => (
-        AppColors.darkError.withValues(alpha: 0.16),
-        AppColors.darkError.withValues(alpha: 0.38),
-        AppColors.darkError,
+        (isDark ? AppColors.darkError : AppColors.lightError).withValues(alpha: 0.16),
+        (isDark ? AppColors.darkError : AppColors.lightError).withValues(alpha: 0.38),
+        isDark ? AppColors.darkError : AppColors.lightError,
       ),
       FinarcStatusTone.info => (
-        AppColors.darkPrimarySoft,
-        AppColors.darkAccent.withValues(alpha: 0.38),
-        AppColors.darkAccent,
+        isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft,
+        (isDark ? AppColors.darkAccent : AppColors.lightAccent).withValues(alpha: 0.38),
+        isDark ? AppColors.darkAccent : AppColors.lightAccent,
       ),
       FinarcStatusTone.neutral => (
-        AppColors.darkSurfaceLow,
-        AppColors.darkBorder,
+        isDark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh,
+        isDark ? AppColors.darkBorder : AppColors.lightBorder,
         Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.78),
       ),
     };

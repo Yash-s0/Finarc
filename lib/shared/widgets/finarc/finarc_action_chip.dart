@@ -19,6 +19,7 @@ class FinarcActionChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final fg = selected
         ? Colors.white
         : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.82);
@@ -33,13 +34,13 @@ class FinarcActionChip extends StatelessWidget {
               decoration: BoxDecoration(
                 color: selected
                     ? Colors.white.withValues(alpha: 0.2)
-                    : AppColors.darkPrimarySoft.withValues(alpha: 0.95),
+                    : (isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft).withValues(alpha: 0.95),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Icon(
                 icon,
                 size: 12,
-                color: selected ? Colors.white : AppColors.darkAccent,
+                color: selected ? Colors.white : (isDark ? AppColors.darkAccent : AppColors.lightAccent),
               ),
             ),
       label: Text(label),
@@ -47,12 +48,12 @@ class FinarcActionChip extends StatelessWidget {
         context,
       ).textTheme.labelMedium?.copyWith(color: fg, fontWeight: FontWeight.w700),
       backgroundColor: selected
-          ? AppColors.darkPrimary
-          : AppColors.darkSurfaceLow,
+          ? (isDark ? AppColors.darkPrimary : AppColors.lightPrimary)
+          : (isDark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh),
       side: BorderSide(
         color: selected
-            ? AppColors.darkAccent.withValues(alpha: 0.9)
-            : AppColors.darkBorder,
+            ? (isDark ? AppColors.darkAccent : AppColors.lightAccent).withValues(alpha: 0.9)
+            : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
       ),
       elevation: 0,
       pressElevation: 0,

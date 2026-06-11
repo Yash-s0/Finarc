@@ -9,18 +9,19 @@ class FinarcBottomSheet {
     required Widget child,
     bool isScrollControlled = false,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return showModalBottomSheet<T>(
       context: context,
       isScrollControlled: isScrollControlled,
       showDragHandle: true,
-      backgroundColor: AppColors.darkSurfaceHigh,
+      backgroundColor: isDark ? AppColors.darkSurfaceHigh : AppColors.lightSurfaceHigh,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
       ),
       builder: (context) => SafeArea(
         child: DecoratedBox(
-          decoration: const BoxDecoration(
-            border: Border(top: BorderSide(color: AppColors.darkBorder)),
+          decoration: BoxDecoration(
+            border: Border(top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder)),
           ),
           child: child,
         ),

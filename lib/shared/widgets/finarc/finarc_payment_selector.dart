@@ -74,6 +74,7 @@ class FinarcPaymentSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -94,7 +95,7 @@ class FinarcPaymentSelector extends StatelessWidget {
             emptyState!.message,
             style: Theme.of(
               context,
-            ).textTheme.bodyMedium?.copyWith(color: AppColors.darkWarning),
+            ).textTheme.bodyMedium?.copyWith(color: isDark ? AppColors.darkWarning : AppColors.lightWarning),
           ),
           const SizedBox(height: AppSpacing.xs),
           FinarcPrimaryButton(
@@ -156,6 +157,7 @@ class FinarcPaymentSelector extends StatelessWidget {
   }
 
   Widget _buildModePill(BuildContext context, FinarcPaymentModeOption mode) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isSelected = selectedMode == mode.value;
     return InkWell(
       onTap: enabled ? () => onModeChanged(mode.value) : null,
@@ -164,13 +166,13 @@ class FinarcPaymentSelector extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColors.darkPrimarySoft
-              : AppColors.darkSurfaceLow,
+              ? (isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft)
+              : (isDark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected
-                ? AppColors.darkAccent.withValues(alpha: 0.8)
-                : AppColors.darkBorder,
+                ? (isDark ? AppColors.darkAccent : AppColors.lightAccent).withValues(alpha: 0.8)
+                : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
           ),
         ),
         child: Row(
@@ -180,7 +182,7 @@ class FinarcPaymentSelector extends StatelessWidget {
               mode.icon,
               size: 14,
               color: isSelected
-                  ? AppColors.darkAccent
+                  ? (isDark ? AppColors.darkAccent : AppColors.lightAccent)
                   : Theme.of(
                       context,
                     ).colorScheme.onSurface.withValues(alpha: 0.75),
@@ -194,6 +196,7 @@ class FinarcPaymentSelector extends StatelessWidget {
   }
 
   Widget _buildModeSquare(BuildContext context, FinarcPaymentModeOption mode) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isSelected = selectedMode == mode.value;
     return Material(
       color: Colors.transparent,
@@ -205,11 +208,13 @@ class FinarcPaymentSelector extends StatelessWidget {
           height: 72,
           decoration: BoxDecoration(
             color: isSelected
-                ? AppColors.darkPrimary
-                : AppColors.darkSurfaceLow,
+                ? (isDark ? AppColors.darkPrimary : AppColors.lightPrimary)
+                : (isDark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isSelected ? AppColors.darkAccent : AppColors.darkBorder,
+              color: isSelected
+                  ? (isDark ? AppColors.darkAccent : AppColors.lightAccent)
+                  : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
             ),
           ),
           child: Column(
@@ -246,20 +251,21 @@ class FinarcPaymentSelector extends StatelessWidget {
     BuildContext context,
     FinarcPaymentSourceOption source,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: AppColors.darkSurfaceLow,
+        color: isDark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.darkBorder),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
       ),
       child: Row(
         children: [
-          const Icon(
+          Icon(
             Icons.check_circle_rounded,
             size: 16,
-            color: AppColors.darkAccent,
+            color: isDark ? AppColors.darkAccent : AppColors.lightAccent,
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -274,6 +280,7 @@ class FinarcPaymentSelector extends StatelessWidget {
   }
 
   Widget _buildSourcePickerCard(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     FinarcPaymentSourceOption? selectedSource;
     for (final source in sources) {
       if (source.id == selectedSourceId) {
@@ -291,9 +298,9 @@ class FinarcPaymentSelector extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             decoration: BoxDecoration(
-              color: AppColors.darkSurfaceLow,
+              color: isDark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.darkBorder),
+              border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
             ),
             child: Row(
               children: [
@@ -302,7 +309,7 @@ class FinarcPaymentSelector extends StatelessWidget {
                       ? Icons.touch_app_rounded
                       : Icons.account_balance_wallet_rounded,
                   size: 17,
-                  color: AppColors.darkAccent,
+                  color: isDark ? AppColors.darkAccent : AppColors.lightAccent,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -338,9 +345,9 @@ class FinarcPaymentSelector extends StatelessWidget {
               return ListTile(
                 title: Text(source.label),
                 trailing: selected
-                    ? const Icon(
+                    ? Icon(
                         Icons.check_rounded,
-                        color: AppColors.darkAccent,
+                        color: Theme.of(context).colorScheme.primary,
                       )
                     : null,
                 onTap: () => Navigator.of(context).pop(source.id),

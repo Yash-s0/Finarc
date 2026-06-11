@@ -33,6 +33,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final state = ref.watch(expenseListProvider);
 
     return FinarcScaffold(
@@ -207,15 +208,15 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                               amount:
                                   '${isPositive ? '+' : '-'}${inr(t.amount)}',
                               amountColor: isPositive
-                                  ? AppColors.darkSuccess
-                                  : AppColors.darkError,
+                                  ? (isDark ? AppColors.darkSuccess : AppColors.lightSuccess)
+                                  : (isDark ? AppColors.darkError : AppColors.lightError),
                               prefix: CircleAvatar(
                                 radius: 16,
-                                backgroundColor: AppColors.darkPrimarySoft,
+                                backgroundColor: isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft,
                                 child: Icon(
                                   _iconForType(t.type, t.paymentSourceType),
                                   size: 15,
-                                  color: AppColors.darkAccent,
+                                  color: isDark ? AppColors.darkAccent : AppColors.lightAccent,
                                 ),
                               ),
                               badges: [
@@ -324,10 +325,11 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
         txns.map((t) => t.category as String).toSet().toList(growable: false)
           ..sort();
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return FinarcCard(
       padding: const EdgeInsets.all(AppSpacing.sm),
-      backgroundColor: AppColors.darkSurface,
-      borderColor: AppColors.darkBorder,
+      backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+      borderColor: isDark ? AppColors.darkBorder : AppColors.lightBorder,
       useShadow: false,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -578,17 +580,18 @@ class _FilterSelect extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppColors.darkSurfaceLow,
+        color: isDark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.darkBorder),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(AppSpacing.sm, 6, AppSpacing.sm, 6),
         child: Row(
           children: [
-            Icon(icon, size: 18, color: AppColors.darkAccent),
+            Icon(icon, size: 18, color: isDark ? AppColors.darkAccent : AppColors.lightAccent),
             const SizedBox(width: AppSpacing.xs),
             Expanded(
               child: Column(
@@ -677,12 +680,13 @@ class _DateRangeCalendarDialogState extends State<_DateRangeCalendarDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-      backgroundColor: AppColors.darkSurface,
+      backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(24),
-        side: const BorderSide(color: AppColors.darkBorder),
+        side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
       ),
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
@@ -865,6 +869,7 @@ class _CalendarMonthGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final firstDay = DateTime(visibleMonth.year, visibleMonth.month);
     final leadingBlanks = firstDay.weekday - 1;
     final daysInMonth = DateTime(
@@ -911,14 +916,14 @@ class _CalendarMonthGrid extends StatelessWidget {
             child: Ink(
               decoration: BoxDecoration(
                 color: selected
-                    ? AppColors.darkAccent
+                    ? (isDark ? AppColors.darkAccent : AppColors.lightAccent)
                     : inRange
-                    ? AppColors.darkPrimarySoft
+                    ? (isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft)
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: isToday && !selected
-                      ? AppColors.darkAccent
+                      ? (isDark ? AppColors.darkAccent : AppColors.lightAccent)
                       : Colors.transparent,
                 ),
               ),
@@ -927,10 +932,10 @@ class _CalendarMonthGrid extends StatelessWidget {
                   '$dayNumber',
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
                     color: disabled
-                        ? AppColors.darkTextMuted.withValues(alpha: 0.35)
+                        ? (isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted).withValues(alpha: 0.35)
                         : selected
-                        ? AppColors.darkBg
-                        : AppColors.darkText,
+                        ? (isDark ? AppColors.darkBg : AppColors.lightBg)
+                        : (isDark ? AppColors.darkText : AppColors.lightText),
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   ),
                 ),
@@ -956,6 +961,7 @@ class _FilterAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -963,9 +969,9 @@ class _FilterAction extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         child: Ink(
           decoration: BoxDecoration(
-            color: AppColors.darkSurfaceLow,
+            color: isDark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.darkBorder),
+            border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(
@@ -974,13 +980,13 @@ class _FilterAction extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(icon, size: 18, color: AppColors.darkAccent),
+                Icon(icon, size: 18, color: isDark ? AppColors.darkAccent : AppColors.lightAccent),
                 const SizedBox(width: AppSpacing.xs),
                 Expanded(
                   child: Text(
                     label,
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: AppColors.darkAccent,
+                      color: isDark ? AppColors.darkAccent : AppColors.lightAccent,
                     ),
                   ),
                 ),
@@ -1000,6 +1006,7 @@ class _ResetFiltersButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -1007,16 +1014,16 @@ class _ResetFiltersButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         child: Ink(
           decoration: BoxDecoration(
-            color: AppColors.darkPrimarySoft,
+            color: isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.darkBorder),
+            border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
           ),
-          child: const Padding(
-            padding: EdgeInsets.all(11),
+          child: Padding(
+            padding: const EdgeInsets.all(11),
             child: Icon(
               Icons.restart_alt_rounded,
               size: 20,
-              color: AppColors.darkAccent,
+              color: isDark ? AppColors.darkAccent : AppColors.lightAccent,
             ),
           ),
         ),

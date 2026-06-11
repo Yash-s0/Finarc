@@ -16,14 +16,12 @@ class DashboardGreetingHeader extends StatelessWidget {
     required this.unreadAlertsCount,
     this.now,
     this.onAlertsTap,
-    this.onSettingsTap,
   });
 
   final String? name;
   final int unreadAlertsCount;
   final DateTime? now;
   final VoidCallback? onAlertsTap;
-  final VoidCallback? onSettingsTap;
 
   @override
   Widget build(BuildContext context) {
@@ -60,8 +58,6 @@ class DashboardGreetingHeader extends StatelessWidget {
           onTap: onAlertsTap,
           badge: unreadAlertsCount > 0 ? unreadAlertsCount.toString() : null,
         ),
-        const SizedBox(width: AppSpacing.xs),
-        _headerAction(context, icon: Icons.tune_rounded, onTap: onSettingsTap),
       ],
     );
   }
@@ -93,6 +89,7 @@ class DashboardGreetingHeader extends StatelessWidget {
     VoidCallback? onTap,
     String? badge,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -102,9 +99,15 @@ class DashboardGreetingHeader extends StatelessWidget {
             height: 34,
             width: 34,
             decoration: BoxDecoration(
-              color: AppColors.darkSurfaceHigh,
+              color: isDark
+                  ? AppColors.darkSurfaceHigh
+                  : AppColors.lightSurface,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.darkBorder),
+              border: Border.all(
+                color: isDark
+                    ? AppColors.darkBorder
+                    : AppColors.lightBorder,
+              ),
             ),
             child: Icon(
               icon,
@@ -120,7 +123,7 @@ class DashboardGreetingHeader extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
               decoration: BoxDecoration(
-                color: AppColors.darkError,
+                color: isDark ? AppColors.darkError : AppColors.lightError,
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(
@@ -160,13 +163,19 @@ class NetWorthHeroCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Net Worth', style: Theme.of(context).textTheme.titleSmall),
+            Text(
+              'Net Worth',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: Colors.white70,
+                  ),
+            ),
             const SizedBox(height: AppSpacing.sm),
             Text(
               inr(data.netWorth),
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
             ),
             const SizedBox(height: AppSpacing.xs),
             Row(
@@ -396,53 +405,54 @@ class DashboardMetricGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final cards = [
       FinarcMetricCard(
         title: 'Bank Balance',
         value: inr(data.bankBalance),
         icon: Icons.account_balance_rounded,
-        iconColor: AppColors.darkMint,
-        iconBackgroundColor: AppColors.darkMint.withValues(alpha: 0.14),
+        iconColor: isDark ? AppColors.darkMint : AppColors.lightSuccess,
+        iconBackgroundColor: (isDark ? AppColors.darkMint : AppColors.lightSuccess).withValues(alpha: 0.14),
         onTap: () => context.push('/accounts'),
       ),
       FinarcMetricCard(
         title: 'Card Dues',
         value: inr(data.cardDues),
         icon: Icons.credit_card_rounded,
-        iconColor: AppColors.darkError,
-        iconBackgroundColor: AppColors.darkError.withValues(alpha: 0.14),
+        iconColor: isDark ? AppColors.darkError : AppColors.lightError,
+        iconBackgroundColor: (isDark ? AppColors.darkError : AppColors.lightError).withValues(alpha: 0.14),
         onTap: () => context.push('/cards'),
       ),
       FinarcMetricCard(
         title: 'Cash In Hand',
         value: inr(data.cashInHand),
         icon: Icons.wallet_rounded,
-        iconColor: AppColors.darkWarning,
-        iconBackgroundColor: AppColors.darkWarning.withValues(alpha: 0.14),
+        iconColor: isDark ? AppColors.darkWarning : AppColors.lightWarning,
+        iconBackgroundColor: (isDark ? AppColors.darkWarning : AppColors.lightWarning).withValues(alpha: 0.14),
         onTap: () => context.push('/accounts'),
       ),
       FinarcMetricCard(
         title: 'Loans',
         value: inr(data.loansOutstanding),
         icon: Icons.account_balance_wallet_outlined,
-        iconColor: AppColors.darkOrange,
-        iconBackgroundColor: AppColors.darkOrange.withValues(alpha: 0.14),
+        iconColor: isDark ? AppColors.darkOrange : AppColors.lightWarning,
+        iconBackgroundColor: (isDark ? AppColors.darkOrange : AppColors.lightWarning).withValues(alpha: 0.14),
         onTap: () => context.push('/loans'),
       ),
       FinarcMetricCard(
         title: 'To Receive',
         value: inr(data.recoverableAmount),
         icon: Icons.call_received_rounded,
-        iconColor: AppColors.darkAccent,
-        iconBackgroundColor: AppColors.darkAccent.withValues(alpha: 0.14),
+        iconColor: isDark ? AppColors.darkAccent : AppColors.lightAccent,
+        iconBackgroundColor: (isDark ? AppColors.darkAccent : AppColors.lightAccent).withValues(alpha: 0.14),
         onTap: () => context.push('/recoverables'),
       ),
       FinarcMetricCard(
         title: 'Upcoming Bills',
         value: inr(data.payableAmount),
         icon: Icons.receipt_long_rounded,
-        iconColor: AppColors.darkOrange,
-        iconBackgroundColor: AppColors.darkOrange.withValues(alpha: 0.14),
+        iconColor: isDark ? AppColors.darkOrange : AppColors.lightWarning,
+        iconBackgroundColor: (isDark ? AppColors.darkOrange : AppColors.lightWarning).withValues(alpha: 0.14),
         onTap: () => context.push('/analytics'),
       ),
     ];
@@ -490,15 +500,16 @@ class PendingConfirmationsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (pendingCount <= 0) return const SizedBox.shrink();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return FinarcCard(
       onTap: () => context.push('/pending'),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const CircleAvatar(
+          CircleAvatar(
             radius: 18,
-            backgroundColor: AppColors.darkPrimarySoft,
-            child: Icon(Icons.notification_important_outlined, size: 18),
+            backgroundColor: isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft,
+            child: const Icon(Icons.notification_important_outlined, size: 18),
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
@@ -539,15 +550,16 @@ class DueSoonCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (count <= 0) return const SizedBox.shrink();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return FinarcCard(
       onTap: () => context.push('/cards'),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const CircleAvatar(
+          CircleAvatar(
             radius: 18,
-            backgroundColor: AppColors.darkPrimarySoft,
-            child: Icon(Icons.event_busy_outlined, size: 18),
+            backgroundColor: isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft,
+            child: const Icon(Icons.event_busy_outlined, size: 18),
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
@@ -626,6 +638,7 @@ class RecentTransactionsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final items = data.recentTransactions;
     return FinarcCard(
       child: Column(
@@ -665,7 +678,7 @@ class RecentTransactionsSection extends StatelessWidget {
                 ),
                 prefix: CircleAvatar(
                   radius: 15,
-                  backgroundColor: _avatarColor(t.category),
+                  backgroundColor: _avatarColor(t.category, isDark),
                   child: Icon(
                     _categoryIcon(t.category),
                     size: 14,
@@ -674,8 +687,8 @@ class RecentTransactionsSection extends StatelessWidget {
                 ),
                 amount: '${isIncome ? '+' : '-'}${inr(t.amount)}',
                 amountColor: isIncome
-                    ? AppColors.darkSuccess
-                    : AppColors.darkError,
+                    ? (isDark ? AppColors.darkSuccess : AppColors.lightSuccess)
+                    : (isDark ? AppColors.darkError : AppColors.lightError),
                 statusLabel: isIncome
                     ? 'Income'
                     : (isCard ? (isBilled ? 'Billed' : 'Unbilled') : 'Spent'),
@@ -699,13 +712,13 @@ class RecentTransactionsSection extends StatelessWidget {
     );
   }
 
-  static Color _avatarColor(String category) {
+  static Color _avatarColor(String category, bool isDark) {
     final key = category.trim().toLowerCase();
-    if (key.contains('food')) return AppColors.darkOrange;
-    if (key.contains('travel')) return AppColors.darkBlue;
-    if (key.contains('bill')) return AppColors.darkAccent;
-    if (key.contains('shop')) return AppColors.darkPink;
-    return AppColors.darkMint;
+    if (key.contains('food')) return isDark ? AppColors.darkOrange : AppColors.lightWarning;
+    if (key.contains('travel')) return isDark ? AppColors.darkBlue : AppColors.lightAccent;
+    if (key.contains('bill')) return isDark ? AppColors.darkAccent : AppColors.lightAccent;
+    if (key.contains('shop')) return isDark ? AppColors.darkPink : AppColors.lightError;
+    return isDark ? AppColors.darkMint : AppColors.lightSuccess;
   }
 
   static IconData _categoryIcon(String category) {
@@ -725,14 +738,15 @@ class AnalyticsCtaCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return FinarcCard(
       onTap: () => context.push('/analytics'),
       child: Row(
         children: [
-          const CircleAvatar(
+          CircleAvatar(
             radius: 18,
-            backgroundColor: AppColors.darkPrimarySoft,
-            child: Icon(Icons.insights_outlined, size: 18),
+            backgroundColor: isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft,
+            child: const Icon(Icons.insights_outlined, size: 18),
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
@@ -815,13 +829,15 @@ class DashboardFreshStartGate extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.sm),
-        const FinarcCard(
+        FinarcCard(
           child: Row(
             children: [
               CircleAvatar(
                 radius: 18,
-                backgroundColor: AppColors.darkPrimarySoft,
-                child: Icon(Icons.offline_bolt_rounded, size: 18),
+                backgroundColor: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.darkPrimarySoft
+                    : AppColors.lightPrimarySoft,
+                child: const Icon(Icons.offline_bolt_rounded, size: 18),
               ),
               SizedBox(width: AppSpacing.sm),
               Expanded(

@@ -37,7 +37,10 @@ class FinarcCard extends StatelessWidget {
         gradient: gradient,
         borderRadius: BorderRadius.circular(radius),
         border: Border.all(
-          color: borderColor ?? AppColors.darkBorder.withValues(alpha: 0.8),
+          color: borderColor ??
+              (Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.darkBorder.withValues(alpha: 0.8)
+                  : AppColors.lightBorder),
           width: 0.9,
         ),
         boxShadow: useShadow ? AppShadows.card : null,

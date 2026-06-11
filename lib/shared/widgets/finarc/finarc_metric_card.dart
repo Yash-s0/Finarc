@@ -32,6 +32,7 @@ class FinarcMetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return FinarcCard(
       onTap: onTap,
       padding: const EdgeInsets.symmetric(
@@ -54,13 +55,13 @@ class FinarcMetricCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color:
                           iconBackgroundColor ??
-                          AppColors.darkPrimarySoft.withValues(alpha: 0.9),
+                          (isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft).withValues(alpha: 0.9),
                       borderRadius: BorderRadius.circular(AppRadius.sm),
                     ),
                     child: Icon(
                       icon,
                       size: 14,
-                      color: iconColor ?? AppColors.darkAccent,
+                      color: iconColor ?? (isDark ? AppColors.darkAccent : AppColors.lightAccent),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.xs),

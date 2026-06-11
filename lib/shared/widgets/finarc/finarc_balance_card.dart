@@ -28,6 +28,7 @@ class FinarcBalanceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return FinarcCard(
       padding: EdgeInsets.all(isHero ? AppSpacing.lg : AppSpacing.md),
       gradient: isHero
@@ -42,7 +43,7 @@ class FinarcBalanceCard extends StatelessWidget {
           : null,
       borderColor: isHero
           ? AppColors.darkAccent.withValues(alpha: 0.35)
-          : AppColors.darkBorder,
+          : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -83,7 +84,7 @@ class FinarcBalanceCard extends StatelessWidget {
                 Icon(
                   Icons.trending_up_rounded,
                   size: 14,
-                  color: AppColors.darkSuccess,
+                  color: isDark ? AppColors.darkSuccess : AppColors.lightSuccess,
                 ),
                 const SizedBox(width: 4),
                 Expanded(
@@ -92,7 +93,7 @@ class FinarcBalanceCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.darkSuccess,
+                      color: isDark ? AppColors.darkSuccess : AppColors.lightSuccess,
                       fontWeight: FontWeight.w600,
                     ),
                   ),

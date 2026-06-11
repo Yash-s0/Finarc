@@ -48,10 +48,12 @@ class FinarcPrimaryButton extends StatelessWidget {
       ),
       child: Ink(
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
+          gradient: LinearGradient(
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
-            colors: [AppColors.darkPrimary, AppColors.darkAccent],
+            colors: Theme.of(context).brightness == Brightness.dark
+                ? const [AppColors.darkPrimary, AppColors.darkAccent]
+                : const [AppColors.lightPrimary, AppColors.lightAccent],
           ),
           borderRadius: BorderRadius.circular(AppRadius.md),
         ),

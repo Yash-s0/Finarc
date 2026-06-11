@@ -60,6 +60,7 @@ class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
       ),
       error: (e, _) => Center(child: Text('Error: $e')),
       data: (data) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
         if (data.cards.isEmpty) {
           return ListView(
             padding: _pagePadding(context),
@@ -177,8 +178,8 @@ class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
                     height: 6,
                     decoration: BoxDecoration(
                       color: index == _selectedCardIndex
-                          ? AppColors.darkAccent
-                          : AppColors.darkBorder,
+                          ? (isDark ? AppColors.darkAccent : AppColors.lightAccent)
+                          : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
                       borderRadius: BorderRadius.circular(99),
                     ),
                   ),
@@ -203,13 +204,14 @@ class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
   }
 
   Widget _buildTabs(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final tabs = ['Overview', 'Unbilled', 'Billed', 'History'];
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: AppColors.darkSurfaceLow,
+        color: isDark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh,
         borderRadius: BorderRadius.circular(AppRadius.pill),
-        border: Border.all(color: AppColors.darkBorder),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
       ),
       child: Row(
         children: List.generate(tabs.length, (index) {
@@ -222,7 +224,7 @@ class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
                   color: selected
-                      ? AppColors.darkPrimarySoft
+                      ? (isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
@@ -262,6 +264,7 @@ class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
         error: (e, _) =>
             FinarcCard(child: Text('Unable to load selected card: $e')),
         data: (vm) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
           final hasActiveBill = vm.currentBill != null;
           final hasDues = hasActiveBill && vm.currentDueAmount > 0.009;
           return Column(
@@ -278,8 +281,8 @@ class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
                     title: 'Total Card Dues',
                     value: inr(vm.currentDueAmount),
                     icon: Icons.warning_amber_rounded,
-                    iconColor: AppColors.darkWarning,
-                    iconBackgroundColor: AppColors.darkWarning.withValues(
+                    iconColor: isDark ? AppColors.darkWarning : AppColors.lightWarning,
+                    iconBackgroundColor: (isDark ? AppColors.darkWarning : AppColors.lightWarning).withValues(
                       alpha: 0.14,
                     ),
                   ),
@@ -287,8 +290,8 @@ class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
                     title: 'Unbilled',
                     value: inr(vm.unbilledAmount),
                     icon: Icons.receipt_long_rounded,
-                    iconColor: AppColors.darkBlue,
-                    iconBackgroundColor: AppColors.darkBlue.withValues(
+                    iconColor: isDark ? AppColors.darkBlue : AppColors.lightAccent,
+                    iconBackgroundColor: (isDark ? AppColors.darkBlue : AppColors.lightAccent).withValues(
                       alpha: 0.14,
                     ),
                   ),
@@ -296,8 +299,8 @@ class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
                     title: 'Outstanding',
                     value: inr(vm.totalOutstanding),
                     icon: Icons.account_balance_wallet_rounded,
-                    iconColor: AppColors.darkAccent,
-                    iconBackgroundColor: AppColors.darkAccent.withValues(
+                    iconColor: isDark ? AppColors.darkAccent : AppColors.lightAccent,
+                    iconBackgroundColor: (isDark ? AppColors.darkAccent : AppColors.lightAccent).withValues(
                       alpha: 0.14,
                     ),
                   ),
@@ -305,8 +308,8 @@ class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
                     title: 'Utilization',
                     value: '${(vm.utilization * 100).toStringAsFixed(1)}%',
                     icon: Icons.pie_chart_outline_rounded,
-                    iconColor: AppColors.darkMint,
-                    iconBackgroundColor: AppColors.darkMint.withValues(
+                    iconColor: isDark ? AppColors.darkMint : AppColors.lightSuccess,
+                    iconBackgroundColor: (isDark ? AppColors.darkMint : AppColors.lightSuccess).withValues(
                       alpha: 0.14,
                     ),
                   ),
@@ -427,6 +430,7 @@ class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
   }
 
   Widget _transactionRow(BuildContext context, Transaction txn) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final billed = txn.cardBillId != null;
     final isRefund = txn.type == 'refund';
     return FinarcTransactionTile(
@@ -439,7 +443,9 @@ class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
             : 'Card',
       ),
       amount: '${isRefund ? '+' : '-'}${inr(txn.amount)}',
-      amountColor: isRefund ? AppColors.darkSuccess : AppColors.darkError,
+      amountColor: isRefund
+          ? (isDark ? AppColors.darkSuccess : AppColors.lightSuccess)
+          : (isDark ? AppColors.darkError : AppColors.lightError),
       amountMeta: billed && txn.cardBillId != null
           ? 'Stmt #${txn.cardBillId}'
           : null,
@@ -448,12 +454,14 @@ class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
       prefix: CircleAvatar(
         radius: 15,
         backgroundColor: billed
-            ? AppColors.darkPrimarySoft
-            : AppColors.darkWarning.withValues(alpha: 0.22),
+            ? (isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft)
+            : (isDark ? AppColors.darkWarning : AppColors.lightWarning).withValues(alpha: 0.22),
         child: Icon(
           billed ? Icons.receipt_long_rounded : Icons.pending_actions_rounded,
           size: 13,
-          color: billed ? AppColors.darkAccent : AppColors.darkWarning,
+          color: billed
+              ? (isDark ? AppColors.darkAccent : AppColors.lightAccent)
+              : (isDark ? AppColors.darkWarning : AppColors.lightWarning),
         ),
       ),
       onTap: () {},

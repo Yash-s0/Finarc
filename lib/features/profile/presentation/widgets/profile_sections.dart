@@ -740,17 +740,6 @@ class ReleaseDiagnosticsSection extends StatelessWidget {
         FinarcCard(
           child: ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.dark_mode_outlined),
-            title: Text('Theme toggle (placeholder)'),
-            subtitle: Text(
-              'Dark mode default is active. Full theme persistence controls are planned next.',
-            ),
-          ),
-        ),
-        SizedBox(height: AppSpacing.sm),
-        FinarcCard(
-          child: ListTile(
-            contentPadding: EdgeInsets.zero,
             leading: Icon(Icons.offline_bolt_rounded),
             title: Text('Offline-first mode'),
             subtitle: Text('All data is stored locally on device only.'),
@@ -768,6 +757,65 @@ class ReleaseDiagnosticsSection extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class ThemeSettingsSection extends StatelessWidget {
+  const ThemeSettingsSection({
+    super.key,
+    required this.currentTheme,
+    required this.onThemeChanged,
+  });
+
+  final ThemeMode currentTheme;
+  final ValueChanged<ThemeMode> onThemeChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return FinarcCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Appearance',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: AppSpacing.xxs),
+          Text(
+            'Choose your preferred theme.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          SegmentedButton<ThemeMode>(
+            segments: const [
+              ButtonSegment<ThemeMode>(
+                value: ThemeMode.system,
+                icon: Icon(Icons.brightness_auto_rounded),
+                label: Text('System'),
+              ),
+              ButtonSegment<ThemeMode>(
+                value: ThemeMode.light,
+                icon: Icon(Icons.light_mode_rounded),
+                label: Text('Light'),
+              ),
+              ButtonSegment<ThemeMode>(
+                value: ThemeMode.dark,
+                icon: Icon(Icons.dark_mode_rounded),
+                label: Text('Dark'),
+              ),
+            ],
+            selected: {currentTheme},
+            onSelectionChanged: (Set<ThemeMode> newSelection) {
+              onThemeChanged(newSelection.first);
+            },
+            style: SegmentedButton.styleFrom(
+              selectedBackgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+              selectedForegroundColor: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

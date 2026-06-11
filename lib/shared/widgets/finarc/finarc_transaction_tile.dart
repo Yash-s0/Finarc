@@ -43,6 +43,7 @@ class FinarcTransactionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final iconGap = compact ? AppSpacing.xs : AppSpacing.sm;
     final titleStyle = compact
         ? Theme.of(context).textTheme.labelLarge
@@ -58,9 +59,9 @@ class FinarcTransactionTile extends StatelessWidget {
         vertical: AppSpacing.xs,
       ),
       decoration: BoxDecoration(
-        color: AppColors.darkSurfaceLow,
+        color: isDark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.darkBorder),
+        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

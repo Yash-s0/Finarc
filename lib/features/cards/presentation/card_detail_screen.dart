@@ -69,6 +69,7 @@ class CardDetailScreen extends ConsumerWidget {
         ),
       ),
       data: (vm) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
         final card = vm.card;
         final dueLabel = _dueLabel(vm.dueCountdownDays);
         final tone = _toneForStatus(vm.billStatus);
@@ -93,18 +94,18 @@ class CardDetailScreen extends ConsumerWidget {
                   ),
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      color: AppColors.darkSurfaceLow,
+                      color: isDark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh,
                       borderRadius: BorderRadius.circular(AppRadius.pill),
-                      border: Border.all(color: AppColors.darkBorder),
+                      border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
                     ),
                     child: TabBar(
                       dividerColor: Colors.transparent,
                       indicatorSize: TabBarIndicatorSize.tab,
                       indicator: BoxDecoration(
-                        color: AppColors.darkPrimarySoft,
+                        color: isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft,
                         borderRadius: BorderRadius.circular(AppRadius.pill),
                         border: Border.all(
-                          color: AppColors.darkAccent.withValues(alpha: 0.42),
+                          color: (isDark ? AppColors.darkAccent : AppColors.lightAccent).withValues(alpha: 0.42),
                         ),
                       ),
                       indicatorPadding: const EdgeInsets.all(4),
@@ -216,7 +217,7 @@ class CardDetailScreen extends ConsumerWidget {
                                   context,
                                   'Current Due',
                                   inr(vm.currentDueAmount),
-                                  AppColors.darkWarning,
+                                  isDark ? AppColors.darkWarning : AppColors.lightWarning,
                                 ),
                               ),
                               const SizedBox(width: AppSpacing.sm),
@@ -225,7 +226,7 @@ class CardDetailScreen extends ConsumerWidget {
                                   context,
                                   'Unbilled Spends',
                                   inr(vm.unbilledAmount),
-                                  AppColors.darkAccent,
+                                  isDark ? AppColors.darkAccent : AppColors.lightAccent,
                                 ),
                               ),
                             ],
@@ -309,8 +310,8 @@ class CardDetailScreen extends ConsumerWidget {
                                 amount:
                                     '${isRefund ? '+' : '-'}${inr(t.amount)}',
                                 amountColor: isRefund
-                                    ? AppColors.darkSuccess
-                                    : AppColors.darkError,
+                                    ? (isDark ? AppColors.darkSuccess : AppColors.lightSuccess)
+                                    : (isDark ? AppColors.darkError : AppColors.lightError),
                                 amountMeta: billed && t.cardBillId != null
                                     ? 'Stmt #${t.cardBillId}'
                                     : null,
@@ -319,10 +320,10 @@ class CardDetailScreen extends ConsumerWidget {
                                     billed: billed,
                                   ),
                                 ],
-                                prefix: const CircleAvatar(
+                                prefix: CircleAvatar(
                                   radius: 16,
-                                  backgroundColor: AppColors.darkPrimarySoft,
-                                  child: Icon(Icons.credit_card, size: 15),
+                                  backgroundColor: isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft,
+                                  child: const Icon(Icons.credit_card, size: 15),
                                 ),
                               );
                             },
@@ -372,9 +373,9 @@ class CardDetailScreen extends ConsumerWidget {
   ) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppColors.darkSurfaceLow,
+        color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.darkBorder),
+        border: Border.all(color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkBorder : AppColors.lightBorder),
       ),
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.sm),
@@ -404,6 +405,7 @@ class CardDetailScreen extends ConsumerWidget {
     required String emptyTitle,
     required String emptySubtitle,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.md),
       children: [
@@ -428,18 +430,18 @@ class CardDetailScreen extends ConsumerWidget {
               ),
               amount: '${isRefund ? '+' : '-'}${inr(t.amount)}',
               amountColor: isRefund
-                  ? AppColors.darkSuccess
-                  : AppColors.darkError,
+                  ? (isDark ? AppColors.darkSuccess : AppColors.lightSuccess)
+                  : (isDark ? AppColors.darkError : AppColors.lightError),
               amountMeta: billed && t.cardBillId != null
                   ? 'Stmt #${t.cardBillId}'
                   : null,
               badges: [
                 FinarcTransactionPresentation.billedBadge(billed: billed),
               ],
-              prefix: const CircleAvatar(
+              prefix: CircleAvatar(
                 radius: 16,
-                backgroundColor: AppColors.darkPrimarySoft,
-                child: Icon(Icons.receipt_long_outlined, size: 15),
+                backgroundColor: isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft,
+                child: const Icon(Icons.receipt_long_outlined, size: 15),
               ),
             );
           }),

@@ -90,14 +90,14 @@ class FinarcCardPreview extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: AppSpacing.xxs),
-              Text(nickname, style: Theme.of(context).textTheme.bodyMedium),
+              Text(nickname, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white70)),
               const SizedBox(height: AppSpacing.md),
               Row(
                 children: [
                   Expanded(
                     child: Text(
                       maskedNumber,
-                      style: Theme.of(context).textTheme.titleMedium,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white70),
                     ),
                   ),
                   Text(
@@ -139,7 +139,7 @@ class FinarcCardPreview extends StatelessWidget {
                   const SizedBox(width: AppSpacing.xs),
                   Text(
                     'Utilized ${(utilizationPct * 100).toStringAsFixed(0)}%',
-                    style: Theme.of(context).textTheme.labelMedium,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(color: Colors.white60),
                   ),
                 ],
               ),

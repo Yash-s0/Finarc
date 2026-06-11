@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/theme_controller.dart';
 import '../../alerts/data/alerts_providers.dart';
 import '../../dashboard/data/dashboard_providers.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
@@ -141,6 +142,7 @@ class ProfileScreen extends ConsumerWidget {
     final smsDetectionEnabled = settings?.smsDetectionEnabled ?? false;
     final diagnostics = ref.watch(ingestionDiagnosticsProvider);
     final profile = ref.watch(userProfileSettingsProvider).valueOrNull;
+    final currentTheme = ref.watch(themeModeProvider);
     final notificationIngestionAvailable =
         notificationIngestionAvailabilityState.valueOrNull ?? false;
     final smsIngestionAvailable =
@@ -272,6 +274,13 @@ class ProfileScreen extends ConsumerWidget {
             salaryCreditDay: profile?.salaryCreditDay,
             companyName: profile?.companyName,
             onEdit: () => _showProfileEditSheet(context, ref, profile),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          ThemeSettingsSection(
+            currentTheme: currentTheme,
+            onThemeChanged: (theme) {
+              ref.read(themeModeProvider.notifier).state = theme;
+            },
           ),
           const SizedBox(height: AppSpacing.sm),
           DebugToolsSection(

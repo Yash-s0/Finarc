@@ -70,8 +70,8 @@ class _AppShellState extends State<AppShell> {
         children: [
           CircleAvatar(
             radius: 17,
-            backgroundColor: AppColors.darkPrimarySoft.withValues(alpha: 0.95),
-            child: Icon(icon, size: 17, color: AppColors.darkAccent),
+            backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+            child: Icon(icon, size: 17, color: Theme.of(context).colorScheme.primary),
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
@@ -101,10 +101,10 @@ class _AppShellState extends State<AppShell> {
               right: 12,
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: AppColors.darkSurfaceHigh,
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(AppRadius.pill),
-                  border: const Border.fromBorderSide(
-                    BorderSide(color: AppColors.darkBorder),
+                  border: Border.fromBorderSide(
+                    BorderSide(color: Theme.of(context).dividerColor),
                   ),
                 ),
                 child: Padding(
@@ -134,17 +134,17 @@ class _AppShellState extends State<AppShell> {
                   width: _fabSize,
                   child: FloatingActionButton(
                     onPressed: _openQuickActions,
-                    backgroundColor: AppColors.darkPrimary,
-                    foregroundColor: Colors.white,
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppRadius.pill),
-                      side: const BorderSide(
-                        color: AppColors.darkAccent,
-                        width: 0.9,
+                      side: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
+                        width: 1.0,
                       ),
                     ),
-                    child: const Icon(Icons.bolt_rounded, size: 20),
+                    child: const Icon(Icons.add, size: 28),
                   ),
                 ),
               ),
@@ -156,9 +156,13 @@ class _AppShellState extends State<AppShell> {
         child: Padding(
           padding: const EdgeInsets.only(top: 4),
           child: DecoratedBox(
-            decoration: const BoxDecoration(
-              color: AppColors.darkSurfaceLow,
-              border: Border(top: BorderSide(color: AppColors.darkBorder)),
+            decoration: BoxDecoration(
+              color: Theme.of(context).navigationBarTheme.backgroundColor,
+              border: Border(
+                top: BorderSide(
+                  color: Theme.of(context).dividerColor,
+                ),
+              ),
             ),
             child: NavigationBar(
               height: _bottomNavHeight,

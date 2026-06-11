@@ -8,6 +8,7 @@ import '../../dashboard/data/dashboard_providers.dart';
 import '../data/profile_settings_providers.dart';
 import '../data/profile_settings_service.dart';
 import '../../../core/router/app_routes.dart';
+import '../../../core/theme/theme_controller.dart';
 import 'widgets/profile_sections.dart';
 
 Future<void> _showProfileEditSheet(
@@ -120,6 +121,7 @@ class ProfileScreenSafe extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(userProfileSettingsProvider).valueOrNull;
+    final currentTheme = ref.watch(themeModeProvider);
 
     return FinarcScaffold(
       appBar: const FinarcAppBar(title: 'Profile'),
@@ -132,6 +134,13 @@ class ProfileScreenSafe extends ConsumerWidget {
             salaryCreditDay: profile?.salaryCreditDay,
             companyName: profile?.companyName,
             onEdit: () => _showProfileEditSheet(context, ref, profile),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          ThemeSettingsSection(
+            currentTheme: currentTheme,
+            onThemeChanged: (theme) {
+              ref.read(themeModeProvider.notifier).state = theme;
+            },
           ),
           const SizedBox(height: AppSpacing.sm),
           FinarcCard(
