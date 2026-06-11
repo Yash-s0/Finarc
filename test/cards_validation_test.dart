@@ -81,4 +81,24 @@ void main() {
     final cards = await db.select(db.creditCards).get();
     expect(cards.single.network, CardNetwork.rupay);
   });
+
+  test('add card saves amex network', () async {
+    final addCard = container.read(addCardProvider);
+
+    await addCard(
+      AddCardPayload(
+        bankName: 'AMEX',
+        nickname: 'Gold',
+        last4: '0005',
+        network: CardNetwork.amex,
+        billingDay: 15,
+        dueDay: 5,
+        creditLimit: 200000,
+        currentOutstanding: 0,
+      ),
+    );
+
+    final cards = await db.select(db.creditCards).get();
+    expect(cards.single.network, CardNetwork.amex);
+  });
 }

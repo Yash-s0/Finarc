@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
+import '../data/card_network_detector.dart';
 import '../data/cards_providers.dart';
 
 class AddCardScreen extends ConsumerStatefulWidget {
@@ -18,14 +19,17 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
   final _formKey = GlobalKey<FormState>();
   final _bank = TextEditingController();
   final _nick = TextEditingController();
+  final _bin = TextEditingController();
   final _last4 = TextEditingController();
   final _billing = TextEditingController();
   final _due = TextEditingController();
   final _limit = TextEditingController();
   final _outstanding = TextEditingController(text: '0');
   String _network = CardNetwork.visa;
+  bool _networkAutoDetected = false;
   final _bankFocus = FocusNode();
   final _nickFocus = FocusNode();
+  final _binFocus = FocusNode();
   final _last4Focus = FocusNode();
   final _billingFocus = FocusNode();
   final _dueFocus = FocusNode();
@@ -36,6 +40,7 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
   void dispose() {
     _bank.dispose();
     _nick.dispose();
+    _bin.dispose();
     _last4.dispose();
     _billing.dispose();
     _due.dispose();
@@ -43,6 +48,7 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
     _outstanding.dispose();
     _bankFocus.dispose();
     _nickFocus.dispose();
+    _binFocus.dispose();
     _last4Focus.dispose();
     _billingFocus.dispose();
     _dueFocus.dispose();
@@ -115,7 +121,28 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
                     _nick,
                     'Card nickname',
                     focusNode: _nickFocus,
+                    nextFocusNode: _binFocus,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  _field(
+                    _bin,
+                    'First 6 digits (optional)',
+                    focusNode: _binFocus,
                     nextFocusNode: _last4Focus,
+                    maxLength: 8,
+                    keyboardType: TextInputType.number,
+                    onChanged: _onBinChanged,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) return null;
+                      final v = value.trim();
+                      if (v.length < 6 || v.length > 8) {
+                        return 'Enter 6 to 8 digits';
+                      }
+                      if (int.tryParse(v) == null) {
+                        return 'Enter numbers only';
+                      }
+                      return null;
+                    },
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   _field(
@@ -140,10 +167,13 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   DropdownButtonFormField<String>(
-                    initialValue: _network,
-                    decoration: const InputDecoration(
+                    value: _network,
+                    decoration: InputDecoration(
                       labelText: 'Card type',
-                      prefixIcon: Icon(Icons.credit_card_rounded),
+                      prefixIcon: const Icon(Icons.credit_card_rounded),
+                      helperText: _networkAutoDetected
+                          ? 'Auto-detected from BIN'
+                          : null,
                     ),
                     items: CardNetwork.values
                         .map(
@@ -155,7 +185,10 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
                         .toList(growable: false),
                     onChanged: (value) {
                       if (value == null) return;
-                      setState(() => _network = value);
+                      setState(() {
+                        _network = value;
+                        _networkAutoDetected = false;
+                      });
                     },
                   ),
                 ],
@@ -239,7 +272,9 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Text(
-                      'Finarc tracks only masked number + last 4 digits for privacy-safe offline record keeping.',
+                      'Finarc tracks only masked number + last 4 digits for '
+                      'privacy-safe offline record keeping. First 6 digits '
+                      'are used only to suggest card type and are not saved.',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ),
@@ -258,6 +293,23 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
     );
   }
 
+  void _onBinChanged(String value) {
+    final cleaned = value.trim();
+    if (cleaned.length >= 6) {
+      final detected = detectCardNetwork(cleaned);
+      if (detected != null) {
+        setState(() {
+          _network = detected;
+          _networkAutoDetected = true;
+        });
+        return;
+      }
+    }
+    if (_networkAutoDetected) {
+      setState(() => _networkAutoDetected = false);
+    }
+  }
+
   Widget _field(
     TextEditingController controller,
     String label, {
@@ -267,6 +319,7 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
     TextInputAction? textInputAction,
     FocusNode? focusNode,
     FocusNode? nextFocusNode,
+    ValueChanged<String>? onChanged,
   }) {
     return FinarcTextField(
       controller: controller,
@@ -276,6 +329,7 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
       keyboardType: keyboardType,
       maxLength: maxLength,
       textInputAction: textInputAction,
+      onChanged: onChanged,
       validator:
           validator ??
           (value) {

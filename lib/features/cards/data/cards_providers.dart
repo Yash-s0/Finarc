@@ -266,8 +266,9 @@ class CardNetwork {
   static const visa = 'visa';
   static const mastercard = 'mastercard';
   static const rupay = 'rupay';
+  static const amex = 'amex';
 
-  static const values = [visa, mastercard, rupay];
+  static const values = [visa, mastercard, rupay, amex];
 
   static String label(String value) {
     switch (value) {
@@ -275,6 +276,8 @@ class CardNetwork {
         return 'Mastercard';
       case rupay:
         return 'RuPay';
+      case amex:
+        return 'Amex';
       case visa:
       default:
         return 'Visa';

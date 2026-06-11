@@ -160,6 +160,8 @@ class FinarcCardPreview extends StatelessWidget {
         return 'MC';
       case 'rupay':
         return 'RuPay';
+      case 'amex':
+        return 'AMEX';
       case 'visa':
       default:
         return 'VISA';
