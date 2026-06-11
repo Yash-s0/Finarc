@@ -26,7 +26,7 @@ void main() {
     notificationDetectionEnabled: true,
     totalAssets: 0,
     totalLiabilities: 0,
-    payableAmount: 0,
+    payableAmount: 3879.59,
     debtRatio: 0,
     monthlyEmiBurden: 0,
     unreadAlertsCount: 0,
@@ -89,11 +89,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final cards = find.byType(FinarcMetricCard);
     final gridTop = tester.getTopLeft(find.byType(DashboardMetricGrid)).dy;
-    final firstCardTop = tester.getTopLeft(cards.first).dy;
+    final headerTop = tester.getTopLeft(find.text('OVERVIEW')).dy;
 
-    expect(firstCardTop - gridTop, lessThanOrEqualTo(1));
+    expect(headerTop - gridTop, lessThan(24));
   });
 
   testWidgets('metric cards preserve decimal amounts', (tester) async {

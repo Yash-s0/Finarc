@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import '../../../../core/config/app_mode.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../shared/widgets/finarc/finarc_widgets.dart';
@@ -79,17 +78,10 @@ class ProfileHeaderCard extends StatelessWidget {
   }
 }
 
-class ProfileSalarySection extends StatelessWidget {
-  const ProfileSalarySection({
-    super.key,
-    required this.appVersion,
-    required this.onOpenReleaseChecklist,
-    required this.onOpenLogs,
-  });
+class DataControlsEntryCard extends StatelessWidget {
+  const DataControlsEntryCard({super.key, required this.onOpen});
 
-  final String appVersion;
-  final VoidCallback onOpenReleaseChecklist;
-  final VoidCallback onOpenLogs;
+  final VoidCallback onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -97,24 +89,48 @@ class ProfileSalarySection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('App Runtime', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: AppSpacing.xs),
-          Text('App version: $appVersion'),
-          Text('Build mode: ${AppModeConfig.label}'),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  Icons.folder_copy_outlined,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Data Controls',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: AppSpacing.xxs),
+                    Text(
+                      'Manage local backups, imports, exports and reset options.',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: AppSpacing.sm),
-          if (!kReleaseMode) ...[
-            FinarcSecondaryButton(
-              onPressed: onOpenReleaseChecklist,
-              icon: Icons.rule_folder_outlined,
-              label: 'Open Release Checklist',
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            FinarcSecondaryButton(
-              onPressed: onOpenLogs,
-              icon: Icons.article_outlined,
-              label: 'Open Debug Logs',
-            ),
-          ],
+          FinarcSecondaryButton(
+            onPressed: onOpen,
+            icon: Icons.arrow_forward_rounded,
+            label: 'Open Data Controls',
+          ),
         ],
       ),
     );

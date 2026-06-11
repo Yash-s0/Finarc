@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -144,25 +146,189 @@ class NetWorthHeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () => context.push('/dashboard/net-worth-breakdown'),
-      child: FinarcBalanceCard(
-        label: 'Net Worth',
-        value: inr(data.netWorth),
-        subtitle:
-            'Assets ${inr(data.totalAssets)} • Liabilities ${inr(data.totalLiabilities)}',
-        trendLabel: 'Monthly spends ${inr(data.monthlySpends)}',
-        statusLabel: data.netWorth >= 0 ? 'On track' : 'Needs attention',
-        isHero: true,
-        leading: const CircleAvatar(
-          radius: 13,
-          backgroundColor: AppColors.darkPrimarySoft,
-          child: Icon(
-            Icons.insights_rounded,
-            size: 14,
-            color: AppColors.darkAccent,
-          ),
+      child: FinarcCard(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.darkPrimarySoft.withValues(alpha: 0.72),
+            AppColors.darkSurfaceHigh,
+          ],
+        ),
+        borderColor: AppColors.darkBorder.withValues(alpha: 0.9),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Net Worth', style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              inr(data.netWorth),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Row(
+              children: [
+                const Icon(
+                  Icons.trending_up_rounded,
+                  size: 16,
+                  color: AppColors.darkSuccess,
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    _spendTrendLabel(data.monthlySpendTrend),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.darkSuccess,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            SizedBox(
+              height: 92,
+              width: double.infinity,
+              child: _MonthlySpendTrendChart(points: data.monthlySpendTrend),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  String _spendTrendLabel(List<MonthlySpendPoint> points) {
+    if (points.isEmpty) return 'Monthly spends ${inr(data.monthlySpends)}';
+    final current = points.last.amount;
+    if (points.length < 2 || points[points.length - 2].amount <= 0) {
+      return 'Spends this cycle ${inr(current)}';
+    }
+    final previous = points[points.length - 2].amount;
+    final delta = current - previous;
+    final percent = (delta / previous) * 100;
+    final sign = delta >= 0 ? '+' : '-';
+    return '$sign${percent.abs().toStringAsFixed(1)}% (${inr(delta.abs())}) this cycle';
+  }
+}
+
+class _MonthlySpendTrendChart extends StatelessWidget {
+  const _MonthlySpendTrendChart({required this.points});
+
+  final List<MonthlySpendPoint> points;
+
+  @override
+  Widget build(BuildContext context) {
+    if (points.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return CustomPaint(
+      painter: _MonthlySpendTrendPainter(points),
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: points
+              .map(
+                (point) => Expanded(
+                  child: Text(
+                    _monthShort(point.month),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppColors.darkTextMuted.withValues(alpha: 0.72),
+                    ),
+                  ),
+                ),
+              )
+              .toList(growable: false),
+        ),
+      ),
+    );
+  }
+
+  static String _monthShort(DateTime month) {
+    const labels = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return labels[month.month - 1];
+  }
+}
+
+class _MonthlySpendTrendPainter extends CustomPainter {
+  _MonthlySpendTrendPainter(this.points);
+
+  final List<MonthlySpendPoint> points;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (points.length < 2 || size.width <= 0 || size.height <= 0) return;
+    final chartHeight = math.max(12.0, size.height - 18);
+    final amounts = points.map((point) => point.amount).toList(growable: false);
+    final maxValue = amounts.reduce(math.max);
+    final minValue = amounts.reduce(math.min);
+    final range = maxValue - minValue;
+    final stepX = size.width / (points.length - 1);
+
+    final path = Path();
+    for (var i = 0; i < points.length; i += 1) {
+      final normalized = range <= 0 ? 0.5 : (amounts[i] - minValue) / range;
+      final x = i * stepX;
+      final y = chartHeight - (normalized * (chartHeight - 8)) + 4;
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+
+    final glowPaint = Paint()
+      ..color = AppColors.darkAccent.withValues(alpha: 0.24)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 6
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    final linePaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [AppColors.darkBlue, AppColors.darkAccent],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, chartHeight))
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    canvas.drawPath(path, glowPaint);
+    canvas.drawPath(path, linePaint);
+
+    final last = path.computeMetrics().last;
+    final tangent = last.getTangentForOffset(last.length);
+    if (tangent != null) {
+      canvas.drawCircle(
+        tangent.position,
+        3.5,
+        Paint()..color = AppColors.darkAccent,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _MonthlySpendTrendPainter oldDelegate) {
+    return oldDelegate.points != points;
   }
 }
 
@@ -264,19 +430,19 @@ class DashboardMetricGrid extends StatelessWidget {
         onTap: () => context.push('/loans'),
       ),
       FinarcMetricCard(
-        title: 'Recoverable',
+        title: 'To Receive',
         value: inr(data.recoverableAmount),
         icon: Icons.call_received_rounded,
-        iconColor: AppColors.darkBlue,
-        iconBackgroundColor: AppColors.darkBlue.withValues(alpha: 0.14),
+        iconColor: AppColors.darkAccent,
+        iconBackgroundColor: AppColors.darkAccent.withValues(alpha: 0.14),
         onTap: () => context.push('/recoverables'),
       ),
       FinarcMetricCard(
-        title: 'Monthly Spends',
-        value: inr(data.monthlySpends),
-        icon: Icons.calendar_month_rounded,
-        iconColor: AppColors.darkPink,
-        iconBackgroundColor: AppColors.darkPink.withValues(alpha: 0.14),
+        title: 'Upcoming Bills',
+        value: inr(data.payableAmount),
+        icon: Icons.receipt_long_rounded,
+        iconColor: AppColors.darkOrange,
+        iconBackgroundColor: AppColors.darkOrange.withValues(alpha: 0.14),
         onTap: () => context.push('/analytics'),
       ),
     ];
@@ -284,19 +450,32 @@ class DashboardMetricGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final useSingleColumn = constraints.maxWidth < 290;
-        return GridView.builder(
-          shrinkWrap: true,
-          primary: false,
-          padding: EdgeInsets.zero,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: useSingleColumn ? 1 : 2,
-            crossAxisSpacing: AppSpacing.xs,
-            mainAxisSpacing: 4,
-            mainAxisExtent: useSingleColumn ? 86 : 92,
-          ),
-          itemCount: cards.length,
-          itemBuilder: (context, index) => cards[index],
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            FinarcSectionHeader(
+              title: 'Overview',
+              trailing: TextButton(
+                onPressed: () => context.push('/analytics'),
+                child: const Text('See all'),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            GridView.builder(
+              shrinkWrap: true,
+              primary: false,
+              padding: EdgeInsets.zero,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: useSingleColumn ? 1 : 2,
+                crossAxisSpacing: AppSpacing.xs,
+                mainAxisSpacing: AppSpacing.xs,
+                mainAxisExtent: useSingleColumn ? 86 : 88,
+              ),
+              itemCount: cards.length,
+              itemBuilder: (context, index) => cards[index],
+            ),
+          ],
         );
       },
     );

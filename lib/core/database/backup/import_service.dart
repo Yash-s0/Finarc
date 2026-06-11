@@ -275,6 +275,7 @@ class ImportService {
                 nickname: Value(_string(row['nickname'])),
                 last4: Value(_string(row['last4'])),
                 maskedNumber: Value(_string(row['maskedNumber'])),
+                network: Value(_string(row['network'], fallback: 'visa')),
                 creditLimit: Value(_double(row['creditLimit']) ?? 0),
                 billingDay: Value(_int(row['billingDay']) ?? 1),
                 dueDay: Value(_int(row['dueDay']) ?? 1),

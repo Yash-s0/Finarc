@@ -18,6 +18,8 @@ class FinarcTextField extends StatelessWidget {
     this.prefixIcon,
     this.inputFormatters,
     this.textInputAction,
+    this.focusNode,
+    this.nextFocusNode,
   });
 
   final TextEditingController? controller;
@@ -34,6 +36,8 @@ class FinarcTextField extends StatelessWidget {
   final Widget? prefixIcon;
   final List<TextInputFormatter>? inputFormatters;
   final TextInputAction? textInputAction;
+  final FocusNode? focusNode;
+  final FocusNode? nextFocusNode;
 
   TextInputAction? _resolvedTextInputAction() {
     if (textInputAction != null) return textInputAction;
@@ -48,6 +52,7 @@ class FinarcTextField extends StatelessWidget {
 
     return TextFormField(
       controller: controller,
+      focusNode: focusNode,
       readOnly: readOnly,
       keyboardType: keyboardType,
       textInputAction: resolvedTextInputAction,
@@ -56,6 +61,15 @@ class FinarcTextField extends StatelessWidget {
       validator: validator,
       onTap: onTap,
       onChanged: onChanged,
+      onEditingComplete: () {
+        if (nextFocusNode != null) {
+          FocusScope.of(context).requestFocus(nextFocusNode);
+          return;
+        }
+        if (resolvedTextInputAction == TextInputAction.done) {
+          FocusScope.of(context).unfocus();
+        }
+      },
       inputFormatters: inputFormatters,
       decoration: InputDecoration(
         labelText: label,

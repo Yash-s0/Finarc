@@ -31,6 +31,7 @@ void main() {
           bankName: 'HDFC',
           nickname: 'Primary',
           last4: '12A4',
+          network: CardNetwork.visa,
           billingDay: 10,
           dueDay: 22,
           creditLimit: 100000,
@@ -50,6 +51,7 @@ void main() {
           bankName: 'HDFC',
           nickname: 'Primary',
           last4: '1234',
+          network: CardNetwork.visa,
           billingDay: 10,
           dueDay: 22,
           creditLimit: 10000,
@@ -58,5 +60,25 @@ void main() {
       ),
       throwsA(isA<ArgumentError>()),
     );
+  });
+
+  test('add card saves selected card network', () async {
+    final addCard = container.read(addCardProvider);
+
+    await addCard(
+      AddCardPayload(
+        bankName: 'HDFC',
+        nickname: 'Primary',
+        last4: '1234',
+        network: CardNetwork.rupay,
+        billingDay: 10,
+        dueDay: 22,
+        creditLimit: 10000,
+        currentOutstanding: 1200,
+      ),
+    );
+
+    final cards = await db.select(db.creditCards).get();
+    expect(cards.single.network, CardNetwork.rupay);
   });
 }

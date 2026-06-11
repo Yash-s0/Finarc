@@ -1043,6 +1043,18 @@ class $CreditCardsTable extends CreditCards
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _networkMeta = const VerificationMeta(
+    'network',
+  );
+  @override
+  late final GeneratedColumn<String> network = GeneratedColumn<String>(
+    'network',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('visa'),
+  );
   static const VerificationMeta _creditLimitMeta = const VerificationMeta(
     'creditLimit',
   );
@@ -1117,6 +1129,7 @@ class $CreditCardsTable extends CreditCards
     nickname,
     last4,
     maskedNumber,
+    network,
     creditLimit,
     billingDay,
     dueDay,
@@ -1173,6 +1186,12 @@ class $CreditCardsTable extends CreditCards
       );
     } else if (isInserting) {
       context.missing(_maskedNumberMeta);
+    }
+    if (data.containsKey('network')) {
+      context.handle(
+        _networkMeta,
+        network.isAcceptableOrUnknown(data['network']!, _networkMeta),
+      );
     }
     if (data.containsKey('credit_limit')) {
       context.handle(
@@ -1251,6 +1270,10 @@ class $CreditCardsTable extends CreditCards
         DriftSqlType.string,
         data['${effectivePrefix}masked_number'],
       )!,
+      network: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}network'],
+      )!,
       creditLimit: attachedDatabase.typeMapping.read(
         DriftSqlType.double,
         data['${effectivePrefix}credit_limit'],
@@ -1290,6 +1313,7 @@ class CreditCard extends DataClass implements Insertable<CreditCard> {
   final String nickname;
   final String last4;
   final String maskedNumber;
+  final String network;
   final double creditLimit;
   final int billingDay;
   final int dueDay;
@@ -1302,6 +1326,7 @@ class CreditCard extends DataClass implements Insertable<CreditCard> {
     required this.nickname,
     required this.last4,
     required this.maskedNumber,
+    required this.network,
     required this.creditLimit,
     required this.billingDay,
     required this.dueDay,
@@ -1317,6 +1342,7 @@ class CreditCard extends DataClass implements Insertable<CreditCard> {
     map['nickname'] = Variable<String>(nickname);
     map['last4'] = Variable<String>(last4);
     map['masked_number'] = Variable<String>(maskedNumber);
+    map['network'] = Variable<String>(network);
     map['credit_limit'] = Variable<double>(creditLimit);
     map['billing_day'] = Variable<int>(billingDay);
     map['due_day'] = Variable<int>(dueDay);
@@ -1333,6 +1359,7 @@ class CreditCard extends DataClass implements Insertable<CreditCard> {
       nickname: Value(nickname),
       last4: Value(last4),
       maskedNumber: Value(maskedNumber),
+      network: Value(network),
       creditLimit: Value(creditLimit),
       billingDay: Value(billingDay),
       dueDay: Value(dueDay),
@@ -1353,6 +1380,7 @@ class CreditCard extends DataClass implements Insertable<CreditCard> {
       nickname: serializer.fromJson<String>(json['nickname']),
       last4: serializer.fromJson<String>(json['last4']),
       maskedNumber: serializer.fromJson<String>(json['maskedNumber']),
+      network: serializer.fromJson<String>(json['network']),
       creditLimit: serializer.fromJson<double>(json['creditLimit']),
       billingDay: serializer.fromJson<int>(json['billingDay']),
       dueDay: serializer.fromJson<int>(json['dueDay']),
@@ -1372,6 +1400,7 @@ class CreditCard extends DataClass implements Insertable<CreditCard> {
       'nickname': serializer.toJson<String>(nickname),
       'last4': serializer.toJson<String>(last4),
       'maskedNumber': serializer.toJson<String>(maskedNumber),
+      'network': serializer.toJson<String>(network),
       'creditLimit': serializer.toJson<double>(creditLimit),
       'billingDay': serializer.toJson<int>(billingDay),
       'dueDay': serializer.toJson<int>(dueDay),
@@ -1387,6 +1416,7 @@ class CreditCard extends DataClass implements Insertable<CreditCard> {
     String? nickname,
     String? last4,
     String? maskedNumber,
+    String? network,
     double? creditLimit,
     int? billingDay,
     int? dueDay,
@@ -1399,6 +1429,7 @@ class CreditCard extends DataClass implements Insertable<CreditCard> {
     nickname: nickname ?? this.nickname,
     last4: last4 ?? this.last4,
     maskedNumber: maskedNumber ?? this.maskedNumber,
+    network: network ?? this.network,
     creditLimit: creditLimit ?? this.creditLimit,
     billingDay: billingDay ?? this.billingDay,
     dueDay: dueDay ?? this.dueDay,
@@ -1415,6 +1446,7 @@ class CreditCard extends DataClass implements Insertable<CreditCard> {
       maskedNumber: data.maskedNumber.present
           ? data.maskedNumber.value
           : this.maskedNumber,
+      network: data.network.present ? data.network.value : this.network,
       creditLimit: data.creditLimit.present
           ? data.creditLimit.value
           : this.creditLimit,
@@ -1438,6 +1470,7 @@ class CreditCard extends DataClass implements Insertable<CreditCard> {
           ..write('nickname: $nickname, ')
           ..write('last4: $last4, ')
           ..write('maskedNumber: $maskedNumber, ')
+          ..write('network: $network, ')
           ..write('creditLimit: $creditLimit, ')
           ..write('billingDay: $billingDay, ')
           ..write('dueDay: $dueDay, ')
@@ -1455,6 +1488,7 @@ class CreditCard extends DataClass implements Insertable<CreditCard> {
     nickname,
     last4,
     maskedNumber,
+    network,
     creditLimit,
     billingDay,
     dueDay,
@@ -1471,6 +1505,7 @@ class CreditCard extends DataClass implements Insertable<CreditCard> {
           other.nickname == this.nickname &&
           other.last4 == this.last4 &&
           other.maskedNumber == this.maskedNumber &&
+          other.network == this.network &&
           other.creditLimit == this.creditLimit &&
           other.billingDay == this.billingDay &&
           other.dueDay == this.dueDay &&
@@ -1485,6 +1520,7 @@ class CreditCardsCompanion extends UpdateCompanion<CreditCard> {
   final Value<String> nickname;
   final Value<String> last4;
   final Value<String> maskedNumber;
+  final Value<String> network;
   final Value<double> creditLimit;
   final Value<int> billingDay;
   final Value<int> dueDay;
@@ -1497,6 +1533,7 @@ class CreditCardsCompanion extends UpdateCompanion<CreditCard> {
     this.nickname = const Value.absent(),
     this.last4 = const Value.absent(),
     this.maskedNumber = const Value.absent(),
+    this.network = const Value.absent(),
     this.creditLimit = const Value.absent(),
     this.billingDay = const Value.absent(),
     this.dueDay = const Value.absent(),
@@ -1510,6 +1547,7 @@ class CreditCardsCompanion extends UpdateCompanion<CreditCard> {
     required String nickname,
     required String last4,
     required String maskedNumber,
+    this.network = const Value.absent(),
     required double creditLimit,
     required int billingDay,
     required int dueDay,
@@ -1529,6 +1567,7 @@ class CreditCardsCompanion extends UpdateCompanion<CreditCard> {
     Expression<String>? nickname,
     Expression<String>? last4,
     Expression<String>? maskedNumber,
+    Expression<String>? network,
     Expression<double>? creditLimit,
     Expression<int>? billingDay,
     Expression<int>? dueDay,
@@ -1542,6 +1581,7 @@ class CreditCardsCompanion extends UpdateCompanion<CreditCard> {
       if (nickname != null) 'nickname': nickname,
       if (last4 != null) 'last4': last4,
       if (maskedNumber != null) 'masked_number': maskedNumber,
+      if (network != null) 'network': network,
       if (creditLimit != null) 'credit_limit': creditLimit,
       if (billingDay != null) 'billing_day': billingDay,
       if (dueDay != null) 'due_day': dueDay,
@@ -1557,6 +1597,7 @@ class CreditCardsCompanion extends UpdateCompanion<CreditCard> {
     Value<String>? nickname,
     Value<String>? last4,
     Value<String>? maskedNumber,
+    Value<String>? network,
     Value<double>? creditLimit,
     Value<int>? billingDay,
     Value<int>? dueDay,
@@ -1570,6 +1611,7 @@ class CreditCardsCompanion extends UpdateCompanion<CreditCard> {
       nickname: nickname ?? this.nickname,
       last4: last4 ?? this.last4,
       maskedNumber: maskedNumber ?? this.maskedNumber,
+      network: network ?? this.network,
       creditLimit: creditLimit ?? this.creditLimit,
       billingDay: billingDay ?? this.billingDay,
       dueDay: dueDay ?? this.dueDay,
@@ -1596,6 +1638,9 @@ class CreditCardsCompanion extends UpdateCompanion<CreditCard> {
     }
     if (maskedNumber.present) {
       map['masked_number'] = Variable<String>(maskedNumber.value);
+    }
+    if (network.present) {
+      map['network'] = Variable<String>(network.value);
     }
     if (creditLimit.present) {
       map['credit_limit'] = Variable<double>(creditLimit.value);
@@ -1626,6 +1671,7 @@ class CreditCardsCompanion extends UpdateCompanion<CreditCard> {
           ..write('nickname: $nickname, ')
           ..write('last4: $last4, ')
           ..write('maskedNumber: $maskedNumber, ')
+          ..write('network: $network, ')
           ..write('creditLimit: $creditLimit, ')
           ..write('billingDay: $billingDay, ')
           ..write('dueDay: $dueDay, ')
@@ -13826,6 +13872,7 @@ typedef $$CreditCardsTableCreateCompanionBuilder =
       required String nickname,
       required String last4,
       required String maskedNumber,
+      Value<String> network,
       required double creditLimit,
       required int billingDay,
       required int dueDay,
@@ -13840,6 +13887,7 @@ typedef $$CreditCardsTableUpdateCompanionBuilder =
       Value<String> nickname,
       Value<String> last4,
       Value<String> maskedNumber,
+      Value<String> network,
       Value<double> creditLimit,
       Value<int> billingDay,
       Value<int> dueDay,
@@ -13879,6 +13927,11 @@ class $$CreditCardsTableFilterComposer
 
   ColumnFilters<String> get maskedNumber => $composableBuilder(
     column: $table.maskedNumber,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get network => $composableBuilder(
+    column: $table.network,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -13947,6 +14000,11 @@ class $$CreditCardsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get network => $composableBuilder(
+    column: $table.network,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<double> get creditLimit => $composableBuilder(
     column: $table.creditLimit,
     builder: (column) => ColumnOrderings(column),
@@ -14003,6 +14061,9 @@ class $$CreditCardsTableAnnotationComposer
     column: $table.maskedNumber,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get network =>
+      $composableBuilder(column: $table.network, builder: (column) => column);
 
   GeneratedColumn<double> get creditLimit => $composableBuilder(
     column: $table.creditLimit,
@@ -14065,6 +14126,7 @@ class $$CreditCardsTableTableManager
                 Value<String> nickname = const Value.absent(),
                 Value<String> last4 = const Value.absent(),
                 Value<String> maskedNumber = const Value.absent(),
+                Value<String> network = const Value.absent(),
                 Value<double> creditLimit = const Value.absent(),
                 Value<int> billingDay = const Value.absent(),
                 Value<int> dueDay = const Value.absent(),
@@ -14077,6 +14139,7 @@ class $$CreditCardsTableTableManager
                 nickname: nickname,
                 last4: last4,
                 maskedNumber: maskedNumber,
+                network: network,
                 creditLimit: creditLimit,
                 billingDay: billingDay,
                 dueDay: dueDay,
@@ -14091,6 +14154,7 @@ class $$CreditCardsTableTableManager
                 required String nickname,
                 required String last4,
                 required String maskedNumber,
+                Value<String> network = const Value.absent(),
                 required double creditLimit,
                 required int billingDay,
                 required int dueDay,
@@ -14103,6 +14167,7 @@ class $$CreditCardsTableTableManager
                 nickname: nickname,
                 last4: last4,
                 maskedNumber: maskedNumber,
+                network: network,
                 creditLimit: creditLimit,
                 billingDay: billingDay,
                 dueDay: dueDay,

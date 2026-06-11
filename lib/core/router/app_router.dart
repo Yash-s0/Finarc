@@ -18,6 +18,7 @@ import '../../features/expenses/presentation/expenses_screen.dart';
 import '../../features/expenses/presentation/add_expense_screen.dart';
 import '../../features/expenses/presentation/add_income_screen.dart';
 import '../../features/expenses/presentation/transaction_detail_screen.dart';
+import '../../features/profile/presentation/profile_data_controls_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/profile/presentation/transaction_import_screen.dart';
 import '../../features/profile/data/transaction_import_models.dart';
@@ -103,6 +104,10 @@ final appRouter = GoRouter(
       ],
     ),
     GoRoute(path: '/cards/add', builder: (_, _) => const AddCardScreen()),
+    GoRoute(
+      path: AppRoutes.profileDataControls,
+      builder: (_, _) => const ProfileDataControlsScreen(),
+    ),
     GoRoute(
       path: AppRoutes.transactionImport,
       builder: (_, _) => const TransactionImportScreen(),

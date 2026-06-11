@@ -153,6 +153,7 @@ class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
                       nickname: summary.card.nickname,
                       maskedNumber: summary.card.maskedNumber,
                       outstanding: inr(summary.totalOutstanding),
+                      network: summary.card.network,
                       utilization: summary.utilization,
                       dueLabel: dueLabel,
                       dueTone: dueLabel == null

@@ -23,6 +23,14 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
   final _due = TextEditingController();
   final _limit = TextEditingController();
   final _outstanding = TextEditingController(text: '0');
+  String _network = CardNetwork.visa;
+  final _bankFocus = FocusNode();
+  final _nickFocus = FocusNode();
+  final _last4Focus = FocusNode();
+  final _billingFocus = FocusNode();
+  final _dueFocus = FocusNode();
+  final _limitFocus = FocusNode();
+  final _outstandingFocus = FocusNode();
 
   @override
   void dispose() {
@@ -33,6 +41,13 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
     _due.dispose();
     _limit.dispose();
     _outstanding.dispose();
+    _bankFocus.dispose();
+    _nickFocus.dispose();
+    _last4Focus.dispose();
+    _billingFocus.dispose();
+    _dueFocus.dispose();
+    _limitFocus.dispose();
+    _outstandingFocus.dispose();
     super.dispose();
   }
 
@@ -54,6 +69,7 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
         bankName: _bank.text.trim(),
         nickname: _nick.text.trim(),
         last4: _last4.text.trim(),
+        network: _network,
         billingDay: int.parse(_billing.text.trim()),
         dueDay: int.parse(_due.text.trim()),
         creditLimit: creditLimit,
@@ -88,13 +104,25 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
                 children: [
                   const FinarcSectionHeader(title: 'Card Basics'),
                   const SizedBox(height: AppSpacing.sm),
-                  _field(_bank, 'Bank name'),
+                  _field(
+                    _bank,
+                    'Bank name',
+                    focusNode: _bankFocus,
+                    nextFocusNode: _nickFocus,
+                  ),
                   const SizedBox(height: AppSpacing.sm),
-                  _field(_nick, 'Card nickname'),
+                  _field(
+                    _nick,
+                    'Card nickname',
+                    focusNode: _nickFocus,
+                    nextFocusNode: _last4Focus,
+                  ),
                   const SizedBox(height: AppSpacing.sm),
                   _field(
                     _last4,
                     'Last 4 digits',
+                    focusNode: _last4Focus,
+                    nextFocusNode: _billingFocus,
                     maxLength: 4,
                     keyboardType: TextInputType.number,
                     validator: (value) {
@@ -108,6 +136,26 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
                         return 'Enter numbers only';
                       }
                       return null;
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  DropdownButtonFormField<String>(
+                    initialValue: _network,
+                    decoration: const InputDecoration(
+                      labelText: 'Card type',
+                      prefixIcon: Icon(Icons.credit_card_rounded),
+                    ),
+                    items: CardNetwork.values
+                        .map(
+                          (network) => DropdownMenuItem(
+                            value: network,
+                            child: Text(CardNetwork.label(network)),
+                          ),
+                        )
+                        .toList(growable: false),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() => _network = value);
                     },
                   ),
                 ],
@@ -126,6 +174,8 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
                         child: _field(
                           _billing,
                           'Billing day',
+                          focusNode: _billingFocus,
+                          nextFocusNode: _dueFocus,
                           keyboardType: TextInputType.number,
                           validator: _dayValidator,
                         ),
@@ -135,6 +185,8 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
                         child: _field(
                           _due,
                           'Due day',
+                          focusNode: _dueFocus,
+                          nextFocusNode: _limitFocus,
                           keyboardType: TextInputType.number,
                           validator: _dayValidator,
                         ),
@@ -145,6 +197,8 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
                   _field(
                     _limit,
                     'Credit limit',
+                    focusNode: _limitFocus,
+                    nextFocusNode: _outstandingFocus,
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
@@ -154,6 +208,7 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
                   _field(
                     _outstanding,
                     'Current outstanding (optional)',
+                    focusNode: _outstandingFocus,
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
@@ -210,10 +265,14 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
     int? maxLength,
     String? Function(String?)? validator,
     TextInputAction? textInputAction,
+    FocusNode? focusNode,
+    FocusNode? nextFocusNode,
   }) {
     return FinarcTextField(
       controller: controller,
       label: label,
+      focusNode: focusNode,
+      nextFocusNode: nextFocusNode,
       keyboardType: keyboardType,
       maxLength: maxLength,
       textInputAction: textInputAction,

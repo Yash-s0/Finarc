@@ -25,8 +25,7 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
   final _salaryDay = TextEditingController();
   final _company = TextEditingController();
   int _index = 0;
-  bool _nameSkippedExplicitly = false;
-  static const int _profileStepIndex = 4;
+  static const int _profileStepIndex = 3;
 
   @override
   void dispose() {
@@ -45,42 +44,57 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
       _StepTemplate(
         title: 'Welcome to Finarc',
         subtitle:
-            'Track expenses, cards, bills, cash, UPI, splits and loans. Works fully offline, and your data stays on device.',
+            'Track expenses, cards, bills, cash, UPI, splits and loans. Your first finance OS stays fast, local and private.',
         icon: Icons.wallet_rounded,
+        accent: AppColors.darkBlue,
+        chips: const ['No account', 'Local ledger', 'Manual control'],
         supporting: const [
-          _InfoTile(
-            icon: Icons.receipt_long_outlined,
-            title: 'Expenses',
-            description: 'Track daily spends, categories and quick cashflow.',
+          _ExpandableFeatureTile(
+            icon: Icons.privacy_tip_outlined,
+            title: 'Privacy-first',
+            description: 'Your records stay on this device.',
+            expandedDescription:
+                'Your data stays on your device, no account is required, and there is no cloud sync in v1.',
           ),
-          _InfoTile(
-            icon: Icons.credit_card_outlined,
-            title: 'Cards & bills',
-            description:
-                'Follow statements, dues and utilization in one place.',
-          ),
-          _InfoTile(
+          SizedBox(height: AppSpacing.xs),
+          _ExpandableFeatureTile(
             icon: Icons.cloud_off_outlined,
             title: 'Offline-first',
-            description:
-                'Your records stay on-device with no required account.',
+            description: 'Open, add and review records without cloud sync.',
+            expandedDescription:
+                'The app is built around local storage. Notification detection is optional, and detected transactions require confirmation before entering your ledger.',
           ),
-        ],
-      ),
-      _StepTemplate(
-        title: 'Privacy-first by design',
-        subtitle:
-            'No cloud sync in v1. SMS/notification detection is optional. Detected transactions require confirmation. No CVV or card expiry is stored.',
-        icon: Icons.privacy_tip_outlined,
-        supporting: const [
-          _BulletPanel(
-            title: 'Trust guardrails',
-            bullets: [
-              'Local-only data storage',
-              'No cloud account required',
-              'Detected transactions stay pending until you confirm',
-              'No CVV or card expiry is stored',
-            ],
+          SizedBox(height: AppSpacing.xs),
+          _ExpandableFeatureTile(
+            icon: Icons.credit_card_outlined,
+            title: 'Cards & bills',
+            description: 'Follow statements, dues and utilization.',
+            expandedDescription:
+                'Track card spending and bill due dates without storing CVV or card expiry details.',
+          ),
+          SizedBox(height: AppSpacing.xs),
+          _ExpandableFeatureTile(
+            icon: Icons.groups_2_outlined,
+            title: 'Split expenses',
+            description: 'Keep shared spends, dues and settlements clear.',
+            expandedDescription:
+                'Use groups to split costs and record settlements while keeping your personal ledger separate.',
+          ),
+          SizedBox(height: AppSpacing.xs),
+          _ExpandableFeatureTile(
+            icon: Icons.replay_circle_filled_outlined,
+            title: 'Recoverables',
+            description: 'Track money paid for others until it comes back.',
+            expandedDescription:
+                'Mark recoveries when friends, family or work reimburse you, while keeping original spends traceable.',
+          ),
+          SizedBox(height: AppSpacing.xs),
+          _ExpandableFeatureTile(
+            icon: Icons.account_balance_wallet_outlined,
+            title: 'Loans',
+            description: 'Follow outstanding balances and EMI payments.',
+            expandedDescription:
+                'Loans stay separate from daily expenses, with optional EMI details for local planning.',
           ),
         ],
       ),
@@ -91,9 +105,12 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
       ),
       _StepTemplate(
         title: 'Optional detection setup',
-        subtitle:
-            'You can enable notification and SMS detection later from Profile. It is optional and local-only.',
+        subtitle: smsSetupAvailable
+            ? 'Enable notification or SMS detection now, or turn it on later from Profile. Detection is optional and local-only.'
+            : 'Enable notification detection now, or turn it on later from Profile. SMS ingestion is unavailable in this Play-safe build.',
         icon: Icons.notifications_active_outlined,
+        accent: AppColors.darkOrange,
+        chips: const ['Optional', 'Pending first', 'Profile controls'],
         supporting: [
           const _BulletPanel(
             title: 'How it works',
@@ -103,22 +120,25 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
               'You can enable or disable this later from Profile',
             ],
           ),
-          if (!smsSetupAvailable)
-            const _InlineInfoCard(
-              icon: Icons.sms_failed_outlined,
-              title: 'SMS setup unavailable in this build',
-              description:
-                  'Play-safe and release builds do not include SMS ingestion.',
-            ),
-        ],
-        actions: [
+          const SizedBox(height: AppSpacing.sm),
           FinarcSecondaryButton(
             onPressed: () => context.push('/notifications/setup'),
             icon: Icons.notifications_outlined,
             label: 'Notification Setup',
           ),
+          if (!smsSetupAvailable)
+            const Padding(
+              padding: EdgeInsets.only(top: AppSpacing.xs),
+              child: _InlineInfoCard(
+                icon: Icons.sms_failed_outlined,
+                title: 'SMS setup unavailable in this build',
+                description:
+                    'Play-safe and release builds do not include SMS ingestion.',
+              ),
+            ),
+        ],
+        actions: [
           if (smsSetupAvailable) ...[
-            const SizedBox(height: AppSpacing.xs),
             FinarcSecondaryButton(
               onPressed: () => context.push('/sms/setup'),
               icon: Icons.sms_outlined,
@@ -132,25 +152,63 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
         salaryController: _salary,
         salaryDayController: _salaryDay,
         companyController: _company,
-        onSkipName: () => setState(() => _nameSkippedExplicitly = true),
+        onSkipName: _skipNameAndContinue,
       ),
       _StepTemplate(
-        title: 'Setup complete',
+        title: 'You’re ready to track smarter',
         subtitle:
-            'You can continue setup anytime from Accounts, Cards or Profile. Finarc is ready.',
+            'Your local finance workspace is ready. Add accounts anytime, confirm detected transactions before they enter your ledger, and keep your data on device.',
         icon: Icons.check_circle_outline,
+        accent: AppColors.darkSuccess,
+        chips: const ['Ready', 'Local', 'Review before save'],
+        supporting: const [
+          _ExpandableFeatureTile(
+            icon: Icons.account_balance_outlined,
+            title: 'Add accounts anytime',
+            description: 'Bank accounts, wallets and cards can be added later.',
+            expandedDescription:
+                'You can start with an empty ledger and add accounts from the Accounts or Cards sections when ready.',
+          ),
+          SizedBox(height: AppSpacing.xs),
+          _ExpandableFeatureTile(
+            icon: Icons.pending_actions_outlined,
+            title: 'Confirm detected transactions',
+            description: 'Detected items stay pending until you review them.',
+            expandedDescription:
+                'Notification detection is designed as a helper, not an automatic writer. You stay in control.',
+          ),
+          SizedBox(height: AppSpacing.xs),
+          _ExpandableFeatureTile(
+            icon: Icons.notifications_active_outlined,
+            title: 'Notification detection',
+            description: 'Optional detection can be enabled later.',
+            expandedDescription:
+                'When supported, notification detection creates pending items for review instead of saving them automatically.',
+          ),
+          SizedBox(height: AppSpacing.xs),
+          _ExpandableFeatureTile(
+            icon: Icons.backup_outlined,
+            title: 'Backup & restore',
+            description: 'Use Profile tools when you want a local backup.',
+            expandedDescription:
+                'Exports and imports are available from Profile so you can protect or move your local records intentionally.',
+          ),
+          SizedBox(height: AppSpacing.xs),
+          _ExpandableFeatureTile(
+            icon: Icons.verified_user_outlined,
+            title: 'Your data stays local',
+            description: 'Finarc v1 keeps your finance data on this device.',
+            expandedDescription:
+                'Use Profile for backup and restore when you want to move or protect your records.',
+          ),
+        ],
       ),
     ];
 
     return FinarcScaffold(
       appBar: FinarcAppBar(
         title: 'First Run Setup',
-        actions: [
-          TextButton(
-            onPressed: () => _finish(allowNameSkip: true),
-            child: const Text('Skip'),
-          ),
-        ],
+        actions: [TextButton(onPressed: _finish, child: const Text('Skip'))],
       ),
       body: Column(
         children: [
@@ -192,33 +250,41 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
           ),
           Padding(
             padding: const EdgeInsets.all(AppSpacing.md),
-            child: Row(
-              children: [
-                Expanded(
-                  child: FinarcSecondaryButton(
-                    onPressed: _index == 0
-                        ? null
-                        : () => _controller.previousPage(
-                            duration: const Duration(milliseconds: 220),
-                            curve: Curves.easeOut,
-                          ),
-                    icon: Icons.arrow_back_rounded,
-                    label: 'Back',
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: FinarcPrimaryButton(
-                    onPressed: _index == pages.length - 1
-                        ? () => _finish()
-                        : _onNext,
-                    icon: _index == pages.length - 1
-                        ? Icons.check_circle_outline
-                        : Icons.arrow_forward_rounded,
-                    label: _index == pages.length - 1 ? 'Finish Setup' : 'Next',
-                  ),
-                ),
-              ],
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxWidth < 380;
+                final isLast = _index == pages.length - 1;
+                return Row(
+                  children: [
+                    Expanded(
+                      child: FinarcSecondaryButton(
+                        onPressed: _index == 0
+                            ? null
+                            : () => _controller.previousPage(
+                                duration: const Duration(milliseconds: 220),
+                                curve: Curves.easeOut,
+                              ),
+                        icon: compact ? null : Icons.arrow_back_rounded,
+                        label: 'Back',
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: FinarcPrimaryButton(
+                        onPressed: isLast ? _finish : _onNext,
+                        icon: compact
+                            ? null
+                            : (isLast
+                                  ? Icons.check_circle_outline
+                                  : Icons.arrow_forward_rounded),
+                        label: isLast
+                            ? (compact ? 'Finish' : 'Finish Setup')
+                            : 'Next',
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         ],
@@ -237,18 +303,8 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
   }
 
   bool _validateProfileInputs() {
-    final name = _name.text.trim();
     final salaryText = _salary.text.trim();
     final salaryDayText = _salaryDay.text.trim();
-
-    if (name.isEmpty && !_nameSkippedExplicitly) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please add your name or choose "Skip name for now".'),
-        ),
-      );
-      return false;
-    }
 
     if (salaryText.isNotEmpty) {
       final salary = double.tryParse(salaryText);
@@ -272,10 +328,16 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
     return true;
   }
 
-  Future<void> _finish({bool allowNameSkip = false}) async {
-    if (allowNameSkip) {
-      _nameSkippedExplicitly = true;
-    }
+  Future<void> _skipNameAndContinue() async {
+    _name.clear();
+    FocusScope.of(context).unfocus();
+    await _controller.nextPage(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+    );
+  }
+
+  Future<void> _finish() async {
     if (!_validateProfileInputs()) return;
 
     final name = _name.text.trim();
@@ -303,6 +365,8 @@ class _StepTemplate extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.icon,
+    this.accent = AppColors.darkAccent,
+    this.chips = const [],
     this.actions,
     this.supporting,
   });
@@ -310,36 +374,39 @@ class _StepTemplate extends StatelessWidget {
   final String title;
   final String subtitle;
   final IconData icon;
+  final Color accent;
+  final List<String> chips;
   final List<Widget>? actions;
   final List<Widget>? supporting;
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      children: [
-        FinarcCard(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(icon, size: 28),
-              const SizedBox(height: AppSpacing.sm),
-              Text(title, style: Theme.of(context).textTheme.headlineSmall),
-              const SizedBox(height: AppSpacing.xs),
-              Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
-            ],
-          ),
+    return _OnboardingExpansionScope(
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          AppSpacing.md,
+          AppSpacing.md,
+          AppSpacing.xl,
         ),
-        if (supporting != null && supporting!.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.sm),
-          ...supporting!,
+        children: [
+          _HeroPanel(
+            icon: icon,
+            title: title,
+            subtitle: subtitle,
+            accent: accent,
+            chips: chips,
+          ),
+          if (supporting != null && supporting!.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            ...supporting!,
+          ],
+          if (actions != null && actions!.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            ...actions!,
+          ],
         ],
-        if (actions != null && actions!.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.sm),
-          ...actions!,
-        ],
-      ],
+      ),
     );
   }
 }
@@ -357,61 +424,67 @@ class _SetupChoicesStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      children: [
-        const FinarcCard(
-          padding: EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(Icons.add_card_outlined, size: 28),
-              SizedBox(height: AppSpacing.sm),
-              Text('Set up your first account'),
-              SizedBox(height: AppSpacing.xs),
-              Text(
+    return _OnboardingExpansionScope(
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          AppSpacing.md,
+          AppSpacing.md,
+          AppSpacing.xl,
+        ),
+        children: [
+          const _HeroPanel(
+            icon: Icons.add_card_outlined,
+            title: 'Set up your first account',
+            subtitle:
                 'Add a bank account, cash wallet or credit card now. You can also skip and add later.',
-              ),
-            ],
+            accent: AppColors.darkBlue,
+            chips: ['Optional', 'Add later', 'Local balances'],
           ),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        const _InlineInfoCard(
-          icon: Icons.account_balance_outlined,
-          title: 'Bank account',
-          description: 'Track balances, transfers and salary deposits.',
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        const _InlineInfoCard(
-          icon: Icons.account_balance_wallet_outlined,
-          title: 'Cash wallet',
-          description: 'Track cash on hand and wallet-style balances.',
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        const _InlineInfoCard(
-          icon: Icons.credit_card_outlined,
-          title: 'Credit card',
-          description: 'Track card spends, statements and bill dues.',
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        FinarcPrimaryButton(
-          onPressed: onAddBank,
-          icon: Icons.account_balance_outlined,
-          label: 'Add Bank Account',
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        FinarcSecondaryButton(
-          onPressed: onAddCash,
-          icon: Icons.account_balance_wallet_outlined,
-          label: 'Add Cash Wallet',
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        FinarcSecondaryButton(
-          onPressed: onAddCard,
-          icon: Icons.credit_card_outlined,
-          label: 'Add Credit Card',
-        ),
-      ],
+          const SizedBox(height: AppSpacing.sm),
+          const _ExpandableFeatureTile(
+            icon: Icons.account_balance_outlined,
+            title: 'Bank account',
+            description: 'Track balances, transfers and salary deposits.',
+            expandedDescription:
+                'Use this for savings, salary and current accounts. Transfers and reconciliations stay in your local ledger.',
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          const _ExpandableFeatureTile(
+            icon: Icons.account_balance_wallet_outlined,
+            title: 'Cash wallet',
+            description: 'Track cash on hand and wallet-style balances.',
+            expandedDescription:
+                'Cash and wallet balances help you track offline spends without connecting an external service.',
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          const _ExpandableFeatureTile(
+            icon: Icons.credit_card_outlined,
+            title: 'Credit card',
+            description: 'Track card spends, statements and bill dues.',
+            expandedDescription:
+                'Only masked card details are stored. CVV and expiry are never captured.',
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          FinarcPrimaryButton(
+            onPressed: onAddBank,
+            icon: Icons.account_balance_outlined,
+            label: 'Add Bank Account',
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          FinarcSecondaryButton(
+            onPressed: onAddCash,
+            icon: Icons.account_balance_wallet_outlined,
+            label: 'Add Cash Wallet',
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          FinarcSecondaryButton(
+            onPressed: onAddCard,
+            icon: Icons.credit_card_outlined,
+            label: 'Add Credit Card',
+          ),
+        ],
+      ),
     );
   }
 }
@@ -434,19 +507,20 @@ class _ProfileSetupStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.md,
+        AppSpacing.md,
+        AppSpacing.xl,
+      ),
       children: [
-        const FinarcCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              FinarcSectionHeader(title: 'Tell us about you'),
-              SizedBox(height: AppSpacing.xs),
-              Text(
-                'Name is strongly recommended. Salary details are optional and used for local insights.',
-              ),
-            ],
-          ),
+        const _HeroPanel(
+          icon: Icons.person_outline,
+          title: 'Tell us about you',
+          subtitle:
+              'Name and salary details are optional. Add them only if you want personalized local insights.',
+          accent: AppColors.darkMint,
+          chips: ['Optional profile', 'Local insights', 'Can skip'],
         ),
         const SizedBox(height: AppSpacing.sm),
         const _InlineInfoCard(
@@ -490,25 +564,98 @@ class _ProfileSetupStep extends StatelessWidget {
   }
 }
 
-class _InfoTile extends StatelessWidget {
-  const _InfoTile({
+class _HeroPanel extends StatelessWidget {
+  const _HeroPanel({
     required this.icon,
     required this.title,
-    required this.description,
+    required this.subtitle,
+    required this.accent,
+    this.chips = const [],
   });
 
   final IconData icon;
   final String title;
-  final String description;
+  final String subtitle;
+  final Color accent;
+  final List<String> chips;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-      child: _InlineInfoCard(
-        icon: icon,
-        title: title,
-        description: description,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.darkSurfaceHigh,
+            AppColors.darkSurface.withValues(alpha: 0.92),
+          ],
+        ),
+        border: Border.all(color: accent.withValues(alpha: 0.36), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(alpha: 0.16),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.16),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Icon(icon, color: Colors.white, size: 24),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text(title, style: Theme.of(context).textTheme.headlineSmall),
+            const SizedBox(height: AppSpacing.xs),
+            Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
+            if (chips.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Wrap(
+                spacing: AppSpacing.xs,
+                runSpacing: AppSpacing.xs,
+                children: chips
+                    .map((chip) => _HeroChip(label: chip, color: accent))
+                    .toList(growable: false),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HeroChip extends StatelessWidget {
+  const _HeroChip({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: Border.all(color: color.withValues(alpha: 0.28)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: 5,
+        ),
+        child: Text(label, style: Theme.of(context).textTheme.labelMedium),
       ),
     );
   }
@@ -523,6 +670,8 @@ class _BulletPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FinarcCard(
+      backgroundColor: AppColors.darkSurface,
+      borderColor: AppColors.darkBorder,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -556,6 +705,140 @@ class _BulletPanel extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _OnboardingExpansionScope extends StatefulWidget {
+  const _OnboardingExpansionScope({required this.child});
+
+  final Widget child;
+
+  static ValueNotifier<String?> of(BuildContext context) {
+    final scope = context
+        .dependOnInheritedWidgetOfExactType<_OnboardingExpansionController>();
+    assert(scope != null, 'Expandable onboarding tiles require a scope.');
+    return scope!.notifier!;
+  }
+
+  @override
+  State<_OnboardingExpansionScope> createState() =>
+      _OnboardingExpansionScopeState();
+}
+
+class _OnboardingExpansionScopeState extends State<_OnboardingExpansionScope> {
+  final _expandedTile = ValueNotifier<String?>(null);
+
+  @override
+  void dispose() {
+    _expandedTile.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _OnboardingExpansionController(
+      notifier: _expandedTile,
+      child: widget.child,
+    );
+  }
+}
+
+class _OnboardingExpansionController
+    extends InheritedNotifier<ValueNotifier<String?>> {
+  const _OnboardingExpansionController({
+    required super.notifier,
+    required super.child,
+  });
+}
+
+class _ExpandableFeatureTile extends StatelessWidget {
+  const _ExpandableFeatureTile({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.expandedDescription,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+  final String expandedDescription;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = _OnboardingExpansionScope.of(context);
+    return ValueListenableBuilder<String?>(
+      valueListenable: controller,
+      builder: (context, expandedTitle, _) {
+        final expanded = expandedTitle == title;
+        return FinarcCard(
+          backgroundColor: AppColors.darkSurfaceLow,
+          borderColor: expanded
+              ? AppColors.darkAccent.withValues(alpha: 0.72)
+              : AppColors.darkBorder,
+          useShadow: false,
+          onTap: () => controller.value = expanded ? null : title,
+          child: Column(
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: AppColors.darkPrimarySoft,
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                    child: Icon(icon, color: AppColors.darkAccent, size: 20),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          description,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    expanded
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                    color: AppColors.darkTextMuted,
+                  ),
+                ],
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 160),
+                curve: Curves.easeOut,
+                alignment: Alignment.topCenter,
+                child: expanded
+                    ? Padding(
+                        padding: const EdgeInsets.only(top: AppSpacing.sm),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            expandedDescription,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                      )
+                    : const SizedBox(width: double.infinity),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

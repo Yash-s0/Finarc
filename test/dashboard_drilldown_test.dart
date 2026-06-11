@@ -75,14 +75,14 @@ void main() {
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Recoverable'));
+    await tester.tap(find.text('To Receive'));
     await tester.pumpAndSettle();
     expect(find.text('recoverables-page'), findsOneWidget);
 
     router.go('/');
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Monthly Spends'));
+    await tester.tap(find.text('Upcoming Bills'));
     await tester.pumpAndSettle();
     expect(find.text('analytics-page'), findsOneWidget);
   });

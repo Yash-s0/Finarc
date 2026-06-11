@@ -39,6 +39,7 @@ class DashboardSnapshot {
     required this.monthlyEmiBurden,
     required this.unreadAlertsCount,
     required this.latestImportantAlert,
+    this.monthlySpendTrend = const <MonthlySpendPoint>[],
   });
 
   final double netWorth;
@@ -65,6 +66,14 @@ class DashboardSnapshot {
   final double monthlyEmiBurden;
   final int unreadAlertsCount;
   final Alert? latestImportantAlert;
+  final List<MonthlySpendPoint> monthlySpendTrend;
+}
+
+class MonthlySpendPoint {
+  const MonthlySpendPoint({required this.month, required this.amount});
+
+  final DateTime month;
+  final double amount;
 }
 
 final dashboardProvider = FutureProvider<DashboardSnapshot>((ref) async {
@@ -138,18 +147,16 @@ final dashboardProvider = FutureProvider<DashboardSnapshot>((ref) async {
   final breakdown = await netWorthService.calculate();
 
   final now = DateTime.now();
-  final monthlySpends = allTxns
-      .where(
-        (t) =>
-            t.transactionDate.year == now.year &&
-            t.transactionDate.month == now.month &&
-            t.type != 'income' &&
-            t.type != 'refund' &&
-            t.type != 'transfer' &&
-            t.type != 'cardPayment' &&
-            t.type != 'loanEmi',
-      )
-      .fold<double>(0, (s, t) => s + _dashboardLifestyleSpend(t));
+  final monthlySpendTrend = _buildMonthlySpendTrend(
+    allTxns,
+    cards: cards,
+    bills: bills,
+    salaryCreditDay: settings?.salaryCreditDay,
+    now: now,
+  );
+  final monthlySpends = monthlySpendTrend.isEmpty
+      ? 0.0
+      : monthlySpendTrend.last.amount;
 
   return DashboardSnapshot(
     netWorth: breakdown.netWorth,
@@ -177,8 +184,108 @@ final dashboardProvider = FutureProvider<DashboardSnapshot>((ref) async {
     monthlyEmiBurden: breakdown.monthlyEmiBurden,
     unreadAlertsCount: unreadAlertsCount,
     latestImportantAlert: latestImportantAlert,
+    monthlySpendTrend: monthlySpendTrend,
   );
 });
+
+List<MonthlySpendPoint> _buildMonthlySpendTrend(
+  List<Transaction> transactions, {
+  required List<CreditCard> cards,
+  required List<CardBill> bills,
+  required int? salaryCreditDay,
+  required DateTime now,
+}) {
+  final currentMonth = DateTime(now.year, now.month);
+  final months = List<DateTime>.generate(
+    6,
+    (index) => DateTime(currentMonth.year, currentMonth.month - (5 - index)),
+  );
+  final totals = <String, double>{
+    for (final month in months) _monthKey(month): 0.0,
+  };
+  final cardsById = {for (final card in cards) card.id: card};
+  final billsById = {for (final bill in bills) bill.id: bill};
+
+  for (final txn in transactions) {
+    if (!_isDashboardSpend(txn)) continue;
+    final bucket = _spendBucketMonth(
+      txn,
+      cardsById: cardsById,
+      billsById: billsById,
+      salaryCreditDay: salaryCreditDay,
+    );
+    final key = _monthKey(bucket);
+    if (!totals.containsKey(key)) continue;
+    totals[key] = totals[key]! + _dashboardLifestyleSpend(txn);
+  }
+
+  return [
+    for (final month in months)
+      MonthlySpendPoint(month: month, amount: totals[_monthKey(month)] ?? 0),
+  ];
+}
+
+bool _isDashboardSpend(Transaction txn) {
+  return txn.type != 'income' &&
+      txn.type != 'refund' &&
+      txn.type != 'transfer' &&
+      txn.type != 'cardPayment' &&
+      txn.type != 'loanEmi';
+}
+
+DateTime _spendBucketMonth(
+  Transaction txn, {
+  required Map<int, CreditCard> cardsById,
+  required Map<int, CardBill> billsById,
+  required int? salaryCreditDay,
+}) {
+  if (txn.paymentSourceType == 'creditCard') {
+    final linkedBill = txn.cardBillId == null
+        ? null
+        : billsById[txn.cardBillId];
+    if (linkedBill != null) {
+      return DateTime(
+        linkedBill.billingDate.year,
+        linkedBill.billingDate.month,
+      );
+    }
+    final card = cardsById[txn.paymentSourceId];
+    if (card != null) {
+      final billingDate = _billingDateForTransaction(card, txn.transactionDate);
+      return DateTime(billingDate.year, billingDate.month);
+    }
+  }
+
+  final cycleMonth = _salaryCycleMonth(
+    txn.transactionDate,
+    salaryCreditDay: salaryCreditDay,
+  );
+  return DateTime(cycleMonth.year, cycleMonth.month);
+}
+
+DateTime _salaryCycleMonth(DateTime date, {required int? salaryCreditDay}) {
+  if (salaryCreditDay == null) return DateTime(date.year, date.month);
+  final safeDay = _safeDay(date.year, date.month, salaryCreditDay).day;
+  if (date.day < safeDay) {
+    return DateTime(date.year, date.month - 1);
+  }
+  return DateTime(date.year, date.month);
+}
+
+DateTime _billingDateForTransaction(CreditCard card, DateTime txnDate) {
+  final date = DateTime(txnDate.year, txnDate.month, txnDate.day);
+  final thisMonthBilling = _safeDay(date.year, date.month, card.billingDay);
+  if (date.isBefore(thisMonthBilling)) return thisMonthBilling;
+  return _safeDay(date.year, date.month + 1, card.billingDay);
+}
+
+DateTime _safeDay(int year, int month, int day) {
+  final lastDay = DateTime(year, month + 1, 0).day;
+  return DateTime(year, month, day.clamp(1, lastDay));
+}
+
+String _monthKey(DateTime month) =>
+    '${month.year}-${month.month.toString().padLeft(2, '0')}';
 
 double _dashboardLifestyleSpend(Transaction t) {
   final recoverableBase =

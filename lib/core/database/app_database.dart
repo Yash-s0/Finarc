@@ -36,6 +36,7 @@ class CreditCards extends Table {
   TextColumn get nickname => text()();
   TextColumn get last4 => text().withLength(min: 4, max: 4)();
   TextColumn get maskedNumber => text()();
+  TextColumn get network => text().withDefault(const Constant('visa'))();
   RealColumn get creditLimit => real()();
   IntColumn get billingDay => integer()();
   IntColumn get dueDay => integer()();
@@ -328,7 +329,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 21;
+  int get schemaVersion => 22;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -540,6 +541,9 @@ class AppDatabase extends _$AppDatabase {
           appSettings,
           appSettings.paymentAppNotificationsEnabled,
         );
+      }
+      if (from < 22) {
+        await m.addColumn(creditCards, creditCards.network);
       }
       await globalAppLogService.log(
         category: 'migration',

@@ -1,8 +1,13 @@
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:finarc/core/config/app_mode.dart';
+import 'package:finarc/core/database/app_database.dart';
+import 'package:finarc/core/database/database_providers.dart';
+import 'package:finarc/core/theme/app_theme.dart';
 import 'package:finarc/features/onboarding/presentation/onboarding_flow_screen.dart';
 
 void main() {
@@ -12,9 +17,56 @@ void main() {
 
   Future<void> pumpOnboarding(WidgetTester tester) async {
     await tester.pumpWidget(
-      const ProviderScope(child: MaterialApp(home: OnboardingFlowScreen())),
+      ProviderScope(
+        child: MaterialApp(
+          theme: AppTheme.dark(),
+          home: const OnboardingFlowScreen(),
+        ),
+      ),
     );
     await tester.pumpAndSettle();
+  }
+
+  Future<AppDatabase> pumpRoutedOnboarding(WidgetTester tester) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+
+    final router = GoRouter(
+      initialLocation: '/onboarding',
+      routes: [
+        GoRoute(
+          path: '/onboarding',
+          builder: (context, state) => const OnboardingFlowScreen(),
+        ),
+        GoRoute(
+          path: '/',
+          builder: (context, state) =>
+              const Scaffold(body: Center(child: Text('Home'))),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appDatabaseProvider.overrideWithValue(db)],
+        child: MaterialApp.router(theme: AppTheme.dark(), routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    return db;
+  }
+
+  Future<void> tapNext(WidgetTester tester) async {
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> advanceToProfileStep(WidgetTester tester) async {
+    for (var i = 0; i < 3; i++) {
+      await tapNext(tester);
+    }
   }
 
   testWidgets('onboarding stays overflow-free on a small viewport', (
@@ -27,17 +79,16 @@ void main() {
     await pumpOnboarding(tester);
 
     expect(find.text('Welcome to Finarc'), findsOneWidget);
-    expect(find.text('Expenses'), findsOneWidget);
+    expect(find.text('Privacy-first'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     for (final title in [
-      'Privacy-first by design',
       'Set up your first account',
       'Optional detection setup',
-      'Your name',
+      'Tell us about you',
+      'You’re ready to track smarter',
     ]) {
-      await tester.drag(find.byType(PageView), const Offset(-360, 0));
-      await tester.pumpAndSettle();
+      await tapNext(tester);
       expect(find.text(title), findsOneWidget);
       expect(tester.takeException(), isNull);
     }
@@ -50,7 +101,7 @@ void main() {
 
     await pumpOnboarding(tester);
 
-    for (var i = 0; i < 3; i++) {
+    for (var i = 0; i < 2; i++) {
       await tester.tap(find.text('Next'));
       await tester.pumpAndSettle();
     }
@@ -59,5 +110,110 @@ void main() {
     expect(find.text('Notification Setup'), findsOneWidget);
     expect(find.text('SMS Setup'), findsNothing);
     expect(find.text('SMS setup unavailable in this build'), findsOneWidget);
+  });
+
+  testWidgets('skip name moves to summary and completes with empty profile', (
+    tester,
+  ) async {
+    final db = await pumpRoutedOnboarding(tester);
+
+    await advanceToProfileStep(tester);
+    expect(find.text('Tell us about you'), findsOneWidget);
+
+    await tester.tap(find.text('Skip name for now'));
+    await tester.pumpAndSettle();
+    expect(find.text('You’re ready to track smarter'), findsOneWidget);
+
+    await tester.tap(find.text('Finish Setup'));
+    await tester.pumpAndSettle();
+    expect(find.text('Home'), findsOneWidget);
+
+    final row = await db.select(db.appSettings).getSingle();
+    expect(row.hasCompletedOnboarding, true);
+    expect(row.userName, isNull);
+    expect(row.monthlySalary, isNull);
+  });
+
+  testWidgets('onboarding can complete without name or salary', (tester) async {
+    final db = await pumpRoutedOnboarding(tester);
+
+    await advanceToProfileStep(tester);
+    await tapNext(tester);
+    expect(find.text('You’re ready to track smarter'), findsOneWidget);
+
+    await tester.tap(find.text('Finish Setup'));
+    await tester.pumpAndSettle();
+
+    final row = await db.select(db.appSettings).getSingle();
+    expect(row.hasCompletedOnboarding, true);
+    expect(row.userName, isNull);
+    expect(row.monthlySalary, isNull);
+    expect(row.salaryCreditDay, isNull);
+  });
+
+  testWidgets('expandable feature tile opens and shows details', (
+    tester,
+  ) async {
+    await pumpOnboarding(tester);
+
+    const detail =
+        'Your data stays on your device, no account is required, and there is no cloud sync in v1.';
+    expect(find.text(detail), findsNothing);
+
+    await tester.tap(find.text('Privacy-first'));
+    await tester.pumpAndSettle();
+
+    expect(find.text(detail), findsOneWidget);
+  });
+
+  testWidgets('expandable feature tile collapses cleanly', (tester) async {
+    await pumpOnboarding(tester);
+
+    const detail =
+        'Your data stays on your device, no account is required, and there is no cloud sync in v1.';
+
+    await tester.tap(find.text('Privacy-first'));
+    await tester.pumpAndSettle();
+    expect(find.text(detail), findsOneWidget);
+
+    await tester.tap(find.text('Privacy-first'));
+    await tester.pumpAndSettle();
+    expect(find.text(detail), findsNothing);
+  });
+
+  testWidgets('opening another feature tile collapses the first', (
+    tester,
+  ) async {
+    await pumpOnboarding(tester);
+
+    const privacyDetail =
+        'Your data stays on your device, no account is required, and there is no cloud sync in v1.';
+    const offlineDetail =
+        'The app is built around local storage. Notification detection is optional, and detected transactions require confirmation before entering your ledger.';
+
+    await tester.tap(find.text('Privacy-first'));
+    await tester.pumpAndSettle();
+    expect(find.text(privacyDetail), findsOneWidget);
+
+    await tester.tap(find.text('Offline-first'));
+    await tester.pumpAndSettle();
+    expect(find.text(privacyDetail), findsNothing);
+    expect(find.text(offlineDetail), findsOneWidget);
+  });
+
+  testWidgets('final onboarding action completes onboarding', (tester) async {
+    final db = await pumpRoutedOnboarding(tester);
+
+    for (var i = 0; i < 4; i++) {
+      await tapNext(tester);
+    }
+
+    expect(find.text('You’re ready to track smarter'), findsOneWidget);
+    await tester.tap(find.text('Finish Setup'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Home'), findsOneWidget);
+    final row = await db.select(db.appSettings).getSingle();
+    expect(row.hasCompletedOnboarding, true);
   });
 }

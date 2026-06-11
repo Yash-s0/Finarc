@@ -199,6 +199,7 @@ class AddCardPayload {
     required this.bankName,
     required this.nickname,
     required this.last4,
+    required this.network,
     required this.billingDay,
     required this.dueDay,
     required this.creditLimit,
@@ -208,6 +209,7 @@ class AddCardPayload {
   final String bankName;
   final String nickname;
   final String last4;
+  final String network;
   final int billingDay;
   final int dueDay;
   final double creditLimit;
@@ -218,6 +220,9 @@ final addCardProvider = Provider((ref) {
   return (AddCardPayload payload) async {
     if (payload.last4.length != 4 || int.tryParse(payload.last4) == null) {
       throw ArgumentError('Last 4 digits must be exactly 4 numeric digits');
+    }
+    if (!CardNetwork.values.contains(payload.network)) {
+      throw ArgumentError('Unsupported card network');
     }
     if (payload.billingDay < 1 || payload.billingDay > 31) {
       throw ArgumentError('Billing day must be between 1 and 31');
@@ -244,6 +249,7 @@ final addCardProvider = Provider((ref) {
             nickname: payload.nickname,
             last4: payload.last4,
             maskedNumber: '**** **** **** ${payload.last4}',
+            network: Value(payload.network),
             creditLimit: payload.creditLimit,
             billingDay: payload.billingDay,
             dueDay: payload.dueDay,
@@ -253,3 +259,25 @@ final addCardProvider = Provider((ref) {
     ref.invalidate(cardsOverviewProvider);
   };
 });
+
+class CardNetwork {
+  const CardNetwork._();
+
+  static const visa = 'visa';
+  static const mastercard = 'mastercard';
+  static const rupay = 'rupay';
+
+  static const values = [visa, mastercard, rupay];
+
+  static String label(String value) {
+    switch (value) {
+      case mastercard:
+        return 'Mastercard';
+      case rupay:
+        return 'RuPay';
+      case visa:
+      default:
+        return 'Visa';
+    }
+  }
+}

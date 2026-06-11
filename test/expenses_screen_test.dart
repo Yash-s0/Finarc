@@ -140,4 +140,35 @@ void main() {
     expect(find.text('Add Expense'), findsOneWidget);
     expect(find.text('Enable Notification Detection'), findsOneWidget);
   });
+
+  testWidgets('date range uses popup calendar and blocks future months', (
+    tester,
+  ) async {
+    await pumpScreen(tester);
+
+    await tester.tap(find.text('Date range'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(Dialog), findsOneWidget);
+    expect(find.text('Select date range'), findsOneWidget);
+    expect(find.text('Future dates are unavailable.'), findsOneWidget);
+
+    final nextButton = tester.widget<IconButton>(
+      find.byKey(const Key('expenses-calendar-next')),
+    );
+    expect(nextButton.onPressed, isNull);
+
+    final now = DateTime.now();
+    await tester.tap(
+      find.byKey(
+        Key('expenses-calendar-day-${now.year}-${now.month}-${now.day}'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Apply'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(Dialog), findsNothing);
+    expect(find.textContaining('${now.year}'), findsOneWidget);
+  });
 }

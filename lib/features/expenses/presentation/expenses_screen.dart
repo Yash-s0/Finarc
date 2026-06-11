@@ -126,116 +126,10 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: AppSpacing.md),
-              FinarcCard(
-                child: Row(
-                  children: [
-                    const Icon(Icons.search, size: 18),
-                    const SizedBox(width: AppSpacing.xs),
-                    Expanded(
-                      child: TextField(
-                        controller: _search,
-                        decoration: const InputDecoration(
-                          isDense: true,
-                          border: InputBorder.none,
-                          hintText: 'Search title/category/notes',
-                        ),
-                        onChanged: (_) => setState(() {}),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.clear, size: 18),
-                      onPressed: () {
-                        _search.clear();
-                        setState(() {});
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Row(
-                children: [
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      key: _quickFilterKey,
-                      initialValue: _quickFilterValue,
-                      decoration: const InputDecoration(labelText: 'Filter'),
-                      items: const [
-                        DropdownMenuItem(value: 'all', child: Text('All')),
-                        DropdownMenuItem(
-                          value: 'expense',
-                          child: Text('Expenses'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'income',
-                          child: Text('Income'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'creditCard',
-                          child: Text('Card'),
-                        ),
-                        DropdownMenuItem(value: 'upi', child: Text('UPI')),
-                        DropdownMenuItem(value: 'bank', child: Text('Bank')),
-                        DropdownMenuItem(value: 'cash', child: Text('Cash')),
-                      ],
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() => _applyQuickFilter(value));
-                      },
-                    ),
-                  ),
-                  if (hasActiveFilters) ...[
-                    const SizedBox(width: AppSpacing.xs),
-                    FinarcSecondaryButton(
-                      key: _resetFiltersKey,
-                      onPressed: () => setState(_resetFilters),
-                      label: 'Reset',
-                    ),
-                  ],
-                ],
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Row(
-                children: [
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _categoryFilter,
-                      decoration: const InputDecoration(labelText: 'Category'),
-                      items: [
-                        const DropdownMenuItem(
-                          value: 'all',
-                          child: Text('All'),
-                        ),
-                        ...txns
-                            .map((t) => t.category)
-                            .toSet()
-                            .map(
-                              (c) => DropdownMenuItem(value: c, child: Text(c)),
-                            ),
-                      ],
-                      onChanged: (v) =>
-                          setState(() => _categoryFilter = v ?? 'all'),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              FinarcSecondaryButton(
-                onPressed: () async {
-                  final now = DateTime.now();
-                  final picked = await showDateRangePicker(
-                    context: context,
-                    firstDate: DateTime(now.year - 5),
-                    lastDate: DateTime(now.year + 5),
-                    initialDateRange: _dateRange,
-                  );
-                  if (picked == null) return;
-                  setState(() => _dateRange = picked);
-                },
-                icon: Icons.date_range_outlined,
-                label: _dateRange == null
-                    ? 'Pick Date Range'
-                    : '${_dateRange!.start.toIso8601String().split('T').first} to ${_dateRange!.end.toIso8601String().split('T').first}',
+              _filterPanel(
+                context,
+                txns: txns,
+                hasActiveFilters: hasActiveFilters,
               ),
               const SizedBox(height: AppSpacing.md),
               if (filtered.isEmpty)
@@ -421,6 +315,186 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     return 'all';
   }
 
+  Widget _filterPanel(
+    BuildContext context, {
+    required List<dynamic> txns,
+    required bool hasActiveFilters,
+  }) {
+    final categories =
+        txns.map((t) => t.category as String).toSet().toList(growable: false)
+          ..sort();
+
+    return FinarcCard(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      backgroundColor: AppColors.darkSurface,
+      borderColor: AppColors.darkBorder,
+      useShadow: false,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            height: 46,
+            child: TextField(
+              controller: _search,
+              textAlignVertical: TextAlignVertical.center,
+              decoration: InputDecoration(
+                isDense: true,
+                hintText: 'Search transactions',
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                ),
+                prefixIcon: const Icon(Icons.search_rounded, size: 22),
+                prefixIconConstraints: const BoxConstraints(
+                  minWidth: 42,
+                  minHeight: 42,
+                ),
+                suffixIcon: _search.text.trim().isEmpty
+                    ? null
+                    : IconButton(
+                        icon: const Icon(Icons.clear_rounded, size: 20),
+                        onPressed: () {
+                          _search.clear();
+                          setState(() {});
+                        },
+                      ),
+                suffixIconConstraints: const BoxConstraints(
+                  minWidth: 42,
+                  minHeight: 42,
+                ),
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 300;
+              final controls = [
+                _FilterSelect(
+                  label: 'Type',
+                  icon: Icons.filter_alt_outlined,
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      key: _quickFilterKey,
+                      value: _quickFilterValue,
+                      isExpanded: true,
+                      isDense: true,
+                      items: const [
+                        DropdownMenuItem(value: 'all', child: Text('All')),
+                        DropdownMenuItem(
+                          value: 'expense',
+                          child: Text('Expenses'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'income',
+                          child: Text('Income'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'creditCard',
+                          child: Text('Card'),
+                        ),
+                        DropdownMenuItem(value: 'upi', child: Text('UPI')),
+                        DropdownMenuItem(value: 'bank', child: Text('Bank')),
+                        DropdownMenuItem(value: 'cash', child: Text('Cash')),
+                      ],
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() => _applyQuickFilter(value));
+                      },
+                    ),
+                  ),
+                ),
+                _FilterSelect(
+                  label: 'Category',
+                  icon: Icons.category_outlined,
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _categoryFilter,
+                      isExpanded: true,
+                      isDense: true,
+                      items: [
+                        const DropdownMenuItem(
+                          value: 'all',
+                          child: Text('All'),
+                        ),
+                        ...categories.map(
+                          (category) => DropdownMenuItem(
+                            value: category,
+                            child: Text(category),
+                          ),
+                        ),
+                      ],
+                      onChanged: (value) =>
+                          setState(() => _categoryFilter = value ?? 'all'),
+                    ),
+                  ),
+                ),
+              ];
+
+              if (compact) {
+                return Column(
+                  children: [
+                    controls[0],
+                    const SizedBox(height: AppSpacing.xs),
+                    controls[1],
+                  ],
+                );
+              }
+              return Row(
+                children: [
+                  Expanded(child: controls[0]),
+                  const SizedBox(width: AppSpacing.xs),
+                  Expanded(child: controls[1]),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Row(
+            children: [
+              Expanded(
+                child: _FilterAction(
+                  icon: Icons.date_range_outlined,
+                  label: _dateRange == null
+                      ? 'Date range'
+                      : _formatDateRange(_dateRange!),
+                  onTap: () => _pickDateRange(context),
+                ),
+              ),
+              if (hasActiveFilters) ...[
+                const SizedBox(width: AppSpacing.xs),
+                _ResetFiltersButton(
+                  key: _resetFiltersKey,
+                  onPressed: () => setState(_resetFilters),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDateRange(DateTimeRange range) {
+    final start = range.start.toIso8601String().split('T').first;
+    final end = range.end.toIso8601String().split('T').first;
+    return '$start to $end';
+  }
+
+  Future<void> _pickDateRange(BuildContext context) async {
+    final today = DateUtils.dateOnly(DateTime.now());
+    final result = await showDialog<_DateRangeDialogResult>(
+      context: context,
+      builder: (context) => _DateRangeCalendarDialog(
+        initialRange: _dateRange,
+        firstDate: DateTime(today.year - 5, today.month),
+        today: today,
+      ),
+    );
+    if (result == null) return;
+    setState(() => _dateRange = result.cleared ? null : result.range);
+  }
+
   void _applyQuickFilter(String value) {
     switch (value) {
       case 'expense':
@@ -488,5 +562,465 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     if (source == 'upi') return Icons.qr_code_2_rounded;
     if (source == 'bank') return Icons.account_balance;
     return Icons.payments_outlined;
+  }
+}
+
+class _FilterSelect extends StatelessWidget {
+  const _FilterSelect({
+    required this.label,
+    required this.icon,
+    required this.child,
+  });
+
+  final String label;
+  final IconData icon;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.darkSurfaceLow,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.darkBorder),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(AppSpacing.sm, 6, AppSpacing.sm, 6),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: AppColors.darkAccent),
+            const SizedBox(width: AppSpacing.xs),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: Theme.of(context).textTheme.labelSmall),
+                  const SizedBox(height: 2),
+                  child,
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DateRangeDialogResult {
+  const _DateRangeDialogResult._({this.range, this.cleared = false});
+
+  const _DateRangeDialogResult.range(DateTimeRange range)
+    : this._(range: range);
+
+  const _DateRangeDialogResult.clear() : this._(cleared: true);
+
+  final DateTimeRange? range;
+  final bool cleared;
+}
+
+class _DateRangeCalendarDialog extends StatefulWidget {
+  const _DateRangeCalendarDialog({
+    required this.initialRange,
+    required this.firstDate,
+    required this.today,
+  });
+
+  final DateTimeRange? initialRange;
+  final DateTime firstDate;
+  final DateTime today;
+
+  @override
+  State<_DateRangeCalendarDialog> createState() =>
+      _DateRangeCalendarDialogState();
+}
+
+class _DateRangeCalendarDialogState extends State<_DateRangeCalendarDialog> {
+  static const _monthNames = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
+  static const _weekdays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+  late DateTime _visibleMonth;
+  DateTime? _start;
+  DateTime? _end;
+
+  DateTime get _firstMonth =>
+      DateTime(widget.firstDate.year, widget.firstDate.month);
+
+  DateTime get _currentMonth => DateTime(widget.today.year, widget.today.month);
+
+  @override
+  void initState() {
+    super.initState();
+    final initialStart = widget.initialRange?.start;
+    _start = initialStart == null ? null : DateUtils.dateOnly(initialStart);
+    _end = widget.initialRange?.end == null
+        ? null
+        : DateUtils.dateOnly(widget.initialRange!.end);
+    final requestedMonth = initialStart == null
+        ? _currentMonth
+        : DateTime(initialStart.year, initialStart.month);
+    _visibleMonth = _clampMonth(requestedMonth);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      backgroundColor: AppColors.darkSurface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: const BorderSide(color: AppColors.darkBorder),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Select date range',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: AppSpacing.xxs),
+              Text(
+                'Future dates are unavailable.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  IconButton(
+                    key: const Key('expenses-calendar-prev'),
+                    onPressed: _canGoPrevious
+                        ? () => setState(() {
+                            _visibleMonth = DateTime(
+                              _visibleMonth.year,
+                              _visibleMonth.month - 1,
+                            );
+                          })
+                        : null,
+                    icon: const Icon(Icons.chevron_left_rounded),
+                  ),
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        _monthLabel(_visibleMonth),
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    key: const Key('expenses-calendar-next'),
+                    onPressed: _canGoNext
+                        ? () => setState(() {
+                            _visibleMonth = DateTime(
+                              _visibleMonth.year,
+                              _visibleMonth.month + 1,
+                            );
+                          })
+                        : null,
+                    icon: const Icon(Icons.chevron_right_rounded),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Row(
+                children: _weekdays
+                    .map(
+                      (day) => Expanded(
+                        child: Center(
+                          child: Text(
+                            day,
+                            style: Theme.of(context).textTheme.labelSmall,
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(growable: false),
+              ),
+              const SizedBox(height: AppSpacing.xxs),
+              _CalendarMonthGrid(
+                visibleMonth: _visibleMonth,
+                today: widget.today,
+                start: _start,
+                end: _end,
+                onDateTap: _selectDate,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                _selectionLabel,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(
+                      context,
+                    ).pop(const _DateRangeDialogResult.clear()),
+                    child: const Text('Clear'),
+                  ),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  FilledButton(
+                    onPressed: _start == null
+                        ? null
+                        : () {
+                            final start = _start!;
+                            final end = _end ?? _start!;
+                            Navigator.of(context).pop(
+                              _DateRangeDialogResult.range(
+                                DateTimeRange(start: start, end: end),
+                              ),
+                            );
+                          },
+                    child: const Text('Apply'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  bool get _canGoPrevious => _visibleMonth.isAfter(_firstMonth);
+
+  bool get _canGoNext => _visibleMonth.isBefore(_currentMonth);
+
+  String get _selectionLabel {
+    if (_start == null) return 'Tap a start date, then an end date.';
+    final end = _end ?? _start;
+    return '${_formatDialogDate(_start!)} to ${_formatDialogDate(end!)}';
+  }
+
+  void _selectDate(DateTime date) {
+    final selected = DateUtils.dateOnly(date);
+    if (selected.isAfter(widget.today)) return;
+
+    setState(() {
+      if (_start == null || _end != null) {
+        _start = selected;
+        _end = null;
+        return;
+      }
+      if (selected.isBefore(_start!)) {
+        _start = selected;
+        _end = null;
+        return;
+      }
+      _end = selected;
+    });
+  }
+
+  DateTime _clampMonth(DateTime month) {
+    if (month.isBefore(_firstMonth)) return _firstMonth;
+    if (month.isAfter(_currentMonth)) return _currentMonth;
+    return month;
+  }
+
+  static String _monthLabel(DateTime month) {
+    return '${_monthNames[month.month - 1]} ${month.year}';
+  }
+
+  static String _formatDialogDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  }
+}
+
+class _CalendarMonthGrid extends StatelessWidget {
+  const _CalendarMonthGrid({
+    required this.visibleMonth,
+    required this.today,
+    required this.start,
+    required this.end,
+    required this.onDateTap,
+  });
+
+  final DateTime visibleMonth;
+  final DateTime today;
+  final DateTime? start;
+  final DateTime? end;
+  final ValueChanged<DateTime> onDateTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final firstDay = DateTime(visibleMonth.year, visibleMonth.month);
+    final leadingBlanks = firstDay.weekday - 1;
+    final daysInMonth = DateTime(
+      visibleMonth.year,
+      visibleMonth.month + 1,
+      0,
+    ).day;
+    final cellCount = ((leadingBlanks + daysInMonth + 6) ~/ 7) * 7;
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 7,
+        mainAxisSpacing: 4,
+        crossAxisSpacing: 4,
+      ),
+      itemCount: cellCount,
+      itemBuilder: (context, index) {
+        final dayNumber = index - leadingBlanks + 1;
+        if (dayNumber < 1 || dayNumber > daysInMonth) {
+          return const SizedBox.shrink();
+        }
+        final date = DateTime(visibleMonth.year, visibleMonth.month, dayNumber);
+        final disabled = date.isAfter(today);
+        final selectedStart = DateUtils.isSameDay(date, start);
+        final selectedEnd = DateUtils.isSameDay(date, end);
+        final inRange =
+            start != null &&
+            end != null &&
+            date.isAfter(start!) &&
+            date.isBefore(end!);
+        final selected = selectedStart || selectedEnd;
+        final isToday = DateUtils.isSameDay(date, today);
+
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            key: Key(
+              'expenses-calendar-day-${date.year}-${date.month}-${date.day}',
+            ),
+            onTap: disabled ? null : () => onDateTap(date),
+            borderRadius: BorderRadius.circular(12),
+            child: Ink(
+              decoration: BoxDecoration(
+                color: selected
+                    ? AppColors.darkAccent
+                    : inRange
+                    ? AppColors.darkPrimarySoft
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isToday && !selected
+                      ? AppColors.darkAccent
+                      : Colors.transparent,
+                ),
+              ),
+              child: Center(
+                child: Text(
+                  '$dayNumber',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: disabled
+                        ? AppColors.darkTextMuted.withValues(alpha: 0.35)
+                        : selected
+                        ? AppColors.darkBg
+                        : AppColors.darkText,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _FilterAction extends StatelessWidget {
+  const _FilterAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Ink(
+          decoration: BoxDecoration(
+            color: AppColors.darkSurfaceLow,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.darkBorder),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm,
+              vertical: 9,
+            ),
+            child: Row(
+              children: [
+                Icon(icon, size: 18, color: AppColors.darkAccent),
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: AppColors.darkAccent,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ResetFiltersButton extends StatelessWidget {
+  const _ResetFiltersButton({super.key, required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(14),
+        child: Ink(
+          decoration: BoxDecoration(
+            color: AppColors.darkPrimarySoft,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.darkBorder),
+          ),
+          child: const Padding(
+            padding: EdgeInsets.all(11),
+            child: Icon(
+              Icons.restart_alt_rounded,
+              size: 20,
+              color: AppColors.darkAccent,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

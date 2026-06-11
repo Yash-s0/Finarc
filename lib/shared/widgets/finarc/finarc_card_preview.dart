@@ -14,6 +14,7 @@ class FinarcCardPreview extends StatelessWidget {
     required this.nickname,
     required this.maskedNumber,
     required this.outstanding,
+    this.network,
     this.utilization,
     this.dueLabel,
     this.dueTone = FinarcStatusTone.neutral,
@@ -25,6 +26,7 @@ class FinarcCardPreview extends StatelessWidget {
   final String nickname;
   final String maskedNumber;
   final String outstanding;
+  final String? network;
   final double? utilization;
   final String? dueLabel;
   final FinarcStatusTone dueTone;
@@ -90,9 +92,24 @@ class FinarcCardPreview extends StatelessWidget {
               const SizedBox(height: AppSpacing.xxs),
               Text(nickname, style: Theme.of(context).textTheme.bodyMedium),
               const SizedBox(height: AppSpacing.md),
-              Text(
-                maskedNumber,
-                style: Theme.of(context).textTheme.titleMedium,
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      maskedNumber,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                  Text(
+                    _networkLabel(network),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontStyle: FontStyle.italic,
+                      letterSpacing: 0.6,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: AppSpacing.md),
               Text(
@@ -135,5 +152,17 @@ class FinarcCardPreview extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  static String _networkLabel(String? network) {
+    switch (network) {
+      case 'mastercard':
+        return 'MC';
+      case 'rupay':
+        return 'RuPay';
+      case 'visa':
+      default:
+        return 'VISA';
+    }
   }
 }

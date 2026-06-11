@@ -220,9 +220,8 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    final profileTop = tester.getTopLeft(find.text('Profile & Salary')).dy;
-    final runtimeTop = tester.getTopLeft(find.text('App Runtime')).dy;
-    expect(profileTop, lessThan(runtimeTop));
+    expect(find.text('Profile & Salary'), findsOneWidget);
+    expect(find.text('App Runtime'), findsNothing);
   });
 
   testWidgets('edit salary updates dashboard salary insight visibility', (
