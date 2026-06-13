@@ -209,6 +209,22 @@ void main() {
       expect(rows, isEmpty);
     });
 
+    test('OTP SMS is ignored', () async {
+      final ids = await smsService.processSmsPayload(
+        NotificationPayload(
+          packageName: 'android.sms',
+          sourceType: 'sms',
+          receivedAt: DateTime(2026, 5, 25, 10),
+          sender: 'AD-ICICIO-T',
+          body:
+              '062773 is One-Time Password for INR 628.00 transaction towards AMAZON using ICICI Bank Credit Card XX9000. OTPs are SECRET. DO NOT disclose',
+        ),
+      );
+      expect(ids, isEmpty);
+      final rows = await db.select(db.pendingTransactions).get();
+      expect(rows, isEmpty);
+    });
+
     test('duplicate SMS suppression and backfill-style repeat', () async {
       final payload = NotificationPayload(
         packageName: 'android.sms',

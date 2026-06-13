@@ -112,6 +112,10 @@ class NotificationIngestionService {
   static bool _optionalSourcesEnabledByDefault() => true;
 
   Future<List<int>> processPayload(NotificationPayload payload) async {
+    final isMessagingSmsNotification =
+        payload.sourceType != 'sms' &&
+        NotificationProviderCatalog.isMessagingPackage(payload.packageName);
+
     if (!isDetectionEnabled()) {
       _log(
         payload,
@@ -122,7 +126,8 @@ class NotificationIngestionService {
       return const [];
     }
 
-    if (payload.sourceType != 'sms' &&
+    if (!isMessagingSmsNotification &&
+        payload.sourceType != 'sms' &&
         NotificationProviderCatalog.isBlockedPackage(payload.packageName)) {
       return const [];
     }
@@ -149,12 +154,14 @@ class NotificationIngestionService {
     }
 
     final parserInput = ParserInput(
-      rawText: payload.combinedText,
-      sourceType: payload.sourceType.isEmpty
-          ? 'appNotification'
-          : payload.sourceType,
+      rawText: _parserRawText(payload, isMessagingSmsNotification),
+      sourceType: isMessagingSmsNotification
+          ? 'sms'
+          : (payload.sourceType.isEmpty
+                ? 'appNotification'
+                : payload.sourceType),
       packageName: payload.packageName,
-      sender: payload.sender ?? payload.appName,
+      sender: _parserSender(payload, isMessagingSmsNotification),
       receivedAt: payload.captureTime,
       postTime: payload.postTime,
       notificationTitle: payload.title,
@@ -377,6 +384,34 @@ class NotificationIngestionService {
       transactionDateChosen: bestCandidate?.transactionDate,
     );
     return ids;
+  }
+
+  String _parserRawText(
+    NotificationPayload payload,
+    bool isMessagingSmsNotification,
+  ) {
+    if (!isMessagingSmsNotification) return payload.combinedText;
+    final smsText = [
+      payload.body,
+      payload.bigText,
+      payload.subText,
+    ].where((part) => part != null && part!.trim().isNotEmpty).join(' ').trim();
+    return smsText.isEmpty ? payload.combinedText : smsText;
+  }
+
+  String? _parserSender(
+    NotificationPayload payload,
+    bool isMessagingSmsNotification,
+  ) {
+    if (payload.sender != null && payload.sender!.trim().isNotEmpty) {
+      return payload.sender;
+    }
+    if (isMessagingSmsNotification &&
+        payload.title != null &&
+        payload.title!.trim().isNotEmpty) {
+      return payload.title;
+    }
+    return payload.appName;
   }
 
   Future<bool> _allCandidatesReferenceDuplicate(

@@ -71,19 +71,57 @@ void main() {
       expect(result.reason, 'ignored-package-not-allowlisted');
     });
 
-    test('ignores messaging app notification even if it looks financial', () {
+    test(
+      'accepts transactional messaging app notification from bank sender',
+      () {
+        final filter = NotificationKeywordFilter();
+        final payload = NotificationPayload(
+          packageName: 'com.google.android.apps.messaging',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 30, 10, 0),
+          title: 'AD-INDUSB-S',
+          body: 'A/C *XX5661 credited by Rs 1.00 from test@okaxis. RRN:123456.',
+        );
+
+        final result = filter.evaluate(payload);
+        expect(result.accepted, isTrue);
+        expect(result.reason, 'accepted-messaging-sms-notification');
+        expect(result.senderFilterResult, 'allowed-transactional-sender');
+      },
+    );
+
+    test('keeps truecaller mirrored SMS blocked', () {
       final filter = NotificationKeywordFilter();
       final payload = NotificationPayload(
-        packageName: 'com.google.android.apps.messaging',
+        packageName: 'com.truecaller',
+        appName: 'Truecaller',
         sourceType: 'appNotification',
         receivedAt: DateTime(2026, 5, 30, 10, 0),
-        title: 'AD-INDUSB-S',
-        body: 'A/C *XX5661 credited by Rs 1.00 from test@okaxis. RRN:123456.',
+        title: 'INR 628.00 spent using ICICI Bank Card on 13-Jun-26.',
+        body:
+            'INR 628.00 spent using ICICI Bank Card on 13-Jun-26. SMS from ICICI Bank',
       );
 
       final result = filter.evaluate(payload);
       expect(result.accepted, isFalse);
       expect(result.reason, 'ignored-package-not-allowlisted');
+    });
+
+    test('accepts non-catalog bank app notification via heuristic', () {
+      final filter = NotificationKeywordFilter();
+      final payload = NotificationPayload(
+        packageName: 'com.kotak811.mobile',
+        appName: 'Kotak811',
+        sourceType: 'appNotification',
+        receivedAt: DateTime(2026, 6, 13, 19, 5),
+        title: '₹49.00 cashback received',
+        body: '811 Super cashback credited to XX0754. Check out details.',
+      );
+
+      final result = filter.evaluate(payload);
+      expect(result.accepted, isTrue);
+      expect(result.reason, 'accepted-banking-app-heuristic');
+      expect(result.amountCandidate, '₹49.00');
     });
 
     test('ignores finance notification without amount', () {
@@ -927,7 +965,7 @@ void main() {
       expect(pending.categorySuggestion, 'Income');
     });
 
-    test('blocks messages app transactional sender notifications', () async {
+    test('parses messages app transactional sender notifications', () async {
       final ids = await service.processPayload(
         NotificationPayload(
           packageName: 'com.google.android.apps.messaging',
@@ -939,10 +977,58 @@ void main() {
         ),
       );
 
+      expect(ids, hasLength(1));
+      expect(debugEntries, isNotEmpty);
+      final pending = await (db.select(
+        db.pendingTransactions,
+      )..where((p) => p.id.equals(ids.first))).getSingle();
+      expect(pending.amount, 1);
+      expect(pending.sourceType, 'sms');
+      expect(pending.merchant.toLowerCase(), contains('yas21606'));
+      expect(pending.merchant.toLowerCase(), contains('okaxis'));
+    });
+
+    test('blocks OTP-style messages app notifications', () async {
+      final ids = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.google.android.apps.messaging',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 30, 12, 0),
+          title: 'AD-ICICIO-T',
+          body:
+              '062773 is One-Time Password for INR 628.00 transaction towards AMAZON using ICICI Bank Credit Card XX9000. OTPs are SECRET. DO NOT disclose',
+        ),
+      );
+
       expect(ids, isEmpty);
-      expect(debugEntries, isEmpty);
+      expect(debugEntries, isNotEmpty);
+      expect(debugEntries.single.reason, 'ignored-otp-message');
       expect(await db.select(db.pendingTransactions).get(), isEmpty);
     });
+
+    test(
+      'parses cashback credit from non-catalog bank app notification',
+      () async {
+        final ids = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.kotak811.mobile',
+            appName: 'Kotak811',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 6, 13, 19, 5),
+            title: '₹49.00 cashback received',
+            body: '811 Super cashback credited to XX0754. Check out details.',
+          ),
+        );
+
+        expect(ids, hasLength(1));
+        final pending = await (db.select(
+          db.pendingTransactions,
+        )..where((p) => p.id.equals(ids.first))).getSingle();
+        expect(pending.amount, 49);
+        expect(pending.sourceType, 'appNotification');
+        expect(pending.categorySuggestion, 'Refund');
+      },
+    );
 
     test('received upi notification is parsed as income transfer', () async {
       final ids = await service.processPayload(

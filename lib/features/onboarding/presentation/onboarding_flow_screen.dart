@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,7 +10,13 @@ import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
 import '../../../core/utils/numeric_input_formatters.dart';
+import '../../pending/notifications/notification_permission_service.dart';
 import '../data/onboarding_providers.dart';
+
+final onboardingNotificationPermissionServiceProvider =
+    Provider<NotificationPermissionService>((ref) {
+      return NotificationPermissionService();
+    });
 
 class OnboardingFlowScreen extends ConsumerStatefulWidget {
   const OnboardingFlowScreen({super.key});
@@ -27,6 +34,15 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
   final _company = TextEditingController();
   int _index = 0;
   static const int _profileStepIndex = 3;
+  bool _notificationPromptHandled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybePromptForAppNotifications();
+    });
+  }
 
   @override
   void dispose() {
@@ -36,6 +52,44 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
     _salaryDay.dispose();
     _company.dispose();
     super.dispose();
+  }
+
+  Future<void> _maybePromptForAppNotifications() async {
+    if (_notificationPromptHandled || !mounted) return;
+    _notificationPromptHandled = true;
+
+    if (defaultTargetPlatform != TargetPlatform.android) return;
+
+    final permissionService = ref.read(
+      onboardingNotificationPermissionServiceProvider,
+    );
+    final granted = await permissionService.isPostNotificationsGranted();
+    if (!mounted || granted) return;
+
+    final allow = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Allow Finarc notifications?'),
+          content: const Text(
+            'Finarc can send local reminders and alerts for detected pending transactions. You can continue without this and change it later from Profile.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Not now'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Allow'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (!mounted || allow != true) return;
+    await permissionService.requestPostNotificationsPermission();
   }
 
   @override

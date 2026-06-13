@@ -1,5 +1,6 @@
 import 'notification_payload.dart';
 import 'notification_provider_catalog.dart';
+import 'sms_sender_filter.dart';
 
 class NotificationFilterResult {
   const NotificationFilterResult({
@@ -22,6 +23,7 @@ class NotificationFilterResult {
 }
 
 class NotificationKeywordFilter {
+  static const SmsSenderFilter _smsSenderFilter = SmsSenderFilter();
   static const Set<String> _transactionKeywords = {
     'debited',
     'credited',
@@ -62,6 +64,16 @@ class NotificationKeywordFilter {
     'whatsapp',
     'telegram',
     'instagram',
+  };
+
+  static const Set<String> _otpHints = {
+    'otp',
+    'one-time password',
+    'one time password',
+    'do not disclose',
+    'do not share',
+    'passcode',
+    'secret',
   };
 
   static const List<String> _promoPhrases = [
@@ -128,6 +140,18 @@ class NotificationKeywordFilter {
     }
 
     if (payload.sourceType != 'sms') {
+      if (NotificationProviderCatalog.isMessagingPackage(payload.packageName)) {
+        return _evaluateMessagingNotification(payload);
+      }
+
+      final isLikelyBankingApp = NotificationProviderCatalog.isLikelyBankingApp(
+        packageName: payload.packageName,
+        appName: payload.appName,
+      );
+      if (isLikelyBankingApp) {
+        return _evaluateBankingAppNotification(payload);
+      }
+
       final provider = NotificationProviderCatalog.providerForPackage(
         payload.packageName,
       );
@@ -184,6 +208,7 @@ class NotificationKeywordFilter {
     final text = payload.combinedText.toLowerCase();
     final hasKeyword = _transactionKeywords.any(text.contains);
     final isChatLike = _chatHints.any(text.contains);
+    final isOtpLike = _otpHints.any(text.contains);
 
     if (!hasKeyword) {
       return const NotificationFilterResult(
@@ -199,11 +224,141 @@ class NotificationKeywordFilter {
       );
     }
 
+    if (isOtpLike) {
+      return const NotificationFilterResult(
+        accepted: false,
+        reason: 'ignored-otp-message',
+      );
+    }
+
     return const NotificationFilterResult(
       accepted: true,
       reason: 'accepted-keyword-match',
       senderFilterResult: 'not-applicable',
     );
+  }
+
+  NotificationFilterResult _evaluateMessagingNotification(
+    NotificationPayload payload,
+  ) {
+    final sender = _extractMessagingSender(payload);
+    final senderResult = _smsSenderFilter.evaluate(sender);
+    if (!senderResult.accepted) {
+      return NotificationFilterResult(
+        accepted: false,
+        reason: senderResult.reason,
+        senderFilterResult: senderResult.reason,
+      );
+    }
+
+    final text = payload.combinedText.toLowerCase();
+    final hasKeyword = _transactionKeywords.any(text.contains);
+    final isChatLike = _chatHints.any(text.contains);
+    final isOtpLike = _otpHints.any(text.contains);
+
+    if (!hasKeyword) {
+      return NotificationFilterResult(
+        accepted: false,
+        reason: 'ignored-no-finance-keyword',
+        senderFilterResult: senderResult.reason,
+      );
+    }
+
+    if (isChatLike) {
+      return NotificationFilterResult(
+        accepted: false,
+        reason: 'ignored-chat-social-notification',
+        senderFilterResult: senderResult.reason,
+      );
+    }
+
+    if (isOtpLike) {
+      return NotificationFilterResult(
+        accepted: false,
+        reason: 'ignored-otp-message',
+        senderFilterResult: senderResult.reason,
+      );
+    }
+
+    final promoSignal = _promotionalSignal(payload.combinedText);
+    if (promoSignal.blocked) {
+      return NotificationFilterResult(
+        accepted: false,
+        reason: 'promotional_offer_detected',
+        senderFilterResult: senderResult.reason,
+        amountCandidate: promoSignal.amountCandidate,
+        blockedContext: promoSignal.blockedContext,
+      );
+    }
+
+    return NotificationFilterResult(
+      accepted: true,
+      reason: 'accepted-messaging-sms-notification',
+      senderFilterResult: senderResult.reason,
+      amountCandidate: _extractAmountCandidate(payload.combinedText),
+    );
+  }
+
+  NotificationFilterResult _evaluateBankingAppNotification(
+    NotificationPayload payload,
+  ) {
+    final text = payload.combinedText.toLowerCase();
+    final hasKeyword = _transactionKeywords.any(text.contains);
+    final isChatLike = _chatHints.any(text.contains);
+    final isOtpLike = _otpHints.any(text.contains);
+
+    if (!hasKeyword) {
+      return const NotificationFilterResult(
+        accepted: false,
+        reason: 'ignored-no-finance-keyword',
+      );
+    }
+
+    if (isChatLike) {
+      return const NotificationFilterResult(
+        accepted: false,
+        reason: 'ignored-chat-social-notification',
+      );
+    }
+
+    if (isOtpLike) {
+      return const NotificationFilterResult(
+        accepted: false,
+        reason: 'ignored-otp-message',
+      );
+    }
+
+    final promoSignal = _promotionalSignal(payload.combinedText);
+    if (promoSignal.blocked) {
+      return NotificationFilterResult(
+        accepted: false,
+        reason: 'promotional_offer_detected',
+        amountCandidate: promoSignal.amountCandidate,
+        blockedContext: promoSignal.blockedContext,
+      );
+    }
+
+    final amountCandidate = _extractAmountCandidate(payload.combinedText);
+    if (amountCandidate == null) {
+      return const NotificationFilterResult(
+        accepted: false,
+        reason: 'ignored-no-amount',
+      );
+    }
+
+    return NotificationFilterResult(
+      accepted: true,
+      reason: 'accepted-banking-app-heuristic',
+      amountCandidate: amountCandidate,
+    );
+  }
+
+  String? _extractMessagingSender(NotificationPayload payload) {
+    final sender = payload.sender?.trim();
+    if (sender != null && sender.isNotEmpty) return sender;
+    final title = payload.title?.trim();
+    if (title != null && title.isNotEmpty) return title;
+    return null;
   }
 
   _PromotionalSignal _promotionalSignal(String text) {

@@ -10,15 +10,46 @@ import 'package:finarc/core/database/database_providers.dart';
 import 'package:finarc/core/theme/app_colors.dart';
 import 'package:finarc/core/theme/app_theme.dart';
 import 'package:finarc/features/onboarding/presentation/onboarding_flow_screen.dart';
+import 'package:finarc/features/pending/notifications/notification_permission_service.dart';
+
+class _FakeNotificationPermissionService extends NotificationPermissionService {
+  _FakeNotificationPermissionService({
+    this.isGranted = true,
+    this.requestResult = true,
+  });
+
+  bool isGranted;
+  bool requestResult;
+  int requestCount = 0;
+
+  @override
+  Future<bool> isPostNotificationsGranted() async => isGranted;
+
+  @override
+  Future<bool> requestPostNotificationsPermission() async {
+    requestCount += 1;
+    isGranted = requestResult;
+    return requestResult;
+  }
+}
 
 void main() {
   tearDown(() {
     AppModeConfig.debugOverride = null;
   });
 
-  Future<void> pumpOnboarding(WidgetTester tester) async {
+  Future<void> pumpOnboarding(
+    WidgetTester tester, {
+    _FakeNotificationPermissionService? permissionService,
+  }) async {
+    final service = permissionService ?? _FakeNotificationPermissionService();
     await tester.pumpWidget(
       ProviderScope(
+        overrides: [
+          onboardingNotificationPermissionServiceProvider.overrideWithValue(
+            service,
+          ),
+        ],
         child: MaterialApp(
           theme: AppTheme.dark(),
           home: const OnboardingFlowScreen(),
@@ -28,9 +59,13 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Future<AppDatabase> pumpRoutedOnboarding(WidgetTester tester) async {
+  Future<AppDatabase> pumpRoutedOnboarding(
+    WidgetTester tester, {
+    _FakeNotificationPermissionService? permissionService,
+  }) async {
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);
+    final service = permissionService ?? _FakeNotificationPermissionService();
 
     final router = GoRouter(
       initialLocation: '/onboarding',
@@ -50,7 +85,12 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [appDatabaseProvider.overrideWithValue(db)],
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+          onboardingNotificationPermissionServiceProvider.overrideWithValue(
+            service,
+          ),
+        ],
         child: MaterialApp.router(theme: AppTheme.dark(), routerConfig: router),
       ),
     );
@@ -216,6 +256,40 @@ void main() {
     expect(find.text('Home'), findsOneWidget);
     final row = await db.select(db.appSettings).getSingle();
     expect(row.hasCompletedOnboarding, true);
+  });
+
+  testWidgets('onboarding prompts for app notifications and allows skip', (
+    tester,
+  ) async {
+    final permissionService = _FakeNotificationPermissionService(
+      isGranted: false,
+    );
+
+    await pumpOnboarding(tester, permissionService: permissionService);
+
+    expect(find.text('Allow Finarc notifications?'), findsOneWidget);
+    expect(find.text('Not now'), findsOneWidget);
+    expect(find.text('Allow'), findsOneWidget);
+
+    await tester.tap(find.text('Not now'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Allow Finarc notifications?'), findsNothing);
+    expect(permissionService.requestCount, 0);
+  });
+
+  testWidgets('onboarding can request app notification permission', (
+    tester,
+  ) async {
+    final permissionService = _FakeNotificationPermissionService(
+      isGranted: false,
+    );
+
+    await pumpOnboarding(tester, permissionService: permissionService);
+    await tester.tap(find.text('Allow'));
+    await tester.pumpAndSettle();
+
+    expect(permissionService.requestCount, 1);
   });
 
   testWidgets('light theme onboarding hero uses light gradient tokens', (

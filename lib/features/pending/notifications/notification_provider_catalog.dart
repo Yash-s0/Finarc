@@ -18,6 +18,48 @@ class NotificationProviderInfo {
 }
 
 class NotificationProviderCatalog {
+  static const List<String> _bankingHints = [
+    'bank',
+    'kotak',
+    'kotak811',
+    'hdfc',
+    'icici',
+    'sbi',
+    'axis',
+    'indusind',
+    'yesbank',
+    'federal',
+    'canara',
+    'pnb',
+    'idfc',
+    'idbi',
+    'hsbc',
+    'rbl',
+    'dbs',
+    'citi',
+    'citibank',
+    'bob',
+    'bankofbaroda',
+    'unionbank',
+    'iob',
+    'boi',
+    'bandhan',
+    'ujjivan',
+    'au bank',
+    'aubank',
+  ];
+
+  static const Set<String> _messagingPackages = {
+    'com.google.android.apps.messaging',
+    'com.android.mms',
+    'com.samsung.android.messaging',
+    'com.miui.smsextra',
+    'com.coloros.mms',
+    'com.oneplus.mms',
+    'com.vivo.messaging',
+    'com.huawei.message',
+  };
+
   static const Set<String> _blockedPackages = {
     'com.whatsapp',
     'com.whatsapp.w4b',
@@ -29,14 +71,7 @@ class NotificationProviderCatalog {
     'com.google.android.gm',
     'com.microsoft.office.outlook',
     'com.samsung.android.email.provider',
-    'com.google.android.apps.messaging',
-    'com.android.mms',
-    'com.samsung.android.messaging',
-    'com.miui.smsextra',
-    'com.coloros.mms',
-    'com.oneplus.mms',
-    'com.vivo.messaging',
-    'com.huawei.message',
+    ..._messagingPackages,
   };
 
   static const Map<String, NotificationProviderInfo> _packageMap = {
@@ -122,6 +157,22 @@ class NotificationProviderCatalog {
 
   static bool isBlockedPackage(String packageName) {
     return _blockedPackages.contains(packageName.toLowerCase().trim());
+  }
+
+  static bool isMessagingPackage(String packageName) {
+    return _messagingPackages.contains(packageName.toLowerCase().trim());
+  }
+
+  static bool isLikelyBankingApp({
+    required String packageName,
+    String? appName,
+  }) {
+    final normalizedPackage = packageName.toLowerCase().trim();
+    final normalizedApp = (appName ?? '').toLowerCase().trim();
+    return _bankingHints.any(
+      (hint) =>
+          normalizedPackage.contains(hint) || normalizedApp.contains(hint),
+    );
   }
 
   static bool isOptionalPackage(String packageName) {
