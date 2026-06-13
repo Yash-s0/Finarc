@@ -26,7 +26,7 @@ void main() {
   });
 
   testWidgets(
-    'release-safe profile links to data controls and hides SMS/debug tools',
+    'release-safe profile links to data controls and keeps SMS tools hidden',
     (tester) async {
       await tester.pumpWidget(
         ProviderScope(
@@ -43,6 +43,7 @@ void main() {
       expect(find.text('BUILD STATUS'), findsNothing);
       expect(find.text('Build mode'), findsNothing);
       expect(find.text('Notification Access'), findsOneWidget);
+      expect(find.text('Notification Diagnostics'), findsOneWidget);
 
       expect(find.text('Data Controls'), findsOneWidget);
       expect(find.text('Open Data Controls'), findsOneWidget);
@@ -167,6 +168,20 @@ void main() {
         containsRoute(
           appRouterRelease.configuration.routes,
           AppRoutes.profileDataControls,
+        ),
+        isTrue,
+      );
+      expect(
+        containsRoute(
+          appRouterRelease.configuration.routes,
+          AppRoutes.notificationDiagnostics,
+        ),
+        isTrue,
+      );
+      expect(
+        containsRoute(
+          appRouterRelease.configuration.routes,
+          AppRoutes.notificationDiagnosticsLogs,
         ),
         isTrue,
       );

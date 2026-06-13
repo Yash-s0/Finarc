@@ -263,6 +263,9 @@ class TransactionImportService {
           : sourceType == PaymentSourceType.creditCard
           ? TransactionType.creditCard
           : sourceType;
+      final transactionImpactType = _dateOnly(date).isBefore(_dateOnlyNow())
+          ? TransactionImpactType.historicalNoBalance
+          : null;
 
       final input = AddTransactionInput(
         type: transactionType,
@@ -286,6 +289,7 @@ class TransactionImportService {
         recoverablePartyName: forOthers ? personName : null,
         cashbackDestinationType: cashbackDestination.destinationType,
         cashbackDestinationId: cashbackDestination.destinationId,
+        transactionImpactType: transactionImpactType,
       );
 
       if (importType == 'income') {
@@ -357,6 +361,14 @@ class TransactionImportService {
     final cards = await _db.select(_db.creditCards).get();
     final wallets = await _db.select(_db.cashWallets).get();
     return _ImportSources(banks: banks, cards: cards, wallets: wallets);
+  }
+
+  DateTime _dateOnly(DateTime value) =>
+      DateTime(value.year, value.month, value.day);
+
+  DateTime _dateOnlyNow() {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
   }
 
   Map<String, dynamic>? _decodeRoot(String jsonText) {

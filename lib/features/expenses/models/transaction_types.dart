@@ -10,6 +10,10 @@ class TransactionType {
   static const loanEmi = 'loanEmi';
 }
 
+class TransactionImpactType {
+  static const historicalNoBalance = 'historicalNoBalance';
+}
+
 class PaymentSourceType {
   static const cash = 'cash';
   static const upi = 'upi';

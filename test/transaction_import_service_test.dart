@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:finarc/core/database/app_database.dart';
 import 'package:finarc/features/expenses/data/transaction_engine.dart';
+import 'package:finarc/features/expenses/models/transaction_types.dart';
 import 'package:finarc/features/profile/data/transaction_import_service.dart';
 
 void main() {
@@ -158,7 +159,7 @@ void main() {
   });
 
   test(
-    'card import updates card outstanding and records transaction',
+    'historical card import preserves live card outstanding and records transaction',
     () async {
       final cardId = await seedCard();
       final jsonText = jsonEncode({
@@ -183,13 +184,17 @@ void main() {
       final txns = await db.select(db.transactions).get();
 
       expect(execution.importedCount, 1);
-      expect(card.currentOutstanding, closeTo(1400, 0.01));
+      expect(card.currentOutstanding, closeTo(1000, 0.01));
       expect(txns.single.type, 'creditCard');
       expect(txns.single.paymentSourceId, cardId);
+      expect(
+        txns.single.transactionImpactType,
+        TransactionImpactType.historicalNoBalance,
+      );
     },
   );
 
-  test('cash import updates wallet balance', () async {
+  test('historical cash import preserves live wallet balance', () async {
     final walletId = await seedWallet();
     final jsonText = jsonEncode({
       'transactions': [
@@ -210,10 +215,15 @@ void main() {
     final wallet = await (db.select(
       db.cashWallets,
     )..where((w) => w.id.equals(walletId))).getSingle();
-    expect(wallet.currentBalance, closeTo(4800, 0.01));
+    final txn = await db.select(db.transactions).getSingle();
+    expect(wallet.currentBalance, closeTo(5000, 0.01));
+    expect(
+      txn.transactionImpactType,
+      TransactionImpactType.historicalNoBalance,
+    );
   });
 
-  test('bank import updates bank balance', () async {
+  test('historical bank import preserves live bank balance', () async {
     final bankId = await seedBank(name: 'Main Account');
     final jsonText = jsonEncode({
       'transactions': [
@@ -234,10 +244,15 @@ void main() {
     final bank = await (db.select(
       db.bankAccounts,
     )..where((b) => b.id.equals(bankId))).getSingle();
-    expect(bank.currentBalance, closeTo(9700, 0.01));
+    final txn = await db.select(db.transactions).getSingle();
+    expect(bank.currentBalance, closeTo(10000, 0.01));
+    expect(
+      txn.transactionImpactType,
+      TransactionImpactType.historicalNoBalance,
+    );
   });
 
-  test('income import increases destination balance', () async {
+  test('historical income import preserves live destination balance', () async {
     final bankId = await seedBank(name: 'Salary Account');
     final jsonText = jsonEncode({
       'transactions': [
@@ -258,7 +273,12 @@ void main() {
     final bank = await (db.select(
       db.bankAccounts,
     )..where((b) => b.id.equals(bankId))).getSingle();
-    expect(bank.currentBalance, closeTo(15000, 0.01));
+    final txn = await db.select(db.transactions).getSingle();
+    expect(bank.currentBalance, closeTo(10000, 0.01));
+    expect(
+      txn.transactionImpactType,
+      TransactionImpactType.historicalNoBalance,
+    );
   });
 
   test('forOthers import creates recoverable values', () async {
@@ -361,7 +381,7 @@ void main() {
   });
 
   test(
-    'Amazon Pay import updates wallet balance and stores cashback destination',
+    'historical Amazon Pay import preserves wallet balance and stores cashback destination',
     () async {
       final walletId = await seedAmazonPayWallet();
       final jsonText = jsonEncode({
@@ -388,9 +408,13 @@ void main() {
         db.cashWallets,
       )..where((w) => w.id.equals(walletId))).getSingle();
       final txn = await db.select(db.transactions).getSingle();
-      expect(wallet.currentBalance, closeTo(2250, 0.01));
+      expect(wallet.currentBalance, closeTo(2500, 0.01));
       expect(txn.cashbackDestinationType, 'amazonPay');
       expect(txn.cashbackDestinationId, walletId);
+      expect(
+        txn.transactionImpactType,
+        TransactionImpactType.historicalNoBalance,
+      );
     },
   );
 

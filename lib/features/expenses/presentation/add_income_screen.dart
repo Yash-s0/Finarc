@@ -356,6 +356,9 @@ class _AddIncomeScreenState extends ConsumerState<AddIncomeScreen> {
               ? 'Income'
               : '$category Income')
         : _title.text.trim();
+    final transactionImpactType = _dateOnly(_date).isBefore(_dateOnlyNow())
+        ? TransactionImpactType.historicalNoBalance
+        : null;
 
     try {
       await ref
@@ -370,6 +373,7 @@ class _AddIncomeScreenState extends ConsumerState<AddIncomeScreen> {
               transactionDate: _date,
               paymentSourceType: _resolvedDestinationType,
               paymentSourceId: _destinationId,
+              transactionImpactType: transactionImpactType,
             ),
           );
 
@@ -398,6 +402,14 @@ class _AddIncomeScreenState extends ConsumerState<AddIncomeScreen> {
     if (mounted) {
       Navigator.of(context).maybePop();
     }
+  }
+
+  DateTime _dateOnly(DateTime value) =>
+      DateTime(value.year, value.month, value.day);
+
+  DateTime _dateOnlyNow() {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
   }
 
   String get _resolvedDestinationType => _destinationType;

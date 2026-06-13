@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/router/app_router_release.dart';
 import '../../../core/database/database_providers.dart';
+import '../../../core/logging/logging_providers.dart';
 import '../../alerts/data/alerts_providers.dart';
 import '../data/pending_providers.dart';
 import 'notification_bridge.dart';
@@ -11,9 +12,7 @@ import 'notification_fingerprint.dart';
 import 'notification_ingestion_service.dart';
 import 'notification_keyword_filter.dart';
 import 'notification_payload.dart';
-import 'notification_providers.dart'
-    show paymentAppNotificationsEnabledProvider;
-import 'notification_runtime_providers.dart';
+import 'notification_providers.dart';
 import 'notification_permission_service.dart';
 
 final _notificationPermissionServiceProvider =
@@ -27,6 +26,44 @@ final _notificationBridgeProvider = Provider<NotificationBridge>((ref) {
 
 final _notificationIngestionServiceProvider =
     Provider<NotificationIngestionService>((ref) {
+      void append(NotificationDebugEntry entry) {
+        ref.read(notificationDebugLogProvider.notifier).append(entry);
+        ref.read(ingestionDiagnosticsProvider.notifier).append(entry);
+        unawaited(
+          ref
+              .read(appLogServiceProvider)
+              .log(
+                category: 'notification_event',
+                message: entry.decision,
+                meta: <String, Object?>{
+                  'source': entry.sourceType,
+                  'package': entry.packageName,
+                  'title': entry.title,
+                  'bodyPreview': entry.bodyPreview,
+                  'decision': entry.decision,
+                  'reason': entry.reason,
+                  'result': entry.result,
+                  'parseResult': entry.parseResult,
+                  'providerName': entry.providerName,
+                  'sender': entry.sender,
+                  'senderFilterResult': entry.senderFilterResult,
+                  'confidenceScore': entry.confidenceScore,
+                  'confidenceLevel': entry.confidenceLevel,
+                  'candidateCount': entry.candidateCount,
+                  'duplicateDecision': entry.duplicateDecision,
+                  'possibleDuplicateReason': entry.possibleDuplicateReason,
+                  'amountCandidate': entry.amountCandidate,
+                  'blockedContext': entry.blockedContext,
+                  'localNotificationSent': entry.localNotificationSent,
+                  'receivedAt': entry.receivedAt.toIso8601String(),
+                  'receivedAtUsed': entry.receivedAtUsed?.toIso8601String(),
+                  'transactionDateChosen': entry.transactionDateChosen
+                      ?.toIso8601String(),
+                },
+              ),
+        );
+      }
+
       return NotificationIngestionService(
         database: ref.read(appDatabaseProvider),
         pendingIngestionService: ref.read(pendingIngestionServiceProvider),
@@ -34,11 +71,13 @@ final _notificationIngestionServiceProvider =
         keywordFilter: NotificationKeywordFilter(),
         fingerprint: NotificationFingerprint(),
         localNotifier: ref.read(notificationLocalNotifierProvider),
-        isDetectionEnabled: () => true,
+        isDetectionEnabled: () =>
+            ref.read(notificationDetectionEnabledProvider),
         areOptionalNotificationSourcesEnabled: () =>
             ref.read(paymentAppNotificationsEnabledProvider),
-        shouldShowDetectionNotifications: () => true,
-        appendDebug: (_) {},
+        shouldShowDetectionNotifications: () =>
+            ref.read(showDetectionNotificationsProvider),
+        appendDebug: append,
       );
     });
 
@@ -138,6 +177,7 @@ final notificationListenerBootstrapProvider = Provider<void>((ref) {
         }
         ref.invalidate(pendingTransactionsProvider);
         ref.invalidate(pendingCountProvider);
+        ref.invalidate(notificationDiagnosticsSnapshotProvider);
       },
       onRoute: handleRoute,
     );

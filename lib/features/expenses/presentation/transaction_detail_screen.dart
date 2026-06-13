@@ -533,6 +533,9 @@ class _TransactionDetailScreenState
       final recoveredAmount = forOthers
           ? txn.recoveredAmount.clamp(0, recoverableBase).toDouble()
           : 0.0;
+      final transactionImpactType = _dateOnly(_date).isBefore(_dateOnlyNow())
+          ? TransactionImpactType.historicalNoBalance
+          : null;
 
       await ref
           .read(transactionEngineProvider)
@@ -573,6 +576,7 @@ class _TransactionDetailScreenState
               recoverablePartyName: forOthers ? recoverableParty : null,
               recoveredAt: txn.recoveredAt,
               notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+              transactionImpactType: transactionImpactType,
             ),
           );
       _invalidateAll();
@@ -583,6 +587,14 @@ class _TransactionDetailScreenState
         context,
       ).showSnackBar(SnackBar(content: Text('Unable to update: $e')));
     }
+  }
+
+  DateTime _dateOnly(DateTime value) =>
+      DateTime(value.year, value.month, value.day);
+
+  DateTime _dateOnlyNow() {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
   }
 
   bool _supportsCashback(PaymentSourcesData sources) {

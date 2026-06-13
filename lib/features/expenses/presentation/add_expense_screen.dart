@@ -571,6 +571,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
               ? 'General Expense'
               : '$category Expense')
         : _title.text.trim();
+    final transactionImpactType = _dateOnly(_date).isBefore(_dateOnlyNow())
+        ? TransactionImpactType.historicalNoBalance
+        : null;
 
     try {
       await ref
@@ -610,6 +613,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                   : null,
               recoveredAmount: recovered,
               recoverablePartyName: forOthers ? recoverableParty : null,
+              transactionImpactType: transactionImpactType,
             ),
           );
 
@@ -637,6 +641,14 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     if (mounted) {
       Navigator.of(context).maybePop();
     }
+  }
+
+  DateTime _dateOnly(DateTime value) =>
+      DateTime(value.year, value.month, value.day);
+
+  DateTime _dateOnlyNow() {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
   }
 
   String get _resolvedPaymentMode => _paymentMode;

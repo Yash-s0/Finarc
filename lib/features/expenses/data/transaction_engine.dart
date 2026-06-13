@@ -76,14 +76,16 @@ class TransactionEngine {
 
     int? insertedId;
     await _db.transaction(() async {
-      if (input.type == TransactionType.income) {
-        await _applyIncome(input.paymentSourceType, sourceId, input.amount);
-      } else if (input.type == TransactionType.refund) {
-        await _applyRefund(input.paymentSourceType, sourceId, input.amount);
-      } else {
-        await _applyExpense(input.paymentSourceType, sourceId, input.amount);
+      if (_mutatesLiveBalances(input.transactionImpactType)) {
+        if (input.type == TransactionType.income) {
+          await _applyIncome(input.paymentSourceType, sourceId, input.amount);
+        } else if (input.type == TransactionType.refund) {
+          await _applyRefund(input.paymentSourceType, sourceId, input.amount);
+        } else {
+          await _applyExpense(input.paymentSourceType, sourceId, input.amount);
+        }
+        await _applyCashbackDestinationEffect(input);
       }
-      await _applyCashbackDestinationEffect(input);
 
       final recoverableBase = _resolveRecoverableBase(input);
       final recoveredAmount = _resolveRecoveredAmount(input, recoverableBase);
@@ -185,8 +187,12 @@ class TransactionEngine {
     }
 
     await _db.transaction(() async {
-      await _reverseTransactionEffect(existing);
-      await _applyTransactionEffect(input);
+      if (_mutatesLiveBalances(existing.transactionImpactType)) {
+        await _reverseTransactionEffect(existing);
+      }
+      if (_mutatesLiveBalances(input.transactionImpactType)) {
+        await _applyTransactionEffect(input);
+      }
       final sourceId = input.paymentSourceId!;
       final recoverableBase = _resolveRecoverableBase(input);
       final recoveredAmount = _resolveRecoveredAmount(
@@ -260,7 +266,9 @@ class TransactionEngine {
     }
 
     await _db.transaction(() async {
-      await _reverseTransactionEffect(existing);
+      if (_mutatesLiveBalances(existing.transactionImpactType)) {
+        await _reverseTransactionEffect(existing);
+      }
       await (_db.delete(
         _db.transactions,
       )..where((t) => t.id.equals(transactionId))).go();
@@ -347,6 +355,10 @@ class TransactionEngine {
       await _applyExpense(input.paymentSourceType, sourceId, input.amount);
     }
     await _applyCashbackDestinationEffect(input);
+  }
+
+  bool _mutatesLiveBalances(String? transactionImpactType) {
+    return transactionImpactType != TransactionImpactType.historicalNoBalance;
   }
 
   double _resolveRecoverableBase(AddTransactionInput input) {

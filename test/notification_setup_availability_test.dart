@@ -222,15 +222,20 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('Detection enabled'), findsOneWidget);
+    expect(find.text('Show local detection notifications'), findsOneWidget);
     expect(find.text('UPI/payment app notifications'), findsOneWidget);
     expect(
       find.text(
-        'UPI/payment app notifications can improve detection but may create duplicates. You can turn them off anytime.',
+        'UPI/payment app notifications can improve detection but may create duplicates. Turn this on if you expect Google Pay, PhonePe, Paytm, Amazon Pay, or CRED app notifications to be parsed.',
       ),
       findsOneWidget,
     );
-    final toggle = tester.widget<Switch>(find.byType(Switch).first);
-    expect(toggle.value, isFalse);
+    final toggles = tester.widgetList<Switch>(find.byType(Switch)).toList();
+    expect(toggles, hasLength(3));
+    expect(toggles[0].value, isTrue);
+    expect(toggles[1].value, isTrue);
+    expect(toggles[2].value, isFalse);
   });
 
   testWidgets('release-safe notification setup toggle updates setting', (
@@ -248,10 +253,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(Switch).first);
+    await tester.tap(find.text('UPI/payment app notifications'));
     await tester.pumpAndSettle();
 
-    final toggle = tester.widget<Switch>(find.byType(Switch).first);
-    expect(toggle.value, isTrue);
+    final toggles = tester.widgetList<Switch>(find.byType(Switch)).toList();
+    expect(toggles[2].value, isTrue);
   });
 }

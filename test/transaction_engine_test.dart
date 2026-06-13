@@ -248,6 +248,72 @@ void main() {
     },
   );
 
+  test(
+    'historical ledger-only expense does not mutate live source balance',
+    () async {
+      await engine.addTransaction(
+        AddTransactionInput(
+          type: TransactionType.bank,
+          amount: 1200,
+          title: 'Imported old utility',
+          category: 'Bills',
+          transactionDate: DateTime(2026, 5, 1),
+          paymentSourceType: PaymentSourceType.bank,
+          paymentSourceId: bankId,
+          transactionImpactType: TransactionImpactType.historicalNoBalance,
+        ),
+      );
+
+      final bank = await (db.select(
+        db.bankAccounts,
+      )..where((b) => b.id.equals(bankId))).getSingle();
+      final txn = await (db.select(db.transactions)..limit(1)).getSingle();
+
+      expect(bank.currentBalance, 10000);
+      expect(
+        txn.transactionImpactType,
+        TransactionImpactType.historicalNoBalance,
+      );
+    },
+  );
+
+  test(
+    'historical ledger-only update does not mutate live source balance',
+    () async {
+      await engine.addTransaction(
+        AddTransactionInput(
+          type: TransactionType.bank,
+          amount: 500,
+          title: 'Today expense',
+          category: 'Bills',
+          transactionDate: DateTime(2026, 5, 24),
+          paymentSourceType: PaymentSourceType.bank,
+          paymentSourceId: bankId,
+        ),
+      );
+
+      final before = await (db.select(db.transactions)..limit(1)).getSingle();
+      await engine.updateTransaction(
+        before.id,
+        AddTransactionInput(
+          type: TransactionType.bank,
+          amount: 500,
+          title: 'Backdated expense',
+          category: 'Bills',
+          transactionDate: DateTime(2026, 5, 1),
+          paymentSourceType: PaymentSourceType.bank,
+          paymentSourceId: bankId,
+          transactionImpactType: TransactionImpactType.historicalNoBalance,
+        ),
+      );
+
+      final bank = await (db.select(
+        db.bankAccounts,
+      )..where((b) => b.id.equals(bankId))).getSingle();
+      expect(bank.currentBalance, 10000);
+    },
+  );
+
   test('for-others transaction auto-calculates recoverable amount', () async {
     await engine.addTransaction(
       AddTransactionInput(
