@@ -56,12 +56,14 @@ class FinarcTransactionTile extends StatelessWidget {
     final content = Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
+        vertical: 10,
       ),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -73,7 +75,12 @@ class FinarcTransactionTile extends StatelessWidget {
               children: [
                 Text(title, style: titleStyle),
                 const SizedBox(height: 2),
-                Text(subtitle, style: Theme.of(context).textTheme.labelMedium),
+                Text(
+                  subtitle,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                ),
                 if (resolvedMeta != null) ...[
                   const SizedBox(height: 2),
                   Text(

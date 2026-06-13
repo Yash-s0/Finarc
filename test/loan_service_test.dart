@@ -260,7 +260,7 @@ void main() {
         payments.first.paymentSourceType,
         PaymentSourceType.salaryDeduction,
       );
-    expect(payments.first.paymentSourceId, null);
+      expect(payments.first.paymentSourceId, null);
       expect(payments.first.linkedTransactionId, txn.id);
       expect(txn.paymentSourceType, PaymentSourceType.salaryDeduction);
       expect(txn.paymentSourceId, 0);

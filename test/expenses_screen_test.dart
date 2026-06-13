@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:finarc/core/database/app_database.dart';
 import 'package:finarc/core/database/database_providers.dart';
+import 'package:finarc/features/expenses/data/expenses_providers.dart';
 import 'package:finarc/features/expenses/presentation/expenses_screen.dart';
 import 'package:finarc/shared/widgets/finarc/finarc_transaction_tile.dart';
 
@@ -165,10 +166,70 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Apply'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
     await tester.tap(find.text('Apply'));
     await tester.pumpAndSettle();
 
     expect(find.byType(Dialog), findsNothing);
     expect(find.textContaining('${now.year}'), findsOneWidget);
+  });
+
+  testWidgets('date range dialog keeps apply visible on compact width', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(320, 720));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await pumpScreen(tester);
+
+    await tester.tap(find.text('Date range'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Apply'), findsOneWidget);
+
+    final now = DateTime.now();
+    await tester.tap(
+      find.byKey(Key('expenses-calendar-day-${now.year}-${now.month}-1')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(
+        Key('expenses-calendar-day-${now.year}-${now.month}-${now.day}'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Apply'), findsOneWidget);
+  });
+
+  testWidgets('pull to refresh reloads the expenses provider', (tester) async {
+    var refreshCount = 0;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+          expenseListProvider.overrideWith((ref) async {
+            refreshCount += 1;
+            return <Transaction>[];
+          }),
+        ],
+        child: const MaterialApp(home: ExpensesScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(refreshCount, 1);
+
+    await tester.drag(find.byType(ListView).first, const Offset(0, 320));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+
+    expect(refreshCount, greaterThanOrEqualTo(2));
   });
 }

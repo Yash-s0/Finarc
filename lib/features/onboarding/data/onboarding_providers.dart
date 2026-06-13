@@ -19,13 +19,15 @@ final onboardingActionsProvider = Provider((ref) {
     int? salaryCreditDay,
     String? companyName,
   }) async {
-    await ref.read(onboardingServiceProvider).setCompleted(
-      true,
-      userName: userName,
-      monthlySalary: monthlySalary,
-      salaryCreditDay: salaryCreditDay,
-      companyName: companyName,
-    );
+    await ref
+        .read(onboardingServiceProvider)
+        .setCompleted(
+          true,
+          userName: userName,
+          monthlySalary: monthlySalary,
+          salaryCreditDay: salaryCreditDay,
+          companyName: companyName,
+        );
     ref.invalidate(onboardingCompletedProvider);
   }
 

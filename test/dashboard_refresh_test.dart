@@ -71,4 +71,26 @@ void main() {
 
     expect(refreshCount, 1);
   });
+
+  testWidgets('dashboard fades content in on first render', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          onboardingCompletedProvider.overrideWith((ref) async => true),
+          userProfileSettingsProvider.overrideWith(
+            (ref) async => const UserProfileSettings(name: 'Yash'),
+          ),
+          dashboardProvider.overrideWith((ref) async => buildSnapshot()),
+        ],
+        child: const MaterialApp(home: DashboardScreen()),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    final settledFade = tester.widget<FadeTransition>(
+      find.byKey(const Key('dashboard-entry-fade')),
+    );
+    expect(settledFade.opacity.value, 1);
+    expect(find.text('Net Worth'), findsOneWidget);
+  });
 }

@@ -54,82 +54,91 @@ class _RecoverablePersonDetailScreenState
           final filteredItems = group.itemsForFilter(_filter);
           final dueDate = group.nearestDueDate;
 
-          return ListView(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            children: [
-              FinarcBalanceCard(
-                label: 'Remaining',
-                value: inr(group.remainingTotal),
-                subtitle:
-                    '${group.transactionCount} transactions • Base ${inr(group.originalTotal)} • Recovered ${inr(group.recoveredTotal)}',
-                trendLabel: dueDate == null
-                    ? null
-                    : 'Nearest due ${transactionDateLabel(dueDate, includeTimeForToday: false)}',
-                statusLabel: group.remainingTotal > 0 ? 'Open' : 'Clear',
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              FinarcPrimaryButton(
-                label: 'Record Recovery',
-                onPressed: () => _openRecordRecoveryDialog(group),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _FilterChip(
-                    label: 'All',
-                    selected: _filter == RecoverableSourceFilter.all,
-                    onTap: () => setState(() {
-                      _filter = RecoverableSourceFilter.all;
-                    }),
-                  ),
-                  _FilterChip(
-                    label: 'Card',
-                    selected: _filter == RecoverableSourceFilter.card,
-                    onTap: () => setState(() {
-                      _filter = RecoverableSourceFilter.card;
-                    }),
-                  ),
-                  _FilterChip(
-                    label: 'Bank / UPI',
-                    selected: _filter == RecoverableSourceFilter.bankUpi,
-                    onTap: () => setState(() {
-                      _filter = RecoverableSourceFilter.bankUpi;
-                    }),
-                  ),
-                  _FilterChip(
-                    label: 'Cash wallet',
-                    selected: _filter == RecoverableSourceFilter.cash,
-                    onTap: () => setState(() {
-                      _filter = RecoverableSourceFilter.cash;
-                    }),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.md),
-              FinarcCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          return RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(recoverablesSnapshotProvider);
+              await ref.read(recoverablesSnapshotProvider.future);
+            },
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(AppSpacing.md),
+              children: [
+                FinarcBalanceCard(
+                  label: 'Remaining',
+                  value: inr(group.remainingTotal),
+                  subtitle:
+                      '${group.transactionCount} transactions • Base ${inr(group.originalTotal)} • Recovered ${inr(group.recoveredTotal)}',
+                  trendLabel: dueDate == null
+                      ? null
+                      : 'Nearest due ${transactionDateLabel(dueDate, includeTimeForToday: false)}',
+                  statusLabel: group.remainingTotal > 0 ? 'Open' : 'Clear',
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                FinarcPrimaryButton(
+                  label: 'Record Recovery',
+                  onPressed: () => _openRecordRecoveryDialog(group),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
-                    const FinarcSectionHeader(title: 'Transactions'),
-                    const SizedBox(height: AppSpacing.xs),
-                    FinarcContainedList(
-                      itemCount: filteredItems.length,
-                      itemExtentEstimate: _embeddedTransactionEstimate,
-                      maxHeight: _embeddedTransactionHeight,
-                      emptyState: const FinarcEmptyState(
-                        title: 'No items for this filter',
-                        subtitle: 'Try another source tab.',
-                        icon: Icons.filter_alt_off_rounded,
-                      ),
-                      itemBuilder: (context, index) =>
-                          _RecoverableItemCard(item: filteredItems[index]),
+                    _FilterChip(
+                      label: 'All',
+                      selected: _filter == RecoverableSourceFilter.all,
+                      onTap: () => setState(() {
+                        _filter = RecoverableSourceFilter.all;
+                      }),
+                    ),
+                    _FilterChip(
+                      label: 'Card',
+                      selected: _filter == RecoverableSourceFilter.card,
+                      onTap: () => setState(() {
+                        _filter = RecoverableSourceFilter.card;
+                      }),
+                    ),
+                    _FilterChip(
+                      label: 'Bank / UPI',
+                      selected: _filter == RecoverableSourceFilter.bankUpi,
+                      onTap: () => setState(() {
+                        _filter = RecoverableSourceFilter.bankUpi;
+                      }),
+                    ),
+                    _FilterChip(
+                      label: 'Cash wallet',
+                      selected: _filter == RecoverableSourceFilter.cash,
+                      onTap: () => setState(() {
+                        _filter = RecoverableSourceFilter.cash;
+                      }),
                     ),
                   ],
                 ),
-              ),
-            ],
+                const SizedBox(height: AppSpacing.md),
+                FinarcCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const FinarcSectionHeader(title: 'Transactions'),
+                      const SizedBox(height: AppSpacing.xs),
+                      FinarcContainedList(
+                        itemCount: filteredItems.length,
+                        itemExtentEstimate: _embeddedTransactionEstimate,
+                        maxHeight: _embeddedTransactionHeight,
+                        physics: const NeverScrollableScrollPhysics(),
+                        showScrollbar: false,
+                        emptyState: FinarcEmptyState(
+                          title: 'No items for this filter',
+                          subtitle: 'Try another source tab.',
+                          icon: Icons.filter_alt_off_rounded,
+                        ),
+                        itemBuilder: (context, index) =>
+                            _RecoverableItemCard(item: filteredItems[index]),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           );
         },
       ),

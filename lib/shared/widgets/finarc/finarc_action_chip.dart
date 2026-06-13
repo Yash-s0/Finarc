@@ -34,13 +34,18 @@ class FinarcActionChip extends StatelessWidget {
               decoration: BoxDecoration(
                 color: selected
                     ? Colors.white.withValues(alpha: 0.2)
-                    : (isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft).withValues(alpha: 0.95),
+                    : (isDark
+                              ? AppColors.darkPrimarySoft
+                              : AppColors.lightPrimarySoft)
+                          .withValues(alpha: 0.95),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Icon(
                 icon,
                 size: 12,
-                color: selected ? Colors.white : (isDark ? AppColors.darkAccent : AppColors.lightAccent),
+                color: selected
+                    ? Colors.white
+                    : (isDark ? AppColors.darkAccent : AppColors.lightAccent),
               ),
             ),
       label: Text(label),
@@ -52,7 +57,8 @@ class FinarcActionChip extends StatelessWidget {
           : (isDark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh),
       side: BorderSide(
         color: selected
-            ? (isDark ? AppColors.darkAccent : AppColors.lightAccent).withValues(alpha: 0.9)
+            ? (isDark ? AppColors.darkAccent : AppColors.lightAccent)
+                  .withValues(alpha: 0.9)
             : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
       ),
       elevation: 0,

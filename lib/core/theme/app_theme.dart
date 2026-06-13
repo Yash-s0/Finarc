@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
@@ -46,6 +47,15 @@ class AppTheme {
       fontFamily: AppTextStyles.fontFamily,
       scaffoldBackgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
       splashFactory: InkSparkle.splashFactory,
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: ZoomPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.windows: ZoomPageTransitionsBuilder(),
+          TargetPlatform.linux: ZoomPageTransitionsBuilder(),
+        },
+      ),
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
         foregroundColor: scheme.onSurface,
@@ -90,6 +100,26 @@ class AppTheme {
             color: isDark ? AppColors.darkPrimary : AppColors.lightPrimary,
             width: 1.4,
           ),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: BorderSide(
+            color: isDark ? AppColors.darkError : AppColors.lightError,
+            width: 1.2,
+          ),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: BorderSide(
+            color: isDark ? AppColors.darkError : AppColors.lightError,
+            width: 1.6,
+          ),
+        ),
+        errorStyle: TextStyle(
+          fontFamily: AppTextStyles.fontFamily,
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+          color: isDark ? AppColors.darkError : AppColors.lightError,
         ),
       ),
       chipTheme: ChipThemeData(
@@ -153,6 +183,30 @@ class AppTheme {
         dragHandleColor: isDark ? AppColors.darkBorder : AppColors.lightBorder,
         showDragHandle: true,
       ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: isDark
+            ? AppColors.darkSurface
+            : AppColors.lightSurface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+          side: BorderSide(
+            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+          ),
+        ),
+        elevation: isDark ? 0 : 4,
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: isDark
+            ? AppColors.darkSurfaceHigh
+            : AppColors.lightText,
+        contentTextStyle: textTheme.bodyMedium?.copyWith(
+          color: isDark ? AppColors.darkText : AppColors.lightSurface,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: isDark
             ? AppColors.darkSurfaceLow
@@ -182,6 +236,21 @@ class AppTheme {
         }),
       ),
       dividerColor: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: scheme.primary,
+        linearTrackColor: isDark
+            ? AppColors.darkSurfaceHigh
+            : AppColors.lightSurfaceHigh,
+      ),
+      tabBarTheme: TabBarThemeData(
+        indicatorColor: scheme.primary,
+        labelColor: scheme.onSurface,
+        unselectedLabelColor: scheme.onSurface.withValues(alpha: 0.5),
+        indicatorSize: TabBarIndicatorSize.label,
+        dividerColor: Colors.transparent,
+        labelStyle: textTheme.labelLarge,
+        unselectedLabelStyle: textTheme.labelMedium,
+      ),
     );
   }
 }

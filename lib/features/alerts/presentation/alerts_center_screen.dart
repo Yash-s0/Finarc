@@ -34,130 +34,140 @@ class AlertsCenterScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Unread alerts: $unreadCount',
-                  style: Theme.of(context).textTheme.titleSmall,
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(alertsInboxProvider);
+          ref.invalidate(alertsUnreadCountProvider);
+          await ref.read(alertsInboxProvider.future);
+        },
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(AppSpacing.md),
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Unread alerts: $unreadCount',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
                 ),
-              ),
-              FinarcStatusBadge(
-                label: onlyUnread ? 'UNREAD' : 'ALL',
-                tone: onlyUnread
-                    ? FinarcStatusTone.warning
-                    : FinarcStatusTone.neutral,
-                compact: true,
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              FinarcActionChip(
-                label: 'Unread',
-                selected: onlyUnread,
-                onTap: () => ref.read(alertsOnlyUnreadProvider.notifier).state =
-                    !onlyUnread,
-              ),
-              FinarcActionChip(
-                label: 'Dismissed',
-                selected: includeDismissed,
-                onTap: () =>
-                    ref.read(alertsIncludeDismissedProvider.notifier).state =
-                        !includeDismissed,
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              FinarcActionChip(
-                label: 'All Types',
-                selected: type == null,
-                onTap: () =>
-                    ref.read(alertsTypeFilterProvider.notifier).state = null,
-              ),
-              ...AlertType.all.map(
-                (value) => FinarcActionChip(
-                  label: value,
-                  selected: type == value,
+                FinarcStatusBadge(
+                  label: onlyUnread ? 'UNREAD' : 'ALL',
+                  tone: onlyUnread
+                      ? FinarcStatusTone.warning
+                      : FinarcStatusTone.neutral,
+                  compact: true,
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FinarcActionChip(
+                  label: 'Unread',
+                  selected: onlyUnread,
                   onTap: () =>
-                      ref.read(alertsTypeFilterProvider.notifier).state = value,
+                      ref.read(alertsOnlyUnreadProvider.notifier).state =
+                          !onlyUnread,
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          ref
-              .watch(alertsInboxProvider)
-              .when(
-                loading: () => Column(
-                  children: const [
-                    FinarcLoadingSkeleton(height: 84),
-                    SizedBox(height: AppSpacing.xs),
-                    FinarcLoadingSkeleton(height: 84),
-                  ],
+                FinarcActionChip(
+                  label: 'Dismissed',
+                  selected: includeDismissed,
+                  onTap: () =>
+                      ref.read(alertsIncludeDismissedProvider.notifier).state =
+                          !includeDismissed,
                 ),
-                error: (e, _) => FinarcEmptyState(
-                  title: 'Unable to load alerts',
-                  subtitle: '$e',
-                  icon: Icons.error_outline,
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FinarcActionChip(
+                  label: 'All Types',
+                  selected: type == null,
+                  onTap: () =>
+                      ref.read(alertsTypeFilterProvider.notifier).state = null,
                 ),
-                data: (alerts) {
-                  if (alerts.isEmpty) {
-                    return const FinarcEmptyState(
-                      title: 'No alerts yet',
-                      subtitle:
-                          'Financial alerts and reminders will appear here.',
-                      icon: Icons.notifications_none_rounded,
-                    );
-                  }
-
-                  final today = <Alert>[];
-                  final earlier = <Alert>[];
-                  final now = DateTime.now();
-                  final todayStart = DateTime(now.year, now.month, now.day);
-
-                  for (final alert in alerts) {
-                    final created = DateTime(
-                      alert.createdAt.year,
-                      alert.createdAt.month,
-                      alert.createdAt.day,
-                    );
-                    if (created == todayStart) {
-                      today.add(alert);
-                    } else {
-                      earlier.add(alert);
-                    }
-                  }
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (today.isNotEmpty) ...[
-                        const FinarcSectionHeader(title: 'Today'),
-                        const SizedBox(height: AppSpacing.xs),
-                        ...today.map((a) => _tile(context, ref, a)),
-                        const SizedBox(height: AppSpacing.sm),
-                      ],
-                      if (earlier.isNotEmpty) ...[
-                        const FinarcSectionHeader(title: 'Earlier'),
-                        const SizedBox(height: AppSpacing.xs),
-                        ...earlier.map((a) => _tile(context, ref, a)),
-                      ],
+                ...AlertType.all.map(
+                  (value) => FinarcActionChip(
+                    label: value,
+                    selected: type == value,
+                    onTap: () =>
+                        ref.read(alertsTypeFilterProvider.notifier).state =
+                            value,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            ref
+                .watch(alertsInboxProvider)
+                .when(
+                  loading: () => Column(
+                    children: const [
+                      FinarcLoadingSkeleton(height: 84),
+                      SizedBox(height: AppSpacing.xs),
+                      FinarcLoadingSkeleton(height: 84),
                     ],
-                  );
-                },
-              ),
-        ],
+                  ),
+                  error: (e, _) => FinarcEmptyState(
+                    title: 'Unable to load alerts',
+                    subtitle: '$e',
+                    icon: Icons.error_outline,
+                  ),
+                  data: (alerts) {
+                    if (alerts.isEmpty) {
+                      return FinarcEmptyState(
+                        title: 'No alerts yet',
+                        subtitle:
+                            'Financial alerts and reminders will appear here.',
+                        icon: Icons.notifications_none_rounded,
+                      );
+                    }
+
+                    final today = <Alert>[];
+                    final earlier = <Alert>[];
+                    final now = DateTime.now();
+                    final todayStart = DateTime(now.year, now.month, now.day);
+
+                    for (final alert in alerts) {
+                      final created = DateTime(
+                        alert.createdAt.year,
+                        alert.createdAt.month,
+                        alert.createdAt.day,
+                      );
+                      if (created == todayStart) {
+                        today.add(alert);
+                      } else {
+                        earlier.add(alert);
+                      }
+                    }
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (today.isNotEmpty) ...[
+                          const FinarcSectionHeader(title: 'Today'),
+                          const SizedBox(height: AppSpacing.xs),
+                          ...today.map((a) => _tile(context, ref, a)),
+                          const SizedBox(height: AppSpacing.sm),
+                        ],
+                        if (earlier.isNotEmpty) ...[
+                          const FinarcSectionHeader(title: 'Earlier'),
+                          const SizedBox(height: AppSpacing.xs),
+                          ...earlier.map((a) => _tile(context, ref, a)),
+                        ],
+                      ],
+                    );
+                  },
+                ),
+          ],
+        ),
       ),
     );
   }

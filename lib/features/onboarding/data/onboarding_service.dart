@@ -28,24 +28,25 @@ class OnboardingService {
     }
 
     final row = await _ensureSettingsRow();
-    await (_db.update(_db.appSettings)..where((t) => t.id.equals(row.id)))
-        .write(
-          AppSettingsCompanion(
-            hasCompletedOnboarding: Value(completed),
-            userName: userName == null
-                ? const Value.absent()
-                : Value(_normalize(userName)),
-            monthlySalary: monthlySalary == null
-                ? const Value.absent()
-                : Value(monthlySalary),
-            salaryCreditDay: salaryCreditDay == null
-                ? const Value.absent()
-                : Value(salaryCreditDay),
-            companyName: companyName == null
-                ? const Value.absent()
-                : Value(_normalize(companyName)),
-          ),
-        );
+    await (_db.update(
+      _db.appSettings,
+    )..where((t) => t.id.equals(row.id))).write(
+      AppSettingsCompanion(
+        hasCompletedOnboarding: Value(completed),
+        userName: userName == null
+            ? const Value.absent()
+            : Value(_normalize(userName)),
+        monthlySalary: monthlySalary == null
+            ? const Value.absent()
+            : Value(monthlySalary),
+        salaryCreditDay: salaryCreditDay == null
+            ? const Value.absent()
+            : Value(salaryCreditDay),
+        companyName: companyName == null
+            ? const Value.absent()
+            : Value(_normalize(companyName)),
+      ),
+    );
   }
 
   String? _normalize(String? value) {

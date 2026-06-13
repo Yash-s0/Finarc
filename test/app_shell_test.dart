@@ -65,10 +65,10 @@ void main() {
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(Icons.bolt_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.add), findsOneWidget);
 
     router.go('/cards');
     await tester.pumpAndSettle();
-    expect(find.byIcon(Icons.bolt_rounded), findsNothing);
+    expect(find.byIcon(Icons.add), findsNothing);
   });
 }

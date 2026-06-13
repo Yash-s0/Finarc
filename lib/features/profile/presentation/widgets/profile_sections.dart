@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_radius.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../shared/widgets/finarc/finarc_widgets.dart';
@@ -41,30 +43,73 @@ class ProfileHeaderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final trimmedName = name?.trim();
     final hasName = trimmedName != null && trimmedName.isNotEmpty;
     final trimmedCompany = companyName?.trim();
     final hasCompany = trimmedCompany != null && trimmedCompany.isNotEmpty;
     return FinarcCard(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: isDark
+            ? [
+                AppColors.darkHeroGradientStart.withValues(alpha: 0.52),
+                AppColors.darkHeroGradientEnd,
+              ]
+            : [AppColors.lightHeroGradientStart, AppColors.lightSurface],
+      ),
+      borderColor: isDark
+          ? AppColors.darkBorder.withValues(alpha: 0.9)
+          : AppColors.lightPrimary.withValues(alpha: 0.16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Profile & Salary',
-            style: Theme.of(context).textTheme.titleMedium,
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? AppColors.darkPrimarySoft
+                      : AppColors.lightPrimarySoft,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Icon(
+                  Icons.person_outline_rounded,
+                  color: isDark ? AppColors.darkAccent : AppColors.lightPrimary,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Profile & Salary',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: AppSpacing.xs),
-          Text('Name: ${hasName ? trimmedName : 'Add your name'}'),
-          Text('Company: ${hasCompany ? trimmedCompany : 'Add company'}'),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Name: ${hasName ? trimmedName : 'Add your name'}',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          Text(
+            'Company: ${hasCompany ? trimmedCompany : 'Add company'}',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
           Text(
             monthlySalary != null
                 ? 'Monthly salary: ${inr(monthlySalary!)}'
                 : 'Monthly salary: Add salary',
+            style: Theme.of(context).textTheme.bodyMedium,
           ),
           Text(
             salaryCreditDay != null
                 ? 'Salary credit day: $salaryCreditDay'
                 : 'Salary credit day: Add salary day',
+            style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: AppSpacing.sm),
           FinarcSecondaryButton(
@@ -777,10 +822,7 @@ class ThemeSettingsSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Appearance',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          Text('Appearance', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: AppSpacing.xxs),
           Text(
             'Choose your preferred theme.',
@@ -810,7 +852,9 @@ class ThemeSettingsSection extends StatelessWidget {
               onThemeChanged(newSelection.first);
             },
             style: SegmentedButton.styleFrom(
-              selectedBackgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+              selectedBackgroundColor: Theme.of(
+                context,
+              ).colorScheme.primary.withValues(alpha: 0.15),
               selectedForegroundColor: Theme.of(context).colorScheme.primary,
             ),
           ),

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-class FinarcTextField extends StatelessWidget {
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_radius.dart';
+
+class FinarcTextField extends StatefulWidget {
   const FinarcTextField({
     super.key,
     this.controller,
@@ -39,44 +42,95 @@ class FinarcTextField extends StatelessWidget {
   final FocusNode? focusNode;
   final FocusNode? nextFocusNode;
 
+  @override
+  State<FinarcTextField> createState() => _FinarcTextFieldState();
+}
+
+class _FinarcTextFieldState extends State<FinarcTextField> {
+  FocusNode? _ownedFocusNode;
+
+  FocusNode get _focusNode =>
+      widget.focusNode ?? (_ownedFocusNode ??= FocusNode());
+
+  @override
+  void dispose() {
+    _ownedFocusNode?.dispose();
+    super.dispose();
+  }
+
   TextInputAction? _resolvedTextInputAction() {
-    if (textInputAction != null) return textInputAction;
-    if (readOnly) return null;
-    if (maxLines == 1) return TextInputAction.next;
+    if (widget.textInputAction != null) return widget.textInputAction;
+    if (widget.readOnly) return null;
+    if (widget.maxLines == 1) return TextInputAction.next;
     return TextInputAction.newline;
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final resolvedTextInputAction = _resolvedTextInputAction();
-
-    return TextFormField(
-      controller: controller,
-      focusNode: focusNode,
-      readOnly: readOnly,
-      keyboardType: keyboardType,
-      textInputAction: resolvedTextInputAction,
-      maxLines: maxLines,
-      maxLength: maxLength,
-      validator: validator,
-      onTap: onTap,
-      onChanged: onChanged,
-      onEditingComplete: () {
-        if (nextFocusNode != null) {
-          FocusScope.of(context).requestFocus(nextFocusNode);
-          return;
-        }
-        if (resolvedTextInputAction == TextInputAction.done) {
-          FocusScope.of(context).unfocus();
-        }
+    return AnimatedBuilder(
+      animation: _focusNode,
+      builder: (context, _) {
+        final focused = _focusNode.hasFocus;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            boxShadow: focused
+                ? [
+                    BoxShadow(
+                      color: Theme.of(context).colorScheme.primary.withValues(
+                        alpha: isDark ? 0.18 : 0.10,
+                      ),
+                      blurRadius: 18,
+                      offset: const Offset(0, 6),
+                    ),
+                  ]
+                : null,
+          ),
+          child: TextFormField(
+            controller: widget.controller,
+            focusNode: _focusNode,
+            readOnly: widget.readOnly,
+            keyboardType: widget.keyboardType,
+            textInputAction: resolvedTextInputAction,
+            maxLines: widget.maxLines,
+            maxLength: widget.maxLength,
+            validator: widget.validator,
+            onTap: widget.onTap,
+            onChanged: widget.onChanged,
+            onEditingComplete: () {
+              if (widget.nextFocusNode != null) {
+                FocusScope.of(context).requestFocus(widget.nextFocusNode);
+                return;
+              }
+              if (resolvedTextInputAction == TextInputAction.done) {
+                FocusScope.of(context).unfocus();
+              }
+            },
+            inputFormatters: widget.inputFormatters,
+            decoration: InputDecoration(
+              labelText: widget.label,
+              hintText: widget.hint,
+              suffixIcon: widget.suffixIcon,
+              prefixIcon: widget.prefixIcon,
+              floatingLabelBehavior: FloatingLabelBehavior.auto,
+              prefixIconColor: focused
+                  ? Theme.of(context).colorScheme.primary
+                  : (isDark
+                        ? AppColors.darkTextMuted
+                        : AppColors.lightTextMuted),
+              suffixIconColor: focused
+                  ? Theme.of(context).colorScheme.primary
+                  : (isDark
+                        ? AppColors.darkTextMuted
+                        : AppColors.lightTextMuted),
+            ),
+          ),
+        );
       },
-      inputFormatters: inputFormatters,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        suffixIcon: suffixIcon,
-        prefixIcon: prefixIcon,
-      ),
     );
   }
 }

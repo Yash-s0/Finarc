@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/config/app_mode.dart';
-import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_shadows.dart';
 import '../../core/theme/app_spacing.dart';
@@ -70,8 +69,14 @@ class _AppShellState extends State<AppShell> {
         children: [
           CircleAvatar(
             radius: 17,
-            backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
-            child: Icon(icon, size: 17, color: Theme.of(context).colorScheme.primary),
+            backgroundColor: Theme.of(
+              context,
+            ).colorScheme.primary.withValues(alpha: 0.15),
+            child: Icon(
+              icon,
+              size: 17,
+              color: Theme.of(context).colorScheme.primary,
+            ),
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
@@ -159,9 +164,7 @@ class _AppShellState extends State<AppShell> {
             decoration: BoxDecoration(
               color: Theme.of(context).navigationBarTheme.backgroundColor,
               border: Border(
-                top: BorderSide(
-                  color: Theme.of(context).dividerColor,
-                ),
+                top: BorderSide(color: Theme.of(context).dividerColor),
               ),
             ),
             child: NavigationBar(

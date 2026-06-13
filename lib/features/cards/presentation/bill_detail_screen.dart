@@ -56,7 +56,7 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
         body: ListView(
           padding: const EdgeInsets.all(AppSpacing.md),
           children: [
-            const FinarcEmptyState(
+            FinarcEmptyState(
               title: 'Invalid bill route',
               subtitle: 'This bill link is invalid.',
               icon: Icons.error_outline,
@@ -82,7 +82,7 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
         body: ListView(
           padding: const EdgeInsets.all(AppSpacing.md),
           children: [
-            const FinarcEmptyState(
+            FinarcEmptyState(
               title: 'Bill not found',
               subtitle: 'This bill may have been deleted or already cleared.',
               icon: Icons.receipt_long_outlined,
@@ -113,162 +113,175 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
 
         return FinarcScaffold(
           appBar: const FinarcAppBar(title: 'Bill Detail'),
-          body: ListView(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            children: [
-              FinarcCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
+          body: RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(billDetailProvider(widget.billId));
+              ref.invalidate(cardDetailProvider(widget.cardId));
+              await ref.read(billDetailProvider(widget.billId).future);
+            },
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(AppSpacing.md),
+              children: [
+                FinarcCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Statement',
+                              style: Theme.of(context).textTheme.titleSmall,
+                            ),
+                          ),
+                          FinarcStatusBadge(
+                            label: bill.status.toUpperCase(),
+                            tone: tone,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      _metricLine(
+                        context,
+                        'Bill amount',
+                        inr(bill.billedAmount),
+                        emphasize: true,
+                      ),
+                      _metricLine(
+                        context,
+                        'Paid amount',
+                        inr(bill.paidAmount),
+                        valueColor: AppColors.darkSuccess,
+                      ),
+                      _metricLine(
+                        context,
+                        'Remaining due',
+                        inr(pendingAmount),
+                        valueColor: pendingAmount == 0
+                            ? AppColors.darkSuccess
+                            : AppColors.darkWarning,
+                      ),
+                      _metricLine(
+                        context,
+                        'Due date',
+                        _dateText(bill.dueDate),
+                        isAmount: false,
+                      ),
+                      _metricLine(
+                        context,
+                        'Countdown',
+                        _countdownText(dueDays),
+                        isAmount: false,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                FinarcCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const FinarcSectionHeader(title: 'Payment'),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        pendingAmount <= 0
+                            ? 'This statement is fully paid.'
+                            : bill.paidAmount > 0
+                            ? 'Paid ${inr(bill.paidAmount)} so far. Record another payment for the remaining due.'
+                            : 'Record a full or partial bill payment with source, date, and optional reference.',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      if (!hasAnyPaymentSource)
+                        Padding(
+                          padding: const EdgeInsets.only(top: AppSpacing.xs),
                           child: Text(
-                            'Statement',
-                            style: Theme.of(context).textTheme.titleSmall,
+                            'Add a bank account or cash wallet before recording a card payment.',
+                            style: Theme.of(context).textTheme.bodyMedium,
                           ),
                         ),
-                        FinarcStatusBadge(
-                          label: bill.status.toUpperCase(),
-                          tone: tone,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    _metricLine(
-                      context,
-                      'Bill amount',
-                      inr(bill.billedAmount),
-                      emphasize: true,
-                    ),
-                    _metricLine(
-                      context,
-                      'Paid amount',
-                      inr(bill.paidAmount),
-                      valueColor: AppColors.darkSuccess,
-                    ),
-                    _metricLine(
-                      context,
-                      'Remaining due',
-                      inr(pendingAmount),
-                      valueColor: pendingAmount == 0
-                          ? AppColors.darkSuccess
-                          : AppColors.darkWarning,
-                    ),
-                    _metricLine(
-                      context,
-                      'Due date',
-                      _dateText(bill.dueDate),
-                      isAmount: false,
-                    ),
-                    _metricLine(
-                      context,
-                      'Countdown',
-                      _countdownText(dueDays),
-                      isAmount: false,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              FinarcCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const FinarcSectionHeader(title: 'Payment'),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      pendingAmount <= 0
-                          ? 'This statement is fully paid.'
-                          : bill.paidAmount > 0
-                          ? 'Paid ${inr(bill.paidAmount)} so far. Record another payment for the remaining due.'
-                          : 'Record a full or partial bill payment with source, date, and optional reference.',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    if (!hasAnyPaymentSource)
-                      Padding(
-                        padding: const EdgeInsets.only(top: AppSpacing.xs),
-                        child: Text(
-                          'Add a bank account or cash wallet before recording a card payment.',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
+                      const SizedBox(height: AppSpacing.sm),
+                      FinarcPrimaryButton(
+                        onPressed: pendingAmount <= 0 || !hasAnyPaymentSource
+                            ? null
+                            : () => _openPaymentSheet(
+                                context,
+                                data: data,
+                                bill: bill,
+                                remainingDue: pendingAmount,
+                              ),
+                        label: pendingAmount <= 0 ? 'Paid' : 'Record Payment',
+                        icon: pendingAmount <= 0
+                            ? Icons.check_circle_outline
+                            : Icons.payments_outlined,
                       ),
-                    const SizedBox(height: AppSpacing.sm),
-                    FinarcPrimaryButton(
-                      onPressed: pendingAmount <= 0 || !hasAnyPaymentSource
-                          ? null
-                          : () => _openPaymentSheet(
-                              context,
-                              data: data,
-                              bill: bill,
-                              remainingDue: pendingAmount,
+                      if (paymentSources.isEmpty && hasAnyPaymentSource)
+                        Padding(
+                          padding: const EdgeInsets.only(top: AppSpacing.xs),
+                          child: Text(
+                            'No ${_paymentSourceType == PaymentSourceType.cash ? 'cash wallet' : 'bank account'} available for the selected payment mode.',
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(color: AppColors.darkWarning),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                FinarcCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const FinarcSectionHeader(title: 'Transactions Included'),
+                      const SizedBox(height: AppSpacing.xs),
+                      FinarcContainedList(
+                        itemCount: data.txns.length,
+                        itemExtentEstimate: _embeddedTransactionEstimate,
+                        maxHeight: _embeddedTransactionHeight,
+                        emptyHeight: 176,
+                        physics: const NeverScrollableScrollPhysics(),
+                        showScrollbar: false,
+                        emptyState: FinarcEmptyState(
+                          title: 'No transactions in this bill',
+                          subtitle:
+                              'Statement transactions will appear here after bill generation.',
+                          icon: Icons.receipt_long_outlined,
+                        ),
+                        itemBuilder: (context, index) {
+                          final t = data.txns[index];
+                          return FinarcTransactionTile(
+                            title: t.title,
+                            subtitle: t.category,
+                            meta: FinarcTransactionPresentation.meta(
+                              date: t.transactionDate,
+                              source: 'Card • Statement #${widget.billId}',
                             ),
-                      label: pendingAmount <= 0 ? 'Paid' : 'Record Payment',
-                      icon: pendingAmount <= 0
-                          ? Icons.check_circle_outline
-                          : Icons.payments_outlined,
-                    ),
-                    if (paymentSources.isEmpty && hasAnyPaymentSource)
-                      Padding(
-                        padding: const EdgeInsets.only(top: AppSpacing.xs),
-                        child: Text(
-                          'No ${_paymentSourceType == PaymentSourceType.cash ? 'cash wallet' : 'bank account'} available for the selected payment mode.',
-                          style: Theme.of(context).textTheme.labelMedium
-                              ?.copyWith(color: AppColors.darkWarning),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              FinarcCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const FinarcSectionHeader(title: 'Transactions Included'),
-                    const SizedBox(height: AppSpacing.xs),
-                    FinarcContainedList(
-                      itemCount: data.txns.length,
-                      itemExtentEstimate: _embeddedTransactionEstimate,
-                      maxHeight: _embeddedTransactionHeight,
-                      emptyHeight: 176,
-                      emptyState: const FinarcEmptyState(
-                        title: 'No transactions in this bill',
-                        subtitle:
-                            'Statement transactions will appear here after bill generation.',
-                        icon: Icons.receipt_long_outlined,
-                      ),
-                      itemBuilder: (context, index) {
-                        final t = data.txns[index];
-                        return FinarcTransactionTile(
-                          title: t.title,
-                          subtitle: t.category,
-                          meta: FinarcTransactionPresentation.meta(
-                            date: t.transactionDate,
-                            source: 'Card • Statement #${widget.billId}',
-                          ),
-                          amount:
-                              '${t.type == 'refund' ? '+' : '-'}${inr(t.amount)}',
-                          amountColor: t.type == 'refund'
-                              ? AppColors.darkSuccess
-                              : AppColors.darkError,
-                          badges: [
-                            FinarcTransactionPresentation.billedBadge(
-                              billed: true,
+                            amount:
+                                '${t.type == 'refund' ? '+' : '-'}${inr(t.amount)}',
+                            amountColor: t.type == 'refund'
+                                ? AppColors.darkSuccess
+                                : AppColors.darkError,
+                            badges: [
+                              FinarcTransactionPresentation.billedBadge(
+                                billed: true,
+                              ),
+                            ],
+                            prefix: const CircleAvatar(
+                              radius: 16,
+                              backgroundColor: AppColors.darkPrimarySoft,
+                              child: Icon(
+                                Icons.receipt_long_outlined,
+                                size: 15,
+                              ),
                             ),
-                          ],
-                          prefix: const CircleAvatar(
-                            radius: 16,
-                            backgroundColor: AppColors.darkPrimarySoft,
-                            child: Icon(Icons.receipt_long_outlined, size: 15),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },

@@ -104,9 +104,7 @@ class DashboardGreetingHeader extends StatelessWidget {
                   : AppColors.lightSurface,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                color: isDark
-                    ? AppColors.darkBorder
-                    : AppColors.lightBorder,
+                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
               ),
             ),
             child: Icon(
@@ -147,6 +145,12 @@ class NetWorthHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryFg = isDark ? Colors.white : AppColors.lightText;
+    final secondaryFg = isDark ? Colors.white70 : AppColors.lightTextMuted;
+    final successColor = isDark
+        ? AppColors.darkSuccess
+        : AppColors.lightSuccess;
     return GestureDetector(
       onTap: () => context.push('/dashboard/net-worth-breakdown'),
       child: FinarcCard(
@@ -154,37 +158,40 @@ class NetWorthHeroCard extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            AppColors.darkPrimarySoft.withValues(alpha: 0.72),
-            AppColors.darkSurfaceHigh,
-          ],
+          colors: isDark
+              ? [
+                  AppColors.darkHeroGradientStart.withValues(alpha: 0.72),
+                  AppColors.darkHeroGradientEnd,
+                ]
+              : [
+                  AppColors.lightHeroGradientStart,
+                  AppColors.lightHeroGradientEnd,
+                ],
         ),
-        borderColor: AppColors.darkBorder.withValues(alpha: 0.9),
+        borderColor: isDark
+            ? AppColors.darkBorder.withValues(alpha: 0.9)
+            : AppColors.lightPrimary.withValues(alpha: 0.2),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Net Worth',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: Colors.white70,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(color: secondaryFg),
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
               inr(data.netWorth),
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
+                fontWeight: FontWeight.w800,
+                color: primaryFg,
+              ),
             ),
             const SizedBox(height: AppSpacing.xs),
             Row(
               children: [
-                const Icon(
-                  Icons.trending_up_rounded,
-                  size: 16,
-                  color: AppColors.darkSuccess,
-                ),
+                Icon(Icons.trending_up_rounded, size: 16, color: successColor),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
@@ -192,7 +199,7 @@ class NetWorthHeroCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.darkSuccess,
+                      color: successColor,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -236,8 +243,13 @@ class _MonthlySpendTrendChart extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final mutedColor = isDark
+        ? AppColors.darkTextMuted.withValues(alpha: 0.72)
+        : AppColors.lightTextMuted.withValues(alpha: 0.72);
+
     return CustomPaint(
-      painter: _MonthlySpendTrendPainter(points),
+      painter: _MonthlySpendTrendPainter(points, isDark: isDark),
       child: Align(
         alignment: Alignment.bottomCenter,
         child: Row(
@@ -248,9 +260,9 @@ class _MonthlySpendTrendChart extends StatelessWidget {
                   child: Text(
                     _monthShort(point.month),
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppColors.darkTextMuted.withValues(alpha: 0.72),
-                    ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelSmall?.copyWith(color: mutedColor),
                   ),
                 ),
               )
@@ -280,9 +292,10 @@ class _MonthlySpendTrendChart extends StatelessWidget {
 }
 
 class _MonthlySpendTrendPainter extends CustomPainter {
-  _MonthlySpendTrendPainter(this.points);
+  _MonthlySpendTrendPainter(this.points, {this.isDark = true});
 
   final List<MonthlySpendPoint> points;
+  final bool isDark;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -306,15 +319,18 @@ class _MonthlySpendTrendPainter extends CustomPainter {
       }
     }
 
+    final accentColor = isDark ? AppColors.darkAccent : AppColors.lightPrimary;
+    final lineStartColor = isDark ? AppColors.darkBlue : AppColors.lightPrimary;
+
     final glowPaint = Paint()
-      ..color = AppColors.darkAccent.withValues(alpha: 0.24)
+      ..color = accentColor.withValues(alpha: 0.24)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 6
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
     final linePaint = Paint()
-      ..shader = const LinearGradient(
-        colors: [AppColors.darkBlue, AppColors.darkAccent],
+      ..shader = LinearGradient(
+        colors: [lineStartColor, accentColor],
       ).createShader(Rect.fromLTWH(0, 0, size.width, chartHeight))
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.5
@@ -327,17 +343,13 @@ class _MonthlySpendTrendPainter extends CustomPainter {
     final last = path.computeMetrics().last;
     final tangent = last.getTangentForOffset(last.length);
     if (tangent != null) {
-      canvas.drawCircle(
-        tangent.position,
-        3.5,
-        Paint()..color = AppColors.darkAccent,
-      );
+      canvas.drawCircle(tangent.position, 3.5, Paint()..color = accentColor);
     }
   }
 
   @override
   bool shouldRepaint(covariant _MonthlySpendTrendPainter oldDelegate) {
-    return oldDelegate.points != points;
+    return oldDelegate.points != points || oldDelegate.isDark != isDark;
   }
 }
 
@@ -412,7 +424,10 @@ class DashboardMetricGrid extends StatelessWidget {
         value: inr(data.bankBalance),
         icon: Icons.account_balance_rounded,
         iconColor: isDark ? AppColors.darkMint : AppColors.lightSuccess,
-        iconBackgroundColor: (isDark ? AppColors.darkMint : AppColors.lightSuccess).withValues(alpha: 0.14),
+        iconBackgroundColor:
+            (isDark ? AppColors.darkMint : AppColors.lightSuccess).withValues(
+              alpha: 0.14,
+            ),
         onTap: () => context.push('/accounts'),
       ),
       FinarcMetricCard(
@@ -420,7 +435,10 @@ class DashboardMetricGrid extends StatelessWidget {
         value: inr(data.cardDues),
         icon: Icons.credit_card_rounded,
         iconColor: isDark ? AppColors.darkError : AppColors.lightError,
-        iconBackgroundColor: (isDark ? AppColors.darkError : AppColors.lightError).withValues(alpha: 0.14),
+        iconBackgroundColor:
+            (isDark ? AppColors.darkError : AppColors.lightError).withValues(
+              alpha: 0.14,
+            ),
         onTap: () => context.push('/cards'),
       ),
       FinarcMetricCard(
@@ -428,7 +446,9 @@ class DashboardMetricGrid extends StatelessWidget {
         value: inr(data.cashInHand),
         icon: Icons.wallet_rounded,
         iconColor: isDark ? AppColors.darkWarning : AppColors.lightWarning,
-        iconBackgroundColor: (isDark ? AppColors.darkWarning : AppColors.lightWarning).withValues(alpha: 0.14),
+        iconBackgroundColor:
+            (isDark ? AppColors.darkWarning : AppColors.lightWarning)
+                .withValues(alpha: 0.14),
         onTap: () => context.push('/accounts'),
       ),
       FinarcMetricCard(
@@ -436,7 +456,10 @@ class DashboardMetricGrid extends StatelessWidget {
         value: inr(data.loansOutstanding),
         icon: Icons.account_balance_wallet_outlined,
         iconColor: isDark ? AppColors.darkOrange : AppColors.lightWarning,
-        iconBackgroundColor: (isDark ? AppColors.darkOrange : AppColors.lightWarning).withValues(alpha: 0.14),
+        iconBackgroundColor:
+            (isDark ? AppColors.darkOrange : AppColors.lightWarning).withValues(
+              alpha: 0.14,
+            ),
         onTap: () => context.push('/loans'),
       ),
       FinarcMetricCard(
@@ -444,7 +467,10 @@ class DashboardMetricGrid extends StatelessWidget {
         value: inr(data.recoverableAmount),
         icon: Icons.call_received_rounded,
         iconColor: isDark ? AppColors.darkAccent : AppColors.lightAccent,
-        iconBackgroundColor: (isDark ? AppColors.darkAccent : AppColors.lightAccent).withValues(alpha: 0.14),
+        iconBackgroundColor:
+            (isDark ? AppColors.darkAccent : AppColors.lightAccent).withValues(
+              alpha: 0.14,
+            ),
         onTap: () => context.push('/recoverables'),
       ),
       FinarcMetricCard(
@@ -452,7 +478,10 @@ class DashboardMetricGrid extends StatelessWidget {
         value: inr(data.payableAmount),
         icon: Icons.receipt_long_rounded,
         iconColor: isDark ? AppColors.darkOrange : AppColors.lightWarning,
-        iconBackgroundColor: (isDark ? AppColors.darkOrange : AppColors.lightWarning).withValues(alpha: 0.14),
+        iconBackgroundColor:
+            (isDark ? AppColors.darkOrange : AppColors.lightWarning).withValues(
+              alpha: 0.14,
+            ),
         onTap: () => context.push('/analytics'),
       ),
     ];
@@ -508,7 +537,9 @@ class PendingConfirmationsCard extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 18,
-            backgroundColor: isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft,
+            backgroundColor: isDark
+                ? AppColors.darkPrimarySoft
+                : AppColors.lightPrimarySoft,
             child: const Icon(Icons.notification_important_outlined, size: 18),
           ),
           const SizedBox(width: AppSpacing.sm),
@@ -558,7 +589,9 @@ class DueSoonCard extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 18,
-            backgroundColor: isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft,
+            backgroundColor: isDark
+                ? AppColors.darkPrimarySoft
+                : AppColors.lightPrimarySoft,
             child: const Icon(Icons.event_busy_outlined, size: 18),
           ),
           const SizedBox(width: AppSpacing.sm),
@@ -655,7 +688,7 @@ class RecentTransactionsSection extends StatelessWidget {
           FinarcContainedList(
             itemCount: items.length,
             itemExtentEstimate: _compactTileEstimate,
-            emptyState: const FinarcEmptyState(
+            emptyState: FinarcEmptyState(
               title: 'No transactions yet',
               subtitle: 'Add your first expense from quick actions.',
             ),
@@ -714,10 +747,18 @@ class RecentTransactionsSection extends StatelessWidget {
 
   static Color _avatarColor(String category, bool isDark) {
     final key = category.trim().toLowerCase();
-    if (key.contains('food')) return isDark ? AppColors.darkOrange : AppColors.lightWarning;
-    if (key.contains('travel')) return isDark ? AppColors.darkBlue : AppColors.lightAccent;
-    if (key.contains('bill')) return isDark ? AppColors.darkAccent : AppColors.lightAccent;
-    if (key.contains('shop')) return isDark ? AppColors.darkPink : AppColors.lightError;
+    if (key.contains('food')) {
+      return isDark ? AppColors.darkOrange : AppColors.lightWarning;
+    }
+    if (key.contains('travel')) {
+      return isDark ? AppColors.darkBlue : AppColors.lightAccent;
+    }
+    if (key.contains('bill')) {
+      return isDark ? AppColors.darkAccent : AppColors.lightAccent;
+    }
+    if (key.contains('shop')) {
+      return isDark ? AppColors.darkPink : AppColors.lightError;
+    }
     return isDark ? AppColors.darkMint : AppColors.lightSuccess;
   }
 
@@ -745,7 +786,9 @@ class AnalyticsCtaCard extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 18,
-            backgroundColor: isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft,
+            backgroundColor: isDark
+                ? AppColors.darkPrimarySoft
+                : AppColors.lightPrimarySoft,
             child: const Icon(Icons.insights_outlined, size: 18),
           ),
           const SizedBox(width: AppSpacing.sm),
@@ -753,10 +796,16 @@ class AnalyticsCtaCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('View Reports'),
+                Text(
+                  'View Reports',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
                 const SizedBox(height: 2),
                 Text(
                   'Monthly spend ${inr(monthlySpends)} • Open analytics dashboard',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
               ],
             ),
@@ -839,10 +888,11 @@ class DashboardFreshStartGate extends StatelessWidget {
                     : AppColors.lightPrimarySoft,
                 child: const Icon(Icons.offline_bolt_rounded, size: 18),
               ),
-              SizedBox(width: AppSpacing.sm),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
                   'Offline-first and local-only. No cloud sync. Data stays on this device.',
+                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ),
             ],

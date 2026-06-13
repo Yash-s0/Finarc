@@ -27,224 +27,242 @@ class AccountsOverviewScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: state.when(
-        loading: () => ListView(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          children: const [
-            FinarcLoadingSkeleton(height: 190),
-            SizedBox(height: AppSpacing.sm),
-            FinarcLoadingSkeleton(height: 144),
-          ],
-        ),
-        error: (e, _) => Center(child: Text('Error: $e')),
-        data: (data) => ListView(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          children: [
-            Text(
-              'Liquid assets',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            FinarcCard(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        'TOTAL LIQUID BALANCE',
-                        style: Theme.of(context).textTheme.labelSmall,
-                      ),
-                      const Spacer(),
-                      FinarcStatusBadge(
-                        label: data.liquid >= 0 ? 'Stable' : 'Attention',
-                        tone: data.liquid >= 0
-                            ? FinarcStatusTone.success
-                            : FinarcStatusTone.warning,
-                        compact: true,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    inr(data.liquid),
-                    style: AppTextStyles.amountStyle(
-                      color: Theme.of(context).colorScheme.onSurface,
-                      size: 32,
-                      weight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  const Divider(height: 1),
-                  const SizedBox(height: AppSpacing.sm),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _breakdown(
-                          context,
-                          'Banks',
-                          inr(data.bankTotal),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: _breakdown(context, 'Cash', inr(data.cashTotal)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  FinarcPrimaryButton(
-                    onPressed: () => context.push('/accounts/transfer'),
-                    icon: Icons.swap_horiz,
-                    label: 'Quick Transfer',
-                  ),
-                ],
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(accountsOverviewProvider);
+          await ref.read(accountsOverviewProvider.future);
+        },
+        child: state.when(
+          loading: () => ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(AppSpacing.md),
+            children: const [
+              FinarcLoadingSkeleton(height: 190),
+              SizedBox(height: AppSpacing.sm),
+              FinarcLoadingSkeleton(height: 144),
+            ],
+          ),
+          error: (e, _) => ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [Center(child: Text('Error: $e'))],
+          ),
+          data: (data) => ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(AppSpacing.md),
+            children: [
+              Text(
+                'Liquid assets',
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
-            ),
-            if (data.banks.isEmpty && data.wallets.isEmpty) ...[
-              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: AppSpacing.md),
               FinarcCard(
+                padding: const EdgeInsets.all(AppSpacing.lg),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const FinarcSectionHeader(title: 'Get Started'),
+                    Row(
+                      children: [
+                        Text(
+                          'TOTAL LIQUID BALANCE',
+                          style: Theme.of(context).textTheme.labelSmall,
+                        ),
+                        const Spacer(),
+                        FinarcStatusBadge(
+                          label: data.liquid >= 0 ? 'Stable' : 'Attention',
+                          tone: data.liquid >= 0
+                              ? FinarcStatusTone.success
+                              : FinarcStatusTone.warning,
+                          compact: true,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      inr(data.liquid),
+                      style: AppTextStyles.amountStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        size: 32,
+                        weight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    const Divider(height: 1),
+                    const SizedBox(height: AppSpacing.sm),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _breakdown(
+                            context,
+                            'Banks',
+                            inr(data.bankTotal),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: _breakdown(
+                            context,
+                            'Cash',
+                            inr(data.cashTotal),
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: AppSpacing.sm),
                     FinarcPrimaryButton(
-                      onPressed: () => context.push('/accounts/add?type=bank'),
-                      icon: Icons.account_balance_outlined,
-                      label: 'Add Bank Account',
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    FinarcSecondaryButton(
-                      onPressed: () => context.push('/accounts/add?type=cash'),
-                      icon: Icons.account_balance_wallet_outlined,
-                      label: 'Add Cash Wallet',
+                      onPressed: () => context.push('/accounts/transfer'),
+                      icon: Icons.swap_horiz,
+                      label: 'Quick Transfer',
                     ),
                   ],
                 ),
               ),
-            ],
-            const SizedBox(height: AppSpacing.md),
-            _section(
-              context,
-              title: 'Bank Accounts',
-              child: data.banks.isEmpty
-                  ? const FinarcEmptyState(
-                      title: 'No bank accounts',
-                      subtitle:
-                          'Add a bank account to start tracking balances.',
-                      icon: Icons.account_balance_outlined,
-                    )
-                  : Column(
-                      children: [
-                        for (var i = 0; i < data.banks.length; i++) ...[
-                          FinarcAccountTile(
-                            onTap: () => context.push(
-                              '/accounts/detail/bank/${data.banks[i].id}',
+              if (data.banks.isEmpty && data.wallets.isEmpty) ...[
+                const SizedBox(height: AppSpacing.sm),
+                FinarcCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const FinarcSectionHeader(title: 'Get Started'),
+                      const SizedBox(height: AppSpacing.sm),
+                      FinarcPrimaryButton(
+                        onPressed: () =>
+                            context.push('/accounts/add?type=bank'),
+                        icon: Icons.account_balance_outlined,
+                        label: 'Add Bank Account',
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      FinarcSecondaryButton(
+                        onPressed: () =>
+                            context.push('/accounts/add?type=cash'),
+                        icon: Icons.account_balance_wallet_outlined,
+                        label: 'Add Cash Wallet',
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: AppSpacing.md),
+              _section(
+                context,
+                title: 'Bank Accounts',
+                child: data.banks.isEmpty
+                    ? FinarcEmptyState(
+                        title: 'No bank accounts',
+                        subtitle:
+                            'Add a bank account to start tracking balances.',
+                        icon: Icons.account_balance_outlined,
+                      )
+                    : Column(
+                        children: [
+                          for (var i = 0; i < data.banks.length; i++) ...[
+                            FinarcAccountTile(
+                              onTap: () => context.push(
+                                '/accounts/detail/bank/${data.banks[i].id}',
+                              ),
+                              title: data.banks[i].accountName,
+                              subtitle:
+                                  '${data.banks[i].bankName} • ${_maskAccount(data.banks[i].id)}',
+                              amount: inr(data.banks[i].currentBalance),
+                              icon: Icons.account_balance,
+                              badge: data.banks[i].accountType.toUpperCase(),
+                              iconColor: AppColors.darkAccent,
                             ),
-                            title: data.banks[i].accountName,
-                            subtitle:
-                                '${data.banks[i].bankName} • ${_maskAccount(data.banks[i].id)}',
-                            amount: inr(data.banks[i].currentBalance),
-                            icon: Icons.account_balance,
-                            badge: data.banks[i].accountType.toUpperCase(),
-                            iconColor: AppColors.darkAccent,
-                          ),
-                          if (i != data.banks.length - 1)
-                            const SizedBox(height: AppSpacing.xs),
+                            if (i != data.banks.length - 1)
+                              const SizedBox(height: AppSpacing.xs),
+                          ],
                         ],
-                      ],
-                    ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            _section(
-              context,
-              title: 'Cash Wallets',
-              child: data.wallets.isEmpty
-                  ? const FinarcEmptyState(
-                      title: 'No cash wallets',
-                      subtitle: 'Create a wallet to track cash movements.',
-                      icon: Icons.payments_outlined,
-                    )
-                  : Column(
-                      children: [
-                        for (var i = 0; i < data.wallets.length; i++) ...[
-                          FinarcAccountTile(
-                            onTap: () => context.push(
-                              '/accounts/detail/cash/${data.wallets[i].id}',
+                      ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              _section(
+                context,
+                title: 'Cash Wallets',
+                child: data.wallets.isEmpty
+                    ? FinarcEmptyState(
+                        title: 'No cash wallets',
+                        subtitle: 'Create a wallet to track cash movements.',
+                        icon: Icons.payments_outlined,
+                      )
+                    : Column(
+                        children: [
+                          for (var i = 0; i < data.wallets.length; i++) ...[
+                            FinarcAccountTile(
+                              onTap: () => context.push(
+                                '/accounts/detail/cash/${data.wallets[i].id}',
+                              ),
+                              title: WalletType.displayName(data.wallets[i]),
+                              subtitle: WalletType.subtitle(data.wallets[i]),
+                              meta:
+                                  'Updated ${_shortDate(data.wallets[i].updatedAt)}',
+                              amount: inr(data.wallets[i].currentBalance),
+                              icon:
+                                  WalletType.matches(
+                                    data.wallets[i],
+                                    WalletType.amazonPay,
+                                  )
+                                  ? Icons.shopping_bag_outlined
+                                  : Icons.account_balance_wallet_outlined,
+                              badge: WalletType.badge(data.wallets[i]),
+                              iconColor: AppColors.darkWarning,
                             ),
-                            title: WalletType.displayName(data.wallets[i]),
-                            subtitle: WalletType.subtitle(data.wallets[i]),
-                            meta:
-                                'Updated ${_shortDate(data.wallets[i].updatedAt)}',
-                            amount: inr(data.wallets[i].currentBalance),
-                            icon:
-                                WalletType.matches(
-                                  data.wallets[i],
-                                  WalletType.amazonPay,
-                                )
-                                ? Icons.shopping_bag_outlined
-                                : Icons.account_balance_wallet_outlined,
-                            badge: WalletType.badge(data.wallets[i]),
-                            iconColor: AppColors.darkWarning,
-                          ),
-                          if (i != data.wallets.length - 1)
-                            const SizedBox(height: AppSpacing.xs),
+                            if (i != data.wallets.length - 1)
+                              const SizedBox(height: AppSpacing.xs),
+                          ],
                         ],
-                      ],
-                    ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            _section(
-              context,
-              title: 'Recent Activity',
-              child: data.recent.isEmpty
-                  ? const FinarcEmptyState(
-                      title: 'No recent activity',
-                      subtitle:
-                          'Transfers and reconciliation events will appear here.',
-                      icon: Icons.history,
-                    )
-                  : Column(
-                      children: [
-                        for (var i = 0; i < data.recent.length; i++) ...[
-                          FinarcTransactionTile(
-                            title: data.recent[i].title,
-                            subtitle: data.recent[i].category,
-                            meta: FinarcTransactionPresentation.meta(
-                              date: data.recent[i].transactionDate,
-                              source: FinarcTransactionPresentation.sourceLabel(
-                                data.recent[i].paymentSourceType,
+                      ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              _section(
+                context,
+                title: 'Recent Activity',
+                child: data.recent.isEmpty
+                    ? FinarcEmptyState(
+                        title: 'No recent activity',
+                        subtitle:
+                            'Transfers and reconciliation events will appear here.',
+                        icon: Icons.history,
+                      )
+                    : Column(
+                        children: [
+                          for (var i = 0; i < data.recent.length; i++) ...[
+                            FinarcTransactionTile(
+                              title: data.recent[i].title,
+                              subtitle: data.recent[i].category,
+                              meta: FinarcTransactionPresentation.meta(
+                                date: data.recent[i].transactionDate,
+                                source:
+                                    FinarcTransactionPresentation.sourceLabel(
+                                      data.recent[i].paymentSourceType,
+                                    ),
+                              ),
+                              amount:
+                                  '${_activitySign(data.recent[i].title)}${inr(data.recent[i].amount)}',
+                              amountColor:
+                                  _activitySign(data.recent[i].title) == '-'
+                                  ? AppColors.darkError
+                                  : AppColors.darkSuccess,
+                              badges: [
+                                if (data.recent[i].cashbackAmount > 0)
+                                  FinarcTransactionPresentation.cashbackBadge,
+                                if (data.recent[i].isForOthers)
+                                  FinarcTransactionPresentation.recoverableStatusBadge(
+                                    data.recent[i].recoverableStatus,
+                                  ),
+                              ],
+                              prefix: const CircleAvatar(
+                                radius: 16,
+                                backgroundColor: AppColors.darkPrimarySoft,
+                                child: Icon(Icons.sync_alt_rounded, size: 16),
                               ),
                             ),
-                            amount:
-                                '${_activitySign(data.recent[i].title)}${inr(data.recent[i].amount)}',
-                            amountColor:
-                                _activitySign(data.recent[i].title) == '-'
-                                ? AppColors.darkError
-                                : AppColors.darkSuccess,
-                            badges: [
-                              if (data.recent[i].cashbackAmount > 0)
-                                FinarcTransactionPresentation.cashbackBadge,
-                              if (data.recent[i].isForOthers)
-                                FinarcTransactionPresentation.recoverableStatusBadge(
-                                  data.recent[i].recoverableStatus,
-                                ),
-                            ],
-                            prefix: const CircleAvatar(
-                              radius: 16,
-                              backgroundColor: AppColors.darkPrimarySoft,
-                              child: Icon(Icons.sync_alt_rounded, size: 16),
-                            ),
-                          ),
-                          if (i != data.recent.length - 1)
-                            const SizedBox(height: AppSpacing.xs),
+                            if (i != data.recent.length - 1)
+                              const SizedBox(height: AppSpacing.xs),
+                          ],
                         ],
-                      ],
-                    ),
-            ),
-          ],
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
     );

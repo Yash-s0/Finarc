@@ -72,7 +72,7 @@ class _EmiPaymentScreenState extends ConsumerState<EmiPaymentScreen> {
         body: ListView(
           padding: const EdgeInsets.all(AppSpacing.md),
           children: [
-            const FinarcEmptyState(
+            FinarcEmptyState(
               title: 'Invalid loan route',
               subtitle: 'This payment link is invalid.',
               icon: Icons.error_outline,
@@ -100,7 +100,7 @@ class _EmiPaymentScreenState extends ConsumerState<EmiPaymentScreen> {
         body: ListView(
           padding: const EdgeInsets.all(AppSpacing.md),
           children: [
-            const FinarcEmptyState(
+            FinarcEmptyState(
               title: 'Loan not found',
               subtitle: 'This loan may have been deleted after reset.',
               icon: Icons.account_balance_wallet_outlined,

@@ -51,23 +51,27 @@ class AlertService {
     Duration dedupeWindow = const Duration(hours: 6),
   }) async {
     final now = input.createdAt ?? DateTime.now();
-    final key = input.dedupeKey ??
+    final key =
+        input.dedupeKey ??
         '${input.alertType}|${input.title.toLowerCase()}|${input.body.toLowerCase()}';
 
     final dupCutoff = now.subtract(dedupeWindow);
-    final existing = await (_db.select(_db.alerts)
-          ..where(
-            (a) =>
-                a.dedupeKey.equals(key) &
-                a.createdAt.isBiggerOrEqualValue(dupCutoff) &
-                a.dismissedAt.isNull(),
-          )
-          ..orderBy([(a) => OrderingTerm.desc(a.createdAt)])
-          ..limit(1))
-        .getSingleOrNull();
+    final existing =
+        await (_db.select(_db.alerts)
+              ..where(
+                (a) =>
+                    a.dedupeKey.equals(key) &
+                    a.createdAt.isBiggerOrEqualValue(dupCutoff) &
+                    a.dismissedAt.isNull(),
+              )
+              ..orderBy([(a) => OrderingTerm.desc(a.createdAt)])
+              ..limit(1))
+            .getSingleOrNull();
     if (existing != null) return null;
 
-    final id = await _db.into(_db.alerts).insert(
+    final id = await _db
+        .into(_db.alerts)
+        .insert(
           AlertsCompanion.insert(
             alertType: input.alertType,
             title: input.title,
@@ -104,10 +108,13 @@ class AlertService {
   }
 
   Future<int> unreadCount() async {
-    final row = await (_db.selectOnly(_db.alerts)
-          ..addColumns([_db.alerts.id.count()])
-          ..where(_db.alerts.readAt.isNull() & _db.alerts.dismissedAt.isNull()))
-        .getSingle();
+    final row =
+        await (_db.selectOnly(_db.alerts)
+              ..addColumns([_db.alerts.id.count()])
+              ..where(
+                _db.alerts.readAt.isNull() & _db.alerts.dismissedAt.isNull(),
+              ))
+            .getSingle();
     return row.read(_db.alerts.id.count()) ?? 0;
   }
 

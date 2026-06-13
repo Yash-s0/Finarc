@@ -409,60 +409,63 @@ void main() {
     expect(refund.cardBillId == null, isTrue);
   });
 
-  test('partial cash payment updates snapshot and records cardPayment transaction', () async {
-    final cardId = await createCard(
-      billingDay: 20,
-      dueDay: 7,
-      outstanding: 1200,
-    );
-    final walletId = await db
-        .into(db.cashWallets)
-        .insert(
-          CashWalletsCompanion.insert(
-            walletName: 'Cash',
-            currentBalance: const Value(3000),
-          ),
-        );
-    final billId = await db
-        .into(db.cardBills)
-        .insert(
-          CardBillsCompanion.insert(
-            cardId: cardId,
-            cycleStartDate: Value(DateTime(2026, 4, 21)),
-            cycleEndDate: Value(DateTime(2026, 5, 20)),
-            billingDate: Value(DateTime(2026, 5, 20)),
-            dueDate: Value(DateTime(2026, 6, 7)),
-            billedAmount: 1200,
-            paidAmount: const Value(0),
-            status: const Value('billed'),
-          ),
-        );
-    final service = BillingService(db, now: () => DateTime(2026, 6, 5));
+  test(
+    'partial cash payment updates snapshot and records cardPayment transaction',
+    () async {
+      final cardId = await createCard(
+        billingDay: 20,
+        dueDay: 7,
+        outstanding: 1200,
+      );
+      final walletId = await db
+          .into(db.cashWallets)
+          .insert(
+            CashWalletsCompanion.insert(
+              walletName: 'Cash',
+              currentBalance: const Value(3000),
+            ),
+          );
+      final billId = await db
+          .into(db.cardBills)
+          .insert(
+            CardBillsCompanion.insert(
+              cardId: cardId,
+              cycleStartDate: Value(DateTime(2026, 4, 21)),
+              cycleEndDate: Value(DateTime(2026, 5, 20)),
+              billingDate: Value(DateTime(2026, 5, 20)),
+              dueDate: Value(DateTime(2026, 6, 7)),
+              billedAmount: 1200,
+              paidAmount: const Value(0),
+              status: const Value('billed'),
+            ),
+          );
+      final service = BillingService(db, now: () => DateTime(2026, 6, 5));
 
-    final result = await service.markBillAsPaid(
-      billId,
-      walletId,
-      200,
-      paymentSourceType: PaymentSourceType.cash,
-      transactionDate: DateTime(2026, 6, 4),
-      notes: 'cash ref',
-    );
+      final result = await service.markBillAsPaid(
+        billId,
+        walletId,
+        200,
+        paymentSourceType: PaymentSourceType.cash,
+        transactionDate: DateTime(2026, 6, 4),
+        notes: 'cash ref',
+      );
 
-    final wallet = await (db.select(
-      db.cashWallets,
-    )..where((w) => w.id.equals(walletId))).getSingle();
-    final payment = await (db.select(
-      db.transactions,
-    )..where((t) => t.type.equals(TransactionType.cardPayment))).getSingle();
-    final snapshot = await service.getCardBillingSnapshotById(cardId);
+      final wallet = await (db.select(
+        db.cashWallets,
+      )..where((w) => w.id.equals(walletId))).getSingle();
+      final payment = await (db.select(
+        db.transactions,
+      )..where((t) => t.type.equals(TransactionType.cardPayment))).getSingle();
+      final snapshot = await service.getCardBillingSnapshotById(cardId);
 
-    expect(result.appliedAmount, 200);
-    expect(result.remainingDueAfter, 1000);
-    expect(wallet.currentBalance, 2800);
-    expect(payment.paymentSourceType, PaymentSourceType.cash);
-    expect(payment.amount, 200);
-    expect(payment.notes, 'cash ref');
-    expect(snapshot.billedDue, 1000);
-    expect(snapshot.totalOutstanding, 1000);
-  });
+      expect(result.appliedAmount, 200);
+      expect(result.remainingDueAfter, 1000);
+      expect(wallet.currentBalance, 2800);
+      expect(payment.paymentSourceType, PaymentSourceType.cash);
+      expect(payment.amount, 200);
+      expect(payment.notes, 'cash ref');
+      expect(snapshot.billedDue, 1000);
+      expect(snapshot.totalOutstanding, 1000);
+    },
+  );
 }

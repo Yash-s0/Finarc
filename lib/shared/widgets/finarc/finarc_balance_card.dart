@@ -84,7 +84,9 @@ class FinarcBalanceCard extends StatelessWidget {
                 Icon(
                   Icons.trending_up_rounded,
                   size: 14,
-                  color: isDark ? AppColors.darkSuccess : AppColors.lightSuccess,
+                  color: isDark
+                      ? AppColors.darkSuccess
+                      : AppColors.lightSuccess,
                 ),
                 const SizedBox(width: 4),
                 Expanded(
@@ -93,7 +95,9 @@ class FinarcBalanceCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: isDark ? AppColors.darkSuccess : AppColors.lightSuccess,
+                      color: isDark
+                          ? AppColors.darkSuccess
+                          : AppColors.lightSuccess,
                       fontWeight: FontWeight.w600,
                     ),
                   ),

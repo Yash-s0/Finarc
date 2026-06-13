@@ -27,7 +27,7 @@ class CardDetailScreen extends ConsumerWidget {
         body: ListView(
           padding: const EdgeInsets.all(AppSpacing.md),
           children: [
-            const FinarcEmptyState(
+            FinarcEmptyState(
               title: 'Invalid card route',
               subtitle: 'This card link is invalid.',
               icon: Icons.error_outline,
@@ -54,7 +54,7 @@ class CardDetailScreen extends ConsumerWidget {
         body: ListView(
           padding: const EdgeInsets.all(AppSpacing.md),
           children: [
-            const FinarcEmptyState(
+            FinarcEmptyState(
               title: 'Card not found',
               subtitle: 'This card may have been deleted after reset.',
               icon: Icons.credit_card_off_outlined,
@@ -94,18 +94,30 @@ class CardDetailScreen extends ConsumerWidget {
                   ),
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      color: isDark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh,
+                      color: isDark
+                          ? AppColors.darkSurfaceLow
+                          : AppColors.lightSurfaceHigh,
                       borderRadius: BorderRadius.circular(AppRadius.pill),
-                      border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                      border: Border.all(
+                        color: isDark
+                            ? AppColors.darkBorder
+                            : AppColors.lightBorder,
+                      ),
                     ),
                     child: TabBar(
                       dividerColor: Colors.transparent,
                       indicatorSize: TabBarIndicatorSize.tab,
                       indicator: BoxDecoration(
-                        color: isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft,
+                        color: isDark
+                            ? AppColors.darkPrimarySoft
+                            : AppColors.lightPrimarySoft,
                         borderRadius: BorderRadius.circular(AppRadius.pill),
                         border: Border.all(
-                          color: (isDark ? AppColors.darkAccent : AppColors.lightAccent).withValues(alpha: 0.42),
+                          color:
+                              (isDark
+                                      ? AppColors.darkAccent
+                                      : AppColors.lightAccent)
+                                  .withValues(alpha: 0.42),
                         ),
                       ),
                       indicatorPadding: const EdgeInsets.all(4),
@@ -129,229 +141,259 @@ class CardDetailScreen extends ConsumerWidget {
             ),
             body: TabBarView(
               children: [
-                ListView(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  children: [
-                    FinarcCardPreview(
-                      bank: card.bankName,
-                      nickname: card.nickname,
-                      maskedNumber: card.maskedNumber,
-                      outstanding: inr(vm.totalOutstanding),
-                      utilization: vm.utilization,
-                      dueLabel: dueLabel,
-                      dueTone: tone,
-                      footer: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              'Last 4: ${card.last4}',
-                              style: Theme.of(context).textTheme.labelMedium,
+                RefreshIndicator(
+                  onRefresh: () async {
+                    ref.invalidate(cardDetailProvider(cardId));
+                    await ref.read(cardDetailProvider(cardId).future);
+                  },
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    children: [
+                      FinarcCardPreview(
+                        bank: card.bankName,
+                        nickname: card.nickname,
+                        maskedNumber: card.maskedNumber,
+                        outstanding: inr(vm.totalOutstanding),
+                        utilization: vm.utilization,
+                        dueLabel: dueLabel,
+                        dueTone: tone,
+                        footer: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Last 4: ${card.last4}',
+                                style: Theme.of(context).textTheme.labelMedium,
+                              ),
                             ),
+                            FinarcStatusBadge(
+                              label: vm.billStatus.toUpperCase(),
+                              tone: tone,
+                              compact: true,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      GridView.count(
+                        crossAxisCount: 2,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        childAspectRatio: 1.72,
+                        crossAxisSpacing: AppSpacing.xs,
+                        mainAxisSpacing: AppSpacing.xs,
+                        children: [
+                          FinarcMetricCard(
+                            title: 'Available Limit',
+                            value: inr(vm.availableLimit),
                           ),
-                          FinarcStatusBadge(
-                            label: vm.billStatus.toUpperCase(),
-                            tone: tone,
-                            compact: true,
+                          FinarcMetricCard(
+                            title: 'Total Outstanding',
+                            value: inr(vm.totalOutstanding),
+                          ),
+                          FinarcMetricCard(
+                            title: 'Utilization',
+                            value:
+                                '${(vm.utilization * 100).toStringAsFixed(1)}%',
+                          ),
+                          FinarcMetricCard(
+                            title: 'Due Countdown',
+                            value: vm.dueCountdownDays >= 0
+                                ? '${vm.dueCountdownDays} days'
+                                : '${vm.dueCountdownDays.abs()} days ago',
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    GridView.count(
-                      crossAxisCount: 2,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      childAspectRatio: 1.72,
-                      crossAxisSpacing: AppSpacing.xs,
-                      mainAxisSpacing: AppSpacing.xs,
-                      children: [
-                        FinarcMetricCard(
-                          title: 'Available Limit',
-                          value: inr(vm.availableLimit),
-                        ),
-                        FinarcMetricCard(
-                          title: 'Total Outstanding',
-                          value: inr(vm.totalOutstanding),
-                        ),
-                        FinarcMetricCard(
-                          title: 'Utilization',
-                          value:
-                              '${(vm.utilization * 100).toStringAsFixed(1)}%',
-                        ),
-                        FinarcMetricCard(
-                          title: 'Due Countdown',
-                          value: vm.dueCountdownDays >= 0
-                              ? '${vm.dueCountdownDays} days'
-                              : '${vm.dueCountdownDays.abs()} days ago',
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    const FinarcSectionHeader(title: 'Current Statement'),
-                    const SizedBox(height: AppSpacing.xs),
-                    FinarcCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  'Bill Date: ${vm.currentBill == null ? 'Not generated' : _dateText(vm.currentBill!.billingDate)}',
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.labelMedium,
-                                ),
-                              ),
-                              FinarcStatusBadge(
-                                label: vm.billStatus.toUpperCase(),
-                                tone: tone,
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _amountBlock(
-                                  context,
-                                  'Current Due',
-                                  inr(vm.currentDueAmount),
-                                  isDark ? AppColors.darkWarning : AppColors.lightWarning,
-                                ),
-                              ),
-                              const SizedBox(width: AppSpacing.sm),
-                              Expanded(
-                                child: _amountBlock(
-                                  context,
-                                  'Unbilled Spends',
-                                  inr(vm.unbilledAmount),
-                                  isDark ? AppColors.darkAccent : AppColors.lightAccent,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          Text(
-                            'Total Outstanding: ${inr(vm.totalOutstanding)}',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  vm.currentBill == null
-                                      ? 'Next statement will be generated automatically.'
-                                      : paidAmount > 0
-                                      ? 'Paid ${inr(paidAmount)} • Remaining ${inr(remainingDue)}'
-                                      : 'Due on ${_dateText(vm.currentBill!.dueDate)}',
-                                  style: Theme.of(context).textTheme.bodyMedium,
-                                ),
-                              ),
-                              if (vm.currentBill != null)
-                                canRecordPayment
-                                    ? FinarcPrimaryButton(
-                                        onPressed: () => context.push(
-                                          '/cards/$cardId/bills/${vm.currentBill!.id}',
-                                        ),
-                                        label: 'Record Payment',
-                                        icon: Icons.payments_outlined,
-                                        expand: false,
-                                      )
-                                    : FinarcSecondaryButton(
-                                        onPressed: () => context.push(
-                                          '/cards/$cardId/bills/${vm.currentBill!.id}',
-                                        ),
-                                        label: remainingDue <= 0.009
-                                            ? 'Paid'
-                                            : 'Bill Detail',
-                                        icon: remainingDue <= 0.009
-                                            ? Icons.check_circle_outline
-                                            : Icons.receipt_long_outlined,
-                                      ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    FinarcCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const FinarcSectionHeader(
-                            title: 'Recent Transactions',
-                          ),
-                          const SizedBox(height: AppSpacing.xs),
-                          FinarcContainedList(
-                            itemCount: vm.recentTransactions.length,
-                            itemExtentEstimate: _embeddedTransactionEstimate,
-                            maxHeight: _embeddedTransactionHeight,
-                            emptyState: const FinarcEmptyState(
-                              title: 'No transactions yet',
-                              subtitle:
-                                  'Card spends will appear here once recorded.',
-                              icon: Icons.receipt_long_outlined,
-                            ),
-                            itemBuilder: (context, index) {
-                              final t = vm.recentTransactions[index];
-                              final billed = t.cardBillId != null;
-                              final isRefund = t.type == 'refund';
-                              return FinarcTransactionTile(
-                                title: t.title,
-                                subtitle: t.category,
-                                meta: FinarcTransactionPresentation.meta(
-                                  date: t.transactionDate,
-                                  source: billed && t.cardBillId != null
-                                      ? 'Card • Statement #${t.cardBillId}'
-                                      : 'Card',
-                                ),
-                                amount:
-                                    '${isRefund ? '+' : '-'}${inr(t.amount)}',
-                                amountColor: isRefund
-                                    ? (isDark ? AppColors.darkSuccess : AppColors.lightSuccess)
-                                    : (isDark ? AppColors.darkError : AppColors.lightError),
-                                amountMeta: billed && t.cardBillId != null
-                                    ? 'Stmt #${t.cardBillId}'
-                                    : null,
-                                badges: [
-                                  FinarcTransactionPresentation.billedBadge(
-                                    billed: billed,
+                      const SizedBox(height: AppSpacing.md),
+                      const FinarcSectionHeader(title: 'Current Statement'),
+                      const SizedBox(height: AppSpacing.xs),
+                      FinarcCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    'Bill Date: ${vm.currentBill == null ? 'Not generated' : _dateText(vm.currentBill!.billingDate)}',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.labelMedium,
                                   ),
-                                ],
-                                prefix: CircleAvatar(
-                                  radius: 16,
-                                  backgroundColor: isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft,
-                                  child: const Icon(Icons.credit_card, size: 15),
                                 ),
-                              );
-                            },
-                          ),
-                        ],
+                                FinarcStatusBadge(
+                                  label: vm.billStatus.toUpperCase(),
+                                  tone: tone,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _amountBlock(
+                                    context,
+                                    'Current Due',
+                                    inr(vm.currentDueAmount),
+                                    isDark
+                                        ? AppColors.darkWarning
+                                        : AppColors.lightWarning,
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                                Expanded(
+                                  child: _amountBlock(
+                                    context,
+                                    'Unbilled Spends',
+                                    inr(vm.unbilledAmount),
+                                    isDark
+                                        ? AppColors.darkAccent
+                                        : AppColors.lightAccent,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            Text(
+                              'Total Outstanding: ${inr(vm.totalOutstanding)}',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    vm.currentBill == null
+                                        ? 'Next statement will be generated automatically.'
+                                        : paidAmount > 0
+                                        ? 'Paid ${inr(paidAmount)} • Remaining ${inr(remainingDue)}'
+                                        : 'Due on ${_dateText(vm.currentBill!.dueDate)}',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodyMedium,
+                                  ),
+                                ),
+                                if (vm.currentBill != null)
+                                  canRecordPayment
+                                      ? FinarcPrimaryButton(
+                                          onPressed: () => context.push(
+                                            '/cards/$cardId/bills/${vm.currentBill!.id}',
+                                          ),
+                                          label: 'Record Payment',
+                                          icon: Icons.payments_outlined,
+                                          expand: false,
+                                        )
+                                      : FinarcSecondaryButton(
+                                          onPressed: () => context.push(
+                                            '/cards/$cardId/bills/${vm.currentBill!.id}',
+                                          ),
+                                          label: remainingDue <= 0.009
+                                              ? 'Paid'
+                                              : 'Bill Detail',
+                                          icon: remainingDue <= 0.009
+                                              ? Icons.check_circle_outline
+                                              : Icons.receipt_long_outlined,
+                                        ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: AppSpacing.md),
+                      FinarcCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const FinarcSectionHeader(
+                              title: 'Recent Transactions',
+                            ),
+                            const SizedBox(height: AppSpacing.xs),
+                            FinarcContainedList(
+                              itemCount: vm.recentTransactions.length,
+                              itemExtentEstimate: _embeddedTransactionEstimate,
+                              maxHeight: _embeddedTransactionHeight,
+                              physics: const NeverScrollableScrollPhysics(),
+                              showScrollbar: false,
+                              emptyState: FinarcEmptyState(
+                                title: 'No transactions yet',
+                                subtitle:
+                                    'Card spends will appear here once recorded.',
+                                icon: Icons.receipt_long_outlined,
+                              ),
+                              itemBuilder: (context, index) {
+                                final t = vm.recentTransactions[index];
+                                final billed = t.cardBillId != null;
+                                final isRefund = t.type == 'refund';
+                                return FinarcTransactionTile(
+                                  title: t.title,
+                                  subtitle: t.category,
+                                  meta: FinarcTransactionPresentation.meta(
+                                    date: t.transactionDate,
+                                    source: billed && t.cardBillId != null
+                                        ? 'Card • Statement #${t.cardBillId}'
+                                        : 'Card',
+                                  ),
+                                  amount:
+                                      '${isRefund ? '+' : '-'}${inr(t.amount)}',
+                                  amountColor: isRefund
+                                      ? (isDark
+                                            ? AppColors.darkSuccess
+                                            : AppColors.lightSuccess)
+                                      : (isDark
+                                            ? AppColors.darkError
+                                            : AppColors.lightError),
+                                  amountMeta: billed && t.cardBillId != null
+                                      ? 'Stmt #${t.cardBillId}'
+                                      : null,
+                                  badges: [
+                                    FinarcTransactionPresentation.billedBadge(
+                                      billed: billed,
+                                    ),
+                                  ],
+                                  prefix: CircleAvatar(
+                                    radius: 16,
+                                    backgroundColor: isDark
+                                        ? AppColors.darkPrimarySoft
+                                        : AppColors.lightPrimarySoft,
+                                    child: const Icon(
+                                      Icons.credit_card,
+                                      size: 15,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 _transactionTab(
+                  ref,
                   context,
                   vm.unbilledTransactions,
+                  cardId: cardId,
                   forceBilledState: false,
                   emptyTitle: 'No unbilled spends',
                   emptySubtitle:
                       'New card expenses after statement date appear here.',
                 ),
                 _transactionTab(
+                  ref,
                   context,
                   vm.billedTransactions,
+                  cardId: cardId,
                   forceBilledState: true,
                   emptyTitle: 'No billed transactions',
                   emptySubtitle:
                       'Generated statement transactions appear here.',
                 ),
                 _transactionTab(
+                  ref,
                   context,
                   vm.recentTransactions,
+                  cardId: cardId,
                   forceBilledState: null,
                   emptyTitle: 'No transaction history',
                   emptySubtitle:
@@ -373,9 +415,15 @@ class CardDetailScreen extends ConsumerWidget {
   ) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh,
+        color: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.darkSurfaceLow
+            : AppColors.lightSurfaceHigh,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkBorder : AppColors.lightBorder),
+        border: Border.all(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? AppColors.darkBorder
+              : AppColors.lightBorder,
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.sm),
@@ -399,53 +447,64 @@ class CardDetailScreen extends ConsumerWidget {
   }
 
   static Widget _transactionTab(
+    WidgetRef ref,
     BuildContext context,
     List<Transaction> transactions, {
+    required int cardId,
     required bool? forceBilledState,
     required String emptyTitle,
     required String emptySubtitle,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return ListView(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      children: [
-        if (transactions.isEmpty)
-          FinarcEmptyState(
-            title: emptyTitle,
-            subtitle: emptySubtitle,
-            icon: Icons.list_alt_outlined,
-          )
-        else
-          ...transactions.map((t) {
-            final billed = forceBilledState ?? (t.cardBillId != null);
-            final isRefund = t.type == 'refund';
-            return FinarcTransactionTile(
-              title: t.title,
-              subtitle: t.category,
-              meta: FinarcTransactionPresentation.meta(
-                date: t.transactionDate,
-                source: billed && t.cardBillId != null
-                    ? 'Card • Statement #${t.cardBillId}'
-                    : 'Card',
-              ),
-              amount: '${isRefund ? '+' : '-'}${inr(t.amount)}',
-              amountColor: isRefund
-                  ? (isDark ? AppColors.darkSuccess : AppColors.lightSuccess)
-                  : (isDark ? AppColors.darkError : AppColors.lightError),
-              amountMeta: billed && t.cardBillId != null
-                  ? 'Stmt #${t.cardBillId}'
-                  : null,
-              badges: [
-                FinarcTransactionPresentation.billedBadge(billed: billed),
-              ],
-              prefix: CircleAvatar(
-                radius: 16,
-                backgroundColor: isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft,
-                child: const Icon(Icons.receipt_long_outlined, size: 15),
-              ),
-            );
-          }),
-      ],
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(cardDetailProvider(cardId));
+        await ref.read(cardDetailProvider(cardId).future);
+      },
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(AppSpacing.md),
+        children: [
+          if (transactions.isEmpty)
+            FinarcEmptyState(
+              title: emptyTitle,
+              subtitle: emptySubtitle,
+              icon: Icons.list_alt_outlined,
+            )
+          else
+            ...transactions.map((t) {
+              final billed = forceBilledState ?? (t.cardBillId != null);
+              final isRefund = t.type == 'refund';
+              return FinarcTransactionTile(
+                title: t.title,
+                subtitle: t.category,
+                meta: FinarcTransactionPresentation.meta(
+                  date: t.transactionDate,
+                  source: billed && t.cardBillId != null
+                      ? 'Card • Statement #${t.cardBillId}'
+                      : 'Card',
+                ),
+                amount: '${isRefund ? '+' : '-'}${inr(t.amount)}',
+                amountColor: isRefund
+                    ? (isDark ? AppColors.darkSuccess : AppColors.lightSuccess)
+                    : (isDark ? AppColors.darkError : AppColors.lightError),
+                amountMeta: billed && t.cardBillId != null
+                    ? 'Stmt #${t.cardBillId}'
+                    : null,
+                badges: [
+                  FinarcTransactionPresentation.billedBadge(billed: billed),
+                ],
+                prefix: CircleAvatar(
+                  radius: 16,
+                  backgroundColor: isDark
+                      ? AppColors.darkPrimarySoft
+                      : AppColors.lightPrimarySoft,
+                  child: const Icon(Icons.receipt_long_outlined, size: 15),
+                ),
+              );
+            }),
+        ],
+      ),
     );
   }
 

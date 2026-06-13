@@ -583,7 +583,7 @@ class _PaymentSourceSheet extends StatelessWidget {
           const FinarcSectionHeader(title: 'Select Source'),
           const SizedBox(height: AppSpacing.sm),
           if (rows.isEmpty)
-            const FinarcEmptyState(
+            FinarcEmptyState(
               title: 'No sources',
               subtitle: 'Create an account first.',
             )

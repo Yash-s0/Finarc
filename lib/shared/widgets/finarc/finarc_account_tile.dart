@@ -39,17 +39,23 @@ class FinarcAccountTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+        ),
       ),
       child: Row(
         children: [
           CircleAvatar(
             radius: 18,
-            backgroundColor: isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft,
+            backgroundColor: isDark
+                ? AppColors.darkPrimarySoft
+                : AppColors.lightPrimarySoft,
             child: Icon(
               icon,
               size: 18,
-              color: iconColor ?? (isDark ? AppColors.darkAccent : AppColors.lightAccent),
+              color:
+                  iconColor ??
+                  (isDark ? AppColors.darkAccent : AppColors.lightAccent),
             ),
           ),
           const SizedBox(width: AppSpacing.sm),

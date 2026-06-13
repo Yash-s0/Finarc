@@ -99,7 +99,11 @@ class _ForOthersScreenState extends State<ForOthersScreen> {
               children: [
                 const FinarcSectionHeader(title: 'Summary'),
                 const SizedBox(height: AppSpacing.sm),
-                _summaryLine(context, 'Paid for', _name.text.isEmpty ? '-' : _name.text),
+                _summaryLine(
+                  context,
+                  'Paid for',
+                  _name.text.isEmpty ? '-' : _name.text,
+                ),
                 _summaryLine(context, 'Total Paid', inr(total)),
                 _summaryLine(context, 'Cashback', inr(cashback)),
                 _summaryLine(context, 'Recoverable', inr(recoverable)),

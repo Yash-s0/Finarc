@@ -14,7 +14,6 @@ String? detectCardNetwork(String binPrefix) {
   if (cleaned.length < 6) return null;
   if (int.tryParse(cleaned) == null) return null;
 
-  final bin6 = int.parse(cleaned.substring(0, 6));
   final bin4 = int.parse(cleaned.substring(0, 4));
   final bin3 = int.parse(cleaned.substring(0, 3));
   final bin2 = int.parse(cleaned.substring(0, 2));

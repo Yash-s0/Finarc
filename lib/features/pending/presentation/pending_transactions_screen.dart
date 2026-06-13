@@ -124,39 +124,42 @@ class _PendingTransactionsScreenState
               data: (items) {
                 _autoOpenPendingIfNeeded(items, context);
                 if (items.isEmpty) {
-                  return Center(
-                    child: Padding(
+                  return RefreshIndicator(
+                    onRefresh: () async {
+                      ref.invalidate(pendingTransactionsProvider);
+                      ref.invalidate(pendingHistoryProvider);
+                      await ref.read(pendingTransactionsProvider.future);
+                    },
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.all(AppSpacing.md),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const FinarcEmptyState(
-                            title: 'No pending transactions',
-                            subtitle:
-                                'Detected spends will appear here for confirmation.',
-                            icon: Icons.notifications_paused_outlined,
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
+                      children: [
+                        const SizedBox(height: 120),
+                        FinarcEmptyState(
+                          title: 'No pending transactions',
+                          subtitle:
+                              'Detected spends will appear here for confirmation.',
+                          icon: Icons.notifications_paused_outlined,
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        FinarcSecondaryButton(
+                          onPressed: () => context.push('/notifications/setup'),
+                          icon: Icons.notifications_active_outlined,
+                          label: 'Enable Notification Detection',
+                        ),
+                        if (kDebugMode) ...[
+                          const SizedBox(height: AppSpacing.xs),
                           FinarcSecondaryButton(
-                            onPressed: () =>
-                                context.push('/notifications/setup'),
-                            icon: Icons.notifications_active_outlined,
-                            label: 'Enable Notification Detection',
-                          ),
-                          if (kDebugMode) ...[
-                            const SizedBox(height: AppSpacing.xs),
-                            FinarcSecondaryButton(
-                              onPressed: () => FinarcBottomSheet.show<void>(
-                                context,
-                                isScrollControlled: true,
-                                child: const _ParseSampleInputSheet(),
-                              ),
-                              icon: Icons.text_snippet_outlined,
-                              label: 'Parse Sample (Debug)',
+                            onPressed: () => FinarcBottomSheet.show<void>(
+                              context,
+                              isScrollControlled: true,
+                              child: const _ParseSampleInputSheet(),
                             ),
-                          ],
+                            icon: Icons.text_snippet_outlined,
+                            label: 'Parse Sample (Debug)',
+                          ),
                         ],
-                      ),
+                      ],
                     ),
                   );
                 }
@@ -216,15 +219,23 @@ class _PendingTransactionsScreenState
                               amount:
                                   '${isIncome ? '+' : '-'}${inr(item.amount)}',
                               amountColor: isIncome
-                                  ? (isDark ? AppColors.darkSuccess : AppColors.lightSuccess)
-                                  : (isDark ? AppColors.darkError : AppColors.lightError),
+                                  ? (isDark
+                                        ? AppColors.darkSuccess
+                                        : AppColors.lightSuccess)
+                                  : (isDark
+                                        ? AppColors.darkError
+                                        : AppColors.lightError),
                               prefix: CircleAvatar(
                                 radius: 15,
-                                backgroundColor: isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft,
+                                backgroundColor: isDark
+                                    ? AppColors.darkPrimarySoft
+                                    : AppColors.lightPrimarySoft,
                                 child: Icon(
                                   _pendingIcon(item.sourceType),
                                   size: 14,
-                                  color: isDark ? AppColors.darkAccent : AppColors.lightAccent,
+                                  color: isDark
+                                      ? AppColors.darkAccent
+                                      : AppColors.lightAccent,
                                 ),
                               ),
                               badges: [
@@ -266,14 +277,14 @@ class _PendingTransactionsScreenState
                 listChildren.add(
                   historyState.when(
                     loading: () => const FinarcLoadingSkeleton(height: 88),
-                    error: (_, _) => const FinarcEmptyState(
+                    error: (_, _) => FinarcEmptyState(
                       title: 'No decision history',
                       subtitle: 'Ignored and duplicate items will appear here.',
                       icon: Icons.history_toggle_off_outlined,
                     ),
                     data: (history) {
                       if (history.isEmpty) {
-                        return const FinarcEmptyState(
+                        return FinarcEmptyState(
                           title: 'No decision history',
                           subtitle:
                               'Ignored and duplicate items will appear here.',
@@ -296,11 +307,17 @@ class _PendingTransactionsScreenState
                                   amountColor:
                                       _pendingDirection(item) ==
                                           PendingTransactionDirection.income
-                                      ? (isDark ? AppColors.darkSuccess : AppColors.lightSuccess)
-                                      : (isDark ? AppColors.darkError : AppColors.lightError),
+                                      ? (isDark
+                                            ? AppColors.darkSuccess
+                                            : AppColors.lightSuccess)
+                                      : (isDark
+                                            ? AppColors.darkError
+                                            : AppColors.lightError),
                                   prefix: CircleAvatar(
                                     radius: 15,
-                                    backgroundColor: isDark ? AppColors.darkSurfaceHigh : AppColors.lightSurfaceHigh,
+                                    backgroundColor: isDark
+                                        ? AppColors.darkSurfaceHigh
+                                        : AppColors.lightSurfaceHigh,
                                     child: Icon(
                                       _pendingIcon(item.sourceType),
                                       size: 14,
@@ -323,14 +340,22 @@ class _PendingTransactionsScreenState
                   ),
                 );
 
-                return ListView(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.md,
-                    0,
-                    AppSpacing.md,
-                    AppSpacing.md,
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    ref.invalidate(pendingTransactionsProvider);
+                    ref.invalidate(pendingHistoryProvider);
+                    await ref.read(pendingTransactionsProvider.future);
+                  },
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.md,
+                      0,
+                      AppSpacing.md,
+                      AppSpacing.md,
+                    ),
+                    children: listChildren,
                   ),
-                  children: listChildren,
                 );
               },
             ),
@@ -619,7 +644,9 @@ class _ConfirmTransactionSheet extends ConsumerWidget {
             '${isIncome ? '+' : '-'}${inr(item.amount)}',
             style: AppTextStyles.amountStyle(
               color: isIncome
-                  ? (Theme.of(context).brightness == Brightness.dark ? AppColors.darkSuccess : AppColors.lightSuccess)
+                  ? (Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.darkSuccess
+                        : AppColors.lightSuccess)
                   : Theme.of(context).colorScheme.onSurface,
               size: 30,
               weight: FontWeight.w700,
@@ -658,9 +685,15 @@ class _ConfirmTransactionSheet extends ConsumerWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(AppSpacing.sm),
             decoration: BoxDecoration(
-              color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.darkSurfaceLow
+                  : AppColors.lightSurfaceHigh,
               borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkBorder : AppColors.lightBorder),
+              border: Border.all(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.darkBorder
+                    : AppColors.lightBorder,
+              ),
             ),
             child: Text(
               item.rawText,
@@ -668,7 +701,9 @@ class _ConfirmTransactionSheet extends ConsumerWidget {
                 fontFamily: AppTextStyles.amountFontFamily,
                 fontSize: 11,
                 height: 1.35,
-                color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.darkTextMuted
+                    : AppColors.lightTextMuted,
               ),
             ),
           ),
@@ -831,7 +866,9 @@ class _DuplicateWarningSheet extends ConsumerWidget {
             children: [
               Icon(
                 Icons.warning_amber_rounded,
-                color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkWarning : AppColors.lightWarning,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.darkWarning
+                    : AppColors.lightWarning,
               ),
               const SizedBox(width: AppSpacing.xs),
               Text(
@@ -851,8 +888,14 @@ class _DuplicateWarningSheet extends ConsumerWidget {
             child: LinearProgressIndicator(
               value: similarity,
               minHeight: 7,
-              backgroundColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh,
-              valueColor: AlwaysStoppedAnimation(Theme.of(context).brightness == Brightness.dark ? AppColors.darkWarning : AppColors.lightWarning),
+              backgroundColor: Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.darkSurfaceLow
+                  : AppColors.lightSurfaceHigh,
+              valueColor: AlwaysStoppedAnimation(
+                Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.darkWarning
+                    : AppColors.lightWarning,
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.sm),

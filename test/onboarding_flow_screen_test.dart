@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:finarc/core/config/app_mode.dart';
 import 'package:finarc/core/database/app_database.dart';
 import 'package:finarc/core/database/database_providers.dart';
+import 'package:finarc/core/theme/app_colors.dart';
 import 'package:finarc/core/theme/app_theme.dart';
 import 'package:finarc/features/onboarding/presentation/onboarding_flow_screen.dart';
 
@@ -215,5 +216,37 @@ void main() {
     expect(find.text('Home'), findsOneWidget);
     final row = await db.select(db.appSettings).getSingle();
     expect(row.hasCompletedOnboarding, true);
+  });
+
+  testWidgets('light theme onboarding hero uses light gradient tokens', (
+    tester,
+  ) async {
+    AppModeConfig.debugOverride = AppMode.safeDebug;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const OnboardingFlowScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final heroDecorations = tester
+        .widgetList<DecoratedBox>(find.byType(DecoratedBox))
+        .map((widget) => widget.decoration)
+        .whereType<BoxDecoration>()
+        .where((decoration) => decoration.gradient is LinearGradient);
+
+    expect(
+      heroDecorations.any((decoration) {
+        final gradient = decoration.gradient! as LinearGradient;
+        return gradient.colors.contains(AppColors.lightHeroGradientStart) &&
+            gradient.colors.contains(AppColors.lightHeroGradientEnd);
+      }),
+      isTrue,
+    );
+    expect(tester.takeException(), isNull);
   });
 }

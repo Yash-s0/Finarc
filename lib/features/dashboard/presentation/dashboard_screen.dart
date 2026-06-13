@@ -11,7 +11,6 @@ import '../../../shared/widgets/finarc/finarc_widgets.dart';
 import '../../onboarding/data/onboarding_providers.dart';
 import '../../profile/data/profile_settings_providers.dart';
 import '../data/dashboard_providers.dart';
-import '../../../core/theme/theme_controller.dart';
 import 'widgets/dashboard_sections.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -22,21 +21,30 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, TickerProviderStateMixin {
   Timer? _greetingRefreshTimer;
   DateTime _now = DateTime.now();
+  late final AnimationController _entryCtrl;
+  late final Animation<double> _entryOpacity;
+  bool _hasAnimated = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _scheduleGreetingRefresh();
+    _entryCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _entryOpacity = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _greetingRefreshTimer?.cancel();
+    _entryCtrl.dispose();
     super.dispose();
   }
 
@@ -64,11 +72,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     return onboardingState.when(
       loading: () => ListView(
         padding: _pagePadding(context),
-        children: const [
-          FinarcLoadingSkeleton(height: 36, width: 180),
-          SizedBox(height: AppSpacing.md),
-          FinarcLoadingSkeleton(height: 144),
-        ],
+        children: const [FinarcLoadingSkeletonGroup(items: 2, itemHeight: 144)],
       ),
       error: (e, _) => Center(child: Text('Error: $e')),
       data: (completed) {
@@ -113,17 +117,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           loading: () => ListView(
             padding: _pagePadding(context),
             children: const [
-              FinarcLoadingSkeleton(height: 36, width: 180),
-              SizedBox(height: AppSpacing.xs),
-              FinarcLoadingSkeleton(height: 16, width: 240),
-              SizedBox(height: AppSpacing.md),
-              FinarcLoadingSkeleton(height: 156),
-              SizedBox(height: AppSpacing.md),
-              FinarcLoadingSkeleton(height: 100),
+              FinarcLoadingSkeletonGroup(items: 3, itemHeight: 124),
             ],
           ),
           error: (e, _) => Center(child: Text('Error: $e')),
           data: (data) {
+            if (!_hasAnimated) {
+              _hasAnimated = true;
+              _entryCtrl.forward();
+            }
             final isDark = Theme.of(context).brightness == Brightness.dark;
             final freshInstall =
                 data.bankAccountCount == 0 &&
@@ -134,100 +136,115 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
             final salaryCreditDay = profile?.salaryCreditDay;
 
             if (freshInstall) {
-              return RefreshIndicator(
-                onRefresh: () => ref.read(dashboardRefreshActionsProvider)(),
-                child: ListView(
-                  padding: _pagePadding(context),
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  children: [DashboardFreshStartGate(data: data)],
+              return FadeTransition(
+                opacity: _entryOpacity,
+                child: RefreshIndicator(
+                  onRefresh: () => ref.read(dashboardRefreshActionsProvider)(),
+                  child: ListView(
+                    padding: _pagePadding(context),
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [DashboardFreshStartGate(data: data)],
+                  ),
                 ),
               );
             }
 
-            return RefreshIndicator(
-              onRefresh: () => ref.read(dashboardRefreshActionsProvider)(),
-              child: ListView(
-                padding: _pagePadding(context),
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: [
-                  DashboardGreetingHeader(
-                    name: profile?.name,
-                    now: _now,
-                    unreadAlertsCount: data.unreadAlertsCount,
-                    onAlertsTap: () => context.push('/alerts'),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  NetWorthHeroCard(data: data),
-                  if (salaryCreditDay != null) ...[
+            return FadeTransition(
+              key: const Key('dashboard-entry-fade'),
+              opacity: _entryOpacity,
+              child: RefreshIndicator(
+                onRefresh: () => ref.read(dashboardRefreshActionsProvider)(),
+                child: ListView(
+                  padding: _pagePadding(context),
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [
+                    DashboardGreetingHeader(
+                      name: profile?.name,
+                      now: _now,
+                      unreadAlertsCount: data.unreadAlertsCount,
+                      onAlertsTap: () => context.push('/alerts'),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    NetWorthHeroCard(data: data),
+                    if (salaryCreditDay != null) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      FinarcCard(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.sm,
+                          vertical: AppSpacing.sm,
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            CircleAvatar(
+                              radius: 16,
+                              backgroundColor: isDark
+                                  ? AppColors.darkMint
+                                  : AppColors.lightSuccess,
+                              child: Icon(
+                                Icons.event_available_rounded,
+                                color: isDark
+                                    ? AppColors.darkSurfaceLow
+                                    : AppColors.lightSurfaceHigh,
+                                size: 16,
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.xs),
+                            Expanded(
+                              child: Text(
+                                _salaryInsight(salaryCreditDay),
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: AppSpacing.xs),
+                    DashboardMetricGrid(data: data),
+                    const SizedBox(height: AppSpacing.xs),
+                    DashboardAlertsSection(
+                      pendingCount: data.pendingCount,
+                      dueSoonBillsCount: data.dueSoonBillsCount,
+                    ),
+                    if (data.pendingCount > 0 || data.dueSoonBillsCount > 0)
+                      const SizedBox(height: AppSpacing.xs),
                     FinarcCard(
+                      onTap: () => context.push('/accounts'),
                       padding: const EdgeInsets.symmetric(
                         horizontal: AppSpacing.sm,
-                        vertical: AppSpacing.sm,
+                        vertical: 8,
                       ),
                       child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           CircleAvatar(
-                            radius: 16,
-                            backgroundColor: isDark ? AppColors.darkMint : AppColors.lightSuccess,
+                            radius: 14,
+                            backgroundColor: isDark
+                                ? AppColors.darkPrimarySoft
+                                : AppColors.lightPrimarySoft,
                             child: Icon(
-                              Icons.event_available_rounded,
-                              color: isDark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh,
-                              size: 16,
+                              Icons.account_balance_wallet_outlined,
+                              size: 14,
+                              color: isDark
+                                  ? AppColors.darkBlue
+                                  : AppColors.lightAccent,
                             ),
                           ),
                           const SizedBox(width: AppSpacing.xs),
                           Expanded(
                             child: Text(
-                              _salaryInsight(salaryCreditDay),
+                              'Bank ${inr(data.bankBalance)} • Cash ${inr(data.cashInHand)}',
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
                           ),
+                          const Icon(Icons.chevron_right_rounded, size: 16),
                         ],
                       ),
                     ),
-                  ],
-                  const SizedBox(height: AppSpacing.xs),
-                  DashboardMetricGrid(data: data),
-                  const SizedBox(height: AppSpacing.xs),
-                  DashboardAlertsSection(
-                    pendingCount: data.pendingCount,
-                    dueSoonBillsCount: data.dueSoonBillsCount,
-                  ),
-                  if (data.pendingCount > 0 || data.dueSoonBillsCount > 0)
                     const SizedBox(height: AppSpacing.xs),
-                  FinarcCard(
-                    onTap: () => context.push('/accounts'),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.sm,
-                      vertical: 8,
-                    ),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 14,
-                          backgroundColor: isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft,
-                          child: Icon(
-                            Icons.account_balance_wallet_outlined,
-                            size: 14,
-                            color: isDark ? AppColors.darkBlue : AppColors.lightAccent,
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.xs),
-                        Expanded(
-                          child: Text(
-                            'Bank ${inr(data.bankBalance)} • Cash ${inr(data.cashInHand)}',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                        ),
-                        const Icon(Icons.chevron_right_rounded, size: 16),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  RecentTransactionsSection(data: data),
-                ],
+                    RecentTransactionsSection(data: data),
+                  ],
+                ),
               ),
             );
           },

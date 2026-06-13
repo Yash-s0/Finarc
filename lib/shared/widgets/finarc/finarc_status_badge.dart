@@ -20,23 +20,37 @@ class FinarcStatusBadge extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final (bg, border, fg) = switch (tone) {
       FinarcStatusTone.success => (
-        (isDark ? AppColors.darkSuccess : AppColors.lightSuccess).withValues(alpha: 0.16),
-        (isDark ? AppColors.darkSuccess : AppColors.lightSuccess).withValues(alpha: 0.36),
+        (isDark ? AppColors.darkSuccess : AppColors.lightSuccess).withValues(
+          alpha: 0.16,
+        ),
+        (isDark ? AppColors.darkSuccess : AppColors.lightSuccess).withValues(
+          alpha: 0.36,
+        ),
         isDark ? AppColors.darkSuccess : AppColors.lightSuccess,
       ),
       FinarcStatusTone.warning => (
-        (isDark ? AppColors.darkWarning : AppColors.lightWarning).withValues(alpha: 0.16),
-        (isDark ? AppColors.darkWarning : AppColors.lightWarning).withValues(alpha: 0.38),
+        (isDark ? AppColors.darkWarning : AppColors.lightWarning).withValues(
+          alpha: 0.16,
+        ),
+        (isDark ? AppColors.darkWarning : AppColors.lightWarning).withValues(
+          alpha: 0.38,
+        ),
         isDark ? AppColors.darkWarning : AppColors.lightWarning,
       ),
       FinarcStatusTone.error => (
-        (isDark ? AppColors.darkError : AppColors.lightError).withValues(alpha: 0.16),
-        (isDark ? AppColors.darkError : AppColors.lightError).withValues(alpha: 0.38),
+        (isDark ? AppColors.darkError : AppColors.lightError).withValues(
+          alpha: 0.16,
+        ),
+        (isDark ? AppColors.darkError : AppColors.lightError).withValues(
+          alpha: 0.38,
+        ),
         isDark ? AppColors.darkError : AppColors.lightError,
       ),
       FinarcStatusTone.info => (
         isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft,
-        (isDark ? AppColors.darkAccent : AppColors.lightAccent).withValues(alpha: 0.38),
+        (isDark ? AppColors.darkAccent : AppColors.lightAccent).withValues(
+          alpha: 0.38,
+        ),
         isDark ? AppColors.darkAccent : AppColors.lightAccent,
       ),
       FinarcStatusTone.neutral => (

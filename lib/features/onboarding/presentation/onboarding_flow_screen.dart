@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/config/app_mode.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radius.dart';
+import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
 import '../../../core/utils/numeric_input_formatters.dart';
@@ -46,7 +47,7 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
         subtitle:
             'Track expenses, cards, bills, cash, UPI, splits and loans. Your first finance OS stays fast, local and private.',
         icon: Icons.wallet_rounded,
-        accent: AppColors.darkBlue,
+        accent: _OnboardingAccent.info,
         chips: const ['No account', 'Local ledger', 'Manual control'],
         supporting: const [
           _ExpandableFeatureTile(
@@ -109,7 +110,7 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
             ? 'Enable notification or SMS detection now, or turn it on later from Profile. Detection is optional and local-only.'
             : 'Enable notification detection now, or turn it on later from Profile. SMS ingestion is unavailable in this Play-safe build.',
         icon: Icons.notifications_active_outlined,
-        accent: AppColors.darkOrange,
+        accent: _OnboardingAccent.warning,
         chips: const ['Optional', 'Pending first', 'Profile controls'],
         supporting: [
           const _BulletPanel(
@@ -159,7 +160,7 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
         subtitle:
             'Your local finance workspace is ready. Add accounts anytime, confirm detected transactions before they enter your ledger, and keep your data on device.',
         icon: Icons.check_circle_outline,
-        accent: AppColors.darkSuccess,
+        accent: _OnboardingAccent.success,
         chips: const ['Ready', 'Local', 'Review before save'],
         supporting: const [
           _ExpandableFeatureTile(
@@ -227,14 +228,18 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
                     margin: EdgeInsets.only(
                       right: i == pages.length - 1 ? 0 : 6,
                     ),
-                    height: 4,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(999),
-                      color: i <= _index
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(
-                              context,
-                            ).colorScheme.surfaceContainerHighest,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOut,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(999),
+                        color: i <= _index
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHighest,
+                      ),
                     ),
                   ),
                 ),
@@ -365,7 +370,7 @@ class _StepTemplate extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.icon,
-    this.accent = AppColors.darkAccent,
+    this.accent = _OnboardingAccent.primary,
     this.chips = const [],
     this.actions,
     this.supporting,
@@ -374,7 +379,7 @@ class _StepTemplate extends StatelessWidget {
   final String title;
   final String subtitle;
   final IconData icon;
-  final Color accent;
+  final _OnboardingAccent accent;
   final List<String> chips;
   final List<Widget>? actions;
   final List<Widget>? supporting;
@@ -394,7 +399,7 @@ class _StepTemplate extends StatelessWidget {
             icon: icon,
             title: title,
             subtitle: subtitle,
-            accent: accent,
+            accent: accent.resolve(context),
             chips: chips,
           ),
           if (supporting != null && supporting!.isNotEmpty) ...[
@@ -438,7 +443,7 @@ class _SetupChoicesStep extends StatelessWidget {
             title: 'Set up your first account',
             subtitle:
                 'Add a bank account, cash wallet or credit card now. You can also skip and add later.',
-            accent: AppColors.darkBlue,
+            accent: AppColors.lightAccent,
             chips: ['Optional', 'Add later', 'Local balances'],
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -519,7 +524,7 @@ class _ProfileSetupStep extends StatelessWidget {
           title: 'Tell us about you',
           subtitle:
               'Name and salary details are optional. Add them only if you want personalized local insights.',
-          accent: AppColors.darkMint,
+          accent: AppColors.lightSuccess,
           chips: ['Optional profile', 'Local insights', 'Can skip'],
         ),
         const SizedBox(height: AppSpacing.sm),
@@ -581,55 +586,86 @@ class _HeroPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.darkSurfaceHigh,
-            AppColors.darkSurface.withValues(alpha: 0.92),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final reducedMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final motionDuration = reducedMotion
+        ? Duration.zero
+        : const Duration(milliseconds: 260);
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.98, end: 1),
+      duration: motionDuration,
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Transform.scale(
+          scale: value,
+          child: Opacity(opacity: reducedMotion ? 1 : value, child: child),
+        );
+      },
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: isDark
+                ? [
+                    AppColors.darkHeroGradientEnd,
+                    AppColors.darkSurface.withValues(alpha: 0.94),
+                  ]
+                : [
+                    AppColors.lightHeroGradientStart,
+                    AppColors.lightHeroGradientEnd,
+                  ],
+          ),
+          border: Border.all(
+            color: accent.withValues(alpha: isDark ? 0.36 : 0.24),
+            width: 1,
+          ),
+          boxShadow: [
+            ...(isDark ? AppShadows.heroGlow : AppShadows.heroGlowLight),
+            BoxShadow(
+              color: accent.withValues(alpha: isDark ? 0.14 : 0.08),
+              blurRadius: 26,
+              offset: const Offset(0, 12),
+            ),
           ],
         ),
-        border: Border.all(color: accent.withValues(alpha: 0.36), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: accent.withValues(alpha: 0.16),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.16),
-                borderRadius: BorderRadius.circular(AppRadius.md),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AnimatedContainer(
+                duration: motionDuration,
+                curve: Curves.easeOut,
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: isDark ? 0.16 : 0.12),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Icon(
+                  icon,
+                  color: isDark ? Colors.white : accent,
+                  size: 24,
+                ),
               ),
-              child: Icon(icon, color: Colors.white, size: 24),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Text(title, style: Theme.of(context).textTheme.headlineSmall),
-            const SizedBox(height: AppSpacing.xs),
-            Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
-            if (chips.isNotEmpty) ...[
               const SizedBox(height: AppSpacing.sm),
-              Wrap(
-                spacing: AppSpacing.xs,
-                runSpacing: AppSpacing.xs,
-                children: chips
-                    .map((chip) => _HeroChip(label: chip, color: accent))
-                    .toList(growable: false),
-              ),
+              Text(title, style: Theme.of(context).textTheme.headlineSmall),
+              const SizedBox(height: AppSpacing.xs),
+              Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
+              if (chips.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Wrap(
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xs,
+                  children: chips
+                      .map((chip) => _HeroChip(label: chip, color: accent))
+                      .toList(growable: false),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -669,9 +705,10 @@ class _BulletPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return FinarcCard(
-      backgroundColor: AppColors.darkSurface,
-      borderColor: AppColors.darkBorder,
+      backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+      borderColor: isDark ? AppColors.darkBorder : AppColors.lightBorder,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -687,8 +724,10 @@ class _BulletPanel extends StatelessWidget {
                     width: 8,
                     height: 8,
                     margin: const EdgeInsets.only(top: 6),
-                    decoration: const BoxDecoration(
-                      color: AppColors.darkAccent,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? AppColors.darkAccent
+                          : AppColors.lightAccent,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -767,16 +806,20 @@ class _ExpandableFeatureTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final controller = _OnboardingExpansionScope.of(context);
     return ValueListenableBuilder<String?>(
       valueListenable: controller,
       builder: (context, expandedTitle, _) {
         final expanded = expandedTitle == title;
         return FinarcCard(
-          backgroundColor: AppColors.darkSurfaceLow,
+          backgroundColor: isDark
+              ? AppColors.darkSurfaceLow
+              : AppColors.lightSurfaceHigh,
           borderColor: expanded
-              ? AppColors.darkAccent.withValues(alpha: 0.72)
-              : AppColors.darkBorder,
+              ? (isDark ? AppColors.darkAccent : AppColors.lightAccent)
+                    .withValues(alpha: 0.72)
+              : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
           useShadow: false,
           onTap: () => controller.value = expanded ? null : title,
           child: Column(
@@ -788,10 +831,18 @@ class _ExpandableFeatureTile extends StatelessWidget {
                     width: 42,
                     height: 42,
                     decoration: BoxDecoration(
-                      color: AppColors.darkPrimarySoft,
+                      color: isDark
+                          ? AppColors.darkPrimarySoft
+                          : AppColors.lightPrimarySoft,
                       borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
-                    child: Icon(icon, color: AppColors.darkAccent, size: 20),
+                    child: Icon(
+                      icon,
+                      color: isDark
+                          ? AppColors.darkAccent
+                          : AppColors.lightAccent,
+                      size: 20,
+                    ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
@@ -814,7 +865,9 @@ class _ExpandableFeatureTile extends StatelessWidget {
                     expanded
                         ? Icons.keyboard_arrow_up_rounded
                         : Icons.keyboard_arrow_down_rounded,
-                    color: AppColors.darkTextMuted,
+                    color: isDark
+                        ? AppColors.darkTextMuted
+                        : AppColors.lightTextMuted,
                   ),
                 ],
               ),
@@ -856,43 +909,84 @@ class _InlineInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.darkSurfaceLow,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.darkBorder),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.sm),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: AppColors.darkPrimarySoft,
-                borderRadius: BorderRadius.circular(AppRadius.md),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final reducedMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: reducedMotion
+          ? Duration.zero
+          : const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, reducedMotion ? 0 : 10 * (1 - value)),
+          child: Opacity(opacity: value, child: child),
+        );
+      },
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(
+            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? AppColors.darkPrimarySoft
+                      : AppColors.lightPrimarySoft,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Icon(
+                  icon,
+                  color: isDark ? AppColors.darkAccent : AppColors.lightAccent,
+                  size: 18,
+                ),
               ),
-              child: Icon(icon, color: AppColors.darkAccent, size: 18),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: Theme.of(context).textTheme.titleSmall),
-                  const SizedBox(height: 2),
-                  Text(
-                    description,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ],
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: Theme.of(context).textTheme.titleSmall),
+                    const SizedBox(height: 2),
+                    Text(
+                      description,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
+  }
+}
+
+enum _OnboardingAccent { primary, info, warning, success }
+
+extension on _OnboardingAccent {
+  Color resolve(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    switch (this) {
+      case _OnboardingAccent.primary:
+        return isDark ? AppColors.darkAccent : AppColors.lightAccent;
+      case _OnboardingAccent.info:
+        return isDark ? AppColors.darkBlue : AppColors.lightBlue;
+      case _OnboardingAccent.warning:
+        return isDark ? AppColors.darkOrange : AppColors.lightOrange;
+      case _OnboardingAccent.success:
+        return isDark ? AppColors.darkMint : AppColors.lightMint;
+    }
   }
 }

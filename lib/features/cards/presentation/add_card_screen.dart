@@ -167,7 +167,7 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   DropdownButtonFormField<String>(
-                    value: _network,
+                    initialValue: _network,
                     decoration: InputDecoration(
                       labelText: 'Card type',
                       prefixIcon: const Icon(Icons.credit_card_rounded),

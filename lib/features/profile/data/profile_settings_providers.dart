@@ -7,7 +7,9 @@ final profileSettingsServiceProvider = Provider<ProfileSettingsService>((ref) {
   return ProfileSettingsService(ref.read(appDatabaseProvider));
 });
 
-final userProfileSettingsProvider = FutureProvider<UserProfileSettings>((ref) async {
+final userProfileSettingsProvider = FutureProvider<UserProfileSettings>((
+  ref,
+) async {
   await ref.watch(seedProvider.future);
   return ref.read(profileSettingsServiceProvider).load();
 });

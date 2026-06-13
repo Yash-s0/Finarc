@@ -114,190 +114,207 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
               _dateRange != null ||
               _search.text.trim().isNotEmpty;
 
-          return ListView(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            children: [
-              Text(
-                'Transaction command center',
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              const SizedBox(height: AppSpacing.xxs),
-              Text(
-                'Track expenses, recoverables and detected spends.',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: AppSpacing.md),
-              _filterPanel(
-                context,
-                txns: txns,
-                hasActiveFilters: hasActiveFilters,
-              ),
-              const SizedBox(height: AppSpacing.md),
-              if (filtered.isEmpty)
-                Column(
-                  children: [
-                    const FinarcEmptyState(
-                      title: 'No transactions yet',
-                      subtitle:
-                          'Add your first expense or enable detection to start tracking.',
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    FinarcPrimaryButton(
-                      onPressed: () => context.push('/expenses/add'),
-                      icon: Icons.add,
-                      label: 'Add Expense',
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    FinarcSecondaryButton(
-                      onPressed: () => context.push('/notifications/setup'),
-                      icon: Icons.notifications_active_outlined,
-                      label: 'Enable Notification Detection',
-                    ),
-                  ],
-                )
-              else
-                ...grouped.entries.map((entry) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        FinarcSectionHeader(
-                          title: _prettyDay(entry.key),
-                          trailing: Text(
-                            '${entry.value.length} txns',
-                            style: Theme.of(context).textTheme.labelMedium,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        ...entry.value.map((t) {
-                          final net = ref
-                              .read(transactionEngineProvider)
-                              .netExpense(t);
-                          final recoverableBase =
-                              t.recoverableBaseAmount ??
-                              (t.isForOthers
-                                  ? (t.amount - t.cashbackAmount)
-                                        .clamp(0, t.amount)
-                                        .toDouble()
-                                  : 0.0);
-                          final recovered = t.recoveredAmount
-                              .clamp(0, recoverableBase)
-                              .toDouble();
-                          final remaining = (recoverableBase - recovered)
-                              .clamp(0, recoverableBase)
-                              .toDouble();
-                          final isPositive =
-                              t.type == 'income' || t.type == 'refund';
-                          return Padding(
-                            padding: const EdgeInsets.only(
-                              bottom: AppSpacing.xs,
-                            ),
-                            child: FinarcTransactionTile(
-                              onTap: () =>
-                                  context.push('/expenses/transaction/${t.id}'),
-                              title: t.title,
-                              subtitle: t.category,
-                              meta: FinarcTransactionPresentation.meta(
-                                date: t.transactionDate,
-                                source:
-                                    FinarcTransactionPresentation.sourceLabel(
-                                      t.paymentSourceType,
-                                    ),
-                              ),
-                              amount:
-                                  '${isPositive ? '+' : '-'}${inr(t.amount)}',
-                              amountColor: isPositive
-                                  ? (isDark ? AppColors.darkSuccess : AppColors.lightSuccess)
-                                  : (isDark ? AppColors.darkError : AppColors.lightError),
-                              prefix: CircleAvatar(
-                                radius: 16,
-                                backgroundColor: isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft,
-                                child: Icon(
-                                  _iconForType(t.type, t.paymentSourceType),
-                                  size: 15,
-                                  color: isDark ? AppColors.darkAccent : AppColors.lightAccent,
-                                ),
-                              ),
-                              badges: [
-                                if (t.paymentSourceType == 'creditCard')
-                                  FinarcTransactionPresentation.billedBadge(
-                                    billed: t.cardBillId != null,
-                                  ),
-                                if (t.cashbackAmount > 0)
-                                  FinarcTransactionPresentation.cashbackBadge,
-                                if (t.detectedSourceType != null)
-                                  FinarcStatusBadge(
-                                    label:
-                                        'Detected ${_sourceLabel(t.detectedSourceType)}',
-                                    tone: FinarcStatusTone.info,
-                                    compact: true,
-                                  ),
-                                if (t.isForOthers)
-                                  FinarcStatusBadge(
-                                    label:
-                                        t.recoverablePartyName ?? 'For Others',
-                                    tone: FinarcStatusTone.info,
-                                    compact: true,
-                                  ),
-                                if (t.isForOthers)
-                                  FinarcTransactionPresentation.recoverableStatusBadge(
-                                    t.recoverableStatus,
-                                  ),
-                                if (t.isForOthers)
-                                  FinarcStatusBadge(
-                                    label: 'Remaining ${inr(remaining)}',
-                                    tone: remaining <= 0.009
-                                        ? FinarcStatusTone.success
-                                        : FinarcStatusTone.warning,
-                                    compact: true,
-                                  ),
-                                if (t.isForOthers && recovered > 0)
-                                  FinarcStatusBadge(
-                                    label: 'Recovered ${inr(recovered)}',
-                                    tone: FinarcStatusTone.success,
-                                    compact: true,
-                                  ),
-                                if (t.linkedSplitExpenseId != null ||
-                                    t.splitGroupId != null)
-                                  const FinarcStatusBadge(
-                                    label: 'Split',
-                                    tone: FinarcStatusTone.info,
-                                    compact: true,
-                                  ),
-                                if (t.type == 'loanEmi')
-                                  FinarcTransactionPresentation.emiBadge,
-                                if ((t.personalShareAmount ?? 0) > 0 &&
-                                    (t.personalShareAmount ?? 0) < t.amount)
-                                  FinarcStatusBadge(
-                                    label:
-                                        'My share ${inr(t.personalShareAmount ?? 0)}',
-                                    tone: FinarcStatusTone.neutral,
-                                    compact: true,
-                                  ),
-                                if (t.cashbackAmount > 0)
-                                  FinarcStatusBadge(
-                                    label: 'Net ${inr(net)}',
-                                    tone: FinarcStatusTone.info,
-                                    compact: true,
-                                  ),
-                              ],
-                            ),
-                          );
-                        }),
-                      ],
-                    ),
-                  );
-                }),
-              if (filtered.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.md),
-                FinarcPrimaryButton(
-                  onPressed: () => context.push('/expenses/add'),
-                  icon: Icons.add,
-                  label: 'Add Expense',
+          return RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(expenseListProvider);
+              await ref.read(expenseListProvider.future);
+            },
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(AppSpacing.md),
+              children: [
+                Text(
+                  'Transaction command center',
+                  style: Theme.of(context).textTheme.headlineSmall,
                 ),
+                const SizedBox(height: AppSpacing.xxs),
+                Text(
+                  'Track expenses, recoverables and detected spends.',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                _filterPanel(
+                  context,
+                  txns: txns,
+                  hasActiveFilters: hasActiveFilters,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                if (filtered.isEmpty)
+                  Column(
+                    children: [
+                      FinarcEmptyState(
+                        title: 'No transactions yet',
+                        subtitle:
+                            'Add your first expense or enable detection to start tracking.',
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      FinarcPrimaryButton(
+                        onPressed: () => context.push('/expenses/add'),
+                        icon: Icons.add,
+                        label: 'Add Expense',
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      FinarcSecondaryButton(
+                        onPressed: () => context.push('/notifications/setup'),
+                        icon: Icons.notifications_active_outlined,
+                        label: 'Enable Notification Detection',
+                      ),
+                    ],
+                  )
+                else
+                  ...grouped.entries.map((entry) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          FinarcSectionHeader(
+                            title: _prettyDay(entry.key),
+                            trailing: Text(
+                              '${entry.value.length} txns',
+                              style: Theme.of(context).textTheme.labelMedium,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          ...entry.value.map((t) {
+                            final net = ref
+                                .read(transactionEngineProvider)
+                                .netExpense(t);
+                            final recoverableBase =
+                                t.recoverableBaseAmount ??
+                                (t.isForOthers
+                                    ? (t.amount - t.cashbackAmount)
+                                          .clamp(0, t.amount)
+                                          .toDouble()
+                                    : 0.0);
+                            final recovered = t.recoveredAmount
+                                .clamp(0, recoverableBase)
+                                .toDouble();
+                            final remaining = (recoverableBase - recovered)
+                                .clamp(0, recoverableBase)
+                                .toDouble();
+                            final isPositive =
+                                t.type == 'income' || t.type == 'refund';
+                            return Padding(
+                              padding: const EdgeInsets.only(
+                                bottom: AppSpacing.xs,
+                              ),
+                              child: FinarcTransactionTile(
+                                onTap: () => context.push(
+                                  '/expenses/transaction/${t.id}',
+                                ),
+                                title: t.title,
+                                subtitle: t.category,
+                                meta: FinarcTransactionPresentation.meta(
+                                  date: t.transactionDate,
+                                  source:
+                                      FinarcTransactionPresentation.sourceLabel(
+                                        t.paymentSourceType,
+                                      ),
+                                ),
+                                amount:
+                                    '${isPositive ? '+' : '-'}${inr(t.amount)}',
+                                amountColor: isPositive
+                                    ? (isDark
+                                          ? AppColors.darkSuccess
+                                          : AppColors.lightSuccess)
+                                    : (isDark
+                                          ? AppColors.darkError
+                                          : AppColors.lightError),
+                                prefix: CircleAvatar(
+                                  radius: 16,
+                                  backgroundColor: isDark
+                                      ? AppColors.darkPrimarySoft
+                                      : AppColors.lightPrimarySoft,
+                                  child: Icon(
+                                    _iconForType(t.type, t.paymentSourceType),
+                                    size: 15,
+                                    color: isDark
+                                        ? AppColors.darkAccent
+                                        : AppColors.lightAccent,
+                                  ),
+                                ),
+                                badges: [
+                                  if (t.paymentSourceType == 'creditCard')
+                                    FinarcTransactionPresentation.billedBadge(
+                                      billed: t.cardBillId != null,
+                                    ),
+                                  if (t.cashbackAmount > 0)
+                                    FinarcTransactionPresentation.cashbackBadge,
+                                  if (t.detectedSourceType != null)
+                                    FinarcStatusBadge(
+                                      label:
+                                          'Detected ${_sourceLabel(t.detectedSourceType)}',
+                                      tone: FinarcStatusTone.info,
+                                      compact: true,
+                                    ),
+                                  if (t.isForOthers)
+                                    FinarcStatusBadge(
+                                      label:
+                                          t.recoverablePartyName ??
+                                          'For Others',
+                                      tone: FinarcStatusTone.info,
+                                      compact: true,
+                                    ),
+                                  if (t.isForOthers)
+                                    FinarcTransactionPresentation.recoverableStatusBadge(
+                                      t.recoverableStatus,
+                                    ),
+                                  if (t.isForOthers)
+                                    FinarcStatusBadge(
+                                      label: 'Remaining ${inr(remaining)}',
+                                      tone: remaining <= 0.009
+                                          ? FinarcStatusTone.success
+                                          : FinarcStatusTone.warning,
+                                      compact: true,
+                                    ),
+                                  if (t.isForOthers && recovered > 0)
+                                    FinarcStatusBadge(
+                                      label: 'Recovered ${inr(recovered)}',
+                                      tone: FinarcStatusTone.success,
+                                      compact: true,
+                                    ),
+                                  if (t.linkedSplitExpenseId != null ||
+                                      t.splitGroupId != null)
+                                    const FinarcStatusBadge(
+                                      label: 'Split',
+                                      tone: FinarcStatusTone.info,
+                                      compact: true,
+                                    ),
+                                  if (t.type == 'loanEmi')
+                                    FinarcTransactionPresentation.emiBadge,
+                                  if ((t.personalShareAmount ?? 0) > 0 &&
+                                      (t.personalShareAmount ?? 0) < t.amount)
+                                    FinarcStatusBadge(
+                                      label:
+                                          'My share ${inr(t.personalShareAmount ?? 0)}',
+                                      tone: FinarcStatusTone.neutral,
+                                      compact: true,
+                                    ),
+                                  if (t.cashbackAmount > 0)
+                                    FinarcStatusBadge(
+                                      label: 'Net ${inr(net)}',
+                                      tone: FinarcStatusTone.info,
+                                      compact: true,
+                                    ),
+                                ],
+                              ),
+                            );
+                          }),
+                        ],
+                      ),
+                    );
+                  }),
+                if (filtered.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  FinarcPrimaryButton(
+                    onPressed: () => context.push('/expenses/add'),
+                    icon: Icons.add,
+                    label: 'Add Expense',
+                  ),
+                ],
               ],
-            ],
+            ),
           );
         },
       ),
@@ -585,13 +602,19 @@ class _FilterSelect extends StatelessWidget {
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(AppSpacing.sm, 6, AppSpacing.sm, 6),
         child: Row(
           children: [
-            Icon(icon, size: 18, color: isDark ? AppColors.darkAccent : AppColors.lightAccent),
+            Icon(
+              icon,
+              size: 18,
+              color: isDark ? AppColors.darkAccent : AppColors.lightAccent,
+            ),
             const SizedBox(width: AppSpacing.xs),
             Expanded(
               child: Column(
@@ -686,122 +709,131 @@ class _DateRangeCalendarDialogState extends State<_DateRangeCalendarDialog> {
       backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(24),
-        side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+        side: BorderSide(
+          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 360),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Select date range',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: AppSpacing.xxs),
-              Text(
-                'Future dates are unavailable.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Row(
-                children: [
-                  IconButton(
-                    key: const Key('expenses-calendar-prev'),
-                    onPressed: _canGoPrevious
-                        ? () => setState(() {
-                            _visibleMonth = DateTime(
-                              _visibleMonth.year,
-                              _visibleMonth.month - 1,
-                            );
-                          })
-                        : null,
-                    icon: const Icon(Icons.chevron_left_rounded),
-                  ),
-                  Expanded(
-                    child: Center(
-                      child: Text(
-                        _monthLabel(_visibleMonth),
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Select date range',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: AppSpacing.xxs),
+                Text(
+                  'Future dates are unavailable.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Row(
+                  children: [
+                    IconButton(
+                      key: const Key('expenses-calendar-prev'),
+                      onPressed: _canGoPrevious
+                          ? () => setState(() {
+                              _visibleMonth = DateTime(
+                                _visibleMonth.year,
+                                _visibleMonth.month - 1,
+                              );
+                            })
+                          : null,
+                      icon: const Icon(Icons.chevron_left_rounded),
                     ),
-                  ),
-                  IconButton(
-                    key: const Key('expenses-calendar-next'),
-                    onPressed: _canGoNext
-                        ? () => setState(() {
-                            _visibleMonth = DateTime(
-                              _visibleMonth.year,
-                              _visibleMonth.month + 1,
-                            );
-                          })
-                        : null,
-                    icon: const Icon(Icons.chevron_right_rounded),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Row(
-                children: _weekdays
-                    .map(
-                      (day) => Expanded(
-                        child: Center(
-                          child: Text(
-                            day,
-                            style: Theme.of(context).textTheme.labelSmall,
-                          ),
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          _monthLabel(_visibleMonth),
+                          style: Theme.of(context).textTheme.titleMedium,
                         ),
                       ),
-                    )
-                    .toList(growable: false),
-              ),
-              const SizedBox(height: AppSpacing.xxs),
-              _CalendarMonthGrid(
-                visibleMonth: _visibleMonth,
-                today: widget.today,
-                start: _start,
-                end: _end,
-                onDateTap: _selectDate,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                _selectionLabel,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Row(
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(
-                      context,
-                    ).pop(const _DateRangeDialogResult.clear()),
-                    child: const Text('Clear'),
-                  ),
-                  const Spacer(),
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Cancel'),
-                  ),
-                  const SizedBox(width: AppSpacing.xs),
-                  FilledButton(
-                    onPressed: _start == null
-                        ? null
-                        : () {
-                            final start = _start!;
-                            final end = _end ?? _start!;
-                            Navigator.of(context).pop(
-                              _DateRangeDialogResult.range(
-                                DateTimeRange(start: start, end: end),
-                              ),
-                            );
-                          },
-                    child: const Text('Apply'),
-                  ),
-                ],
-              ),
-            ],
+                    ),
+                    IconButton(
+                      key: const Key('expenses-calendar-next'),
+                      onPressed: _canGoNext
+                          ? () => setState(() {
+                              _visibleMonth = DateTime(
+                                _visibleMonth.year,
+                                _visibleMonth.month + 1,
+                              );
+                            })
+                          : null,
+                      icon: const Icon(Icons.chevron_right_rounded),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Row(
+                  children: _weekdays
+                      .map(
+                        (day) => Expanded(
+                          child: Center(
+                            child: Text(
+                              day,
+                              style: Theme.of(context).textTheme.labelSmall,
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(growable: false),
+                ),
+                const SizedBox(height: AppSpacing.xxs),
+                _CalendarMonthGrid(
+                  visibleMonth: _visibleMonth,
+                  today: widget.today,
+                  start: _start,
+                  end: _end,
+                  onDateTap: _selectDate,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  _selectionLabel,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.of(
+                            context,
+                          ).pop(const _DateRangeDialogResult.clear()),
+                          child: const Text('Clear'),
+                        ),
+                        const Spacer(),
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text('Cancel'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    FilledButton(
+                      onPressed: _start == null
+                          ? null
+                          : () {
+                              final start = _start!;
+                              final end = _end ?? _start!;
+                              Navigator.of(context).pop(
+                                _DateRangeDialogResult.range(
+                                  DateTimeRange(start: start, end: end),
+                                ),
+                              );
+                            },
+                      child: const Text('Apply'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -918,7 +950,9 @@ class _CalendarMonthGrid extends StatelessWidget {
                 color: selected
                     ? (isDark ? AppColors.darkAccent : AppColors.lightAccent)
                     : inRange
-                    ? (isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft)
+                    ? (isDark
+                          ? AppColors.darkPrimarySoft
+                          : AppColors.lightPrimarySoft)
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
@@ -932,7 +966,10 @@ class _CalendarMonthGrid extends StatelessWidget {
                   '$dayNumber',
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
                     color: disabled
-                        ? (isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted).withValues(alpha: 0.35)
+                        ? (isDark
+                                  ? AppColors.darkTextMuted
+                                  : AppColors.lightTextMuted)
+                              .withValues(alpha: 0.35)
                         : selected
                         ? (isDark ? AppColors.darkBg : AppColors.lightBg)
                         : (isDark ? AppColors.darkText : AppColors.lightText),
@@ -969,9 +1006,13 @@ class _FilterAction extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         child: Ink(
           decoration: BoxDecoration(
-            color: isDark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh,
+            color: isDark
+                ? AppColors.darkSurfaceLow
+                : AppColors.lightSurfaceHigh,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+            border: Border.all(
+              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+            ),
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(
@@ -980,13 +1021,19 @@ class _FilterAction extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(icon, size: 18, color: isDark ? AppColors.darkAccent : AppColors.lightAccent),
+                Icon(
+                  icon,
+                  size: 18,
+                  color: isDark ? AppColors.darkAccent : AppColors.lightAccent,
+                ),
                 const SizedBox(width: AppSpacing.xs),
                 Expanded(
                   child: Text(
                     label,
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: isDark ? AppColors.darkAccent : AppColors.lightAccent,
+                      color: isDark
+                          ? AppColors.darkAccent
+                          : AppColors.lightAccent,
                     ),
                   ),
                 ),
@@ -1014,9 +1061,13 @@ class _ResetFiltersButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         child: Ink(
           decoration: BoxDecoration(
-            color: isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft,
+            color: isDark
+                ? AppColors.darkPrimarySoft
+                : AppColors.lightPrimarySoft,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+            border: Border.all(
+              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+            ),
           ),
           child: Padding(
             padding: const EdgeInsets.all(11),

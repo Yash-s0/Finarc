@@ -34,13 +34,15 @@ final alertsInboxProvider = FutureProvider<List<Alert>>((ref) async {
   final includeDismissed = ref.watch(alertsIncludeDismissedProvider);
   final type = ref.watch(alertsTypeFilterProvider);
 
-  return ref.read(alertServiceProvider).getAlerts(
-    query: AlertQuery(
-      onlyUnread: onlyUnread,
-      includeDismissed: includeDismissed,
-      alertType: type,
-    ),
-  );
+  return ref
+      .read(alertServiceProvider)
+      .getAlerts(
+        query: AlertQuery(
+          onlyUnread: onlyUnread,
+          includeDismissed: includeDismissed,
+          alertType: type,
+        ),
+      );
 });
 
 final alertsUnreadCountProvider = FutureProvider<int>((ref) async {
@@ -113,11 +115,9 @@ final alertEvaluationActionsProvider = Provider((ref) {
     required String title,
     required String body,
   }) async {
-    await ref.read(alertEngineProvider).onPendingDetected(
-      pendingId: pendingId,
-      title: title,
-      body: body,
-    );
+    await ref
+        .read(alertEngineProvider)
+        .onPendingDetected(pendingId: pendingId, title: title, body: body);
     ref.invalidate(alertsInboxProvider);
     ref.invalidate(alertsUnreadCountProvider);
     ref.invalidate(latestImportantAlertProvider);

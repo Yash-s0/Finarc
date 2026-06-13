@@ -20,85 +20,90 @@ class AnalyticsScreen extends ConsumerWidget {
 
     return FinarcScaffold(
       appBar: const FinarcAppBar(title: 'Reports & Analytics'),
-      body: ListView(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        children: [
-          Text(
-            'Track trends from your local data only.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: AnalyticsPeriod.values
-                .map((item) {
-                  final isSelected = period == item;
-                  return FinarcActionChip(
-                    label: analyticsPeriodLabel(item),
-                    selected: isSelected,
-                    onTap: () async {
-                      if (item == AnalyticsPeriod.custom) {
-                        final picked = await showDateRangePicker(
-                          context: context,
-                          firstDate: DateTime(2020, 1, 1),
-                          lastDate: DateTime(2100, 12, 31),
-                          initialDateRange: customRange,
-                        );
-                        if (picked == null) return;
-                        ref.read(analyticsCustomRangeProvider.notifier).state =
-                            picked;
-                      }
-                      ref.read(analyticsPeriodProvider.notifier).state = item;
-                    },
-                  );
-                })
-                .toList(growable: false),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          state.when(
-            loading: () => Column(
-              children: const [
-                FinarcLoadingSkeleton(height: 120),
-                SizedBox(height: AppSpacing.sm),
-                FinarcLoadingSkeleton(height: 180),
-                SizedBox(height: AppSpacing.sm),
-                FinarcLoadingSkeleton(height: 180),
-              ],
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(analyticsSnapshotProvider);
+          await ref.read(analyticsSnapshotProvider.future);
+        },
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(AppSpacing.md),
+          children: [
+            Text(
+              'Track trends from your local data only.',
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
-            error: (e, _) => FinarcEmptyState(
-              title: 'Unable to load analytics',
-              subtitle: '$e',
-              icon: Icons.error_outline,
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: AnalyticsPeriod.values
+                  .map((item) {
+                    final isSelected = period == item;
+                    return FinarcActionChip(
+                      label: analyticsPeriodLabel(item),
+                      selected: isSelected,
+                      onTap: () async {
+                        if (item == AnalyticsPeriod.custom) {
+                          final picked = await showDateRangePicker(
+                            context: context,
+                            firstDate: DateTime(2020, 1, 1),
+                            lastDate: DateTime(2100, 12, 31),
+                            initialDateRange: customRange,
+                          );
+                          if (picked == null) return;
+                          ref
+                                  .read(analyticsCustomRangeProvider.notifier)
+                                  .state =
+                              picked;
+                        }
+                        ref.read(analyticsPeriodProvider.notifier).state = item;
+                      },
+                    );
+                  })
+                  .toList(growable: false),
             ),
-            data: (data) {
-              if (!data.hasAnyData) {
-                return const FinarcEmptyState(
-                  title: 'Not enough data for reports',
-                  subtitle:
-                      'Add transactions, cards or loans to unlock analytics trends.',
-                  icon: Icons.insights_outlined,
-                );
-              }
-
-              return Column(
+            const SizedBox(height: AppSpacing.sm),
+            state.when(
+              loading: () => const Column(
                 children: [
-                  _overviewSection(context, data),
-                  const SizedBox(height: AppSpacing.sm),
-                  _spendingSection(context, data),
-                  const SizedBox(height: AppSpacing.sm),
-                  _incomeSection(context, data),
-                  const SizedBox(height: AppSpacing.sm),
-                  _cardsSection(context, data),
-                  const SizedBox(height: AppSpacing.sm),
-                  _loansSection(context, data),
-                  const SizedBox(height: AppSpacing.sm),
-                  _splitSection(context, data),
+                  FinarcLoadingSkeletonGroup(items: 3, itemHeight: 156),
                 ],
-              );
-            },
-          ),
-        ],
+              ),
+              error: (e, _) => FinarcEmptyState(
+                title: 'Unable to load analytics',
+                subtitle: '$e',
+                icon: Icons.error_outline,
+              ),
+              data: (data) {
+                if (!data.hasAnyData) {
+                  return FinarcEmptyState(
+                    title: 'Not enough data for reports',
+                    subtitle:
+                        'Add transactions, cards or loans to unlock analytics trends.',
+                    icon: Icons.insights_outlined,
+                  );
+                }
+
+                return Column(
+                  children: [
+                    _overviewSection(context, data),
+                    const SizedBox(height: AppSpacing.sm),
+                    _spendingSection(context, data),
+                    const SizedBox(height: AppSpacing.sm),
+                    _incomeSection(context, data),
+                    const SizedBox(height: AppSpacing.sm),
+                    _cardsSection(context, data),
+                    const SizedBox(height: AppSpacing.sm),
+                    _loansSection(context, data),
+                    const SizedBox(height: AppSpacing.sm),
+                    _splitSection(context, data),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

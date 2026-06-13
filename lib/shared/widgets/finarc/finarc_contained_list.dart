@@ -10,7 +10,7 @@ class FinarcContainedList extends StatelessWidget {
     this.emptyHeight = 164,
     this.separatorHeight = 8,
     this.emptyState,
-    this.physics = const BouncingScrollPhysics(),
+    this.physics = const ClampingScrollPhysics(),
     this.showScrollbar = true,
   });
 

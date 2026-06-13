@@ -101,7 +101,7 @@ class _EditPendingTransactionScreenState
               return ListView(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 children: [
-                  const FinarcEmptyState(
+                  FinarcEmptyState(
                     title: 'Pending transaction not found',
                     subtitle:
                         'It may have been confirmed, ignored, or deleted.',

@@ -21,9 +21,16 @@ class AppColors {
   static const darkOrange = darkWarning;
   static const darkPink = darkError;
 
+  // Light-mode aliases (matching dark-mode semantics)
+  static const lightBlue = lightAccent;
+  static const lightMint = lightSuccess;
+  static const lightOrange = lightWarning;
+  static const lightPink = lightError;
+
   static const lightBg = Color(0xFFF9FAFB);
   static const lightSurface = Color(0xFFFFFFFF);
   static const lightSurfaceHigh = Color(0xFFF3F4F6);
+  static const lightSurfaceLow = Color(0xFFF0F1F3);
   static const lightBorder = Color(0xFFE5E7EB);
   static const lightPrimary = Color(0xFF6366F1);
   static const lightPrimarySoft = Color(0xFFEEF2FF);
@@ -33,4 +40,14 @@ class AppColors {
   static const lightError = Color(0xFFEF4444);
   static const lightText = Color(0xFF111827);
   static const lightTextMuted = Color(0xFF6B7280);
+
+  // ── Hero gradient helpers (theme-aware) ──
+  static const darkHeroGradientStart = darkPrimarySoft;
+  static const darkHeroGradientEnd = darkSurfaceHigh;
+  static const lightHeroGradientStart = Color(0xFFEEF2FF);
+  static const lightHeroGradientEnd = Color(0xFFE0E7FF);
+
+  // ── Glow helpers ──
+  static const darkGlow = Color(0x1F6366F1);
+  static const lightGlow = Color(0x146366F1);
 }

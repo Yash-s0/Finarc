@@ -14,18 +14,13 @@ class FinarcBottomSheet {
       context: context,
       isScrollControlled: isScrollControlled,
       showDragHandle: true,
-      backgroundColor: isDark ? AppColors.darkSurfaceHigh : AppColors.lightSurfaceHigh,
+      backgroundColor: isDark
+          ? AppColors.darkSurfaceHigh
+          : AppColors.lightSurfaceHigh,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
       ),
-      builder: (context) => SafeArea(
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            border: Border(top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder)),
-          ),
-          child: child,
-        ),
-      ),
+      builder: (context) => SafeArea(child: child),
     );
   }
 }

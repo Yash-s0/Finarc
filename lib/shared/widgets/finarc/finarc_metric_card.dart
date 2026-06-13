@@ -55,13 +55,20 @@ class FinarcMetricCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color:
                           iconBackgroundColor ??
-                          (isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft).withValues(alpha: 0.9),
+                          (isDark
+                                  ? AppColors.darkPrimarySoft
+                                  : AppColors.lightPrimarySoft)
+                              .withValues(alpha: 0.9),
                       borderRadius: BorderRadius.circular(AppRadius.sm),
                     ),
                     child: Icon(
                       icon,
                       size: 14,
-                      color: iconColor ?? (isDark ? AppColors.darkAccent : AppColors.lightAccent),
+                      color:
+                          iconColor ??
+                          (isDark
+                              ? AppColors.darkAccent
+                              : AppColors.lightAccent),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.xs),
@@ -71,7 +78,9 @@ class FinarcMetricCard extends StatelessWidget {
                     title,
                     maxLines: titleMaxLines,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelMedium,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelMedium?.copyWith(letterSpacing: 0.2),
                   ),
                 ),
                 ?trailing,
@@ -87,7 +96,7 @@ class FinarcMetricCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.amountStyle(
                   color: Theme.of(context).colorScheme.onSurface,
-                  size: 15.5,
+                  size: 16,
                   weight: FontWeight.w700,
                 ),
               ),

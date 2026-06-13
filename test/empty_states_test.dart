@@ -10,6 +10,7 @@ import 'package:finarc/features/cards/presentation/cards_overview_screen.dart';
 import 'package:finarc/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:finarc/features/expenses/presentation/expenses_screen.dart';
 import 'package:finarc/features/split/presentation/split_screen.dart';
+import 'package:finarc/shared/widgets/finarc/finarc_empty_state.dart';
 
 void main() {
   late AppDatabase db;
@@ -113,5 +114,38 @@ void main() {
     await pumpScreen(tester, const SplitScreen());
     expect(find.text('No groups yet'), findsOneWidget);
     expect(find.text('Create Group'), findsOneWidget);
+  });
+
+  testWidgets('finarc empty state renders primary and secondary actions', (
+    tester,
+  ) async {
+    var primaryTapped = 0;
+    var secondaryTapped = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: FinarcEmptyState(
+            title: 'Nothing here',
+            subtitle: 'Add an item to continue.',
+            actionLabel: 'Primary',
+            secondaryActionLabel: 'Secondary',
+            onAction: () => primaryTapped += 1,
+            onSecondaryAction: () => secondaryTapped += 1,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Primary'), findsOneWidget);
+    expect(find.text('Secondary'), findsOneWidget);
+
+    await tester.tap(find.text('Primary'));
+    await tester.tap(find.text('Secondary'));
+    await tester.pumpAndSettle();
+
+    expect(primaryTapped, 1);
+    expect(secondaryTapped, 1);
   });
 }

@@ -23,7 +23,7 @@ class LoanDetailScreen extends ConsumerWidget {
         body: ListView(
           padding: const EdgeInsets.all(AppSpacing.md),
           children: [
-            const FinarcEmptyState(
+            FinarcEmptyState(
               title: 'Invalid loan route',
               subtitle: 'This loan link is invalid.',
               icon: Icons.error_outline,
@@ -63,7 +63,7 @@ class LoanDetailScreen extends ConsumerWidget {
         error: (e, _) => ListView(
           padding: const EdgeInsets.all(AppSpacing.md),
           children: [
-            const FinarcEmptyState(
+            FinarcEmptyState(
               title: 'Loan not found',
               subtitle: 'This loan may have been deleted after reset.',
               icon: Icons.account_balance_wallet_outlined,
@@ -214,7 +214,7 @@ class LoanDetailScreen extends ConsumerWidget {
               const FinarcSectionHeader(title: 'Payment History'),
               const SizedBox(height: AppSpacing.xs),
               if (data.payments.isEmpty)
-                const FinarcEmptyState(
+                FinarcEmptyState(
                   title: 'No EMI history',
                   subtitle: 'EMI payments will appear here once recorded.',
                   icon: Icons.history,

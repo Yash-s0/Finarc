@@ -93,9 +93,9 @@ class FinarcPaymentSelector extends StatelessWidget {
         if (emptyState != null) ...[
           Text(
             emptyState!.message,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: isDark ? AppColors.darkWarning : AppColors.lightWarning),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: isDark ? AppColors.darkWarning : AppColors.lightWarning,
+            ),
           ),
           const SizedBox(height: AppSpacing.xs),
           FinarcPrimaryButton(
@@ -166,12 +166,17 @@ class FinarcPaymentSelector extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? (isDark ? AppColors.darkPrimarySoft : AppColors.lightPrimarySoft)
-              : (isDark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh),
+              ? (isDark
+                    ? AppColors.darkPrimarySoft
+                    : AppColors.lightPrimarySoft)
+              : (isDark
+                    ? AppColors.darkSurfaceLow
+                    : AppColors.lightSurfaceHigh),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected
-                ? (isDark ? AppColors.darkAccent : AppColors.lightAccent).withValues(alpha: 0.8)
+                ? (isDark ? AppColors.darkAccent : AppColors.lightAccent)
+                      .withValues(alpha: 0.8)
                 : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
           ),
         ),
@@ -209,7 +214,9 @@ class FinarcPaymentSelector extends StatelessWidget {
           decoration: BoxDecoration(
             color: isSelected
                 ? (isDark ? AppColors.darkPrimary : AppColors.lightPrimary)
-                : (isDark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh),
+                : (isDark
+                      ? AppColors.darkSurfaceLow
+                      : AppColors.lightSurfaceHigh),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isSelected
@@ -258,7 +265,9 @@ class FinarcPaymentSelector extends StatelessWidget {
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+        ),
       ),
       child: Row(
         children: [
@@ -298,9 +307,13 @@ class FinarcPaymentSelector extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh,
+              color: isDark
+                  ? AppColors.darkSurfaceLow
+                  : AppColors.lightSurfaceHigh,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+              border: Border.all(
+                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+              ),
             ),
             child: Row(
               children: [

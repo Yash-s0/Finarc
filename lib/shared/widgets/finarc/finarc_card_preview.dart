@@ -35,7 +35,28 @@ class FinarcCardPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final utilizationPct = (utilization ?? 0).clamp(0, 1).toDouble();
+
+    // Theme-aware gradient and foreground colors
+    final gradientColors = isDark
+        ? [
+            AppColors.darkPrimarySoft.withValues(alpha: 0.95),
+            AppColors.darkSurfaceHigh,
+          ]
+        : [AppColors.lightHeroGradientStart, AppColors.lightHeroGradientEnd];
+    final borderColor = isDark
+        ? AppColors.darkAccent.withValues(alpha: 0.42)
+        : AppColors.lightPrimary.withValues(alpha: 0.25);
+    final primaryFg = isDark ? Colors.white : AppColors.lightText;
+    final secondaryFg = isDark ? Colors.white70 : AppColors.lightTextMuted;
+    final glowColor = isDark
+        ? AppColors.darkAccent.withValues(alpha: 0.28)
+        : AppColors.lightPrimary.withValues(alpha: 0.12);
+    final progressBg = isDark
+        ? AppColors.darkSurfaceLow
+        : AppColors.lightBorder;
+    final progressFg = isDark ? AppColors.darkAccent : AppColors.lightPrimary;
 
     return FinarcCard(
       onTap: onTap,
@@ -43,12 +64,9 @@ class FinarcCardPreview extends StatelessWidget {
       gradient: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [
-          AppColors.darkPrimarySoft.withValues(alpha: 0.95),
-          AppColors.darkSurfaceHigh,
-        ],
+        colors: gradientColors,
       ),
-      borderColor: AppColors.darkAccent.withValues(alpha: 0.42),
+      borderColor: borderColor,
       child: Stack(
         children: [
           Positioned(
@@ -60,10 +78,7 @@ class FinarcCardPreview extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
-                  colors: [
-                    AppColors.darkAccent.withValues(alpha: 0.28),
-                    Colors.transparent,
-                  ],
+                  colors: [glowColor, Colors.transparent],
                 ),
               ),
             ),
@@ -78,7 +93,7 @@ class FinarcCardPreview extends StatelessWidget {
                       bank,
                       style: Theme.of(
                         context,
-                      ).textTheme.titleSmall?.copyWith(color: Colors.white),
+                      ).textTheme.titleSmall?.copyWith(color: primaryFg),
                     ),
                   ),
                   if (dueLabel != null)
@@ -90,20 +105,27 @@ class FinarcCardPreview extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: AppSpacing.xxs),
-              Text(nickname, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white70)),
+              Text(
+                nickname,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: secondaryFg),
+              ),
               const SizedBox(height: AppSpacing.md),
               Row(
                 children: [
                   Expanded(
                     child: Text(
                       maskedNumber,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white70),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.titleMedium?.copyWith(color: secondaryFg),
                     ),
                   ),
                   Text(
                     _networkLabel(network),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.white,
+                      color: primaryFg,
                       fontWeight: FontWeight.w900,
                       fontStyle: FontStyle.italic,
                       letterSpacing: 0.6,
@@ -115,7 +137,7 @@ class FinarcCardPreview extends StatelessWidget {
               Text(
                 outstanding,
                 style: AppTextStyles.amountStyle(
-                  color: Colors.white,
+                  color: primaryFg,
                   size: 20,
                   weight: FontWeight.w800,
                 ),
@@ -129,17 +151,17 @@ class FinarcCardPreview extends StatelessWidget {
                       child: LinearProgressIndicator(
                         value: utilizationPct,
                         minHeight: 6,
-                        backgroundColor: AppColors.darkSurfaceLow,
-                        valueColor: const AlwaysStoppedAnimation(
-                          AppColors.darkAccent,
-                        ),
+                        backgroundColor: progressBg,
+                        valueColor: AlwaysStoppedAnimation(progressFg),
                       ),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.xs),
                   Text(
                     'Utilized ${(utilizationPct * 100).toStringAsFixed(0)}%',
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(color: Colors.white60),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelMedium?.copyWith(color: secondaryFg),
                   ),
                 ],
               ),

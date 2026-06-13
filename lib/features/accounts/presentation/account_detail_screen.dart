@@ -26,7 +26,7 @@ class AccountDetailScreen extends ConsumerWidget {
         body: ListView(
           padding: const EdgeInsets.all(AppSpacing.md),
           children: [
-            const FinarcEmptyState(
+            FinarcEmptyState(
               title: 'Invalid account route',
               subtitle: 'This account link is invalid.',
               icon: Icons.error_outline,
@@ -55,198 +55,209 @@ class AccountDetailScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: state.when(
-        loading: () => ListView(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          children: const [
-            FinarcLoadingSkeleton(height: 176),
-            SizedBox(height: AppSpacing.sm),
-            FinarcLoadingSkeleton(height: 126),
-          ],
-        ),
-        error: (e, _) => ListView(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          children: [
-            const FinarcEmptyState(
-              title: 'Account not found',
-              subtitle: 'This account may have been deleted after reset.',
-              icon: Icons.account_balance_wallet_outlined,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            FinarcPrimaryButton(
-              onPressed: () => context.go('/accounts'),
-              icon: Icons.arrow_back_rounded,
-              label: 'Back to Accounts',
-            ),
-          ],
-        ),
-        data: (data) {
-          final incoming = data.txns
-              .where((t) => !t.title.contains('Out'))
-              .fold<double>(0, (s, t) => s + t.amount);
-          final outgoing = data.txns
-              .where((t) => t.title.contains('Out'))
-              .fold<double>(0, (s, t) => s + t.amount);
-
-          return ListView(
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(accountDetailProvider((type, id)));
+          await ref.read(accountDetailProvider((type, id)).future);
+        },
+        child: state.when(
+          loading: () => ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(AppSpacing.md),
+            children: const [
+              FinarcLoadingSkeleton(height: 176),
+              SizedBox(height: AppSpacing.sm),
+              FinarcLoadingSkeleton(height: 126),
+            ],
+          ),
+          error: (e, _) => ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(AppSpacing.md),
             children: [
-              FinarcCard(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      type == 'cash'
-                          ? 'CASH WALLET BALANCE'
-                          : 'ACCOUNT BALANCE',
-                      style: Theme.of(context).textTheme.labelSmall,
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      inr(data.balance),
-                      style: AppTextStyles.amountStyle(
-                        color: Theme.of(context).colorScheme.onSurface,
-                        size: 32,
-                        weight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xxs),
-                    Text(
-                      data.name,
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    const Divider(height: 1),
-                    const SizedBox(height: AppSpacing.sm),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _summary(
-                            context,
-                            'Incoming',
-                            '+${inr(incoming)}',
-                            AppColors.darkSuccess,
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        Expanded(
-                          child: _summary(
-                            context,
-                            'Outgoing',
-                            '-${inr(outgoing)}',
-                            AppColors.darkError,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+              FinarcEmptyState(
+                title: 'Account not found',
+                subtitle: 'This account may have been deleted after reset.',
+                icon: Icons.account_balance_wallet_outlined,
               ),
               const SizedBox(height: AppSpacing.sm),
-              Row(
-                children: [
-                  Expanded(
-                    child: FinarcPrimaryButton(
-                      onPressed: () => context.push('/accounts/transfer'),
-                      icon: Icons.swap_horiz,
-                      label: 'Transfer',
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: FinarcSecondaryButton(
-                      onPressed: () =>
-                          context.push('/accounts/reconcile/$type/$id'),
-                      label: 'Reconcile',
-                    ),
-                  ),
-                ],
-              ),
-              if (type == 'cash') ...[
-                const SizedBox(height: AppSpacing.xs),
-                FinarcSecondaryButton(
-                  onPressed: () => context.push('/income/add'),
-                  icon: Icons.add_circle_outline,
-                  label: 'Quick Add Cash',
-                ),
-              ],
-              const SizedBox(height: AppSpacing.md),
-              FinarcCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const FinarcSectionHeader(title: 'Account Insights'),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      'Placeholder for future account insight rules.',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              FinarcCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const FinarcSectionHeader(title: 'Recent Transactions'),
-                    const SizedBox(height: AppSpacing.xs),
-                    FinarcContainedList(
-                      itemCount: data.txns.length,
-                      itemExtentEstimate: _embeddedTransactionEstimate,
-                      maxHeight: _embeddedTransactionHeight,
-                      emptyState: const FinarcEmptyState(
-                        title: 'No transactions found',
-                        subtitle:
-                            'Transfers and reconciliations will appear here.',
-                        icon: Icons.receipt_long_outlined,
-                      ),
-                      itemBuilder: (context, index) {
-                        final t = data.txns[index];
-                        final sign = t.title.contains('Out') ? '-' : '+';
-                        final color = sign == '-'
-                            ? AppColors.darkError
-                            : AppColors.darkSuccess;
-                        return FinarcTransactionTile(
-                          title: t.title,
-                          subtitle: t.category,
-                          meta: FinarcTransactionPresentation.meta(
-                            date: t.transactionDate,
-                            source: FinarcTransactionPresentation.sourceLabel(
-                              t.paymentSourceType,
-                            ),
-                          ),
-                          amount: '$sign${inr(t.amount)}',
-                          amountColor: color,
-                          prefix: CircleAvatar(
-                            radius: 16,
-                            backgroundColor: AppColors.darkPrimarySoft,
-                            child: Icon(
-                              sign == '-'
-                                  ? Icons.north_east_rounded
-                                  : Icons.south_west_rounded,
-                              size: 15,
-                              color: AppColors.darkAccent,
-                            ),
-                          ),
-                          badges: [
-                            if (t.cashbackAmount > 0)
-                              FinarcTransactionPresentation.cashbackBadge,
-                            if (t.isForOthers)
-                              FinarcTransactionPresentation.recoverableStatusBadge(
-                                t.recoverableStatus,
-                              ),
-                          ],
-                        );
-                      },
-                    ),
-                  ],
-                ),
+              FinarcPrimaryButton(
+                onPressed: () => context.go('/accounts'),
+                icon: Icons.arrow_back_rounded,
+                label: 'Back to Accounts',
               ),
             ],
-          );
-        },
+          ),
+          data: (data) {
+            final incoming = data.txns
+                .where((t) => !t.title.contains('Out'))
+                .fold<double>(0, (s, t) => s + t.amount);
+            final outgoing = data.txns
+                .where((t) => t.title.contains('Out'))
+                .fold<double>(0, (s, t) => s + t.amount);
+
+            return ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(AppSpacing.md),
+              children: [
+                FinarcCard(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        type == 'cash'
+                            ? 'CASH WALLET BALANCE'
+                            : 'ACCOUNT BALANCE',
+                        style: Theme.of(context).textTheme.labelSmall,
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        inr(data.balance),
+                        style: AppTextStyles.amountStyle(
+                          color: Theme.of(context).colorScheme.onSurface,
+                          size: 32,
+                          weight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xxs),
+                      Text(
+                        data.name,
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      const Divider(height: 1),
+                      const SizedBox(height: AppSpacing.sm),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _summary(
+                              context,
+                              'Incoming',
+                              '+${inr(incoming)}',
+                              AppColors.darkSuccess,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: _summary(
+                              context,
+                              'Outgoing',
+                              '-${inr(outgoing)}',
+                              AppColors.darkError,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FinarcPrimaryButton(
+                        onPressed: () => context.push('/accounts/transfer'),
+                        icon: Icons.swap_horiz,
+                        label: 'Transfer',
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: FinarcSecondaryButton(
+                        onPressed: () =>
+                            context.push('/accounts/reconcile/$type/$id'),
+                        label: 'Reconcile',
+                      ),
+                    ),
+                  ],
+                ),
+                if (type == 'cash') ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  FinarcSecondaryButton(
+                    onPressed: () => context.push('/income/add'),
+                    icon: Icons.add_circle_outline,
+                    label: 'Quick Add Cash',
+                  ),
+                ],
+                const SizedBox(height: AppSpacing.md),
+                FinarcCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const FinarcSectionHeader(title: 'Account Insights'),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        'Placeholder for future account insight rules.',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                FinarcCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const FinarcSectionHeader(title: 'Recent Transactions'),
+                      const SizedBox(height: AppSpacing.xs),
+                      FinarcContainedList(
+                        itemCount: data.txns.length,
+                        itemExtentEstimate: _embeddedTransactionEstimate,
+                        maxHeight: _embeddedTransactionHeight,
+                        physics: const NeverScrollableScrollPhysics(),
+                        showScrollbar: false,
+                        emptyState: FinarcEmptyState(
+                          title: 'No transactions found',
+                          subtitle:
+                              'Transfers and reconciliations will appear here.',
+                          icon: Icons.receipt_long_outlined,
+                        ),
+                        itemBuilder: (context, index) {
+                          final t = data.txns[index];
+                          final sign = t.title.contains('Out') ? '-' : '+';
+                          final color = sign == '-'
+                              ? AppColors.darkError
+                              : AppColors.darkSuccess;
+                          return FinarcTransactionTile(
+                            title: t.title,
+                            subtitle: t.category,
+                            meta: FinarcTransactionPresentation.meta(
+                              date: t.transactionDate,
+                              source: FinarcTransactionPresentation.sourceLabel(
+                                t.paymentSourceType,
+                              ),
+                            ),
+                            amount: '$sign${inr(t.amount)}',
+                            amountColor: color,
+                            prefix: CircleAvatar(
+                              radius: 16,
+                              backgroundColor: AppColors.darkPrimarySoft,
+                              child: Icon(
+                                sign == '-'
+                                    ? Icons.north_east_rounded
+                                    : Icons.south_west_rounded,
+                                size: 15,
+                                color: AppColors.darkAccent,
+                              ),
+                            ),
+                            badges: [
+                              if (t.cashbackAmount > 0)
+                                FinarcTransactionPresentation.cashbackBadge,
+                              if (t.isForOthers)
+                                FinarcTransactionPresentation.recoverableStatusBadge(
+                                  t.recoverableStatus,
+                                ),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }

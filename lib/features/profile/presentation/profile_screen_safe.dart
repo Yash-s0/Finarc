@@ -136,21 +136,15 @@ class ProfileScreenSafe extends ConsumerWidget {
             onEdit: () => _showProfileEditSheet(context, ref, profile),
           ),
           const SizedBox(height: AppSpacing.sm),
-          ThemeSettingsSection(
-            currentTheme: currentTheme,
-            onThemeChanged: (theme) {
-              ref.read(themeModeProvider.notifier).state = theme;
-            },
-          ),
-          const SizedBox(height: AppSpacing.sm),
           FinarcCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const FinarcSectionHeader(title: 'Access Setup'),
                 const SizedBox(height: AppSpacing.xs),
-                const Text(
+                Text(
                   'Notification listener is available in release. SMS features are intentionally unavailable.',
+                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 FinarcPrimaryButton(
@@ -164,6 +158,13 @@ class ProfileScreenSafe extends ConsumerWidget {
           const SizedBox(height: AppSpacing.sm),
           DataControlsEntryCard(
             onOpen: () => context.push(AppRoutes.profileDataControls),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          ThemeSettingsSection(
+            currentTheme: currentTheme,
+            onThemeChanged: (theme) {
+              ref.read(themeModeProvider.notifier).state = theme;
+            },
           ),
         ],
       ),

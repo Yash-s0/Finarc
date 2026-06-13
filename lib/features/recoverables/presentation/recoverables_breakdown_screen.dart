@@ -20,87 +20,95 @@ class RecoverablesBreakdownScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (data) {
-          return ListView(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            children: [
-              FinarcBalanceCard(
-                label: 'Outstanding Recoverable',
-                value: inr(data.normalRecoverables),
-                subtitle:
-                    'Grouped by person. Split receivables stay separate until person mapping is verified.',
-                trendLabel:
-                    'Actionable ${inr(data.actionableRecoverables)} • Recovered ${inr(data.settledRecoverables)}',
-                statusLabel: data.normalRecoverables > 0 ? 'Open' : 'Clear',
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Row(
-                children: [
-                  Expanded(
-                    child: FinarcMetricCard(
-                      title: 'Card Billed',
-                      value: inr(data.cardBilledRecoverables),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.xs),
-                  Expanded(
-                    child: FinarcMetricCard(
-                      title: 'Card Unbilled',
-                      value: inr(data.cardUnbilledRecoverables),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Row(
-                children: [
-                  Expanded(
-                    child: FinarcMetricCard(
-                      title: 'Bank / UPI',
-                      value: inr(data.bankUpiRecoverables),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.xs),
-                  Expanded(
-                    child: FinarcMetricCard(
-                      title: 'Cash',
-                      value: inr(data.cashRecoverables),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Row(
-                children: [
-                  Expanded(
-                    child: FinarcMetricCard(
-                      title: 'Recovered',
-                      value: inr(data.settledRecoverables),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.xs),
-                  Expanded(
-                    child: FinarcMetricCard(
-                      title: 'Split Receivables',
-                      value: inr(data.splitReceivables),
-                      onTap: () => context.push('/split'),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.md),
-              const FinarcSectionHeader(title: 'By Person'),
-              const SizedBox(height: AppSpacing.xs),
-              if (data.groups.isEmpty)
-                const FinarcEmptyState(
-                  title: 'No recoverables',
-                  subtitle: 'Recoverables will appear here once you add them.',
-                  icon: Icons.call_received_rounded,
-                )
-              else
-                ...data.groups.map(
-                  (group) => _RecoverablePartyCard(group: group),
+          return RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(recoverablesSnapshotProvider);
+              await ref.read(recoverablesSnapshotProvider.future);
+            },
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(AppSpacing.md),
+              children: [
+                FinarcBalanceCard(
+                  label: 'Outstanding Recoverable',
+                  value: inr(data.normalRecoverables),
+                  subtitle:
+                      'Grouped by person. Split receivables stay separate until person mapping is verified.',
+                  trendLabel:
+                      'Actionable ${inr(data.actionableRecoverables)} • Recovered ${inr(data.settledRecoverables)}',
+                  statusLabel: data.normalRecoverables > 0 ? 'Open' : 'Clear',
                 ),
-            ],
+                const SizedBox(height: AppSpacing.sm),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FinarcMetricCard(
+                        title: 'Card Billed',
+                        value: inr(data.cardBilledRecoverables),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Expanded(
+                      child: FinarcMetricCard(
+                        title: 'Card Unbilled',
+                        value: inr(data.cardUnbilledRecoverables),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FinarcMetricCard(
+                        title: 'Bank / UPI',
+                        value: inr(data.bankUpiRecoverables),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Expanded(
+                      child: FinarcMetricCard(
+                        title: 'Cash',
+                        value: inr(data.cashRecoverables),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FinarcMetricCard(
+                        title: 'Recovered',
+                        value: inr(data.settledRecoverables),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Expanded(
+                      child: FinarcMetricCard(
+                        title: 'Split Receivables',
+                        value: inr(data.splitReceivables),
+                        onTap: () => context.push('/split'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.md),
+                const FinarcSectionHeader(title: 'By Person'),
+                const SizedBox(height: AppSpacing.xs),
+                if (data.groups.isEmpty)
+                  FinarcEmptyState(
+                    title: 'No recoverables',
+                    subtitle:
+                        'Recoverables will appear here once you add them.',
+                    icon: Icons.call_received_rounded,
+                  )
+                else
+                  ...data.groups.map(
+                    (group) => _RecoverablePartyCard(group: group),
+                  ),
+              ],
+            ),
           );
         },
       ),
