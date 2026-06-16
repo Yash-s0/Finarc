@@ -26,4 +26,34 @@ class PendingEditData {
   final double? recoveredAmount;
   final String? recoverablePartyName;
   final String? notes;
+
+  PendingEditData copyWith({
+    double? amount,
+    String? merchant,
+    String? category,
+    String? paymentSourceType,
+    int? paymentSourceId,
+    DateTime? transactionDate,
+    double? cashbackAmount,
+    bool? isForOthers,
+    double? recoverableAmount,
+    double? recoveredAmount,
+    String? recoverablePartyName,
+    String? notes,
+  }) {
+    return PendingEditData(
+      amount: amount ?? this.amount,
+      merchant: merchant ?? this.merchant,
+      category: category ?? this.category,
+      paymentSourceType: paymentSourceType ?? this.paymentSourceType,
+      paymentSourceId: paymentSourceId ?? this.paymentSourceId,
+      transactionDate: transactionDate ?? this.transactionDate,
+      cashbackAmount: cashbackAmount ?? this.cashbackAmount,
+      isForOthers: isForOthers ?? this.isForOthers,
+      recoverableAmount: recoverableAmount ?? this.recoverableAmount,
+      recoveredAmount: recoveredAmount ?? this.recoveredAmount,
+      recoverablePartyName: recoverablePartyName ?? this.recoverablePartyName,
+      notes: notes ?? this.notes,
+    );
+  }
 }

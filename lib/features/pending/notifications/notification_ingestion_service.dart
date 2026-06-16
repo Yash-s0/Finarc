@@ -109,6 +109,7 @@ class NotificationIngestionService {
   final CardBillDueNotificationService cardBillDueNotificationService;
   final CardPaymentNotificationService cardPaymentNotificationService;
   static const Duration _nearDuplicateWindow = Duration(minutes: 8);
+  static const Duration _genericDuplicateWindow = Duration(minutes: 2);
   static bool _optionalSourcesEnabledByDefault() => true;
 
   Future<List<int>> processPayload(NotificationPayload payload) async {
@@ -391,11 +392,11 @@ class NotificationIngestionService {
     bool isMessagingSmsNotification,
   ) {
     if (!isMessagingSmsNotification) return payload.combinedText;
-    final smsText = [
-      payload.body,
-      payload.bigText,
-      payload.subText,
-    ].where((part) => part != null && part!.trim().isNotEmpty).join(' ').trim();
+    final smsText = [payload.body, payload.bigText, payload.subText]
+        .whereType<String>()
+        .where((part) => part.trim().isNotEmpty)
+        .join(' ')
+        .trim();
     return smsText.isEmpty ? payload.combinedText : smsText;
   }
 
@@ -472,6 +473,30 @@ class NotificationIngestionService {
       )?.toLowerCase();
 
       for (final row in rows) {
+        final rowSourceHint = _normalizeSourceHint(
+          ParserTextUtils.extractAccountHint(row.rawText),
+        );
+        final rowRef = _extractTransactionReferenceFromText(
+          row.rawText,
+        )?.toLowerCase();
+
+        if (_isGenericCrossSourceDuplicate(
+          candidateCounterparty: candidateCounterparty,
+          rowCounterparty: row.merchant,
+          candidateSourceHint: candidateSourceHint,
+          rowSourceHint: rowSourceHint,
+          candidateRef: candidateRef,
+          rowRef: rowRef,
+          candidateDate: candidate.transactionDate,
+          rowDate: row.transactionDate,
+        )) {
+          return const _NearDuplicateDecision(
+            suppress: true,
+            possibleDuplicate: false,
+            reason: 'generic_notification_duplicate_within_2m',
+          );
+        }
+
         if (_directionFromPending(row) != candidateDirection) continue;
         if (!CounterpartyNormalizer.isSameOrNearMatch(
           candidateCounterparty,
@@ -484,17 +509,11 @@ class NotificationIngestionService {
             row.paymentSourceTypeSuggestion != candidateSource) {
           continue;
         }
-        final rowSourceHint = _normalizeSourceHint(
-          ParserTextUtils.extractAccountHint(row.rawText),
-        );
         if (candidateSourceHint != null &&
             rowSourceHint != null &&
             candidateSourceHint != rowSourceHint) {
           continue;
         }
-        final rowRef = _extractTransactionReferenceFromText(
-          row.rawText,
-        )?.toLowerCase();
         if (candidateRef != null && rowRef != null && candidateRef != rowRef) {
           return const _NearDuplicateDecision(
             suppress: false,
@@ -583,7 +602,60 @@ class NotificationIngestionService {
 
   String? _normalizeSourceHint(String? hint) {
     if (hint == null || hint.trim().isEmpty) return null;
+    final digits = RegExp(r'(\d{3,4})(?!.*\d)').firstMatch(hint)?.group(1);
+    if (digits != null && digits.isNotEmpty) return digits;
     return hint.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '').trim();
+  }
+
+  bool _isGenericCrossSourceDuplicate({
+    required String candidateCounterparty,
+    required String rowCounterparty,
+    required String? candidateSourceHint,
+    required String? rowSourceHint,
+    required String? candidateRef,
+    required String? rowRef,
+    required DateTime candidateDate,
+    required DateTime rowDate,
+  }) {
+    if (candidateSourceHint == null ||
+        rowSourceHint == null ||
+        candidateSourceHint != rowSourceHint) {
+      return false;
+    }
+    if (candidateRef != null && rowRef != null) return false;
+    if (!_isWeakCounterparty(candidateCounterparty) &&
+        !_isWeakCounterparty(rowCounterparty)) {
+      return false;
+    }
+    return candidateDate.difference(rowDate).abs() <= _genericDuplicateWindow;
+  }
+
+  bool _isWeakCounterparty(String value) {
+    final normalized = CounterpartyNormalizer.normalize(value);
+    if (normalized.isEmpty) return true;
+    if (normalized == 'unknown merchant') return true;
+    final compact = normalized.replaceAll(' ', '');
+    if (RegExp(
+      r'^(?:x+|\*+)?\d{3,4}$',
+      caseSensitive: false,
+    ).hasMatch(compact)) {
+      return true;
+    }
+    const genericTokens = {
+      'unknown',
+      'merchant',
+      'amount',
+      'payment',
+      'transfer',
+      'credited',
+      'debited',
+      'sent',
+      'received',
+      'upi',
+      'bank',
+    };
+    final tokens = normalized.split(' ').where((token) => token.isNotEmpty);
+    return tokens.every(genericTokens.contains);
   }
 
   void _log(

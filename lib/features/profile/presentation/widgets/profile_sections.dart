@@ -449,7 +449,6 @@ class DetectionSettingsSection extends StatelessWidget {
     required this.detectionEnabled,
     required this.smsDetectionEnabled,
     required this.onOpenNotificationSetup,
-    required this.onOpenNotificationDiagnostics,
     required this.onOpenSmsSetup,
     required this.onDetectionToggle,
     required this.onSmsDetectionToggle,
@@ -462,7 +461,6 @@ class DetectionSettingsSection extends StatelessWidget {
   final bool detectionEnabled;
   final bool smsDetectionEnabled;
   final VoidCallback onOpenNotificationSetup;
-  final VoidCallback onOpenNotificationDiagnostics;
   final VoidCallback onOpenSmsSetup;
   final ValueChanged<bool> onDetectionToggle;
   final ValueChanged<bool> onSmsDetectionToggle;
@@ -498,12 +496,6 @@ class DetectionSettingsSection extends StatelessWidget {
                 onPressed: onOpenNotificationSetup,
                 label: 'Open Setup',
                 icon: Icons.settings_outlined,
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              FinarcSecondaryButton(
-                onPressed: onOpenNotificationDiagnostics,
-                label: 'Notification Diagnostics',
-                icon: Icons.analytics_outlined,
               ),
               const SizedBox(height: AppSpacing.xs),
               Row(

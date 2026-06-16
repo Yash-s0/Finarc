@@ -150,6 +150,48 @@ void main() {
     expect(bank.currentBalance, closeTo(10001, 0.001));
   });
 
+  test(
+    'confirm pending auto-resolves missing bank source from single account',
+    () async {
+      final pendingId = await service.createPendingTransaction(
+        amount: 200,
+        merchant: 'Xx0754',
+        categorySuggestion: 'Transfer',
+        paymentSourceTypeSuggestion: PaymentSourceType.upi,
+        paymentSourceIdSuggestion: null,
+        transactionDate: DateTime(2026, 6, 13, 19, 19, 35),
+        sourceType: 'appNotification',
+        rawText:
+            '₹200.00 sent via UPI Amount debited from XX0754. Check out details.',
+        confidenceScore: 0.77,
+      );
+
+      await service.confirmPendingTransaction(
+        pendingId,
+        PendingEditData(
+          amount: 200,
+          merchant: 'Xx0754',
+          category: 'Transfer',
+          paymentSourceType: PaymentSourceType.upi,
+          paymentSourceId: null,
+          transactionDate: DateTime(2026, 6, 13, 19, 19, 35),
+        ),
+      );
+
+      final pending = await (db.select(
+        db.pendingTransactions,
+      )..where((p) => p.id.equals(pendingId))).getSingle();
+      final txn = await (db.select(
+        db.transactions,
+      )..where((t) => t.id.isBiggerThanValue(0))).getSingle();
+
+      expect(pending.status, 'confirmed');
+      expect(pending.paymentSourceIdSuggestion, 1);
+      expect(txn.paymentSourceType, PaymentSourceType.upi);
+      expect(txn.paymentSourceId, 1);
+    },
+  );
+
   test('ignore pending changes status', () async {
     final id = await service.createPendingTransaction(
       amount: 99,
@@ -389,8 +431,19 @@ void main() {
   });
 
   test(
-    'income confirmation without destination account throws actionable validation error',
+    'income confirmation without destination account throws actionable validation error when multiple banks exist',
     () async {
+      await db
+          .into(db.bankAccounts)
+          .insert(
+            BankAccountsCompanion.insert(
+              bankName: 'Second Bank',
+              accountName: 'Backup',
+              accountType: 'savings',
+              currentBalance: const Value(5000),
+            ),
+          );
+
       final pendingId = await service.createPendingTransaction(
         amount: 1,
         merchant: 'Yas21606 4 Okaxis',

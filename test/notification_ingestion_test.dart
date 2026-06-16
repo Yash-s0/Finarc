@@ -988,6 +988,42 @@ void main() {
       expect(pending.merchant.toLowerCase(), contains('okaxis'));
     });
 
+    test(
+      'dedupes generic bank app receipt against detailed sms for same transaction',
+      () async {
+        final first = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.google.android.apps.messaging',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 6, 13, 19, 19, 0),
+            title: 'VM-KOTAKD-S',
+            body:
+                'Sent Rs.200.00 from XXXXX0754 to MANSI. on 13/06/2026. UPI ref no 615087788229.',
+          ),
+        );
+        final duplicate = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.kotak811.mobile',
+            appName: 'Kotak811',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 6, 13, 19, 19, 20),
+            title: '₹200.00 sent via UPI',
+            body: 'Amount debited from XX0754. Check out details.',
+          ),
+        );
+
+        expect(first, hasLength(1));
+        expect(duplicate, isEmpty);
+        expect(debugEntries.last.decision, 'duplicate');
+        expect(
+          debugEntries.last.reason,
+          'generic_notification_duplicate_within_2m',
+        );
+        final rows = await db.select(db.pendingTransactions).get();
+        expect(rows.length, 1);
+      },
+    );
+
     test('blocks OTP-style messages app notifications', () async {
       final ids = await service.processPayload(
         NotificationPayload(

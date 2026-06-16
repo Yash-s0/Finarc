@@ -244,6 +244,15 @@ class ParserTextUtils {
       return explicitValue.replaceAll(RegExp(r'\s+'), ' ');
     }
 
+    final maskedContext = RegExp(
+      r'(?:debited\s+from|credited\s+to|sent\s+from|received\s+in|from|to)\s+[A-Za-z ]{0,24}[Xx*]{1,}\s*([0-9]{3,4})\b',
+      caseSensitive: false,
+    ).firstMatch(text);
+    final maskedLast4 = maskedContext?.group(1);
+    if (maskedLast4 != null && maskedLast4.isNotEmpty) {
+      return 'A/C ending $maskedLast4';
+    }
+
     final ac = RegExp(
       r'(?:A\/C|AC|Account)\s*[*Xx]*([0-9]{3,4})',
       caseSensitive: false,

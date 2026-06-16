@@ -307,6 +307,52 @@ void main() {
       expect(rows.length, 1);
     });
 
+    test(
+      'notification-first generic bank alert is deduped when detailed sms arrives next',
+      () async {
+        final notificationService = NotificationIngestionService(
+          database: db,
+          pendingIngestionService: pendingIngestion,
+          pendingService: pendingService,
+          keywordFilter: NotificationKeywordFilter(),
+          fingerprint: NotificationFingerprint(),
+          localNotifier: notifier,
+          isDetectionEnabled: () => true,
+          shouldShowDetectionNotifications: () => true,
+          appendDebug: (_) {},
+        );
+
+        final notificationIds = await notificationService.processPayload(
+          NotificationPayload(
+            packageName: 'com.kotak811.mobile',
+            appName: 'Kotak811',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 6, 15, 14, 57, 51),
+            title: '₹4,500.00 sent via UPI',
+            body:
+                '₹4,500.00 sent via UPI Amount debited from XX0754. Check out details. ₹4,500.00 sent via UPI Amount debited from XX0754. Check out details.',
+          ),
+        );
+        expect(notificationIds, hasLength(1));
+
+        final smsIds = await smsService.processSmsPayload(
+          NotificationPayload(
+            packageName: 'android.sms',
+            sourceType: 'sms',
+            receivedAt: DateTime(2026, 6, 15, 14, 57, 49),
+            sender: 'VM-KOTAKB-S',
+            body:
+                'Sent Rs.4500.00 from Kotak Bank AC X0754 to Ary4n73 lbl on 15-06-26.UPI Ref 653228447453. Not you, https://kotak.com/KBANKT/Fraud',
+          ),
+          bypassSenderFilter: true,
+        );
+
+        expect(smsIds, isEmpty);
+        final rows = await db.select(db.pendingTransactions).get();
+        expect(rows.length, 1);
+      },
+    );
+
     test('phone-number sender ignored for auto ingestion', () async {
       final ids = await smsService.processSmsPayload(
         NotificationPayload(

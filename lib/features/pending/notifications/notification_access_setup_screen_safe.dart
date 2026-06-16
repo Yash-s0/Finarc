@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
@@ -126,9 +125,7 @@ class NotificationAccessSetupScreenSafe extends ConsumerWidget {
                         value: settings.showDetectionNotifications,
                         onChanged: (value) => ref
                             .read(detectionSettingsProvider.notifier)
-                            .applyChanges(
-                              showDetectionNotifications: value,
-                            ),
+                            .applyChanges(showDetectionNotifications: value),
                       ),
                       _toggleRow(
                         context: context,
@@ -194,8 +191,9 @@ class NotificationAccessSetupScreenSafe extends ConsumerWidget {
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 postNotificationsState.when(
-                  loading: () =>
-                      const Text('Checking Finarc app notification permission...'),
+                  loading: () => const Text(
+                    'Checking Finarc app notification permission...',
+                  ),
                   error: (e, _) => Text('Permission error: $e'),
                   data: (enabled) => FinarcStatusBadge(
                     label: enabled
@@ -233,13 +231,6 @@ class NotificationAccessSetupScreenSafe extends ConsumerWidget {
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 FinarcSecondaryButton(
-                  onPressed: () =>
-                      context.push('/notifications/diagnostics'),
-                  icon: Icons.analytics_outlined,
-                  label: 'Open Notification Diagnostics',
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                FinarcSecondaryButton(
                   onPressed: () {
                     ref.invalidate(_notificationAccessStateProvider);
                     ref.invalidate(_notificationListenerAvailableStateProvider);
@@ -266,10 +257,7 @@ class NotificationAccessSetupScreenSafe extends ConsumerWidget {
       contentPadding: EdgeInsets.zero,
       value: value,
       onChanged: onChanged,
-      title: Text(
-        label,
-        style: Theme.of(context).textTheme.bodyMedium,
-      ),
+      title: Text(label, style: Theme.of(context).textTheme.bodyMedium),
     );
   }
 }

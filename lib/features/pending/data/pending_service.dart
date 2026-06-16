@@ -7,6 +7,8 @@ import '../../expenses/data/transaction_engine.dart';
 import '../../expenses/models/transaction_types.dart';
 import '../models/pending_models.dart';
 import '../notifications/card_payment_pending_codec.dart';
+import '../parsing/bank_account_matcher.dart';
+import '../parsing/parser_text_utils.dart';
 import '../parsing/transaction_direction_classifier.dart';
 
 class PendingConfirmationException implements Exception {
@@ -76,21 +78,25 @@ class PendingService {
     final pending = await (_db.select(
       _db.pendingTransactions,
     )..where((p) => p.id.equals(pendingId))).getSingle();
+    final resolvedData = await _resolveConfirmationData(
+      pending: pending,
+      editedData: editedData,
+    );
     final cardPaymentData = CardPaymentPendingCodec.tryDecode(pending.rawText);
     if (cardPaymentData != null) {
       await _confirmCardPaymentPending(
         pending: pending,
         pendingId: pendingId,
-        editedData: editedData,
+        editedData: resolvedData,
         metadata: cardPaymentData,
       );
       return;
     }
-    final detectedType = _resolveDetectedType(pending, editedData);
+    final detectedType = _resolveDetectedType(pending, resolvedData);
     await _validateConfirmationInput(
       pendingId: pendingId,
       detectedType: detectedType,
-      editedData: editedData,
+      editedData: resolvedData,
     );
 
     final duplicate = await detectPossibleDuplicate(pending);
@@ -110,44 +116,44 @@ class PendingService {
 
     final type = _resolvedTransactionType(
       detectedType: detectedType,
-      paymentSourceType: editedData.paymentSourceType,
-      category: editedData.category,
+      paymentSourceType: resolvedData.paymentSourceType,
+      category: resolvedData.category,
     );
-    final recoverableBaseAmount = editedData.isForOthers
-        ? (editedData.amount - (editedData.cashbackAmount ?? 0))
-              .clamp(0, editedData.amount)
+    final recoverableBaseAmount = resolvedData.isForOthers
+        ? (resolvedData.amount - (resolvedData.cashbackAmount ?? 0))
+              .clamp(0, resolvedData.amount)
               .toDouble()
         : 0.0;
-    final recoveredAmount = editedData.isForOthers
-        ? (editedData.recoveredAmount ?? 0)
+    final recoveredAmount = resolvedData.isForOthers
+        ? (resolvedData.recoveredAmount ?? 0)
               .clamp(0, recoverableBaseAmount)
               .toDouble()
         : 0.0;
     _validateRecoverableInput(
-      isForOthers: editedData.isForOthers,
-      partyName: editedData.recoverablePartyName,
+      isForOthers: resolvedData.isForOthers,
+      partyName: resolvedData.recoverablePartyName,
     );
 
     try {
       await _engine.addTransaction(
         AddTransactionInput(
           type: type,
-          amount: editedData.amount,
-          title: editedData.merchant,
-          category: editedData.category,
-          transactionDate: editedData.transactionDate,
-          paymentSourceType: editedData.paymentSourceType,
-          paymentSourceId: editedData.paymentSourceId,
-          cashbackAmount: editedData.cashbackAmount ?? 0,
-          isForOthers: editedData.isForOthers,
-          recoverableAmount: editedData.isForOthers
+          amount: resolvedData.amount,
+          title: resolvedData.merchant,
+          category: resolvedData.category,
+          transactionDate: resolvedData.transactionDate,
+          paymentSourceType: resolvedData.paymentSourceType,
+          paymentSourceId: resolvedData.paymentSourceId,
+          cashbackAmount: resolvedData.cashbackAmount ?? 0,
+          isForOthers: resolvedData.isForOthers,
+          recoverableAmount: resolvedData.isForOthers
               ? (recoverableBaseAmount - recoveredAmount)
                     .clamp(0, recoverableBaseAmount)
                     .toDouble()
               : null,
           recoveredAmount: recoveredAmount,
-          recoverablePartyName: editedData.recoverablePartyName,
-          notes: editedData.notes,
+          recoverablePartyName: resolvedData.recoverablePartyName,
+          notes: resolvedData.notes,
           detectedSourceType: pending.sourceType,
         ),
       );
@@ -181,6 +187,78 @@ class PendingService {
         updatedAt: Value(DateTime.now()),
       ),
     );
+  }
+
+  Future<PendingEditData> _resolveConfirmationData({
+    required PendingTransaction pending,
+    required PendingEditData editedData,
+  }) async {
+    if (editedData.paymentSourceId != null) return editedData;
+
+    final resolvedId =
+        pending.paymentSourceIdSuggestion ??
+        await _resolveSuggestedSourceId(
+          paymentSourceType: editedData.paymentSourceType,
+          rawText: pending.rawText,
+        );
+    if (resolvedId == null) return editedData;
+
+    if (pending.paymentSourceIdSuggestion != resolvedId) {
+      await (_db.update(
+        _db.pendingTransactions,
+      )..where((p) => p.id.equals(pending.id))).write(
+        PendingTransactionsCompanion(
+          paymentSourceIdSuggestion: Value(resolvedId),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+    }
+
+    return editedData.copyWith(paymentSourceId: resolvedId);
+  }
+
+  Future<int?> _resolveSuggestedSourceId({
+    required String paymentSourceType,
+    required String rawText,
+  }) async {
+    switch (paymentSourceType) {
+      case PaymentSourceType.cash:
+        final wallets = await _db.select(_db.cashWallets).get();
+        return wallets.length == 1 ? wallets.first.id : null;
+      case PaymentSourceType.creditCard:
+        return _resolveSuggestedCardId(rawText);
+      case PaymentSourceType.upi:
+      case PaymentSourceType.bank:
+        return _resolveSuggestedBankId(rawText);
+      default:
+        return null;
+    }
+  }
+
+  Future<int?> _resolveSuggestedBankId(String rawText) async {
+    final banks = await _db.select(_db.bankAccounts).get();
+    if (banks.isEmpty) return null;
+
+    final sourceHint = ParserTextUtils.extractAccountHint(rawText);
+    final match = BankAccountMatcher.match(
+      accounts: banks,
+      sourceHint: sourceHint,
+    );
+    if (match.accountId != null) return match.accountId;
+    return banks.length == 1 ? banks.first.id : null;
+  }
+
+  Future<int?> _resolveSuggestedCardId(String rawText) async {
+    final cards = await _db.select(_db.creditCards).get();
+    if (cards.isEmpty) return null;
+
+    final last4 = ParserTextUtils.extractLast4Hint(rawText);
+    if (last4 != null) {
+      final matches = cards.where((card) => card.last4 == last4).toList();
+      if (matches.length == 1) return matches.first.id;
+    }
+
+    return cards.length == 1 ? cards.first.id : null;
   }
 
   Future<void> _validateConfirmationInput({

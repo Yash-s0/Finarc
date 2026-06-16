@@ -152,13 +152,6 @@ class ProfileScreenSafe extends ConsumerWidget {
                   icon: Icons.notifications_active_outlined,
                   label: 'Notification Access',
                 ),
-                const SizedBox(height: AppSpacing.xs),
-                FinarcSecondaryButton(
-                  onPressed: () =>
-                      context.push(AppRoutes.notificationDiagnostics),
-                  icon: Icons.analytics_outlined,
-                  label: 'Notification Diagnostics',
-                ),
               ],
             ),
           ),

@@ -22,6 +22,7 @@ class PendingIngestionService {
   final PendingService _pendingService;
   final TransactionParserRegistry _parserRegistry;
   static const Duration _nearDuplicateWindow = Duration(minutes: 8);
+  static const Duration _genericDuplicateWindow = Duration(minutes: 2);
 
   ParserResult previewParserInput(ParserInput input) {
     return _parserRegistry.parseInput(input);
@@ -199,6 +200,28 @@ class PendingIngestionService {
     );
 
     for (final row in rows) {
+      final rowSourceHint = _normalizeSourceHint(
+        ParserTextUtils.extractAccountHint(row.rawText),
+      );
+      final rowRef = _extractReferenceFromText(row.rawText)?.toLowerCase();
+
+      if (_isGenericCrossSourceDuplicate(
+        candidateCounterparty: candidateCounterparty,
+        rowCounterparty: row.merchant,
+        candidateSourceHint: candidateSourceHint,
+        rowSourceHint: rowSourceHint,
+        candidateRef: candidateRef,
+        rowRef: rowRef,
+        candidateDate: candidate.transactionDate,
+        rowDate: row.transactionDate,
+      )) {
+        return const _NearDuplicateDecision(
+          suppress: true,
+          possibleDuplicate: false,
+          reason: 'generic_notification_duplicate_within_2m',
+        );
+      }
+
       final rowDirection = _directionFromPending(row);
       if (candidateDirection != rowDirection) continue;
 
@@ -214,17 +237,11 @@ class PendingIngestionService {
           row.paymentSourceTypeSuggestion != candidateSource) {
         continue;
       }
-
-      final rowSourceHint = _normalizeSourceHint(
-        ParserTextUtils.extractAccountHint(row.rawText),
-      );
       if (candidateSourceHint != null &&
           rowSourceHint != null &&
           candidateSourceHint != rowSourceHint) {
         continue;
       }
-
-      final rowRef = _extractReferenceFromText(row.rawText)?.toLowerCase();
       if (candidateRef != null && rowRef != null && candidateRef != rowRef) {
         return const _NearDuplicateDecision(
           suppress: false,
@@ -310,7 +327,60 @@ class PendingIngestionService {
 
   String? _normalizeSourceHint(String? hint) {
     if (hint == null || hint.trim().isEmpty) return null;
+    final digits = RegExp(r'(\d{3,4})(?!.*\d)').firstMatch(hint)?.group(1);
+    if (digits != null && digits.isNotEmpty) return digits;
     return hint.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '').trim();
+  }
+
+  bool _isGenericCrossSourceDuplicate({
+    required String candidateCounterparty,
+    required String rowCounterparty,
+    required String? candidateSourceHint,
+    required String? rowSourceHint,
+    required String? candidateRef,
+    required String? rowRef,
+    required DateTime candidateDate,
+    required DateTime rowDate,
+  }) {
+    if (candidateSourceHint == null ||
+        rowSourceHint == null ||
+        candidateSourceHint != rowSourceHint) {
+      return false;
+    }
+    if (candidateRef != null && rowRef != null) return false;
+    if (!_isWeakCounterparty(candidateCounterparty) &&
+        !_isWeakCounterparty(rowCounterparty)) {
+      return false;
+    }
+    return candidateDate.difference(rowDate).abs() <= _genericDuplicateWindow;
+  }
+
+  bool _isWeakCounterparty(String value) {
+    final normalized = CounterpartyNormalizer.normalize(value);
+    if (normalized.isEmpty) return true;
+    if (normalized == 'unknown merchant') return true;
+    final compact = normalized.replaceAll(' ', '');
+    if (RegExp(
+      r'^(?:x+|\*+)?\d{3,4}$',
+      caseSensitive: false,
+    ).hasMatch(compact)) {
+      return true;
+    }
+    const genericTokens = {
+      'unknown',
+      'merchant',
+      'amount',
+      'payment',
+      'transfer',
+      'credited',
+      'debited',
+      'sent',
+      'received',
+      'upi',
+      'bank',
+    };
+    final tokens = normalized.split(' ').where((token) => token.isNotEmpty);
+    return tokens.every(genericTokens.contains);
   }
 
   String _defaultSourceSuggestion(ParserInput input) {

@@ -15,8 +15,6 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
     final listenerAvailable = ref.watch(notificationListenerAvailableProvider);
     final smsAccessState = ref.watch(smsPermissionStatusProvider);
     final settingsState = ref.watch(detectionSettingsProvider);
-    final debugEntries = ref.watch(notificationDebugLogProvider);
-    final diagnostics = ref.watch(ingestionDiagnosticsProvider);
     final notificationIngestionAvailable =
         ref.watch(notificationIngestionAvailableProvider).valueOrNull ?? false;
     final smsIngestionAvailable =
@@ -471,102 +469,6 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            FinarcCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const FinarcSectionHeader(title: 'Ingestion Diagnostics'),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    'Notifications received ${diagnostics.notificationsReceived} • Parsed ${diagnostics.notificationsParsedPending} • Ignored ${diagnostics.notificationsIgnored} • Duplicates ${diagnostics.notificationsDuplicateSuppressed}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  Text(
-                    'SMS received ${diagnostics.smsReceived} • Parsed ${diagnostics.smsParsedPending} • Duplicates ${diagnostics.smsDuplicateSuppressed}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  Text(
-                    'Last notification: ${diagnostics.lastNotificationEventAt == null ? '—' : diagnostics.lastNotificationEventAt!.toLocal().toIso8601String()}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  Text(
-                    'Last package: ${diagnostics.lastNotificationPackage ?? '—'}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  Text(
-                    'Last result: ${diagnostics.lastNotificationResult ?? '—'}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: FinarcSecondaryButton(
-                          onPressed: () => context.push('/profile'),
-                          icon: Icons.analytics_outlined,
-                          label: 'Show Ingestion Diagnostics',
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: FinarcSecondaryButton(
-                          onPressed: () {
-                            ref
-                                .read(ingestionDiagnosticsProvider.notifier)
-                                .clear();
-                            ref
-                                .read(notificationDebugLogProvider.notifier)
-                                .clear();
-                          },
-                          icon: Icons.delete_sweep_outlined,
-                          label: 'Clear Ingestion Diagnostics',
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  const FinarcSectionHeader(title: 'Debug Log (Last 20)'),
-                  const SizedBox(height: AppSpacing.xs),
-                  if (debugEntries.isEmpty)
-                    Text(
-                      'No captured notification events yet.',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    )
-                  else
-                    ...debugEntries.map(
-                      (entry) => Padding(
-                        padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                '${entry.packageName} • ${entry.title} • ${entry.bodyPreview}',
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                            ),
-                            const SizedBox(width: AppSpacing.xs),
-                            FinarcStatusBadge(
-                              label: entry.decision,
-                              tone: entry.decision == 'pending-created'
-                                  ? FinarcStatusTone.success
-                                  : FinarcStatusTone.neutral,
-                              compact: true,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
                 ],
               ),
             ),

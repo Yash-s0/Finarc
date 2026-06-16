@@ -446,8 +446,6 @@ class ProfileScreen extends ConsumerWidget {
             detectionEnabled: detectionEnabled,
             smsDetectionEnabled: smsDetectionEnabled,
             onOpenNotificationSetup: () => context.push('/notifications/setup'),
-            onOpenNotificationDiagnostics: () =>
-                context.push(AppRoutes.notificationDiagnostics),
             onOpenSmsSetup: () => context.push('/sms/setup'),
             onDetectionToggle: (value) {
               ref
