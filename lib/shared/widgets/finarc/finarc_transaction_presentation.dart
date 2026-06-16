@@ -2,6 +2,22 @@ import '../../../core/utils/formatters.dart';
 import 'finarc_status_badge.dart';
 
 class FinarcTransactionPresentation {
+  static bool isPositive({
+    required String type,
+    required String paymentSourceType,
+    String? title,
+  }) {
+    if (type == 'income' || type == 'refund') return true;
+    if (type == 'transfer') {
+      final normalizedTitle = title?.trim().toLowerCase() ?? '';
+      return normalizedTitle.contains('transfer in');
+    }
+    if (type == 'cardPayment') {
+      return paymentSourceType.trim() == 'creditCard';
+    }
+    return false;
+  }
+
   static String sourceLabel(String sourceType) {
     switch (sourceType.trim()) {
       case 'creditCard':

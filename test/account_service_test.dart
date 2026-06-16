@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:finarc/core/database/app_database.dart';
 import 'package:finarc/features/accounts/data/account_service.dart';
 import 'package:finarc/features/cards/data/billing_service.dart';
+import 'package:finarc/features/expenses/models/transaction_types.dart';
 
 void main() {
   late AppDatabase db;
@@ -339,7 +340,24 @@ void main() {
     expect(bank.currentBalance, 8800);
     expect(card.currentOutstanding, 0);
     expect(bill.paidAmount, 1200);
-    expect(cardPayments, hasLength(1));
-    expect(cardPayments.single.amount, 1200);
+    expect(cardPayments, hasLength(2));
+    expect(
+      cardPayments.any(
+        (t) =>
+            t.paymentSourceType == PaymentSourceType.bank &&
+            t.title == 'Card Bill Payment Out' &&
+            t.amount == 1200,
+      ),
+      isTrue,
+    );
+    expect(
+      cardPayments.any(
+        (t) =>
+            t.paymentSourceType == PaymentSourceType.creditCard &&
+            t.title == 'Card Bill Payment In' &&
+            t.amount == 1200,
+      ),
+      isTrue,
+    );
   });
 }

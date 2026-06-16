@@ -39,11 +39,19 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Profile & Salary'), findsOneWidget);
+      expect(find.text('Profile & Summary'), findsOneWidget);
       expect(find.text('BUILD STATUS'), findsNothing);
       expect(find.text('Build mode'), findsNothing);
       expect(find.text('Notification Access'), findsOneWidget);
-      expect(find.text('Notification Diagnostics'), findsOneWidget);
+      expect(find.text('Notification Diagnostics'), findsNothing);
+      expect(find.text('Appearance'), findsOneWidget);
+
+      await tester.scrollUntilVisible(
+        find.text('Data Controls'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
 
       expect(find.text('Data Controls'), findsOneWidget);
       expect(find.text('Open Data Controls'), findsOneWidget);
@@ -57,6 +65,10 @@ void main() {
       expect(find.text('Open Debug Logs'), findsNothing);
       expect(find.text('Open Release Checklist'), findsNothing);
       expect(find.text('Notification Testing'), findsNothing);
+      expect(
+        find.text('Made with love by Yash at ArcNest Labs'),
+        findsOneWidget,
+      );
     },
   );
 

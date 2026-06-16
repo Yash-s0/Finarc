@@ -694,7 +694,11 @@ class RecentTransactionsSection extends StatelessWidget {
             ),
             itemBuilder: (context, index) {
               final t = items[index];
-              final isIncome = t.type == 'income' || t.type == 'refund';
+              final isIncome = FinarcTransactionPresentation.isPositive(
+                type: t.type,
+                paymentSourceType: t.paymentSourceType,
+                title: t.title,
+              );
               final isCard = t.paymentSourceType == 'creditCard';
               final isBilled = t.cardBillId != null;
               final tone = isIncome

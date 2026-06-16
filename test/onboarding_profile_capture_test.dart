@@ -220,7 +220,7 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Profile & Salary'), findsOneWidget);
+    expect(find.text('Profile & Summary'), findsOneWidget);
     expect(find.text('App Runtime'), findsNothing);
   });
 
@@ -302,7 +302,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Profile & Salary'), findsOneWidget);
+      expect(find.text('Profile & Summary'), findsOneWidget);
       expect(find.text('Name: Add your name'), findsOneWidget);
       expect(find.text('Company: Add company'), findsOneWidget);
       expect(find.text('Monthly salary: Add salary'), findsOneWidget);

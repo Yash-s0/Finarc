@@ -194,7 +194,11 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                                 .clamp(0, recoverableBase)
                                 .toDouble();
                             final isPositive =
-                                t.type == 'income' || t.type == 'refund';
+                                FinarcTransactionPresentation.isPositive(
+                                  type: t.type,
+                                  paymentSourceType: t.paymentSourceType,
+                                  title: t.title,
+                                );
                             return Padding(
                               padding: const EdgeInsets.only(
                                 bottom: AppSpacing.xs,

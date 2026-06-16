@@ -43,7 +43,15 @@ class FinarcNotificationListenerService : NotificationListenerService() {
             "category" to notification.category,
         )
 
-        NotificationBridge.publish(payload)
+        val deliveredToFlutter = NotificationBridge.publish(applicationContext, payload)
+        if (!deliveredToFlutter) {
+            BackgroundNotificationHelper.showCapturedTransactionNotification(
+                context = applicationContext,
+                appName = appName,
+                title = title,
+                body = body.ifBlank { bigText },
+            )
+        }
     }
 
     private fun shouldIgnoreNotification(

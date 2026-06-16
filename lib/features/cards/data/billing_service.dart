@@ -957,23 +957,36 @@ class BillingService {
     String? notes,
   }) async {
     final transferGroupId = 'cardpay_${DateTime.now().microsecondsSinceEpoch}';
-    await _db
-        .into(_db.transactions)
-        .insert(
-          TransactionsCompanion.insert(
-            type: 'cardPayment',
-            amount: amount,
-            title: 'Card Bill Payment',
-            category: 'Transfer',
-            transactionDate: transactionDate,
-            paymentSourceType: paymentSourceType,
-            paymentSourceId: paymentSourceId,
-            transferGroupId: Value(transferGroupId),
-            sourceAccountId: Value(paymentSourceId),
-            destinationAccountId: Value(cardId),
-            notes: Value(notes),
-          ),
-        );
+    await _db.into(_db.transactions).insert(
+      TransactionsCompanion.insert(
+        type: 'cardPayment',
+        amount: amount,
+        title: 'Card Bill Payment Out',
+        category: 'Transfer',
+        transactionDate: transactionDate,
+        paymentSourceType: paymentSourceType,
+        paymentSourceId: paymentSourceId,
+        transferGroupId: Value(transferGroupId),
+        sourceAccountId: Value(paymentSourceId),
+        destinationAccountId: Value(cardId),
+        notes: Value(notes),
+      ),
+    );
+    await _db.into(_db.transactions).insert(
+      TransactionsCompanion.insert(
+        type: 'cardPayment',
+        amount: amount,
+        title: 'Card Bill Payment In',
+        category: 'Transfer',
+        transactionDate: transactionDate,
+        paymentSourceType: 'creditCard',
+        paymentSourceId: cardId,
+        transferGroupId: Value(transferGroupId),
+        sourceAccountId: Value(paymentSourceId),
+        destinationAccountId: Value(cardId),
+        notes: Value(notes),
+      ),
+    );
   }
 
   Future<void> _syncLegacyOutstanding(int cardId) async {

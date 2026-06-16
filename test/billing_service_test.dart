@@ -453,17 +453,35 @@ void main() {
       final wallet = await (db.select(
         db.cashWallets,
       )..where((w) => w.id.equals(walletId))).getSingle();
-      final payment = await (db.select(
+      final payments = await (db.select(
         db.transactions,
-      )..where((t) => t.type.equals(TransactionType.cardPayment))).getSingle();
+      )..where((t) => t.type.equals(TransactionType.cardPayment))).get();
       final snapshot = await service.getCardBillingSnapshotById(cardId);
 
       expect(result.appliedAmount, 200);
       expect(result.remainingDueAfter, 1000);
       expect(wallet.currentBalance, 2800);
-      expect(payment.paymentSourceType, PaymentSourceType.cash);
-      expect(payment.amount, 200);
-      expect(payment.notes, 'cash ref');
+      expect(payments, hasLength(2));
+      expect(
+        payments.any(
+          (t) =>
+              t.paymentSourceType == PaymentSourceType.cash &&
+              t.title == 'Card Bill Payment Out' &&
+              t.amount == 200 &&
+              t.notes == 'cash ref',
+        ),
+        isTrue,
+      );
+      expect(
+        payments.any(
+          (t) =>
+              t.paymentSourceType == PaymentSourceType.creditCard &&
+              t.title == 'Card Bill Payment In' &&
+              t.amount == 200 &&
+              t.notes == 'cash ref',
+        ),
+        isTrue,
+      );
       expect(snapshot.billedDue, 1000);
       expect(snapshot.totalOutstanding, 1000);
     },

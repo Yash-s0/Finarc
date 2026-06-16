@@ -13,13 +13,10 @@ import 'package:finarc/features/onboarding/presentation/onboarding_flow_screen.d
 import 'package:finarc/features/pending/notifications/notification_permission_service.dart';
 
 class _FakeNotificationPermissionService extends NotificationPermissionService {
-  _FakeNotificationPermissionService({
-    this.isGranted = true,
-    this.requestResult = true,
-  });
+  _FakeNotificationPermissionService({this.isGranted = true});
 
   bool isGranted;
-  bool requestResult;
+  bool permissionRequestResult = true;
   int requestCount = 0;
 
   @override
@@ -28,8 +25,8 @@ class _FakeNotificationPermissionService extends NotificationPermissionService {
   @override
   Future<bool> requestPostNotificationsPermission() async {
     requestCount += 1;
-    isGranted = requestResult;
-    return requestResult;
+    isGranted = permissionRequestResult;
+    return permissionRequestResult;
   }
 }
 

@@ -101,13 +101,14 @@ void main() {
       final bill = await (db.select(
         db.cardBills,
       )..where((b) => b.id.equals(billId))).getSingle();
-      final payment = await (db.select(
+      final payments = await (db.select(
         db.transactions,
-      )..where((t) => t.type.equals('cardPayment'))).getSingle();
+      )..where((t) => t.type.equals('cardPayment'))).get();
 
       expect(bill.status, 'paid');
       expect(bill.paidAmount, 1200);
-      expect(payment.amount, 1200);
+      expect(payments, hasLength(2));
+      expect(payments.every((t) => t.amount == 1200), isTrue);
     },
   );
 
@@ -151,13 +152,14 @@ void main() {
       final wallet = await (db.select(
         db.cashWallets,
       )..where((w) => w.id.equals(1))).getSingle();
-      final payment = await (db.select(
+      final payments = await (db.select(
         db.transactions,
-      )..where((t) => t.type.equals('cardPayment'))).getSingle();
+      )..where((t) => t.type.equals('cardPayment'))).get();
 
       expect(bill.paidAmount, 200);
       expect(wallet.currentBalance, 2300);
-      expect(payment.amount, 200);
+      expect(payments, hasLength(2));
+      expect(payments.every((t) => t.amount == 200), isTrue);
     },
   );
 

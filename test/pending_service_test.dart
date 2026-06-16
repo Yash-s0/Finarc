@@ -348,8 +348,25 @@ void main() {
       expect(pending.status, 'confirmed');
       expect(bank.currentBalance, closeTo(9000, 0.001));
       expect(card.currentOutstanding, closeTo(0, 0.001));
-      expect(cardPayments, hasLength(1));
-      expect(cardPayments.single.amount, 1000);
+      expect(cardPayments, hasLength(2));
+      expect(
+        cardPayments.any(
+          (t) =>
+              t.paymentSourceType == PaymentSourceType.bank &&
+              t.title == 'Card Bill Payment Out' &&
+              t.amount == 1000,
+        ),
+        isTrue,
+      );
+      expect(
+        cardPayments.any(
+          (t) =>
+              t.paymentSourceType == PaymentSourceType.creditCard &&
+              t.title == 'Card Bill Payment In' &&
+              t.amount == 1000,
+        ),
+        isTrue,
+      );
     },
   );
 

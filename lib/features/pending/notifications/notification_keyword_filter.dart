@@ -231,6 +231,17 @@ class NotificationKeywordFilter {
       );
     }
 
+    final promoSignal = _promotionalSignal(payload.combinedText);
+    if (promoSignal.blocked) {
+      return NotificationFilterResult(
+        accepted: false,
+        reason: 'promotional_offer_detected',
+        senderFilterResult: 'not-applicable',
+        amountCandidate: promoSignal.amountCandidate,
+        blockedContext: promoSignal.blockedContext,
+      );
+    }
+
     return const NotificationFilterResult(
       accepted: true,
       reason: 'accepted-keyword-match',
@@ -366,6 +377,8 @@ class NotificationKeywordFilter {
     final amount = _extractAmountCandidate(text);
     final hasAction = _transactionActionKeywords.any(lower.contains);
     final contexts = <String>[];
+    final misleadingCreditPromo =
+        lower.contains('credited upto') || lower.contains('credited up to');
 
     for (final phrase in _promoPhrases) {
       if (lower.contains(phrase)) {
@@ -401,24 +414,29 @@ class NotificationKeywordFilter {
     }
 
     final blocked =
-        !hasAction &&
-        (contexts.isNotEmpty ||
-            amountInPromoContext ||
-            amountWithPromoTail ||
-            amount != null);
+        misleadingCreditPromo ||
+        (!hasAction &&
+            (contexts.isNotEmpty ||
+                amountInPromoContext ||
+                amountWithPromoTail ||
+                amount != null));
 
     if (!blocked) {
       return _PromotionalSignal(
         blocked: false,
         amountCandidate: amount,
-        blockedContext: contexts.take(3).join(' / '),
+        blockedContext: misleadingCreditPromo
+            ? 'credited upto'
+            : contexts.take(3).join(' / '),
       );
     }
 
     return _PromotionalSignal(
       blocked: true,
       amountCandidate: amount,
-      blockedContext: contexts.take(3).join(' / '),
+      blockedContext: misleadingCreditPromo
+          ? 'credited upto'
+          : contexts.take(3).join(' / '),
     );
   }
 

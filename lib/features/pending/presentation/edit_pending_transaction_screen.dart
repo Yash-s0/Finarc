@@ -66,8 +66,7 @@ class _EditPendingTransactionScreenState
   String _sourceType = 'cash';
   int? _sourceId;
   bool _forOthers = false;
-  bool _cashbackOn = false;
-  final _cashback = TextEditingController(text: '0');
+  final _cashback = TextEditingController();
   final _dateController = TextEditingController();
   bool _initialized = false;
 
@@ -87,6 +86,9 @@ class _EditPendingTransactionScreenState
   Widget build(BuildContext context) {
     final pendingState = ref.watch(pendingByIdProvider(widget.pendingId));
     final sourcesState = ref.watch(paymentSourcesProvider);
+    final recoverableSuggestions = ref.watch(
+      recoverablePartySuggestionsProvider,
+    );
 
     return FinarcScaffold(
       appBar: const FinarcAppBar(title: 'Edit Transaction'),
@@ -123,11 +125,10 @@ class _EditPendingTransactionScreenState
               _sourceType = pending.paymentSourceTypeSuggestion;
               _sourceId = pending.paymentSourceIdSuggestion;
               _date = pending.transactionDate;
-              _cashbackOn = (pending.cashbackAmount ?? 0) > 0;
-              if (_sourceType == PaymentSourceType.cash) {
-                _cashbackOn = false;
-              }
-              _cashback.text = moneyInput(pending.cashbackAmount ?? 0);
+              final initialCashback = pending.cashbackAmount ?? 0;
+              _cashback.text = initialCashback > 0
+                  ? moneyInput(initialCashback)
+                  : '';
               _recoverableParty.text = pending.recoverablePartyName ?? '';
               _forOthers = _recoverableParty.text.trim().isNotEmpty;
               _notes.text = pending.notes ?? '';
@@ -136,8 +137,7 @@ class _EditPendingTransactionScreenState
             }
             final previewAmount =
                 double.tryParse(_amount.text) ?? pending.amount;
-            final previewCashback =
-                (_sourceType != PaymentSourceType.cash && _cashbackOn)
+            final previewCashback = _sourceType != PaymentSourceType.cash
                 ? (double.tryParse(_cashback.text) ?? 0)
                 : 0.0;
             final previewRecoverable = (previewAmount - previewCashback)
@@ -238,7 +238,7 @@ class _EditPendingTransactionScreenState
                                 _sourceType = v;
                                 _sourceId = null;
                                 if (v == PaymentSourceType.cash) {
-                                  _cashbackOn = false;
+                                  _cashback.text = '';
                                 }
                               }),
                               sources: sourceConfig.options,
@@ -291,13 +291,37 @@ class _EditPendingTransactionScreenState
                               child: FinarcTextField(
                                 controller: _recoverableParty,
                                 label: 'Person name',
-                                onChanged: (value) => setState(
-                                  () => _forOthers = value.trim().isNotEmpty,
+                                onChanged: (_) => setState(
+                                  () => _forOthers =
+                                      _recoverableParty.text.trim().isNotEmpty,
                                 ),
                               ),
                             ),
                           ],
                         ),
+                        if (recoverableSuggestions.hasValue &&
+                            (recoverableSuggestions.valueOrNull ?? [])
+                                .isNotEmpty) ...[
+                          const SizedBox(height: AppSpacing.xs),
+                          Wrap(
+                            spacing: AppSpacing.xs,
+                            runSpacing: AppSpacing.xs,
+                            children: recoverableSuggestions.valueOrNull!
+                                .take(6)
+                                .map(
+                                  (name) => FinarcActionChip(
+                                    label: name,
+                                    selected:
+                                        _recoverableParty.text.trim() == name,
+                                    onTap: () => setState(() {
+                                      _recoverableParty.text = name;
+                                      _forOthers = true;
+                                    }),
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                        ],
                         if (_forOthers) ...[
                           const SizedBox(height: AppSpacing.xs),
                           FinarcCard(
@@ -324,14 +348,6 @@ class _EditPendingTransactionScreenState
                         ],
                         const SizedBox(height: AppSpacing.xs),
                         if (_sourceType != PaymentSourceType.cash)
-                          SwitchListTile.adaptive(
-                            contentPadding: EdgeInsets.zero,
-                            value: _cashbackOn,
-                            onChanged: (v) => setState(() => _cashbackOn = v),
-                            title: const Text('Add Cashback'),
-                          ),
-                        if (_sourceType != PaymentSourceType.cash &&
-                            _cashbackOn)
                           FinarcTextField(
                             controller: _cashback,
                             label: 'Cashback amount',
@@ -340,8 +356,8 @@ class _EditPendingTransactionScreenState
                             ),
                             onChanged: (_) => setState(() {}),
                             validator: (v) {
-                              if (!_cashbackOn) return null;
-                              final cashback = double.tryParse(v ?? '');
+                              if (v == null || v.trim().isEmpty) return null;
+                              final cashback = double.tryParse(v);
                               final amount = double.tryParse(_amount.text) ?? 0;
                               if (cashback == null || cashback < 0) {
                                 return 'Enter valid cashback amount';
@@ -384,8 +400,7 @@ class _EditPendingTransactionScreenState
                       final forOthers = recoverableParty.isNotEmpty;
                       final amount =
                           double.tryParse(_amount.text) ?? pending.amount;
-                      final cashback =
-                          (_sourceType != PaymentSourceType.cash && _cashbackOn)
+                      final cashback = _sourceType != PaymentSourceType.cash
                           ? double.tryParse(_cashback.text) ?? 0
                           : 0.0;
                       final recoverableBase = (amount - cashback)
@@ -399,11 +414,7 @@ class _EditPendingTransactionScreenState
                         paymentSourceType: _sourceType,
                         paymentSourceId: _sourceId,
                         transactionDate: _date,
-                        cashbackAmount:
-                            (_sourceType != PaymentSourceType.cash &&
-                                _cashbackOn)
-                            ? double.tryParse(_cashback.text) ?? 0
-                            : 0,
+                        cashbackAmount: cashback,
                         isForOthers: forOthers,
                         recoverableAmount: forOthers
                             ? recoverableBase

@@ -209,7 +209,7 @@ void main() {
       expect(rows, isEmpty);
     });
 
-    test('OTP SMS is ignored', () async {
+  test('OTP SMS is ignored', () async {
       final ids = await smsService.processSmsPayload(
         NotificationPayload(
           packageName: 'android.sms',
@@ -222,8 +222,25 @@ void main() {
       );
       expect(ids, isEmpty);
       final rows = await db.select(db.pendingTransactions).get();
-      expect(rows, isEmpty);
-    });
+    expect(rows, isEmpty);
+  });
+
+  test('coupon offer SMS with credited upto wording is ignored', () async {
+    final ids = await smsService.processSmsPayload(
+      NotificationPayload(
+        packageName: 'android.sms',
+        sourceType: 'sms',
+        receivedAt: DateTime(2026, 6, 16, 19, 19, 55),
+        sender: 'AD-ONTIRA-S',
+        body:
+            'Your Tira account is credited Upto Rs.1000* off coupon - validity 6 hours Tira Tuesday deal is live!',
+      ),
+    );
+
+    expect(ids, isEmpty);
+    final rows = await db.select(db.pendingTransactions).get();
+    expect(rows, isEmpty);
+  });
 
     test('duplicate SMS suppression and backfill-style repeat', () async {
       final payload = NotificationPayload(

@@ -58,7 +58,7 @@ class MainActivity : FlutterActivity() {
         EventChannel(flutterEngine.dartExecutor.binaryMessenger, EVENTS_CHANNEL).setStreamHandler(
             object : EventChannel.StreamHandler {
                 override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
-                    NotificationBridge.setEventSink { payload ->
+                    NotificationBridge.setEventSink(applicationContext) { payload ->
                         runOnUiThread {
                             events?.success(payload)
                         }
@@ -66,7 +66,7 @@ class MainActivity : FlutterActivity() {
                 }
 
                 override fun onCancel(arguments: Any?) {
-                    NotificationBridge.setEventSink(null)
+                    NotificationBridge.setEventSink(applicationContext, null)
                 }
             },
         )
@@ -109,7 +109,7 @@ class MainActivity : FlutterActivity() {
                 }
 
                 "drainCapturedNotifications" -> {
-                    result.success(NotificationBridge.drainQueue())
+                    result.success(NotificationBridge.drainQueue(applicationContext))
                 }
 
                 "showDetectionNotification" -> {

@@ -382,7 +382,7 @@ class ProfileScreen extends ConsumerWidget {
               );
             },
             onOpenAlerts: () => context.push('/alerts'),
-            onShowDiagnostics: () => context.push('/notification/setup'),
+            onShowDiagnostics: () => context.push('/notifications/setup'),
             onClearDiagnostics: () {
               ref.read(ingestionDiagnosticsProvider.notifier).clear();
               ref.read(notificationDebugLogProvider.notifier).clear();
@@ -464,6 +464,8 @@ class ProfileScreen extends ConsumerWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           const ReleaseDiagnosticsSection(),
+          const SizedBox(height: AppSpacing.sm),
+          const DeveloperSignatureFooter(),
         ],
       ),
     );

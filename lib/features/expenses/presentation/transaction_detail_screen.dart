@@ -186,6 +186,12 @@ class _TransactionDetailScreenState
                   )
                 : null;
 
+            final isPositive = FinarcTransactionPresentation.isPositive(
+              type: txn.type,
+              paymentSourceType: txn.paymentSourceType,
+              title: txn.title,
+            );
+
             return Form(
               key: _formKey,
               child: ListView(
@@ -202,9 +208,8 @@ class _TransactionDetailScreenState
                         ),
                       ),
                       amount:
-                          '${(txn.type == 'income' || txn.type == 'refund') ? '+' : '-'}${inr(txn.amount)}',
-                      amountColor:
-                          (txn.type == 'income' || txn.type == 'refund')
+                          '${isPositive ? '+' : '-'}${inr(txn.amount)}',
+                      amountColor: isPositive
                           ? AppColors.darkSuccess
                           : AppColors.darkError,
                       amountMeta: txn.cardBillId != null

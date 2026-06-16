@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'lib/features/cards/data/card_network_detector.dart';
 
 void main() {
@@ -25,6 +27,6 @@ void main() {
   for (final entry in realWorldRuPayBins.entries) {
     final result = detectCardNetwork(entry.key);
     final status = result == 'rupay' ? 'OK' : 'FAIL got ${result ?? "null"}';
-    print('${entry.key} (${entry.value}): $status');
+    stdout.writeln('${entry.key} (${entry.value}): $status');
   }
 }

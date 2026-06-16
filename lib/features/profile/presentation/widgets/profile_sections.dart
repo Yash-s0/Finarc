@@ -84,7 +84,7 @@ class ProfileHeaderCard extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
-                  'Profile & Salary',
+                  'Profile & Summary',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
@@ -810,47 +810,147 @@ class ThemeSettingsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return FinarcCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Appearance', style: Theme.of(context).textTheme.titleMedium),
+          Text('Appearance', style: theme.textTheme.titleMedium),
           const SizedBox(height: AppSpacing.xxs),
           Text(
             'Choose your preferred theme.',
-            style: Theme.of(context).textTheme.bodyMedium,
+            style: theme.textTheme.bodyMedium,
           ),
           const SizedBox(height: AppSpacing.sm),
-          SegmentedButton<ThemeMode>(
-            segments: const [
-              ButtonSegment<ThemeMode>(
-                value: ThemeMode.system,
-                icon: Icon(Icons.brightness_auto_rounded),
-                label: Text('System'),
-              ),
-              ButtonSegment<ThemeMode>(
-                value: ThemeMode.light,
-                icon: Icon(Icons.light_mode_rounded),
-                label: Text('Light'),
-              ),
-              ButtonSegment<ThemeMode>(
-                value: ThemeMode.dark,
-                icon: Icon(Icons.dark_mode_rounded),
-                label: Text('Dark'),
-              ),
-            ],
-            selected: {currentTheme},
-            onSelectionChanged: (Set<ThemeMode> newSelection) {
-              onThemeChanged(newSelection.first);
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const spacing = AppSpacing.xs;
+              final itemWidth =
+                  (constraints.maxWidth - (spacing * 2)) / 3;
+
+              return Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                children: [
+                  _ThemeModeButton(
+                    width: itemWidth,
+                    mode: ThemeMode.system,
+                    currentTheme: currentTheme,
+                    label: 'System',
+                    icon: Icons.brightness_auto_rounded,
+                    onPressed: onThemeChanged,
+                  ),
+                  _ThemeModeButton(
+                    width: itemWidth,
+                    mode: ThemeMode.light,
+                    currentTheme: currentTheme,
+                    label: 'Light',
+                    icon: Icons.light_mode_rounded,
+                    onPressed: onThemeChanged,
+                  ),
+                  _ThemeModeButton(
+                    width: itemWidth,
+                    mode: ThemeMode.dark,
+                    currentTheme: currentTheme,
+                    label: 'Dark',
+                    icon: Icons.dark_mode_rounded,
+                    onPressed: onThemeChanged,
+                  ),
+                ],
+              );
             },
-            style: SegmentedButton.styleFrom(
-              selectedBackgroundColor: Theme.of(
-                context,
-              ).colorScheme.primary.withValues(alpha: 0.15),
-              selectedForegroundColor: Theme.of(context).colorScheme.primary,
-            ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ThemeModeButton extends StatelessWidget {
+  const _ThemeModeButton({
+    required this.width,
+    required this.mode,
+    required this.currentTheme,
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final double width;
+  final ThemeMode mode;
+  final ThemeMode currentTheme;
+  final String label;
+  final IconData icon;
+  final ValueChanged<ThemeMode> onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final selected = currentTheme == mode;
+
+    return SizedBox(
+      width: width,
+      child: FilledButton.tonal(
+        onPressed: () => onPressed(mode),
+        style: FilledButton.styleFrom(
+          minimumSize: const Size.fromHeight(52),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm,
+            vertical: AppSpacing.sm,
+          ),
+          backgroundColor: selected
+              ? theme.colorScheme.primary.withValues(alpha: 0.16)
+              : theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.22,
+                ),
+          foregroundColor: selected
+              ? theme.colorScheme.primary
+              : theme.colorScheme.onSurface,
+          side: BorderSide(
+            color: selected
+                ? theme.colorScheme.primary.withValues(alpha: 0.7)
+                : theme.colorScheme.outline.withValues(alpha: 0.35),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          elevation: 0,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 18),
+            const SizedBox(width: AppSpacing.xs),
+            Flexible(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class DeveloperSignatureFooter extends StatelessWidget {
+  const DeveloperSignatureFooter({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      child: Center(
+        child: Text(
+          'Made with love by Yash at ArcNest Labs',
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
       ),
     );
   }
