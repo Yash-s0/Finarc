@@ -71,6 +71,10 @@ flutter build appbundle --release --dart-define=APP_MODE=release
 
 Output path:
 - `build/app/outputs/bundle/release/app-release.aab`
+- `build/app/outputs/mapping/release/mapping.txt`
+
+If Google Play asks for a deobfuscation file for a release build, upload:
+- `build/app/outputs/mapping/release/mapping.txt`
 
 ## Internal Diagnostics
 

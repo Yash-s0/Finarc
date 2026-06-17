@@ -24,6 +24,7 @@ echo "Auditing release APK contents..."
 
 AAB_PATH="$ROOT_DIR/build/app/outputs/bundle/release/app-release.aab"
 APK_PATH="$ROOT_DIR/build/app/outputs/flutter-apk/app-release.apk"
+MAPPING_PATH="$ROOT_DIR/build/app/outputs/mapping/release/mapping.txt"
 if [[ -f "$AAB_PATH" ]]; then
   echo
   echo "Play release AAB ready: $AAB_PATH"
@@ -36,4 +37,10 @@ if [[ -f "$APK_PATH" ]]; then
   echo "Play release APK ready: $APK_PATH"
 else
   echo "WARNING: APK path not found at expected location: $APK_PATH"
+fi
+
+if [[ -f "$MAPPING_PATH" ]]; then
+  echo "R8 mapping file ready: $MAPPING_PATH"
+else
+  echo "WARNING: R8 mapping file not found at expected location: $MAPPING_PATH"
 fi

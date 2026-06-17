@@ -85,11 +85,39 @@ void main() {
       isTrue,
     );
     expect(
+      NotificationProviderCatalog.isBlockedPackage('com.snapchat.android'),
+      isTrue,
+    );
+    expect(
       NotificationProviderCatalog.isBlockedPackage('org.telegram.messenger'),
       isTrue,
     );
     expect(
+      NotificationProviderCatalog.isBlockedPackage('com.instagram.android'),
+      isTrue,
+    );
+    expect(
+      NotificationProviderCatalog.isBlockedPackage('com.facebook.katana'),
+      isTrue,
+    );
+    expect(
+      NotificationProviderCatalog.isBlockedPackage('com.facebook.orca'),
+      isTrue,
+    );
+    expect(
       NotificationProviderCatalog.isBlockedPackage('com.google.android.gm'),
+      isTrue,
+    );
+    expect(
+      NotificationProviderCatalog.isBlockedPackage(
+        'com.microsoft.office.outlook',
+      ),
+      isTrue,
+    );
+    expect(
+      NotificationProviderCatalog.isBlockedPackage(
+        'com.samsung.android.email.provider',
+      ),
       isTrue,
     );
   });

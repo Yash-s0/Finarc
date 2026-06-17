@@ -21,27 +21,19 @@ object BackgroundNotificationHelper {
 
     fun showCapturedTransactionNotification(
         context: Context,
-        appName: String?,
-        title: String,
-        body: String,
     ) {
         if (!isPostNotificationsGranted(context)) return
         createChannelsIfNeeded(context)
 
-        val previewParts = listOfNotNull(
-            appName?.takeIf { it.isNotBlank() },
-            title.takeIf { it.isNotBlank() },
-            body.takeIf { it.isNotBlank() },
-        )
-        val previewText = previewParts.joinToString(" • ").ifBlank {
-            "Open Finarc to review the captured transaction notification."
-        }
-
         val notification = NotificationCompat.Builder(context, DETECTED_CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("Transaction notification captured")
-            .setContentText(previewText)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(previewText))
+            .setContentTitle("Financial notification detected")
+            .setContentText("Open Finarc to review.")
+            .setStyle(
+                NotificationCompat.BigTextStyle().bigText(
+                    "Open Finarc to review.",
+                ),
+            )
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(createRoutePendingIntent(context, FALLBACK_ROUTE))

@@ -62,6 +62,7 @@ class NotificationKeywordFilter {
     'sticker',
     'sent a photo',
     'whatsapp',
+    'snapchat',
     'telegram',
     'instagram',
   };

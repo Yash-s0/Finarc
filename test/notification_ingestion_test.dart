@@ -423,6 +423,26 @@ void main() {
       },
     );
 
+    test(
+      'Snapchat notifications are ignored without storing raw text',
+      () async {
+        final ids = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.snapchat.android',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 5, 24, 12, 7),
+            title: 'Snapchat',
+            body: 'Swapnil Bhaiya sent you a Snap',
+          ),
+        );
+
+        expect(ids, isEmpty);
+        expect(debugEntries, isEmpty);
+        expect(notifier.shownCount, 0);
+        expect(await db.select(db.pendingTransactions).get(), isEmpty);
+      },
+    );
+
     test('social package with amount is still ignored', () async {
       final ids = await service.processPayload(
         NotificationPayload(
@@ -436,6 +456,40 @@ void main() {
 
       expect(ids, isEmpty);
       expect(debugEntries, isEmpty);
+      expect(await db.select(db.pendingTransactions).get(), isEmpty);
+    });
+
+    test('facebook messenger notification is ignored', () async {
+      final ids = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.facebook.orca',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 24, 12, 11),
+          title: 'Messenger',
+          body: 'Aman paid ₹500 in chat',
+        ),
+      );
+
+      expect(ids, isEmpty);
+      expect(debugEntries, isEmpty);
+      expect(notifier.shownCount, 0);
+      expect(await db.select(db.pendingTransactions).get(), isEmpty);
+    });
+
+    test('gmail notification is ignored', () async {
+      final ids = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.google.android.gm',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 24, 12, 12),
+          title: 'Gmail',
+          body: 'Statement due ₹4,500',
+        ),
+      );
+
+      expect(ids, isEmpty);
+      expect(debugEntries, isEmpty);
+      expect(notifier.shownCount, 0);
       expect(await db.select(db.pendingTransactions).get(), isEmpty);
     });
 

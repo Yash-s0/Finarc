@@ -15,6 +15,10 @@ object NotificationBridge {
 
     @Synchronized
     fun publish(context: Context, payload: Map<String, Any?>): Boolean {
+        val packageName = payload["packageName"] as? String
+        if (NotificationCapturePolicy.shouldIgnorePackage(packageName)) {
+            return false
+        }
         val sink = sinkRef
         if (sink != null) {
             sink(payload)

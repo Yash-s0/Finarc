@@ -63,6 +63,7 @@ class NotificationProviderCatalog {
   static const Set<String> _blockedPackages = {
     'com.whatsapp',
     'com.whatsapp.w4b',
+    'com.snapchat.android',
     'org.telegram.messenger',
     'org.thunderdog.challegram',
     'com.instagram.android',

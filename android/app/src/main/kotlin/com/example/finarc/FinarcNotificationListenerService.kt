@@ -10,6 +10,7 @@ class FinarcNotificationListenerService : NotificationListenerService() {
         if (sbn == null) return
 
         if (sbn.packageName == packageName) return
+        if (NotificationCapturePolicy.shouldIgnorePackage(sbn.packageName)) return
 
         val notification = sbn.notification ?: return
         if (shouldIgnoreNotification(sbn, notification)) return
@@ -21,6 +22,12 @@ class FinarcNotificationListenerService : NotificationListenerService() {
         val subText = extras?.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()?.trim().orEmpty()
 
         if (title.isBlank() && body.isBlank() && bigText.isBlank()) return
+        val likelyFinancial = NotificationCapturePolicy.isLikelyFinancialContent(
+            title = title,
+            body = body,
+            bigText = bigText,
+            subText = subText,
+        )
 
         val appName = try {
             val info = packageManager.getApplicationInfo(sbn.packageName, 0)
@@ -44,12 +51,9 @@ class FinarcNotificationListenerService : NotificationListenerService() {
         )
 
         val deliveredToFlutter = NotificationBridge.publish(applicationContext, payload)
-        if (!deliveredToFlutter) {
+        if (!deliveredToFlutter && likelyFinancial) {
             BackgroundNotificationHelper.showCapturedTransactionNotification(
                 context = applicationContext,
-                appName = appName,
-                title = title,
-                body = body.ifBlank { bigText },
             )
         }
     }
