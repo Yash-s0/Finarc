@@ -11,19 +11,25 @@
     <style>
       :root {
         color-scheme: light;
-        --bg: #f6f8fb;
-        --surface: #ffffff;
-        --surface-soft: #eef4f7;
-        --text: #172027;
-        --muted: #5e6b75;
-        --border: #dce5ea;
-        --accent: #0f766e;
-        --accent-strong: #115e59;
-        --warning-bg: #fff7ed;
-        --warning-border: #fed7aa;
+        --bg: #f5f8fc;
+        --surface: rgba(255, 255, 255, 0.72);
+        --surface-strong: rgba(255, 255, 255, 0.9);
+        --surface-soft: rgba(239, 246, 255, 0.68);
+        --text: #0f172a;
+        --muted: #526173;
+        --border: rgba(99, 102, 241, 0.16);
+        --accent: #22d3ee;
+        --accent-strong: #2563eb;
+        --indigo: #4f46e5;
+        --indigo-strong: #3730a3;
+        --warning-bg: rgba(255, 247, 237, 0.84);
+        --warning-border: rgba(245, 158, 11, 0.34);
         --warning-text: #7c2d12;
-        --shadow: 0 18px 45px rgba(15, 35, 45, 0.08);
-        --radius: 12px;
+        --shadow: 0 24px 80px rgba(15, 23, 42, 0.12);
+        --shadow-soft: 0 16px 50px rgba(15, 23, 42, 0.08);
+        --radius: 24px;
+        --radius-md: 16px;
+        --content-width: 1180px;
       }
 
       * {
@@ -36,8 +42,12 @@
 
       body {
         margin: 0;
+        min-height: 100vh;
+        overflow-x: hidden;
         background:
-          radial-gradient(circle at top left, rgba(15, 118, 110, 0.12), transparent 32rem),
+          linear-gradient(135deg, rgba(79, 70, 229, 0.06), transparent 35%),
+          radial-gradient(circle at 18% 0%, rgba(34, 211, 238, 0.18), transparent 30rem),
+          radial-gradient(circle at 92% 8%, rgba(79, 70, 229, 0.14), transparent 28rem),
           var(--bg);
         color: var(--text);
         font-family:
@@ -46,32 +56,140 @@
         line-height: 1.65;
       }
 
+      body::before {
+        content: "";
+        position: fixed;
+        inset: -30%;
+        z-index: -1;
+        pointer-events: none;
+        background:
+          radial-gradient(circle at 28% 28%, rgba(34, 211, 238, 0.18), transparent 20rem),
+          radial-gradient(circle at 68% 18%, rgba(79, 70, 229, 0.16), transparent 22rem),
+          radial-gradient(circle at 50% 82%, rgba(16, 185, 129, 0.08), transparent 24rem);
+        filter: blur(10px);
+        opacity: 0.86;
+        animation: ambientShift 16s ease-in-out infinite alternate;
+      }
+
       a {
         color: var(--accent-strong);
         text-decoration-thickness: 0.08em;
         text-underline-offset: 0.18em;
       }
 
+      a:hover {
+        color: var(--indigo-strong);
+      }
+
+      code {
+        padding: 0.12rem 0.34rem;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: rgba(15, 23, 42, 0.06);
+        color: var(--indigo-strong);
+        font-size: 0.92em;
+      }
+
+      .skip-link {
+        position: absolute;
+        left: 20px;
+        top: 12px;
+        z-index: 20;
+        padding: 10px 14px;
+        border-radius: 999px;
+        background: var(--surface-strong);
+        box-shadow: var(--shadow-soft);
+        transform: translateY(-160%);
+        transition: transform 180ms ease;
+      }
+
+      .skip-link:focus {
+        transform: translateY(0);
+      }
+
       .page {
-        width: min(100% - 32px, 980px);
+        width: min(100% - 32px, var(--content-width));
         margin: 0 auto;
-        padding: 48px 0;
+        padding: 48px 0 56px;
       }
 
       header {
-        padding: 36px;
+        position: relative;
+        overflow: hidden;
+        padding: clamp(28px, 5vw, 56px);
         border: 1px solid var(--border);
         border-radius: var(--radius);
-        background: rgba(255, 255, 255, 0.9);
+        background:
+          linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.58)),
+          var(--surface);
         box-shadow: var(--shadow);
+        backdrop-filter: blur(22px) saturate(150%);
+        -webkit-backdrop-filter: blur(22px) saturate(150%);
+        animation: revealUp 620ms ease both;
+      }
+
+      header::after {
+        content: "";
+        position: absolute;
+        inset: 1px;
+        border-radius: calc(var(--radius) - 1px);
+        pointer-events: none;
+        background:
+          linear-gradient(120deg, rgba(255, 255, 255, 0.38), transparent 36%),
+          radial-gradient(circle at 88% 12%, rgba(34, 211, 238, 0.18), transparent 16rem);
+      }
+
+      header > * {
+        position: relative;
+        z-index: 1;
+      }
+
+      .brand-row {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 16px;
+      }
+
+      .brand-mark {
+        position: relative;
+        display: grid;
+        width: 50px;
+        height: 50px;
+        place-items: center;
+        border: 1px solid rgba(34, 211, 238, 0.42);
+        border-radius: 16px;
+        background:
+          linear-gradient(145deg, rgba(12, 20, 36, 0.96), rgba(3, 10, 22, 0.94)),
+          #08111d;
+        color: #67e8f9;
+        box-shadow:
+          0 18px 40px rgba(34, 211, 238, 0.18),
+          inset 0 1px 0 rgba(255, 255, 255, 0.12);
+        font-size: 1.65rem;
+        font-weight: 850;
+        line-height: 1;
+      }
+
+      .brand-mark::after {
+        content: "";
+        position: absolute;
+        right: 10px;
+        bottom: 11px;
+        width: 8px;
+        height: 8px;
+        background: var(--accent);
+        clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+        filter: drop-shadow(0 0 7px rgba(34, 211, 238, 0.72));
+        animation: glint 2600ms ease-in-out infinite;
       }
 
       .eyebrow {
-        margin: 0 0 10px;
+        margin: 0;
         color: var(--accent-strong);
         font-size: 0.8rem;
         font-weight: 700;
-        letter-spacing: 0.08em;
+        letter-spacing: 0.11em;
         text-transform: uppercase;
       }
 
@@ -81,16 +199,17 @@
       }
 
       h1 {
+        max-width: 12ch;
         margin: 0;
-        font-size: clamp(2.2rem, 6vw, 4rem);
+        font-size: clamp(2.45rem, 7vw, 5rem);
         letter-spacing: 0;
       }
 
       .summary {
         max-width: 720px;
-        margin: 18px 0 0;
+        margin: 20px 0 0;
         color: var(--muted);
-        font-size: 1.08rem;
+        font-size: clamp(1.02rem, 1.8vw, 1.16rem);
       }
 
       .meta {
@@ -107,28 +226,155 @@
         padding: 6px 12px;
         border: 1px solid var(--border);
         border-radius: 999px;
-        background: var(--surface-soft);
+        background: rgba(255, 255, 255, 0.48);
         color: var(--text);
         font-size: 0.9rem;
         font-weight: 600;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+      }
+
+      .glance {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 32px;
+      }
+
+      .glance-card,
+      .toc,
+      section {
+        border: 1px solid var(--border);
+        background:
+          linear-gradient(145deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.56)),
+          var(--surface);
+        box-shadow: var(--shadow-soft);
+        backdrop-filter: blur(18px) saturate(150%);
+        -webkit-backdrop-filter: blur(18px) saturate(150%);
+      }
+
+      .glance-card {
+        min-height: 150px;
+        padding: 18px;
+        border-radius: var(--radius-md);
+      }
+
+      .glance-card span {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        margin-bottom: 14px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, var(--indigo), var(--accent));
+        color: white;
+        font-size: 0.78rem;
+        font-weight: 800;
+      }
+
+      .glance-card strong {
+        display: block;
+        margin-bottom: 6px;
+        color: var(--text);
+        font-size: 1rem;
+      }
+
+      .glance-card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.94rem;
+        line-height: 1.5;
       }
 
       main {
         display: grid;
-        gap: 18px;
+        grid-template-columns: minmax(190px, 240px) minmax(0, 1fr);
+        gap: 22px;
         margin-top: 24px;
+      }
+
+      .toc {
+        position: sticky;
+        top: 18px;
+        align-self: start;
+        max-height: calc(100vh - 36px);
+        overflow: auto;
+        padding: 18px;
+        border-radius: var(--radius-md);
+        animation: revealUp 620ms 90ms ease both;
+      }
+
+      .toc-title {
+        margin: 0 0 12px;
+        color: var(--text);
+        font-size: 0.85rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .toc nav {
+        display: grid;
+        gap: 4px;
+      }
+
+      .toc a {
+        display: block;
+        padding: 8px 10px;
+        border-radius: 10px;
+        color: var(--muted);
+        font-size: 0.9rem;
+        font-weight: 650;
+        text-decoration: none;
+        transition:
+          background-color 160ms ease,
+          color 160ms ease,
+          transform 160ms ease;
+      }
+
+      .toc a:hover,
+      .toc a:focus-visible {
+        background: rgba(34, 211, 238, 0.12);
+        color: var(--accent-strong);
+        transform: translateX(2px);
+        outline: none;
+      }
+
+      .policy {
+        display: grid;
+        gap: 18px;
       }
 
       section {
         padding: 28px;
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        background: var(--surface);
-        box-shadow: 0 10px 30px rgba(15, 35, 45, 0.05);
+        border-radius: var(--radius-md);
+        animation: revealUp 620ms ease both;
+      }
+
+      section:nth-child(1) {
+        animation-delay: 120ms;
+      }
+
+      section:nth-child(2) {
+        animation-delay: 150ms;
+      }
+
+      section:nth-child(3) {
+        animation-delay: 180ms;
+      }
+
+      section:nth-child(4) {
+        animation-delay: 210ms;
+      }
+
+      section:nth-child(5) {
+        animation-delay: 240ms;
       }
 
       h2 {
         margin: 0 0 12px;
+        color: var(--text);
         font-size: 1.35rem;
       }
 
@@ -152,7 +398,9 @@
 
       .notice {
         border-color: var(--warning-border);
-        background: var(--warning-bg);
+        background:
+          linear-gradient(145deg, rgba(255, 247, 237, 0.94), rgba(255, 251, 235, 0.72)),
+          var(--warning-bg);
         color: var(--warning-text);
       }
 
@@ -165,7 +413,7 @@
         gap: 8px;
         padding: 18px;
         border: 1px solid var(--border);
-        border-radius: 10px;
+        border-radius: 14px;
         background: var(--surface-soft);
       }
 
@@ -176,28 +424,166 @@
         text-align: center;
       }
 
+      @keyframes revealUp {
+        from {
+          opacity: 0.94;
+          transform: translateY(8px);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes ambientShift {
+        from {
+          transform: translate3d(-1.4%, -1%, 0) scale(1);
+        }
+
+        to {
+          transform: translate3d(1.6%, 1%, 0) scale(1.03);
+        }
+      }
+
+      @keyframes glint {
+        0%,
+        74%,
+        100% {
+          opacity: 0.72;
+          transform: scale(1);
+        }
+
+        82% {
+          opacity: 1;
+          transform: scale(1.2);
+        }
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          color-scheme: dark;
+          --bg: #070a12;
+          --surface: rgba(13, 19, 32, 0.68);
+          --surface-strong: rgba(17, 24, 39, 0.86);
+          --surface-soft: rgba(24, 35, 52, 0.72);
+          --text: #f8fafc;
+          --muted: #a9b6c8;
+          --border: rgba(148, 163, 184, 0.18);
+          --accent-strong: #67e8f9;
+          --indigo-strong: #c7d2fe;
+          --warning-bg: rgba(67, 40, 12, 0.58);
+          --warning-border: rgba(245, 158, 11, 0.38);
+          --warning-text: #fed7aa;
+          --shadow: 0 28px 90px rgba(0, 0, 0, 0.34);
+          --shadow-soft: 0 18px 60px rgba(0, 0, 0, 0.24);
+        }
+
+        body {
+          background:
+            linear-gradient(135deg, rgba(99, 102, 241, 0.12), transparent 35%),
+            radial-gradient(circle at 16% 0%, rgba(34, 211, 238, 0.14), transparent 28rem),
+            radial-gradient(circle at 88% 2%, rgba(79, 70, 229, 0.18), transparent 30rem),
+            var(--bg);
+        }
+
+        header,
+        .glance-card,
+        .toc,
+        section {
+          background:
+            linear-gradient(145deg, rgba(17, 24, 39, 0.78), rgba(8, 13, 24, 0.58)),
+            var(--surface);
+        }
+
+        .pill {
+          background: rgba(15, 23, 42, 0.48);
+        }
+
+        code {
+          background: rgba(34, 211, 238, 0.08);
+          color: #67e8f9;
+        }
+
+        .notice {
+          background:
+            linear-gradient(145deg, rgba(67, 40, 12, 0.78), rgba(41, 25, 10, 0.58)),
+            var(--warning-bg);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+
+        *,
+        *::before,
+        *::after {
+          animation-duration: 1ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 1ms !important;
+        }
+      }
+
+      @media (max-width: 860px) {
+        .glance,
+        main {
+          grid-template-columns: 1fr;
+        }
+
+        .toc {
+          position: relative;
+          top: auto;
+          max-height: none;
+        }
+      }
+
       @media (max-width: 640px) {
         .page {
-          width: min(100% - 20px, 980px);
+          width: min(100% - 20px, var(--content-width));
           padding: 20px 0 36px;
         }
 
         header,
         section {
           padding: 22px;
-          border-radius: 10px;
+          border-radius: 18px;
+        }
+
+        .brand-row {
+          align-items: flex-start;
+        }
+
+        .brand-mark {
+          width: 46px;
+          height: 46px;
+          border-radius: 14px;
+          font-size: 1.5rem;
+        }
+
+        h1 {
+          font-size: clamp(2.1rem, 13vw, 3rem);
         }
 
         .summary {
           font-size: 1rem;
         }
+
+        .glance-card {
+          min-height: 0;
+        }
       }
     </style>
   </head>
   <body>
+    <a class="skip-link" href="#policy-content">Skip to policy</a>
     <div class="page">
       <header>
-        <p class="eyebrow">Privacy Policy</p>
+        <div class="brand-row">
+          <div class="brand-mark" aria-hidden="true">F</div>
+          <p class="eyebrow">Privacy Policy</p>
+        </div>
         <h1>Finarc Privacy Policy</h1>
         <p class="summary">
           Finarc is a local personal finance tracker. It is designed to keep financial
@@ -210,10 +596,45 @@
           <span class="pill">Local-first</span>
           <span class="pill">No account required</span>
         </div>
+        <div class="glance" aria-label="Privacy at a glance">
+          <article class="glance-card">
+            <span>01</span>
+            <strong>Local by default</strong>
+            <p>No account, backend, or cloud sync is required for normal use.</p>
+          </article>
+          <article class="glance-card">
+            <span>02</span>
+            <strong>Optional detection</strong>
+            <p>Notification access is user-controlled and processed on device.</p>
+          </article>
+          <article class="glance-card">
+            <span>03</span>
+            <strong>User-controlled files</strong>
+            <p>Backups and exports are created only when you choose to create them.</p>
+          </article>
+        </div>
       </header>
 
-      <main>
-        <section>
+      <main id="policy-content">
+        <aside class="toc" aria-label="Policy sections">
+          <p class="toc-title">On this page</p>
+          <nav>
+            <a href="#introduction">Introduction</a>
+            <a href="#local-data">Local data</a>
+            <a href="#not-collected">Not collected</a>
+            <a href="#notification-access">Notification access</a>
+            <a href="#sms-permissions">SMS permissions</a>
+            <a href="#storage">Local storage</a>
+            <a href="#backups">Backups and exports</a>
+            <a href="#sharing">Data sharing</a>
+            <a href="#security">Security limits</a>
+            <a href="#responsibility">Your responsibility</a>
+            <a href="#contact">Contact</a>
+          </nav>
+        </aside>
+
+        <div class="policy">
+        <section id="introduction">
           <h2>1. Introduction</h2>
           <p>
             This Privacy Policy explains how Finarc handles information when you use
@@ -227,7 +648,7 @@
           </p>
         </section>
 
-        <section>
+        <section id="local-data">
           <h2>2. Data We Store Locally</h2>
           <p>
             Finarc stores personal finance records locally on your device so the app
@@ -250,7 +671,7 @@
           </p>
         </section>
 
-        <section>
+        <section id="not-collected">
           <h2>3. Data We Do Not Collect</h2>
           <p>During normal app usage, Finarc does not collect or upload your data to a backend.</p>
           <ul>
@@ -263,7 +684,7 @@
           </ul>
         </section>
 
-        <section>
+        <section id="notification-access">
           <h2>4. Notification Access Usage</h2>
           <p>
             Notification access is optional. If you grant notification access and
@@ -278,7 +699,7 @@
           </p>
         </section>
 
-        <section>
+        <section id="pending-review">
           <h2>5. Pending Transaction Confirmation</h2>
           <p>
             Detected notification events are not automatically committed as final
@@ -288,7 +709,7 @@
           </p>
         </section>
 
-        <section>
+        <section id="sms-permissions">
           <h2>6. SMS Permissions</h2>
           <p>
             The Play Store/release build of Finarc does not request or use SMS
@@ -297,7 +718,7 @@
           </p>
         </section>
 
-        <section>
+        <section id="storage">
           <h2>7. Local Storage and SQLite Database</h2>
           <p>
             Finarc stores app data in an on-device SQLite database. The database is
@@ -311,7 +732,7 @@
           </p>
         </section>
 
-        <section>
+        <section id="backups">
           <h2>8. Backups, Exports, and Imports</h2>
           <p>
             Finarc provides user-controlled backup, export, restore, and import tools.
@@ -324,7 +745,7 @@
           </p>
         </section>
 
-        <section class="notice">
+        <section id="plaintext-warning" class="notice">
           <h2>9. Plaintext Backup and Export Warning</h2>
           <p>
             Backup files and CSV exports are plaintext user-controlled files. Anyone
@@ -334,7 +755,7 @@
           </p>
         </section>
 
-        <section>
+        <section id="sharing">
           <h2>10. Data Sharing</h2>
           <p>Finarc does not sell your personal data.</p>
           <p>
@@ -345,7 +766,7 @@
           </p>
         </section>
 
-        <section>
+        <section id="security">
           <h2>11. Security Limitations</h2>
           <p>
             Finarc is designed as a local-first app, but local storage has limitations.
@@ -359,8 +780,34 @@
           </p>
         </section>
 
-        <section>
-          <h2>12. Data Deletion and Reset</h2>
+        <section id="responsibility">
+          <h2>12. Local Use and User Responsibility</h2>
+          <p>
+            Finarc is a local record-keeping tool, not a bank, payment provider,
+            financial advisor, lender, broker, insurer, tax advisor, or recovery
+            service. You are responsible for reviewing the information you enter,
+            import, restore, or confirm from pending notification detections before
+            relying on it.
+          </p>
+          <p>
+            Because Finarc does not collect, host, or sync your financial records on
+            a backend during normal use, you are responsible for protecting your
+            device, keeping secure backups if you need them, storing exported files
+            safely, and deleting exported files from places outside the app when you
+            no longer need them.
+          </p>
+          <p>
+            To the fullest extent permitted by applicable law, Finarc and its
+            developer are not responsible for losses, missed payments, incorrect
+            records, unauthorized access, data loss, device failure, backup/export
+            file exposure, or decisions made based on app summaries, reminders,
+            analytics, detected transactions, or user-entered data. Nothing in this
+            policy limits any responsibility that cannot legally be limited.
+          </p>
+        </section>
+
+        <section id="deletion">
+          <h2>13. Data Deletion and Reset</h2>
           <p>
             You can delete or reset local app data using Finarc's profile data controls
             or by uninstalling the app. Files you previously exported or backed up are
@@ -369,15 +816,15 @@
           </p>
         </section>
 
-        <section>
-          <h2>13. Children's Privacy</h2>
+        <section id="children">
+          <h2>14. Children's Privacy</h2>
           <p>
             Finarc is not designed for children and is not intended for use by children.
           </p>
         </section>
 
-        <section>
-          <h2>14. Changes to This Policy</h2>
+        <section id="changes">
+          <h2>15. Changes to This Policy</h2>
           <p>
             This policy may be updated when Finarc changes its features, storage
             behavior, permissions, or release behavior. The effective date at the top
@@ -385,8 +832,8 @@
           </p>
         </section>
 
-        <section>
-          <h2>15. Contact</h2>
+        <section id="contact">
+          <h2>16. Contact</h2>
           <div class="contact-card">
             <p>
               For privacy questions, contact:
@@ -394,6 +841,7 @@
             </p>
           </div>
         </section>
+        </div>
       </main>
 
       <footer>
