@@ -10,7 +10,7 @@
 - [ ] Play release manifest has no `READ_SMS`
 - [ ] Play release manifest has no `RECEIVE_SMS`
 - [ ] Play release manifest has no `FinarcSmsReceiver`
-- [ ] Play release manifest has no Notification Listener service
+- [ ] Play release manifest has Notification Listener service only for optional user-enabled local detection
 - [ ] Privacy policy URL prepared and hosted
 - [ ] Data Safety form completed accurately
 - [ ] Content rating questionnaire completed

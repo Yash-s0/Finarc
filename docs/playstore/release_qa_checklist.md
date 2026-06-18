@@ -18,8 +18,9 @@
 
 ## Notifications and reminders
 - [ ] Local reminders/alerts work as expected
-- [ ] No restricted SMS/listener flow appears broken in release
-- [ ] Release mode clearly treats real ingestion as unavailable
+- [ ] Release mode does not expose SMS permission or SMS ingestion flows
+- [ ] Optional notification access setup works only after user action
+- [ ] Detected notification transactions remain pending until user confirmation
 
 ## Stability
 - [ ] No crashes during smoke test

@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Finarc Privacy Policy</title>
+    <meta
+      name="description"
+      content="Privacy policy for Finarc, a local-first personal finance tracker."
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f6f8fb;
+        --surface: #ffffff;
+        --surface-soft: #eef4f7;
+        --text: #172027;
+        --muted: #5e6b75;
+        --border: #dce5ea;
+        --accent: #0f766e;
+        --accent-strong: #115e59;
+        --warning-bg: #fff7ed;
+        --warning-border: #fed7aa;
+        --warning-text: #7c2d12;
+        --shadow: 0 18px 45px rgba(15, 35, 45, 0.08);
+        --radius: 12px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background:
+          radial-gradient(circle at top left, rgba(15, 118, 110, 0.12), transparent 32rem),
+          var(--bg);
+        color: var(--text);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        line-height: 1.65;
+      }
+
+      a {
+        color: var(--accent-strong);
+        text-decoration-thickness: 0.08em;
+        text-underline-offset: 0.18em;
+      }
+
+      .page {
+        width: min(100% - 32px, 980px);
+        margin: 0 auto;
+        padding: 48px 0;
+      }
+
+      header {
+        padding: 36px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: rgba(255, 255, 255, 0.9);
+        box-shadow: var(--shadow);
+      }
+
+      .eyebrow {
+        margin: 0 0 10px;
+        color: var(--accent-strong);
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2 {
+        line-height: 1.2;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(2.2rem, 6vw, 4rem);
+        letter-spacing: 0;
+      }
+
+      .summary {
+        max-width: 720px;
+        margin: 18px 0 0;
+        color: var(--muted);
+        font-size: 1.08rem;
+      }
+
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 26px;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        min-height: 34px;
+        padding: 6px 12px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--surface-soft);
+        color: var(--text);
+        font-size: 0.9rem;
+        font-weight: 600;
+      }
+
+      main {
+        display: grid;
+        gap: 18px;
+        margin-top: 24px;
+      }
+
+      section {
+        padding: 28px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--surface);
+        box-shadow: 0 10px 30px rgba(15, 35, 45, 0.05);
+      }
+
+      h2 {
+        margin: 0 0 12px;
+        font-size: 1.35rem;
+      }
+
+      p {
+        margin: 0 0 14px;
+      }
+
+      p:last-child,
+      ul:last-child {
+        margin-bottom: 0;
+      }
+
+      ul {
+        margin: 0 0 16px;
+        padding-left: 1.2rem;
+      }
+
+      li {
+        margin: 0.35rem 0;
+      }
+
+      .notice {
+        border-color: var(--warning-border);
+        background: var(--warning-bg);
+        color: var(--warning-text);
+      }
+
+      .notice h2 {
+        color: var(--warning-text);
+      }
+
+      .contact-card {
+        display: grid;
+        gap: 8px;
+        padding: 18px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--surface-soft);
+      }
+
+      footer {
+        margin-top: 24px;
+        color: var(--muted);
+        font-size: 0.92rem;
+        text-align: center;
+      }
+
+      @media (max-width: 640px) {
+        .page {
+          width: min(100% - 20px, 980px);
+          padding: 20px 0 36px;
+        }
+
+        header,
+        section {
+          padding: 22px;
+          border-radius: 10px;
+        }
+
+        .summary {
+          font-size: 1rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header>
+        <p class="eyebrow">Privacy Policy</p>
+        <h1>Finarc Privacy Policy</h1>
+        <p class="summary">
+          Finarc is a local personal finance tracker. It is designed to keep financial
+          records on your device and give you control over backups, exports, imports,
+          notification detection, and data deletion.
+        </p>
+        <div class="meta" aria-label="Policy metadata">
+          <span class="pill">Effective date: June 18, 2026</span>
+          <span class="pill">Offline-first</span>
+          <span class="pill">Local-first</span>
+          <span class="pill">No account required</span>
+        </div>
+      </header>
+
+      <main>
+        <section>
+          <h2>1. Introduction</h2>
+          <p>
+            This Privacy Policy explains how Finarc handles information when you use
+            the app. Finarc is a personal finance tracker only. It does not provide
+            banking, lending, payment processing, investment, crypto, insurance,
+            trading, money-transfer, or financial advice services.
+          </p>
+          <p>
+            Finarc does not require an account, login, backend, or cloud sync for
+            normal app usage.
+          </p>
+        </section>
+
+        <section>
+          <h2>2. Data We Store Locally</h2>
+          <p>
+            Finarc stores personal finance records locally on your device so the app
+            can provide tracking, summaries, reminders, and analytics. Depending on
+            how you use the app, local records may include:
+          </p>
+          <ul>
+            <li>Accounts, cash wallets, Amazon Pay wallet entries, and balances.</li>
+            <li>Income, expense, transfer, adjustment, and reconciliation records.</li>
+            <li>Credit card records, billing cycles, dues, payments, refunds, and cashback.</li>
+            <li>Loans, EMI records, company deduction information, and related reminders.</li>
+            <li>Split expense groups, recoverables, people names, and partial recoveries.</li>
+            <li>Pending transactions created from user entry or optional notification detection.</li>
+            <li>Settings, detection preferences, alert preferences, and local diagnostics.</li>
+          </ul>
+          <p>
+            Finarc does not store CVV, card expiry, full card numbers, full bank
+            account numbers, or bank credentials. Only masked or last-four card/account
+            details may be stored.
+          </p>
+        </section>
+
+        <section>
+          <h2>3. Data We Do Not Collect</h2>
+          <p>During normal app usage, Finarc does not collect or upload your data to a backend.</p>
+          <ul>
+            <li>No account registration is required.</li>
+            <li>No backend or cloud sync is used during normal app usage.</li>
+            <li>No financial data is sold.</li>
+            <li>No financial data is shared with third parties by Finarc.</li>
+            <li>No bank credentials, CVV, full card number, or full bank account number are stored.</li>
+            <li>No banking, payment, lending, investment, trading, crypto, insurance, or advisory service is provided.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>4. Notification Access Usage</h2>
+          <p>
+            Notification access is optional. If you grant notification access and
+            enable detection settings, Finarc may inspect supported financial
+            notifications locally on your device to detect transaction-like events.
+          </p>
+          <p>
+            Notification contents are processed on-device and are not uploaded to a
+            backend during normal app usage. Chat, social, and email apps are blocked
+            or ignored. UPI, payment, wallet, and CRED notification detection is
+            optional and disabled by default unless you enable it.
+          </p>
+        </section>
+
+        <section>
+          <h2>5. Pending Transaction Confirmation</h2>
+          <p>
+            Detected notification events are not automatically committed as final
+            finance records. They are added as pending transactions for your review.
+            You must confirm, edit, or reject them before they affect your tracked
+            balances and records.
+          </p>
+        </section>
+
+        <section>
+          <h2>6. SMS Permissions</h2>
+          <p>
+            The Play Store/release build of Finarc does not request or use SMS
+            permissions. It does not request <code>READ_SMS</code>, does not request
+            <code>RECEIVE_SMS</code>, and does not register an SMS receiver.
+          </p>
+        </section>
+
+        <section>
+          <h2>7. Local Storage and SQLite Database</h2>
+          <p>
+            Finarc stores app data in an on-device SQLite database. The database is
+            local to your device and is used for app functionality such as tracking,
+            summaries, analytics, reminders, pending transactions, backups, imports,
+            exports, and reset actions.
+          </p>
+          <p>
+            The local SQLite database is plaintext. It is not currently encrypted by
+            Finarc.
+          </p>
+        </section>
+
+        <section>
+          <h2>8. Backups, Exports, and Imports</h2>
+          <p>
+            Finarc provides user-controlled backup, export, restore, and import tools.
+            Backup files and CSV exports are created only when you choose to create
+            them. Finarc does not automatically transmit these files to a server.
+          </p>
+          <p>
+            If you import or restore a file, Finarc uses the file locally to update
+            app data on your device.
+          </p>
+        </section>
+
+        <section class="notice">
+          <h2>9. Plaintext Backup and Export Warning</h2>
+          <p>
+            Backup files and CSV exports are plaintext user-controlled files. Anyone
+            with access to those files may be able to read their contents. Store them
+            privately, avoid sharing them through untrusted channels, and delete them
+            when they are no longer needed.
+          </p>
+        </section>
+
+        <section>
+          <h2>10. Data Sharing</h2>
+          <p>Finarc does not sell your personal data.</p>
+          <p>
+            Finarc does not share your financial data with third parties and does not
+            upload your app data to a backend during normal use. Data may leave your
+            device only when you choose to export, back up, share, copy, move, or
+            otherwise handle files outside the app.
+          </p>
+        </section>
+
+        <section>
+          <h2>11. Security Limitations</h2>
+          <p>
+            Finarc is designed as a local-first app, but local storage has limitations.
+            The local database and exported files may be readable on compromised,
+            rooted, poorly secured, or shared devices, or if you share exported files
+            with someone else.
+          </p>
+          <p>
+            Protect your device with a secure lock screen and keep backups and exports
+            in private storage.
+          </p>
+        </section>
+
+        <section>
+          <h2>12. Data Deletion and Reset</h2>
+          <p>
+            You can delete or reset local app data using Finarc's profile data controls
+            or by uninstalling the app. Files you previously exported or backed up are
+            outside the app's control and must be deleted separately from wherever you
+            stored or shared them.
+          </p>
+        </section>
+
+        <section>
+          <h2>13. Children's Privacy</h2>
+          <p>
+            Finarc is not designed for children and is not intended for use by children.
+          </p>
+        </section>
+
+        <section>
+          <h2>14. Changes to This Policy</h2>
+          <p>
+            This policy may be updated when Finarc changes its features, storage
+            behavior, permissions, or release behavior. The effective date at the top
+            of this page should be updated when the policy changes.
+          </p>
+        </section>
+
+        <section>
+          <h2>15. Contact</h2>
+          <div class="contact-card">
+            <p>
+              For privacy questions, contact:
+              <a href="mailto:arcnestlabs@gmail.com">arcnestlabs@gmail.com</a>
+            </p>
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        <p>Finarc Privacy Policy.</p>
+        <p>Last updated: June 18, 2026.</p>
+        <p>(c) 2026 Finarc.</p>
+      </footer>
+    </div>
+  </body>
+</html>

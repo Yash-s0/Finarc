@@ -1,36 +1,51 @@
-# Finarc Privacy Policy (Draft)
+# Finarc Privacy Policy Notes (Draft)
 
-_Last updated: 2026-05-26_
+_Last updated: 2026-06-18_
+
+Canonical hosted policy page for release:
+
+- `docs/privacy-policy.html`
 
 ## Overview
-Finarc is an offline-first personal finance app. In v1, your financial data is stored locally on your device.
+Finarc is an offline-first, local-first personal finance tracker. Financial data is stored locally on the user's device during normal app usage.
 
 ## Data Handling
-- Finarc does not upload your financial data to a backend server in v1.
-- Finarc does not provide cloud sync in v1.
+- Finarc does not require an account or login.
+- Finarc does not provide backend upload or cloud sync during normal app usage.
 - Finarc does not sell personal data.
 - Finarc does not share financial data with third parties.
+- Finarc is not a bank, lender, broker, payment processor, insurer, tax advisor, or financial advisor.
 
 ## Local Storage
-- Accounts, cards, transactions, splits, loans, alerts, and settings are stored in an on-device local database.
-- Data remains on-device unless you manually export it.
+- Accounts, wallets, cards, transactions, splits, recoverables, loans, alerts, settings, and diagnostics are stored in an on-device local database.
+- The local SQLite database is plaintext.
+- Data remains on-device unless the user manually exports, backs up, imports, restores, shares, or otherwise moves files outside the app.
+- Finarc does not store CVV, card expiry, full card number, full bank account number, or bank credentials.
 
 ## Backups and Exports
 - Backup/export files are user-controlled local files.
+- Full backups and CSV exports are plaintext.
 - Backup/export files are not automatically transmitted to any server by Finarc.
-- Users should store exported backup files securely.
+- Users should store exported backup files securely and delete them when no longer needed.
 
 ## Notifications and Reminders
 - Local reminders and alerts are generated and shown on-device.
-- Notification behavior is local-only in v1.
+- Notification access is optional.
+- If the user grants notification access and enables detection, supported financial notifications can be processed locally to create pending transactions.
+- Detected transactions require user confirmation before they affect tracked records.
+- Chat, social, and email apps are blocked or ignored.
+- UPI, payment, wallet, and CRED notification detection is optional and disabled by default unless enabled by the user.
 
 ## Play Store Release Scope
-- The Play Store release build does not read SMS.
-- The Play Store release build does not read app notifications through Notification Listener.
+- The Play Store/release build does not request or use SMS permissions.
+- The Play Store/release build does not request `READ_SMS`.
+- The Play Store/release build does not request `RECEIVE_SMS`.
+- The Play Store/release build does not register an SMS receiver.
+- The Play Store/release build may include the notification listener service for optional, user-enabled transaction-like notification detection.
 
 ## Personal/Debug Builds
-- Optional personal/debug builds may include additional local testing capabilities (such as SMS or notification-listener ingestion).
+- Optional personal/debug builds may include additional local testing capabilities.
 - These personal/debug builds are not the Play Store release build.
 
 ## Contact
-Add your support contact email before publishing.
+Use `arcnestlabs@gmail.com` unless replaced before publishing.
