@@ -4,6 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Finarc Privacy Policy</title>
+    <link rel="icon" type="image/png" href="finarc-logo.png" />
+    <link rel="apple-touch-icon" href="finarc-logo.png" />
     <meta
       name="description"
       content="Privacy policy for Finarc, a local-first personal finance tracker."
@@ -157,31 +159,22 @@
         width: 50px;
         height: 50px;
         place-items: center;
+        overflow: hidden;
         border: 1px solid rgba(34, 211, 238, 0.42);
         border-radius: 16px;
         background:
           linear-gradient(145deg, rgba(12, 20, 36, 0.96), rgba(3, 10, 22, 0.94)),
           #08111d;
-        color: #67e8f9;
         box-shadow:
           0 18px 40px rgba(34, 211, 238, 0.18),
           inset 0 1px 0 rgba(255, 255, 255, 0.12);
-        font-size: 1.65rem;
-        font-weight: 850;
-        line-height: 1;
       }
 
-      .brand-mark::after {
-        content: "";
-        position: absolute;
-        right: 10px;
-        bottom: 11px;
-        width: 8px;
-        height: 8px;
-        background: var(--accent);
-        clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
-        filter: drop-shadow(0 0 7px rgba(34, 211, 238, 0.72));
-        animation: glint 2600ms ease-in-out infinite;
+      .brand-mark img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
       }
 
       .eyebrow {
@@ -446,20 +439,6 @@
         }
       }
 
-      @keyframes glint {
-        0%,
-        74%,
-        100% {
-          opacity: 0.72;
-          transform: scale(1);
-        }
-
-        82% {
-          opacity: 1;
-          transform: scale(1.2);
-        }
-      }
-
       @media (prefers-color-scheme: dark) {
         :root {
           color-scheme: dark;
@@ -559,7 +538,6 @@
           width: 46px;
           height: 46px;
           border-radius: 14px;
-          font-size: 1.5rem;
         }
 
         h1 {
@@ -581,7 +559,9 @@
     <div class="page">
       <header>
         <div class="brand-row">
-          <div class="brand-mark" aria-hidden="true">F</div>
+          <div class="brand-mark" aria-hidden="true">
+            <img src="finarc-logo.png" alt="" width="50" height="50" />
+          </div>
           <p class="eyebrow">Privacy Policy</p>
         </div>
         <h1>Finarc Privacy Policy</h1>
