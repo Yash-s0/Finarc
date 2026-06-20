@@ -43,6 +43,7 @@ class BackupData {
     required this.splitSettlements,
     required this.loans,
     required this.loanPayments,
+    required this.alerts,
   });
 
   final List<Map<String, dynamic>> settings;
@@ -59,6 +60,7 @@ class BackupData {
   final List<Map<String, dynamic>> splitSettlements;
   final List<Map<String, dynamic>> loans;
   final List<Map<String, dynamic>> loanPayments;
+  final List<Map<String, dynamic>> alerts;
 
   Map<String, dynamic> toJson() {
     return {
@@ -76,6 +78,7 @@ class BackupData {
       'splitSettlements': splitSettlements,
       'loans': loans,
       'loanPayments': loanPayments,
+      'alerts': alerts,
     };
   }
 }

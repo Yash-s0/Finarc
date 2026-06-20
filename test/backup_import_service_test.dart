@@ -30,6 +30,15 @@ void main() {
           AppSettingsCompanion.insert(
             isDarkMode: const Value(true),
             hasCompletedOnboarding: const Value(true),
+            quietHoursStartHour: const Value(21),
+            quietHoursStartMinute: const Value(30),
+            smartAlertsEnabled: const Value(false),
+            lowBalanceThreshold: const Value(5000),
+            largeExpenseThreshold: const Value(25000),
+            userName: const Value('Yash'),
+            monthlySalary: const Value(150000),
+            salaryCreditDay: const Value(5),
+            companyName: const Value('Finarc Labs'),
           ),
         );
 
@@ -238,6 +247,19 @@ void main() {
           ),
         );
 
+    await db
+        .into(db.alerts)
+        .insert(
+          AlertsCompanion.insert(
+            alertType: 'largeExpense',
+            title: 'Large expense detected',
+            body: 'Spent a lot',
+            actionRoute: const Value('/expenses'),
+            payload: const Value('{"transactionId":1}'),
+            dedupeKey: const Value('large_expense_1'),
+          ),
+        );
+
     expect(walletId, greaterThan(0));
   }
 
@@ -268,6 +290,7 @@ void main() {
           'splitSettlements',
           'loans',
           'loanPayments',
+          'alerts',
         ]),
       );
 
@@ -280,6 +303,10 @@ void main() {
         (data['transactions'] as List).single['cashbackDestinationType'],
         'amazonPay',
       );
+      expect((data['settings'] as List).single['userName'], 'Yash');
+      expect((data['settings'] as List).single['monthlySalary'], 150000);
+      expect((data['settings'] as List).single['smartAlertsEnabled'], false);
+      expect((data['alerts'] as List).single['dedupeKey'], 'large_expense_1');
     },
   );
 
@@ -327,6 +354,7 @@ void main() {
     expect(preview.counts['creditCards'], 1);
     expect(preview.counts['transactions'], 1);
     expect(preview.counts['loans'], 1);
+    expect(preview.counts['alerts'], 1);
   });
 
   test('replace import clears old data and restores backup data', () async {
@@ -343,6 +371,15 @@ void main() {
             currentBalance: const Value(1),
           ),
         );
+    await db
+        .into(db.alerts)
+        .insert(
+          AlertsCompanion.insert(
+            alertType: 'stale',
+            title: 'Stale alert',
+            body: 'Should clear',
+          ),
+        );
 
     final result = await importService.importBackupReplaceAll(backup);
 
@@ -350,14 +387,22 @@ void main() {
     final wallets = await db.select(db.cashWallets).get();
     final txns = await db.select(db.transactions).get();
     final cards = await db.select(db.creditCards).get();
+    final settings = await db.select(db.appSettings).get();
+    final alerts = await db.select(db.alerts).get();
 
     expect(result.counts['bankAccounts'], 1);
+    expect(result.counts['alerts'], 1);
     expect(banks.length, 1);
     expect(banks.single.last4, '7788');
     expect(wallets.single.walletType, 'amazonPay');
     expect(txns.length, 1);
     expect(txns.single.cashbackDestinationType, 'amazonPay');
     expect(cards.length, 1);
+    expect(settings.single.userName, 'Yash');
+    expect(settings.single.monthlySalary, 150000);
+    expect(settings.single.smartAlertsEnabled, false);
+    expect(alerts.length, 1);
+    expect(alerts.single.dedupeKey, 'large_expense_1');
     final loans = await db.select(db.loans).get();
     expect(loans.single.lenderType, 'company');
   });

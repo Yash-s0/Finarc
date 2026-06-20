@@ -10,7 +10,7 @@ class BackupService {
   final AppDatabase _db;
 
   static const String appName = 'Finarc';
-  static const int backupVersion = 1;
+  static const int backupVersion = 2;
 
   Future<String> createBackupJson({String? deviceNote}) async {
     final settings = await _db.select(_db.appSettings).get();
@@ -27,6 +27,7 @@ class BackupService {
     final splitSettlements = await _db.select(_db.splitSettlements).get();
     final loans = await _db.select(_db.loans).get();
     final loanPayments = await _db.select(_db.loanPayments).get();
+    final alerts = await _db.select(_db.alerts).get();
 
     final manifest = BackupManifest(
       app: appName,
@@ -57,6 +58,7 @@ class BackupService {
             .toList(growable: false),
         loans: loans.map(_mapLoan).toList(growable: false),
         loanPayments: loanPayments.map(_mapLoanPayment).toList(growable: false),
+        alerts: alerts.map(_mapAlert).toList(growable: false),
       ),
     );
 
@@ -363,6 +365,24 @@ class BackupService {
     'smsBackfillDays': row.smsBackfillDays,
     'smsLastScannedAt': _iso(row.smsLastScannedAt),
     'hasCompletedOnboarding': row.hasCompletedOnboarding,
+    'quietHoursStartHour': row.quietHoursStartHour,
+    'quietHoursStartMinute': row.quietHoursStartMinute,
+    'quietHoursEndHour': row.quietHoursEndHour,
+    'quietHoursEndMinute': row.quietHoursEndMinute,
+    'smartAlertsEnabled': row.smartAlertsEnabled,
+    'lowBalanceAlertsEnabled': row.lowBalanceAlertsEnabled,
+    'lowBalanceThreshold': row.lowBalanceThreshold,
+    'largeExpenseAlertsEnabled': row.largeExpenseAlertsEnabled,
+    'largeExpenseThreshold': row.largeExpenseThreshold,
+    'unusualSpendingAlertsEnabled': row.unusualSpendingAlertsEnabled,
+    'unusualSpendingMultiplier': row.unusualSpendingMultiplier,
+    'recurringMerchantAlertsEnabled': row.recurringMerchantAlertsEnabled,
+    'weeklySummaryAlertsEnabled': row.weeklySummaryAlertsEnabled,
+    'monthlySummaryAlertsEnabled': row.monthlySummaryAlertsEnabled,
+    'userName': row.userName,
+    'monthlySalary': row.monthlySalary,
+    'salaryCreditDay': row.salaryCreditDay,
+    'companyName': row.companyName,
   };
 
   static Map<String, dynamic> _mapBankAccount(BankAccount row) => {
@@ -591,6 +611,21 @@ class BackupService {
     'linkedTransactionId': row.linkedTransactionId,
     'notes': row.notes,
     'createdAt': _iso(row.createdAt),
+  };
+
+  static Map<String, dynamic> _mapAlert(Alert row) => {
+    'id': row.id,
+    'alertType': row.alertType,
+    'title': row.title,
+    'body': row.body,
+    'createdAt': _iso(row.createdAt),
+    'scheduledAt': _iso(row.scheduledAt),
+    'priority': row.priority,
+    'readAt': _iso(row.readAt),
+    'actionRoute': row.actionRoute,
+    'payload': row.payload,
+    'dismissedAt': _iso(row.dismissedAt),
+    'dedupeKey': row.dedupeKey,
   };
 
   static ({double? remaining, double? base, double recovered})

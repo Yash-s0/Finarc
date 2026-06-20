@@ -80,6 +80,7 @@ class ImportService {
       'splitSettlements',
       'loans',
       'loanPayments',
+      'alerts',
     ];
 
     for (final key in requiredCollections) {
@@ -133,6 +134,7 @@ class ImportService {
         'splitSettlements': _list(data, 'splitSettlements').length,
         'loans': _list(data, 'loans').length,
         'loanPayments': _list(data, 'loanPayments').length,
+        'alerts': _list(data, 'alerts').length,
       },
     );
   }
@@ -160,6 +162,7 @@ class ImportService {
       await _db.delete(_db.cashWallets).go();
       await _db.delete(_db.loanPayments).go();
       await _db.delete(_db.loans).go();
+      await _db.delete(_db.alerts).go();
       await _db.delete(_db.appSettings).go();
 
       for (final raw in _list(data, 'settings')) {
@@ -214,6 +217,50 @@ class ImportService {
                 hasCompletedOnboarding: Value(
                   _bool(row['hasCompletedOnboarding']) ?? false,
                 ),
+                quietHoursStartHour: Value(
+                  _int(row['quietHoursStartHour']) ?? 22,
+                ),
+                quietHoursStartMinute: Value(
+                  _int(row['quietHoursStartMinute']) ?? 0,
+                ),
+                quietHoursEndHour: Value(_int(row['quietHoursEndHour']) ?? 7),
+                quietHoursEndMinute: Value(
+                  _int(row['quietHoursEndMinute']) ?? 0,
+                ),
+                smartAlertsEnabled: Value(
+                  _bool(row['smartAlertsEnabled']) ?? true,
+                ),
+                lowBalanceAlertsEnabled: Value(
+                  _bool(row['lowBalanceAlertsEnabled']) ?? true,
+                ),
+                lowBalanceThreshold: Value(
+                  _double(row['lowBalanceThreshold']) ?? 2000,
+                ),
+                largeExpenseAlertsEnabled: Value(
+                  _bool(row['largeExpenseAlertsEnabled']) ?? true,
+                ),
+                largeExpenseThreshold: Value(
+                  _double(row['largeExpenseThreshold']) ?? 10000,
+                ),
+                unusualSpendingAlertsEnabled: Value(
+                  _bool(row['unusualSpendingAlertsEnabled']) ?? true,
+                ),
+                unusualSpendingMultiplier: Value(
+                  _double(row['unusualSpendingMultiplier']) ?? 1.8,
+                ),
+                recurringMerchantAlertsEnabled: Value(
+                  _bool(row['recurringMerchantAlertsEnabled']) ?? true,
+                ),
+                weeklySummaryAlertsEnabled: Value(
+                  _bool(row['weeklySummaryAlertsEnabled']) ?? true,
+                ),
+                monthlySummaryAlertsEnabled: Value(
+                  _bool(row['monthlySummaryAlertsEnabled']) ?? true,
+                ),
+                userName: Value(_stringOrNull(row['userName'])),
+                monthlySalary: Value(_double(row['monthlySalary'])),
+                salaryCreditDay: Value(_int(row['salaryCreditDay'])),
+                companyName: Value(_stringOrNull(row['companyName'])),
               ),
             );
       }
@@ -585,6 +632,28 @@ class ImportService {
                 linkedTransactionId: Value(_int(row['linkedTransactionId'])),
                 notes: Value(_stringOrNull(row['notes'])),
                 createdAt: Value(_date(row['createdAt']) ?? DateTime.now()),
+              ),
+            );
+      }
+
+      for (final raw in _list(data, 'alerts')) {
+        final row = _asMap(raw);
+        await _db
+            .into(_db.alerts)
+            .insert(
+              AlertsCompanion(
+                id: Value(_int(row['id']) ?? 0),
+                alertType: Value(_string(row['alertType'])),
+                title: Value(_string(row['title'])),
+                body: Value(_string(row['body'])),
+                createdAt: Value(_date(row['createdAt']) ?? DateTime.now()),
+                scheduledAt: Value(_date(row['scheduledAt'])),
+                priority: Value(_string(row['priority'], fallback: 'info')),
+                readAt: Value(_date(row['readAt'])),
+                actionRoute: Value(_stringOrNull(row['actionRoute'])),
+                payload: Value(_stringOrNull(row['payload'])),
+                dismissedAt: Value(_date(row['dismissedAt'])),
+                dedupeKey: Value(_stringOrNull(row['dedupeKey'])),
               ),
             );
       }

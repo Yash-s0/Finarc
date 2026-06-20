@@ -214,8 +214,8 @@ void main() {
     );
 
     final breakdown = await netWorthService.calculate();
-    expect(breakdown.cardLiability, closeTo(23000, 0.01));
-    expect(breakdown.totalLiabilities, closeTo(143000, 0.01));
+    expect(breakdown.cardLiability, closeTo(21500, 0.01));
+    expect(breakdown.totalLiabilities, closeTo(141500, 0.01));
   });
 
   test('loan payments reduce outstanding and affect liabilities', () async {

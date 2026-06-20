@@ -798,8 +798,10 @@ class BillingService {
                     t.cardBillId.equals(bill.id),
               ))
               .get();
+      final isFutureEmptyBill =
+          billedTxns.isEmpty && _dateOnly(bill.billingDate).isAfter(now);
       final hasLegacyUnmappedBillData =
-          billedTxns.isEmpty && bill.billedAmount > 0.009;
+          billedTxns.isEmpty && bill.billedAmount > 0.009 && !isFutureEmptyBill;
       if (hasLegacyUnmappedBillData) {
         continue;
       }
@@ -957,36 +959,40 @@ class BillingService {
     String? notes,
   }) async {
     final transferGroupId = 'cardpay_${DateTime.now().microsecondsSinceEpoch}';
-    await _db.into(_db.transactions).insert(
-      TransactionsCompanion.insert(
-        type: 'cardPayment',
-        amount: amount,
-        title: 'Card Bill Payment Out',
-        category: 'Transfer',
-        transactionDate: transactionDate,
-        paymentSourceType: paymentSourceType,
-        paymentSourceId: paymentSourceId,
-        transferGroupId: Value(transferGroupId),
-        sourceAccountId: Value(paymentSourceId),
-        destinationAccountId: Value(cardId),
-        notes: Value(notes),
-      ),
-    );
-    await _db.into(_db.transactions).insert(
-      TransactionsCompanion.insert(
-        type: 'cardPayment',
-        amount: amount,
-        title: 'Card Bill Payment In',
-        category: 'Transfer',
-        transactionDate: transactionDate,
-        paymentSourceType: 'creditCard',
-        paymentSourceId: cardId,
-        transferGroupId: Value(transferGroupId),
-        sourceAccountId: Value(paymentSourceId),
-        destinationAccountId: Value(cardId),
-        notes: Value(notes),
-      ),
-    );
+    await _db
+        .into(_db.transactions)
+        .insert(
+          TransactionsCompanion.insert(
+            type: 'cardPayment',
+            amount: amount,
+            title: 'Card Bill Payment Out',
+            category: 'Transfer',
+            transactionDate: transactionDate,
+            paymentSourceType: paymentSourceType,
+            paymentSourceId: paymentSourceId,
+            transferGroupId: Value(transferGroupId),
+            sourceAccountId: Value(paymentSourceId),
+            destinationAccountId: Value(cardId),
+            notes: Value(notes),
+          ),
+        );
+    await _db
+        .into(_db.transactions)
+        .insert(
+          TransactionsCompanion.insert(
+            type: 'cardPayment',
+            amount: amount,
+            title: 'Card Bill Payment In',
+            category: 'Transfer',
+            transactionDate: transactionDate,
+            paymentSourceType: 'creditCard',
+            paymentSourceId: cardId,
+            transferGroupId: Value(transferGroupId),
+            sourceAccountId: Value(paymentSourceId),
+            destinationAccountId: Value(cardId),
+            notes: Value(notes),
+          ),
+        );
   }
 
   Future<void> _syncLegacyOutstanding(int cardId) async {
