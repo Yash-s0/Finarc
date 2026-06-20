@@ -5,6 +5,12 @@
     <uses-feature
         android:name="android.hardware.touchscreen"
         android:required="true" />
+    <uses-feature
+        android:name="android.hardware.telephony"
+        android:required="true" />
+    <uses-feature
+        android:name="android.hardware.screen.portrait"
+        android:required="true" />
 
     <supports-screens
         android:anyDensity="true"
@@ -12,6 +18,22 @@
         android:normalScreens="true"
         android:smallScreens="true"
         android:xlargeScreens="false" />
+
+    <compatible-screens>
+        <!-- Phone-sized screens only. Large/xlarge tablets, TVs, cars, ChromeOS, and XR are intentionally omitted. -->
+        <screen android:screenDensity="ldpi" android:screenSize="small" />
+        <screen android:screenDensity="mdpi" android:screenSize="small" />
+        <screen android:screenDensity="hdpi" android:screenSize="small" />
+        <screen android:screenDensity="xhdpi" android:screenSize="small" />
+        <screen android:screenDensity="xxhdpi" android:screenSize="small" />
+        <screen android:screenDensity="xxxhdpi" android:screenSize="small" />
+        <screen android:screenDensity="ldpi" android:screenSize="normal" />
+        <screen android:screenDensity="mdpi" android:screenSize="normal" />
+        <screen android:screenDensity="hdpi" android:screenSize="normal" />
+        <screen android:screenDensity="xhdpi" android:screenSize="normal" />
+        <screen android:screenDensity="xxhdpi" android:screenSize="normal" />
+        <screen android:screenDensity="xxxhdpi" android:screenSize="normal" />
+    </compatible-screens>
 
     <application
         android:label="Finarc"
