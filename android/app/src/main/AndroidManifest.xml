@@ -27,12 +27,22 @@
         <screen android:screenDensity="xhdpi" android:screenSize="small" />
         <screen android:screenDensity="xxhdpi" android:screenSize="small" />
         <screen android:screenDensity="xxxhdpi" android:screenSize="small" />
+        <screen android:screenDensity="280" android:screenSize="small" />
+        <screen android:screenDensity="360" android:screenSize="small" />
+        <screen android:screenDensity="420" android:screenSize="small" />
+        <screen android:screenDensity="480" android:screenSize="small" />
+        <screen android:screenDensity="560" android:screenSize="small" />
         <screen android:screenDensity="ldpi" android:screenSize="normal" />
         <screen android:screenDensity="mdpi" android:screenSize="normal" />
         <screen android:screenDensity="hdpi" android:screenSize="normal" />
         <screen android:screenDensity="xhdpi" android:screenSize="normal" />
         <screen android:screenDensity="xxhdpi" android:screenSize="normal" />
         <screen android:screenDensity="xxxhdpi" android:screenSize="normal" />
+        <screen android:screenDensity="280" android:screenSize="normal" />
+        <screen android:screenDensity="360" android:screenSize="normal" />
+        <screen android:screenDensity="420" android:screenSize="normal" />
+        <screen android:screenDensity="480" android:screenSize="normal" />
+        <screen android:screenDensity="560" android:screenSize="normal" />
     </compatible-screens>
 
     <application
