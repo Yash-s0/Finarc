@@ -1,6 +1,18 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Play/device filtering: Finarc is intended for handheld phones only. -->
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="true" />
+
+    <supports-screens
+        android:anyDensity="true"
+        android:largeScreens="false"
+        android:normalScreens="true"
+        android:smallScreens="true"
+        android:xlargeScreens="false" />
+
     <application
         android:label="Finarc"
         android:name="${applicationName}"
