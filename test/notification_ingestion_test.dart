@@ -188,6 +188,22 @@ void main() {
       expect(payload.combinedText, contains('Paid ₹700'));
       expect(payload.combinedText, contains('UPI Ref 123'));
     });
+
+    test('map conversion includes expanded notification lines in bigText', () {
+      final payload = NotificationPayload.fromMap({
+        'packageName': 'com.snapwork.hdfc',
+        'appName': 'HDFC Bank',
+        'title': 'HDFC Bank',
+        'body': '',
+        'bigText':
+            'A/C XX7788 debited by Rs. 1,250.00 at SWIGGY. Avl Bal Rs. 20,000.',
+        'receivedAt': DateTime(2026, 6, 23, 10, 0).millisecondsSinceEpoch,
+        'sourceType': 'appNotification',
+      });
+
+      expect(payload.combinedText, contains('debited by Rs. 1,250.00'));
+      expect(payload.combinedText, contains('SWIGGY'));
+    });
   });
 
   group('notification ingestion service', () {

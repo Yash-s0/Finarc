@@ -20,14 +20,24 @@ class FinarcNotificationListenerService : NotificationListenerService() {
         val body = extras?.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
         val bigText = extras?.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()?.trim().orEmpty()
         val subText = extras?.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()?.trim().orEmpty()
+        val textLines = extras
+            ?.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)
+            ?.mapNotNull { it?.toString()?.trim() }
+            ?.filter { it.isNotBlank() }
+            .orEmpty()
+        val expandedText = listOf(bigText, textLines.joinToString(" "))
+            .filter { it.isNotBlank() }
+            .distinct()
+            .joinToString(" ")
 
-        if (title.isBlank() && body.isBlank() && bigText.isBlank()) return
+        if (title.isBlank() && body.isBlank() && expandedText.isBlank()) return
         val likelyFinancial = NotificationCapturePolicy.isLikelyFinancialContent(
             title = title,
             body = body,
-            bigText = bigText,
+            bigText = expandedText,
             subText = subText,
         )
+        if (!likelyFinancial && !NotificationBridge.hasActiveSink()) return
 
         val appName = try {
             val info = packageManager.getApplicationInfo(sbn.packageName, 0)
@@ -41,7 +51,7 @@ class FinarcNotificationListenerService : NotificationListenerService() {
             "appName" to appName,
             "title" to title,
             "body" to body,
-            "bigText" to if (bigText.isBlank()) null else bigText,
+            "bigText" to if (expandedText.isBlank()) null else expandedText,
             "subText" to if (subText.isBlank()) null else subText,
             "receivedAt" to sbn.postTime,
             "postTime" to sbn.postTime,

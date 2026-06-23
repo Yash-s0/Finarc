@@ -20,7 +20,7 @@ void main() {
   test('loads defaults and persists updates', () async {
     final initial = await service.load();
     expect(initial.notificationDetectionEnabled, isTrue);
-    expect(initial.paymentAppNotificationsEnabled, isFalse);
+    expect(initial.paymentAppNotificationsEnabled, isTrue);
     expect(initial.showDetectionNotifications, isTrue);
     expect(initial.reminderEnabled, isFalse);
     expect(initial.smsDetectionEnabled, isFalse);

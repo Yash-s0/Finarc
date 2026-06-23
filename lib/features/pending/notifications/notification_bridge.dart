@@ -22,6 +22,7 @@ class NotificationBridge with WidgetsBindingObserver {
   NotificationPayloadHandler? _onPayload;
   NotificationRouteHandler? _onRoute;
   bool _initialized = false;
+  Future<void> _payloadChain = Future<void>.value();
 
   Future<void> initialize({
     required NotificationPayloadHandler onPayload,
@@ -41,10 +42,8 @@ class NotificationBridge with WidgetsBindingObserver {
       await _control.invokeMethod<bool>('isNotificationAccessEnabled');
 
       _subscription = _events.receiveBroadcastStream().listen(
-        (event) async {
-          if (event is Map<dynamic, dynamic>) {
-            await _onPayload?.call(NotificationPayload.fromMap(event));
-          }
+        (event) {
+          _enqueuePayloadEvent(event);
         },
         onError: (Object error, StackTrace stackTrace) {
           if (error is MissingPluginException || error is PlatformException) {
@@ -60,15 +59,34 @@ class NotificationBridge with WidgetsBindingObserver {
           ) ??
           [];
       for (final item in queued) {
-        if (item is Map<dynamic, dynamic>) {
-          await _onPayload?.call(NotificationPayload.fromMap(item));
-        }
+        _enqueuePayloadEvent(item);
       }
+      await _payloadChain;
       await _consumeLaunchRoute();
     } on MissingPluginException {
       _subscription = null;
     } on PlatformException {
       _subscription = null;
+    }
+  }
+
+  void _enqueuePayloadEvent(dynamic event) {
+    _payloadChain = _payloadChain.then((_) => _handlePayloadEvent(event));
+  }
+
+  Future<void> _handlePayloadEvent(dynamic event) async {
+    if (event is! Map<dynamic, dynamic>) return;
+    try {
+      await _onPayload?.call(NotificationPayload.fromMap(event));
+    } catch (error, stackTrace) {
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stackTrace,
+          library: 'finarc notification bridge',
+          context: ErrorDescription('while processing a captured notification'),
+        ),
+      );
     }
   }
 
@@ -96,6 +114,7 @@ class NotificationBridge with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     await _subscription?.cancel();
     _subscription = null;
+    _payloadChain = Future<void>.value();
     _initialized = false;
   }
 }

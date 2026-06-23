@@ -46,7 +46,7 @@ class FinarcSmsReceiver : BroadcastReceiver() {
                 "isOngoing" to false,
                 "category" to "sms",
             )
-            NotificationBridge.publish(payload)
+            NotificationBridge.publish(appContext, payload)
             persistDiagnostics(appContext, receivedAt, sender, null)
             Log.d("FinarcSmsReceiver", "SMS_RECEIVED sender=$sender bodyLen=${body.length}")
         } catch (t: Throwable) {

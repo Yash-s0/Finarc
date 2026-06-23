@@ -109,7 +109,11 @@ class MainActivity : FlutterActivity() {
                 }
 
                 "drainCapturedNotifications" -> {
-                    result.success(NotificationBridge.drainQueue(applicationContext))
+                    val drained = NotificationBridge.drainQueue(applicationContext)
+                    if (drained.isNotEmpty()) {
+                        BackgroundNotificationHelper.cancelCapturedTransactionNotification(applicationContext)
+                    }
+                    result.success(drained)
                 }
 
                 "showDetectionNotification" -> {
@@ -300,6 +304,7 @@ class MainActivity : FlutterActivity() {
     ) {
         if (!isPostNotificationsGranted()) return
         createChannelsIfNeeded()
+        BackgroundNotificationHelper.cancelCapturedTransactionNotification(applicationContext)
 
         val builder = NotificationCompat.Builder(this, DETECTED_CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)

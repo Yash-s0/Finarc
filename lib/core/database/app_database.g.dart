@@ -10925,7 +10925,7 @@ class $AppSettingsTable extends AppSettings
         defaultConstraints: GeneratedColumn.constraintIsAlways(
           'CHECK ("payment_app_notifications_enabled" IN (0, 1))',
         ),
-        defaultValue: const Constant(false),
+        defaultValue: const Constant(true),
       );
   static const VerificationMeta _showDetectionNotificationsMeta =
       const VerificationMeta('showDetectionNotifications');

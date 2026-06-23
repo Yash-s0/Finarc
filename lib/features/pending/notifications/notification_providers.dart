@@ -215,7 +215,7 @@ final notificationDetectionEnabledProvider = Provider<bool>((ref) {
 
 final paymentAppNotificationsEnabledProvider = Provider<bool>((ref) {
   final settings = ref.watch(detectionSettingsProvider).valueOrNull;
-  return settings?.paymentAppNotificationsEnabled ?? false;
+  return settings?.paymentAppNotificationsEnabled ?? true;
 });
 
 final showDetectionNotificationsProvider = Provider<bool>((ref) {

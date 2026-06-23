@@ -27,11 +27,11 @@ object BackgroundNotificationHelper {
 
         val notification = NotificationCompat.Builder(context, DETECTED_CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("Financial notification detected")
-            .setContentText("Open Finarc to review.")
+            .setContentTitle("Transaction notification captured")
+            .setContentText("Open Finarc to process it.")
             .setStyle(
                 NotificationCompat.BigTextStyle().bigText(
-                    "Open Finarc to review.",
+                    "Open Finarc to process it.",
                 ),
             )
             .setAutoCancel(true)
@@ -40,6 +40,10 @@ object BackgroundNotificationHelper {
             .build()
 
         NotificationManagerCompat.from(context).notify(FALLBACK_NOTIFICATION_ID, notification)
+    }
+
+    fun cancelCapturedTransactionNotification(context: Context) {
+        NotificationManagerCompat.from(context).cancel(FALLBACK_NOTIFICATION_ID)
     }
 
     private fun isPostNotificationsGranted(context: Context): Boolean {

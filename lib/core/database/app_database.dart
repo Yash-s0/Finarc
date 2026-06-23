@@ -244,7 +244,7 @@ class AppSettings extends Table {
   BoolColumn get notificationDetectionEnabled =>
       boolean().withDefault(const Constant(true))();
   BoolColumn get paymentAppNotificationsEnabled =>
-      boolean().withDefault(const Constant(false))();
+      boolean().withDefault(const Constant(true))();
   BoolColumn get showDetectionNotifications =>
       boolean().withDefault(const Constant(true))();
   BoolColumn get reminderEnabled =>
@@ -329,7 +329,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 22;
+  int get schemaVersion => 23;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -544,6 +544,13 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 22) {
         await m.addColumn(creditCards, creditCards.network);
+      }
+      if (from < 23) {
+        await customUpdate(
+          'UPDATE app_settings '
+          'SET payment_app_notifications_enabled = 1 '
+          'WHERE notification_detection_enabled = 1',
+        );
       }
       await globalAppLogService.log(
         category: 'migration',

@@ -172,7 +172,7 @@ class DetectionSettings {
   static DetectionSettings defaults() {
     return const DetectionSettings(
       notificationDetectionEnabled: true,
-      paymentAppNotificationsEnabled: false,
+      paymentAppNotificationsEnabled: true,
       showDetectionNotifications: true,
       reminderEnabled: false,
       dailyReminderEnabled: false,

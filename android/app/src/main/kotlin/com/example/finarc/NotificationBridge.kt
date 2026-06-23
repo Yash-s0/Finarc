@@ -29,11 +29,22 @@ object NotificationBridge {
     }
 
     @Synchronized
+    fun publish(payload: Map<String, Any?>): Boolean {
+        val packageName = payload["packageName"] as? String
+        if (NotificationCapturePolicy.shouldIgnorePackage(packageName)) {
+            return false
+        }
+        val sink = sinkRef
+        if (sink != null) {
+            sink(payload)
+            return true
+        }
+        return false
+    }
+
+    @Synchronized
     fun setEventSink(context: Context, sink: ((Map<String, Any?>) -> Unit)?) {
         sinkRef = sink
-        if (sink != null) {
-            drainPersistedQueue(context.applicationContext).forEach(sink)
-        }
     }
 
     @Synchronized
