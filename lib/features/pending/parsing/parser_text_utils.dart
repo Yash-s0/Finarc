@@ -177,9 +177,15 @@ class ParserTextUtils {
 
   static bool looksLikeCardPaymentSettlementMessage(String text) {
     final lower = text.toLowerCase();
-    final hasCreditCard = lower.contains('credit card');
+    final hasCreditCard =
+        lower.contains('credit card') ||
+        RegExp(
+          r'card\s*(?:xx|x{2,}|\*{2,}|ending)?[- ]?\d{3,4}',
+          caseSensitive: false,
+        ).hasMatch(text);
     final hasSettlementReceipt =
         (lower.contains('payment received') ||
+            lower.contains('bbps payment received') ||
             lower.contains('received towards your') ||
             lower.contains('credit card payment received')) &&
         hasCreditCard;
@@ -207,12 +213,15 @@ class ParserTextUtils {
     String text,
     List<String> keywords,
   ) {
-    final lowered = text.toLowerCase();
     for (final keyword in keywords) {
-      final idx = lowered.indexOf('$keyword ');
-      if (idx == -1) continue;
+      final pattern = RegExp(
+        '\\b${_keywordPattern(keyword)}\\s+',
+        caseSensitive: false,
+      );
+      final match = pattern.firstMatch(text);
+      if (match == null) continue;
 
-      final start = idx + keyword.length + 1;
+      final start = match.end;
       if (start >= text.length) continue;
 
       final tail = text.substring(start);
@@ -222,6 +231,10 @@ class ParserTextUtils {
       if (cleaned.isNotEmpty) return cleaned;
     }
     return null;
+  }
+
+  static String _keywordPattern(String keyword) {
+    return keyword.trim().split(RegExp(r'\s+')).map(RegExp.escape).join(r'\s+');
   }
 
   static String? extractTransactionReference(String text) {

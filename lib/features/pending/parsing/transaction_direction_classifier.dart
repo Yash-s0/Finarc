@@ -27,6 +27,10 @@ class PendingDirectionClassifier {
     'deposited',
     'salary',
     'payroll',
+    'refund',
+    'refunded',
+    'reversal',
+    'reversed',
     'refund credited',
     'cashback',
   ];

@@ -857,6 +857,30 @@ void main() {
       },
     );
 
+    test('bbps card payment receipt becomes card payment pending', () async {
+      final cardId = await createCard(bankName: 'ICICI Bank', last4: '9000');
+      final ids = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.amazon.mshop.android.shopping',
+          appName: 'Amazon',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 6, 2, 9, 0),
+          title: 'Amazon Pay ICICI Bank Credit Card',
+          body: 'BBPS Payment Received of Rs. 1,489.01',
+        ),
+      );
+
+      expect(ids, hasLength(1));
+      final pending = await (db.select(
+        db.pendingTransactions,
+      )..where((p) => p.id.equals(ids.first))).getSingle();
+      expect(pending.sourceType, 'cardPaymentNotification');
+      expect(pending.amount, 1489.01);
+      expect(pending.merchant, 'ICICI Card Payment');
+      expect(pending.rawText, contains('destinationCardId=$cardId'));
+      expect(pending.rawText, contains('kinds=destinationReceipt'));
+    });
+
     test(
       'cred processed credit card payment does not become expense merchant',
       () async {
@@ -994,6 +1018,32 @@ void main() {
         expect(pending.paymentSourceTypeSuggestion, 'creditCard');
         expect(pending.merchant, 'Amazon');
         expect(await db.select(db.alerts).get(), isEmpty);
+      },
+    );
+
+    test(
+      'card refund notification creates refund pending instead of expense',
+      () async {
+        await createCard(bankName: 'ICICI Bank', last4: '9000');
+        final ids = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.amazon.mshop.android.shopping',
+            appName: 'Amazon',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 6, 13, 10, 0),
+            title: 'Amazon Pay ICICI Bank Credit Card',
+            body: 'Refund of Rs.578.00 processed on your card ending 9000',
+          ),
+        );
+
+        expect(ids, hasLength(1));
+        final pending = await (db.select(
+          db.pendingTransactions,
+        )..where((p) => p.id.equals(ids.first))).getSingle();
+        expect(pending.amount, 578);
+        expect(pending.categorySuggestion, 'Refund');
+        expect(pending.paymentSourceTypeSuggestion, 'creditCard');
+        expect(pending.merchant, 'Amazon');
       },
     );
 

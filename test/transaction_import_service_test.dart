@@ -419,6 +419,71 @@ void main() {
   );
 
   test(
+    'card statement income rows become card payments or refunds with Amazon Pay cashback adjustments',
+    () async {
+      final walletId = await seedAmazonPayWallet();
+      final cardId = await seedCard(nickname: 'Amazon Pay');
+      final futureDate = DateTime.now().add(const Duration(days: 1));
+      final jsonText = jsonEncode([
+        {
+          'date': '2026-06-02T00:00:00',
+          'amount': 1489.01,
+          'type': 'income',
+          'title': 'Amazon',
+          'category': 'Groceries',
+          'paymentMode': 'card',
+          'sourceName': 'Amazon Pay',
+          'cashback': 0,
+          'notes': 'BBPS Payment Received',
+        },
+        {
+          'date': futureDate.toIso8601String(),
+          'amount': 1203,
+          'type': 'income',
+          'title': 'Amazon',
+          'category': 'Groceries',
+          'paymentMode': 'card',
+          'sourceName': 'Amazon Pay',
+          'cashback': -60,
+          'notes': 'Refund (reward points deducted)',
+        },
+      ]);
+
+      final preview = (await service.parsePreview(jsonText)).preview!;
+      expect(preview.validRows, 2);
+      expect(
+        preview.rows.first.resolved!.input.type,
+        TransactionType.cardPayment,
+      );
+      expect(preview.rows.last.resolved!.input.type, TransactionType.refund);
+      expect(preview.rows.last.resolved!.input.cashbackAmount, -60);
+      expect(
+        preview.rows.last.resolved!.input.cashbackDestinationType,
+        'amazonPay',
+      );
+      expect(preview.rows.last.resolved!.input.cashbackDestinationId, walletId);
+
+      await service.importValidRows(preview);
+
+      final txns = await db.select(db.transactions).get();
+      final wallet = await (db.select(
+        db.cashWallets,
+      )..where((w) => w.id.equals(walletId))).getSingle();
+      final card = await (db.select(
+        db.creditCards,
+      )..where((c) => c.id.equals(cardId))).getSingle();
+
+      expect(
+        txns.map((txn) => txn.type),
+        contains(TransactionType.cardPayment),
+      );
+      expect(txns.map((txn) => txn.type), contains(TransactionType.refund));
+      expect(wallet.currentBalance, closeTo(2440, 0.01));
+      expect(card.currentOutstanding, closeTo(1000, 0.01));
+    },
+  );
+
+  test(
     'unresolved cashback destination becomes warning without blocking import',
     () async {
       await seedBank(name: 'Main Account');

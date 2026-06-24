@@ -122,16 +122,6 @@ class TransactionImportService {
         );
       }
 
-      if (paymentMode == PaymentSourceType.creditCard &&
-          importType == 'income') {
-        issues.add(
-          const TransactionImportValidationIssue(
-            message:
-                'Card is not supported as an income destination in current app flow.',
-          ),
-        );
-      }
-
       SourceMatch? sourceMatch;
       if (paymentMode != null) {
         sourceMatch = _resolveSource(
@@ -175,8 +165,12 @@ class TransactionImportService {
           WalletType.matches(matchedWallet, WalletType.cash);
       final cashback = importType == 'expense'
           ? cashbackRaw.clamp(0, amount).toDouble()
+          : paymentMode == PaymentSourceType.creditCard
+          ? cashbackRaw
           : 0.0;
-      if (importType == 'income' && cashbackRaw > 0) {
+      if (importType == 'income' &&
+          paymentMode != PaymentSourceType.creditCard &&
+          cashbackRaw != 0) {
         issues.add(
           const TransactionImportValidationIssue(
             message: 'cashback is ignored for income rows.',
@@ -215,6 +209,8 @@ class TransactionImportService {
         sources: sources,
         paymentMode: paymentMode,
         sourceId: matchedSourceId,
+        sourceName: data['sourceName']?.toString(),
+        sourceLabel: sourceMatch.sourceLabel,
         cashbackAmount: isPhysicalCashWallet ? 0.0 : cashback,
       );
       issues.addAll(cashbackDestination.issues);
@@ -258,8 +254,35 @@ class TransactionImportService {
       final category = (data['category'] ?? '').toString().trim();
       final notes = (data['notes'] ?? '').toString().trim();
       final sourceType = paymentMode;
+      final cardIncomeKind = importType == 'income'
+          ? _classifyCardIncome(title: title, category: category, notes: notes)
+          : null;
+      if (importType == 'income' &&
+          sourceType == PaymentSourceType.creditCard &&
+          cardIncomeKind == null) {
+        issues.add(
+          const TransactionImportValidationIssue(
+            message:
+                'Card income rows must look like a card payment or refund.',
+          ),
+        );
+      }
+      if (issues.any((issue) => issue.isWarning == false)) {
+        previewRows.add(
+          TransactionImportPreviewRow(
+            rowNumber: rowNumber,
+            raw: data,
+            issues: issues,
+          ),
+        );
+        continue;
+      }
       final transactionType = importType == 'income'
-          ? TransactionType.income
+          ? sourceType == PaymentSourceType.creditCard
+                ? (cardIncomeKind == _CardIncomeKind.cardPayment
+                      ? TransactionType.cardPayment
+                      : TransactionType.refund)
+                : TransactionType.income
           : sourceType == PaymentSourceType.creditCard
           ? TransactionType.creditCard
           : sourceType;
@@ -272,7 +295,13 @@ class TransactionImportService {
         amount: amount,
         title: title,
         category: category.isEmpty
-            ? (importType == 'income' ? 'Other' : 'General')
+            ? (transactionType == TransactionType.cardPayment
+                  ? 'Transfer'
+                  : transactionType == TransactionType.refund
+                  ? 'Refund'
+                  : importType == 'income'
+                  ? 'Other'
+                  : 'General')
             : category,
         notes: notes.isEmpty ? null : notes,
         transactionDate: date,
@@ -374,6 +403,7 @@ class TransactionImportService {
   Map<String, dynamic>? _decodeRoot(String jsonText) {
     try {
       final decoded = jsonDecode(jsonText);
+      if (decoded is List) return {'transactions': decoded};
       if (decoded is Map<String, dynamic>) return decoded;
       if (decoded is Map) {
         return decoded.map((key, value) => MapEntry(key.toString(), value));
@@ -616,9 +646,11 @@ class TransactionImportService {
     required _ImportSources sources,
     required String paymentMode,
     required int sourceId,
+    required String? sourceName,
+    required String? sourceLabel,
     required double cashbackAmount,
   }) {
-    if (cashbackAmount <= 0) {
+    if (cashbackAmount == 0) {
       return const _CashbackDestinationResolution();
     }
 
@@ -628,6 +660,13 @@ class TransactionImportService {
     if (rawType == null &&
         rawId == null &&
         (rawName == null || rawName.trim().isEmpty)) {
+      final inferredAmazonPay = _inferAmazonPayCashbackDestination(
+        paymentMode: paymentMode,
+        sourceName: sourceName,
+        sourceLabel: sourceLabel,
+        sources: sources,
+      );
+      if (inferredAmazonPay != null) return inferredAmazonPay;
       return const _CashbackDestinationResolution();
     }
 
@@ -785,6 +824,52 @@ class TransactionImportService {
         return null;
     }
   }
+
+  _CashbackDestinationResolution? _inferAmazonPayCashbackDestination({
+    required String paymentMode,
+    required String? sourceName,
+    required String? sourceLabel,
+    required _ImportSources sources,
+  }) {
+    if (paymentMode != PaymentSourceType.creditCard) return null;
+    final normalizedSource = _normalize('$sourceName $sourceLabel');
+    if (!normalizedSource.contains('amazon')) return null;
+    final amazonWallets = sources.wallets
+        .where((wallet) => WalletType.matches(wallet, WalletType.amazonPay))
+        .toList(growable: false);
+    if (amazonWallets.length != 1) return null;
+    return _CashbackDestinationResolution(
+      destinationType: CashbackDestinationType.amazonPay,
+      destinationId: amazonWallets.single.id,
+      issues: const [
+        TransactionImportValidationIssue(
+          message:
+              'cashback destination auto-selected as Amazon Pay for this card row.',
+          isWarning: true,
+        ),
+      ],
+    );
+  }
+
+  _CardIncomeKind? _classifyCardIncome({
+    required String title,
+    required String category,
+    required String notes,
+  }) {
+    final text = _normalize('$title $category $notes');
+    if (text.contains('bbps') ||
+        text.contains('paymentreceived') ||
+        text.contains('billpayment') ||
+        text.contains('cardpayment')) {
+      return _CardIncomeKind.cardPayment;
+    }
+    if (text.contains('refund') ||
+        text.contains('reversal') ||
+        text.contains('reversed')) {
+      return _CardIncomeKind.refund;
+    }
+    return null;
+  }
 }
 
 class _ImportSources {
@@ -830,3 +915,5 @@ class _CashbackDestinationResolution {
   final int? destinationId;
   final List<TransactionImportValidationIssue> issues;
 }
+
+enum _CardIncomeKind { cardPayment, refund }

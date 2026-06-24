@@ -79,6 +79,9 @@ class TransactionEngine {
       if (_mutatesLiveBalances(input.transactionImpactType)) {
         if (input.type == TransactionType.income) {
           await _applyIncome(input.paymentSourceType, sourceId, input.amount);
+        } else if (input.type == TransactionType.cardPayment &&
+            input.paymentSourceType == PaymentSourceType.creditCard) {
+          await _applyCardPaymentIn(sourceId, input.amount);
         } else if (input.type == TransactionType.refund) {
           await _applyRefund(input.paymentSourceType, sourceId, input.amount);
         } else {
@@ -323,6 +326,9 @@ class TransactionEngine {
     if (input.cashbackAmount > input.amount) {
       throw ArgumentError('Cashback cannot exceed total amount');
     }
+    if (input.cashbackAmount.abs() > input.amount) {
+      throw ArgumentError('Cashback adjustment cannot exceed total amount');
+    }
     if (CashbackDestinationType.requiresDestinationId(
           input.cashbackDestinationType,
         ) &&
@@ -331,7 +337,8 @@ class TransactionEngine {
     }
     if (input.paymentSourceType == PaymentSourceType.creditCard &&
         input.type != TransactionType.creditCard &&
-        input.type != TransactionType.refund) {
+        input.type != TransactionType.refund &&
+        input.type != TransactionType.cardPayment) {
       throw ArgumentError('Card source must use credit card transaction type');
     }
     if (input.type == TransactionType.creditCard &&
@@ -349,6 +356,9 @@ class TransactionEngine {
     final sourceId = input.paymentSourceId!;
     if (input.type == TransactionType.income) {
       await _applyIncome(input.paymentSourceType, sourceId, input.amount);
+    } else if (input.type == TransactionType.cardPayment &&
+        input.paymentSourceType == PaymentSourceType.creditCard) {
+      await _applyCardPaymentIn(sourceId, input.amount);
     } else if (input.type == TransactionType.refund) {
       await _applyRefund(input.paymentSourceType, sourceId, input.amount);
     } else {
@@ -410,6 +420,11 @@ class TransactionEngine {
       await _applyExpense(txn.paymentSourceType, sourceId, txn.amount);
       return;
     }
+    if (txn.type == TransactionType.cardPayment &&
+        txn.paymentSourceType == PaymentSourceType.creditCard) {
+      await _reverseCardPaymentIn(sourceId, txn.amount);
+      return;
+    }
     if (txn.type == TransactionType.refund) {
       if (txn.paymentSourceType == PaymentSourceType.creditCard) {
         await _applyExpense(PaymentSourceType.creditCard, sourceId, txn.amount);
@@ -424,7 +439,7 @@ class TransactionEngine {
   Future<void> _applyCashbackDestinationEffect(
     AddTransactionInput input,
   ) async {
-    if (input.cashbackAmount <= 0) return;
+    if (input.cashbackAmount == 0) return;
     if (!CashbackDestinationType.appliesBalanceMutation(
       input.cashbackDestinationType,
     )) {
@@ -435,11 +450,19 @@ class TransactionEngine {
     );
     final destinationId = input.cashbackDestinationId;
     if (destinationType == null || destinationId == null) return;
-    await _applyIncome(destinationType, destinationId, input.cashbackAmount);
+    if (input.cashbackAmount > 0) {
+      await _applyIncome(destinationType, destinationId, input.cashbackAmount);
+    } else {
+      await _applyExpense(
+        destinationType,
+        destinationId,
+        input.cashbackAmount.abs(),
+      );
+    }
   }
 
   Future<void> _reverseCashbackDestinationEffect(Transaction txn) async {
-    if (txn.cashbackAmount <= 0) return;
+    if (txn.cashbackAmount == 0) return;
     if (!CashbackDestinationType.appliesBalanceMutation(
       txn.cashbackDestinationType,
     )) {
@@ -450,7 +473,15 @@ class TransactionEngine {
     );
     final destinationId = txn.cashbackDestinationId;
     if (destinationType == null || destinationId == null) return;
-    await _applyExpense(destinationType, destinationId, txn.cashbackAmount);
+    if (txn.cashbackAmount > 0) {
+      await _applyExpense(destinationType, destinationId, txn.cashbackAmount);
+    } else {
+      await _applyIncome(
+        destinationType,
+        destinationId,
+        txn.cashbackAmount.abs(),
+      );
+    }
   }
 
   Future<void> _applyExpense(
@@ -544,6 +575,40 @@ class TransactionEngine {
   ) async {
     if (sourceType == PaymentSourceType.creditCard) return;
     await _applyIncome(sourceType, sourceId, amount);
+  }
+
+  Future<void> _applyCardPaymentIn(int cardId, double amount) async {
+    final card = await (_db.select(
+      _db.creditCards,
+    )..where((c) => c.id.equals(cardId))).getSingleOrNull();
+    if (card == null) throw ArgumentError('Credit card required');
+    await (_db.update(
+      _db.creditCards,
+    )..where((c) => c.id.equals(cardId))).write(
+      CreditCardsCompanion(
+        currentOutstanding: Value(
+          (card.currentOutstanding - amount)
+              .clamp(0, card.currentOutstanding)
+              .toDouble(),
+        ),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  Future<void> _reverseCardPaymentIn(int cardId, double amount) async {
+    final card = await (_db.select(
+      _db.creditCards,
+    )..where((c) => c.id.equals(cardId))).getSingleOrNull();
+    if (card == null) throw ArgumentError('Credit card required');
+    await (_db.update(
+      _db.creditCards,
+    )..where((c) => c.id.equals(cardId))).write(
+      CreditCardsCompanion(
+        currentOutstanding: Value(card.currentOutstanding + amount),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
   }
 
   Future<void> _adjustLinkedRecoverableAfterRefund({

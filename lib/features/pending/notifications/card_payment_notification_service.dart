@@ -345,7 +345,10 @@ class CardPaymentNotificationService {
   }
 
   String _detectKind(String lower) {
-    if (lower.contains('received towards your') &&
+    if ((lower.contains('received towards your') ||
+            lower.contains('payment received') ||
+            lower.contains('bbps payment received') ||
+            lower.contains('credit card payment received')) &&
         lower.contains('credit card')) {
       return 'destinationReceipt';
     }
@@ -372,6 +375,9 @@ class CardPaymentNotificationService {
   }
 
   String? _extractIssuer(String text) {
+    final known = _issuerFromKnownBankTerms(text);
+    if (known != null) return known;
+
     final toward = RegExp(
       r'towards\s+your\s+([A-Za-z0-9&.\- ]{2,32})\s+credit\s*card',
       caseSensitive: false,
@@ -399,6 +405,20 @@ class CardPaymentNotificationService {
     ).firstMatch(text);
     final handleBank = _issuerFromHandle(upiHandle?.group(1));
     if (handleBank != null) return handleBank;
+    return null;
+  }
+
+  String? _issuerFromKnownBankTerms(String text) {
+    final lower = text.toLowerCase();
+    if (lower.contains('icici')) return 'ICICI';
+    if (lower.contains('hdfc')) return 'HDFC';
+    if (lower.contains('axis')) return 'Axis';
+    if (lower.contains('sbi')) return 'SBI';
+    if (lower.contains('kotak')) return 'Kotak';
+    if (lower.contains('indusind')) return 'IndusInd';
+    if (lower.contains('yes bank') || lower.contains('yesbank')) {
+      return 'Yes';
+    }
     return null;
   }
 
@@ -440,20 +460,24 @@ class CardPaymentNotificationService {
     required String? issuer,
     required String? cardLast4,
   }) async {
-    if (cardLast4 == null) return null;
-    final cards = await (_db.select(
-      _db.creditCards,
-    )..where((c) => c.last4.equals(cardLast4))).get();
+    final cards = cardLast4 == null
+        ? await _db.select(_db.creditCards).get()
+        : await (_db.select(
+            _db.creditCards,
+          )..where((c) => c.last4.equals(cardLast4))).get();
     if (cards.isEmpty) return null;
     if (issuer == null) {
-      return cards.length == 1 ? cards.first.id : null;
+      return cardLast4 != null && cards.length == 1 ? cards.first.id : null;
     }
     final issuerNorm = _normalize(issuer);
     final matches = cards
         .where((card) {
           final bank = _normalize(card.bankName);
           final nick = _normalize(card.nickname);
-          return bank == issuerNorm || nick == issuerNorm;
+          return bank == issuerNorm ||
+              nick == issuerNorm ||
+              (bank?.contains(issuerNorm ?? '') ?? false) ||
+              (nick?.contains(issuerNorm ?? '') ?? false);
         })
         .toList(growable: false);
     if (matches.length == 1) return matches.first.id;

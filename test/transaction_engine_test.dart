@@ -220,6 +220,28 @@ void main() {
     expect(wallet.currentBalance, 1600);
   });
 
+  test('negative cashback deducts from Amazon Pay destination', () async {
+    await engine.addTransaction(
+      AddTransactionInput(
+        type: TransactionType.refund,
+        amount: 1203,
+        title: 'Amazon refund',
+        category: 'Refund',
+        transactionDate: DateTime(2026, 5, 24),
+        paymentSourceType: PaymentSourceType.creditCard,
+        paymentSourceId: cardId,
+        cashbackAmount: -60,
+        cashbackDestinationType: 'amazonPay',
+        cashbackDestinationId: amazonPayId,
+      ),
+    );
+
+    final wallet = await (db.select(
+      db.cashWallets,
+    )..where((w) => w.id.equals(amazonPayId))).getSingle();
+    expect(wallet.currentBalance, 1440);
+  });
+
   test(
     'cashback to same credit card stores metadata without bill mutation',
     () async {

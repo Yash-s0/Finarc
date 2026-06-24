@@ -321,12 +321,12 @@ class GenericBankSmsParser implements TransactionParser {
     required String? accountHint,
   }) {
     final lower = segment.toLowerCase();
+    if (lower.contains('card')) return PaymentSourceType.creditCard;
     if (lower.contains('amazon pay') ||
         lower.contains('amazonpay') ||
         lower.contains('amazon pay balance')) {
       return PaymentSourceType.cash;
     }
-    if (lower.contains('card')) return PaymentSourceType.creditCard;
     if (direction == _TxnDirection.income && accountHint != null) {
       return PaymentSourceType.bank;
     }
