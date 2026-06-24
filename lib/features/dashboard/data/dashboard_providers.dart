@@ -70,10 +70,15 @@ class DashboardSnapshot {
 }
 
 class MonthlySpendPoint {
-  const MonthlySpendPoint({required this.month, required this.amount});
+  const MonthlySpendPoint({
+    required this.month,
+    required this.amount,
+    this.income = 0,
+  });
 
   final DateTime month;
   final double amount;
+  final double income;
 }
 
 final dashboardProvider = FutureProvider<DashboardSnapshot>((ref) async {
@@ -203,26 +208,48 @@ List<MonthlySpendPoint> _buildMonthlySpendTrend(
   final totals = <String, double>{
     for (final month in months) _monthKey(month): 0.0,
   };
+  final incomeTotals = <String, double>{
+    for (final month in months) _monthKey(month): 0.0,
+  };
   final cardsById = {for (final card in cards) card.id: card};
   final billsById = {for (final bill in bills) bill.id: bill};
 
   for (final txn in transactions) {
-    if (!_isDashboardSpend(txn)) continue;
-    final bucket = _spendBucketMonth(
-      txn,
-      cardsById: cardsById,
-      billsById: billsById,
-      salaryCreditDay: salaryCreditDay,
-    );
-    final key = _monthKey(bucket);
-    if (!totals.containsKey(key)) continue;
-    totals[key] = totals[key]! + _dashboardLifestyleSpend(txn);
+    if (_isDashboardSpend(txn)) {
+      final bucket = _spendBucketMonth(
+        txn,
+        cardsById: cardsById,
+        billsById: billsById,
+        salaryCreditDay: salaryCreditDay,
+      );
+      final key = _monthKey(bucket);
+      if (totals.containsKey(key)) {
+        totals[key] = totals[key]! + _dashboardLifestyleSpend(txn);
+      }
+    }
+
+    if (_isDashboardIncome(txn)) {
+      final key = _monthKey(
+        DateTime(txn.transactionDate.year, txn.transactionDate.month),
+      );
+      if (incomeTotals.containsKey(key)) {
+        incomeTotals[key] = incomeTotals[key]! + txn.amount;
+      }
+    }
   }
 
   return [
     for (final month in months)
-      MonthlySpendPoint(month: month, amount: totals[_monthKey(month)] ?? 0),
+      MonthlySpendPoint(
+        month: month,
+        amount: totals[_monthKey(month)] ?? 0,
+        income: incomeTotals[_monthKey(month)] ?? 0,
+      ),
   ];
+}
+
+bool _isDashboardIncome(Transaction txn) {
+  return txn.type == 'income';
 }
 
 bool _isDashboardSpend(Transaction txn) {

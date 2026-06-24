@@ -154,6 +154,19 @@ void main() {
           .into(db.transactions)
           .insert(
             TransactionsCompanion.insert(
+              type: 'income',
+              amount: 1200,
+              title: 'Current month salary',
+              category: 'Salary',
+              transactionDate: currentCycleDate,
+              paymentSourceType: 'bank',
+              paymentSourceId: bankId,
+            ),
+          );
+      await db
+          .into(db.transactions)
+          .insert(
+            TransactionsCompanion.insert(
               type: 'expense',
               amount: 100,
               title: 'Previous salary cycle cash',
@@ -204,6 +217,7 @@ void main() {
       final snapshot = await container.read(dashboardProvider.future);
       expect(snapshot.monthlySpends, closeTo(500, 0.01));
       expect(snapshot.monthlySpendTrend.last.amount, closeTo(500, 0.01));
+      expect(snapshot.monthlySpendTrend.last.income, closeTo(1200, 0.01));
     },
   );
 }
