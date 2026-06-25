@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/utils/formatters.dart';
+import '../../expenses/models/transaction_types.dart';
 
 class BillingCycle {
   const BillingCycle({
@@ -226,7 +227,6 @@ class BillingService {
           (b) => b.status != 'paid' && (b.billedAmount - b.paidAmount) > 0.009,
         )
         .toList(growable: false);
-    final latestUnpaidBill = unpaidBills.isEmpty ? null : unpaidBills.first;
     final billedDue = unpaidBills.fold<double>(
       0,
       (sum, bill) =>
@@ -240,9 +240,11 @@ class BillingService {
       (sum, txn) => sum + _billingImpact(txn),
     );
 
-    final billedTransactions = latestUnpaidBill == null
-        ? <Transaction>[]
-        : await getBilledTransactions(card.id, latestUnpaidBill.id);
+    final displayUnpaidBill = _latestDisplayUnpaidBill(unpaidBills);
+    final billedTransactions = await _getOpenBilledTransactions(
+      card.id,
+      unpaidBills,
+    );
 
     final recentTransactions =
         await (_db.select(_db.transactions)
@@ -251,8 +253,7 @@ class BillingService {
                     t.paymentSourceType.equals('creditCard') &
                     t.paymentSourceId.equals(card.id),
               )
-              ..orderBy([(t) => OrderingTerm.desc(t.transactionDate)])
-              ..limit(10))
+              ..orderBy([(t) => OrderingTerm.desc(t.transactionDate)]))
             .get();
 
     final totalOutstanding = (billedDue + unbilledSpends)
@@ -275,7 +276,7 @@ class BillingService {
       totalOutstanding: totalOutstanding,
       availableLimit: availableLimit.toDouble(),
       utilizationPercent: utilizationPercent,
-      latestUnpaidBill: latestUnpaidBill,
+      latestUnpaidBill: displayUnpaidBill,
       nextStatementDate: nextStatementDate,
       nextDueDate: nextDueDate,
       billedTransactions: billedTransactions,
@@ -320,9 +321,10 @@ class BillingService {
                 t.paymentSourceType.equals('creditCard') &
                 t.paymentSourceId.equals(cardId) &
                 (t.type.equals('creditCard') | t.type.equals('refund')) &
+                _billingRelevantExpression(t) &
                 t.cardBillId.isNull(),
           )
-          ..orderBy([(t) => OrderingTerm.asc(t.transactionDate)]))
+          ..orderBy([(t) => OrderingTerm.desc(t.transactionDate)]))
         .get();
   }
 
@@ -336,9 +338,10 @@ class BillingService {
                 t.paymentSourceType.equals('creditCard') &
                 t.paymentSourceId.equals(cardId) &
                 t.cardBillId.equals(billId) &
+                _billingRelevantExpression(t) &
                 (t.type.equals('creditCard') | t.type.equals('refund')),
           )
-          ..orderBy([(t) => OrderingTerm.asc(t.transactionDate)]))
+          ..orderBy([(t) => OrderingTerm.desc(t.transactionDate)]))
         .get();
   }
 
@@ -653,6 +656,7 @@ class BillingService {
   bool _isCardAffecting(Transaction? txn) {
     return txn != null &&
         txn.paymentSourceType == 'creditCard' &&
+        _isBillingRelevant(txn) &&
         (txn.type == 'creditCard' || txn.type == 'refund');
   }
 
@@ -665,6 +669,52 @@ class BillingService {
   double _billingImpact(Transaction txn) {
     if (txn.type == 'refund') return -txn.amount;
     return txn.amount;
+  }
+
+  bool _isBillingRelevant(Transaction txn) {
+    return txn.transactionImpactType !=
+        TransactionImpactType.historicalNoBalance;
+  }
+
+  Expression<bool> _billingRelevantExpression($TransactionsTable t) {
+    return t.transactionImpactType.isNull() |
+        t.transactionImpactType.isNotValue(
+          TransactionImpactType.historicalNoBalance,
+        );
+  }
+
+  CardBill? _latestDisplayUnpaidBill(List<CardBill> unpaidBills) {
+    for (final bill in unpaidBills) {
+      if (bill.status != 'opening') return bill;
+    }
+    return unpaidBills.isEmpty ? null : unpaidBills.first;
+  }
+
+  Future<List<Transaction>> _getOpenBilledTransactions(
+    int cardId,
+    List<CardBill> unpaidBills,
+  ) async {
+    final openBillIds = unpaidBills
+        .where((bill) => bill.status != 'opening')
+        .map((bill) => bill.id)
+        .toSet();
+    if (openBillIds.isEmpty) return const <Transaction>[];
+
+    final candidates =
+        await (_db.select(_db.transactions)
+              ..where(
+                (t) =>
+                    t.paymentSourceType.equals('creditCard') &
+                    t.paymentSourceId.equals(cardId) &
+                    (t.type.equals('creditCard') | t.type.equals('refund')) &
+                    _billingRelevantExpression(t) &
+                    t.cardBillId.isNotNull(),
+              )
+              ..orderBy([(t) => OrderingTerm.desc(t.transactionDate)]))
+            .get();
+    return candidates
+        .where((txn) => openBillIds.contains(txn.cardBillId))
+        .toList(growable: false);
   }
 
   Future<void> _reconcileCardBillingAssignments(
@@ -721,10 +771,23 @@ class BillingService {
                 (t) =>
                     t.paymentSourceType.equals('creditCard') &
                     t.paymentSourceId.equals(card.id) &
+                    _billingRelevantExpression(t) &
                     (t.type.equals('creditCard') | t.type.equals('refund')),
               )
               ..orderBy([(t) => OrderingTerm.asc(t.transactionDate)]))
             .get();
+
+    await (_db.update(_db.transactions)..where(
+          (t) =>
+              t.paymentSourceType.equals('creditCard') &
+              t.paymentSourceId.equals(card.id) &
+              (t.type.equals('creditCard') | t.type.equals('refund')) &
+              t.transactionImpactType.equals(
+                TransactionImpactType.historicalNoBalance,
+              ) &
+              t.cardBillId.isNotNull(),
+        ))
+        .write(const TransactionsCompanion(cardBillId: Value(null)));
 
     for (final txn in cardTransactions) {
       final linkedOriginal = txn.relatedTransactionId == null
@@ -795,6 +858,7 @@ class BillingService {
                     t.paymentSourceType.equals('creditCard') &
                     t.paymentSourceId.equals(card.id) &
                     (t.type.equals('creditCard') | t.type.equals('refund')) &
+                    _billingRelevantExpression(t) &
                     t.cardBillId.equals(bill.id),
               ))
               .get();
@@ -900,6 +964,7 @@ class BillingService {
                   t.paymentSourceType.equals('creditCard') &
                   t.paymentSourceId.equals(cardId) &
                   (t.type.equals('creditCard') | t.type.equals('refund')) &
+                  _billingRelevantExpression(t) &
                   t.cardBillId.isNull(),
             ))
             .get();

@@ -29,7 +29,7 @@ class ParserTextUtils {
   );
 
   static final RegExp _dateMonthWithOptionalTimePattern = RegExp(
-    r'\b(\d{1,2})[-\s](Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b(?:[,\s]+(?:at\s*)?(\d{1,2}):(\d{2})(?:\s*([AaPp][Mm]))?)?',
+    r'\b(\d{1,2})[-\s](Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(?:[-\s](\d{2,4}))?\b(?:[,\s]+(?:at\s*)?(\d{1,2}):(\d{2})(?:\s*([AaPp][Mm]))?)?',
     caseSensitive: false,
   );
 
@@ -100,16 +100,20 @@ class ParserTextUtils {
       final day = int.tryParse(dayMonth.group(1) ?? '');
       final monthName = (dayMonth.group(2) ?? '').toLowerCase();
       final month = _months[monthName];
+      final yearRaw = int.tryParse(dayMonth.group(3) ?? '');
       if (day != null && month != null) {
+        final year = yearRaw == null
+            ? captureTime.year
+            : (yearRaw < 100 ? 2000 + yearRaw : yearRaw);
         final resolvedTime = _resolveTime(
-          hourText: dayMonth.group(3),
-          minuteText: dayMonth.group(4),
-          periodText: dayMonth.group(5),
+          hourText: dayMonth.group(4),
+          minuteText: dayMonth.group(5),
+          periodText: dayMonth.group(6),
           fallback: captureTime,
         );
         return ParsedDateTime(
           value: DateTime(
-            captureTime.year,
+            year,
             month,
             day,
             resolvedTime.hour,
@@ -218,17 +222,17 @@ class ParserTextUtils {
         '\\b${_keywordPattern(keyword)}\\s+',
         caseSensitive: false,
       );
-      final match = pattern.firstMatch(text);
-      if (match == null) continue;
+      for (final match in pattern.allMatches(text)) {
+        final start = match.end;
+        if (start >= text.length) continue;
 
-      final start = match.end;
-      if (start >= text.length) continue;
-
-      final tail = text.substring(start);
-      final boundary = _firstBoundary(tail);
-      final raw = (boundary == -1 ? tail : tail.substring(0, boundary));
-      final cleaned = _cleanMerchant(raw);
-      if (cleaned.isNotEmpty) return cleaned;
+        final tail = text.substring(start);
+        final boundary = _firstBoundary(tail);
+        final raw = (boundary == -1 ? tail : tail.substring(0, boundary));
+        final cleaned = _cleanMerchant(raw);
+        if (cleaned.isEmpty || _looksLikeDateOnly(cleaned)) continue;
+        return cleaned;
+      }
     }
     return null;
   }
@@ -391,6 +395,16 @@ class ParserTextUtils {
       }
     }
     return cleaned;
+  }
+
+  static bool _looksLikeDateOnly(String value) {
+    final normalized = value.trim();
+    if (normalized.isEmpty) return false;
+    return RegExp(
+          r'^\d{1,2}[-/\s](?:\d{1,2}|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(?:[-/\s]\d{2,4})?$',
+          caseSensitive: false,
+        ).hasMatch(normalized) ||
+        RegExp(r'^\d{1,2}:\d{2}(?:\s*[AaPp][Mm])?$').hasMatch(normalized);
   }
 }
 

@@ -1108,6 +1108,33 @@ void main() {
       expect(pending.merchant.toLowerCase(), contains('okaxis'));
     });
 
+    test('parses ICICI card spend mirrored by Messages notification', () async {
+      await createCard(bankName: 'ICICI Bank', last4: '9000');
+
+      final ids = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.google.android.apps.messaging',
+          appName: 'Messages',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 6, 25, 16, 2),
+          title: 'VA-ICICIT-S',
+          body:
+              'INR 752.00 spent using ICICI Bank Card XX9000 on 25-Jun-26 on AMAZON PAY IN G. Avl Limit: INR 27,357.98. If not you, call 1800 2662/SMS BLOCK 9000 to 9215676766.',
+        ),
+      );
+
+      expect(ids, hasLength(1));
+      final pending = await (db.select(
+        db.pendingTransactions,
+      )..where((p) => p.id.equals(ids.first))).getSingle();
+      expect(pending.amount, 752);
+      expect(pending.paymentSourceTypeSuggestion, 'creditCard');
+      expect(pending.paymentSourceIdSuggestion, isNotNull);
+      expect(pending.merchant, 'Amazon');
+      expect(pending.transactionDate, DateTime(2026, 6, 25, 16, 2));
+      expect(debugEntries.last.reason, 'success');
+    });
+
     test(
       'dedupes generic bank app receipt against detailed sms for same transaction',
       () async {

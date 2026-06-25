@@ -397,7 +397,19 @@ class PendingIngestionService {
   }) async {
     if (sourceHint == null || sourceHint.trim().isEmpty) return null;
     if (sourceType == PaymentSourceType.creditCard) {
-      return null;
+      final hintDigits = RegExp(
+        r'(\d{3,4})(?!.*\d)',
+      ).firstMatch(sourceHint)?.group(1);
+      if (hintDigits == null || hintDigits.isEmpty) return null;
+      final cards =
+          await (_db.select(_db.creditCards)..where(
+                (card) =>
+                    card.last4.equals(hintDigits) |
+                    card.last4.like('%$hintDigits'),
+              ))
+              .get();
+      if (cards.length != 1) return null;
+      return cards.single.id;
     }
     if (sourceType == PaymentSourceType.cash) {
       final wallets = await _db.select(_db.cashWallets).get();

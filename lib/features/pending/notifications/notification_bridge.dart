@@ -53,15 +53,7 @@ class NotificationBridge with WidgetsBindingObserver {
         },
       );
 
-      final queued =
-          await _control.invokeMethod<List<dynamic>>(
-            'drainCapturedNotifications',
-          ) ??
-          [];
-      for (final item in queued) {
-        _enqueuePayloadEvent(item);
-      }
-      await _payloadChain;
+      await _drainCapturedNotifications();
       await _consumeLaunchRoute();
     } on MissingPluginException {
       _subscription = null;
@@ -93,7 +85,30 @@ class NotificationBridge with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      unawaited(_consumeLaunchRoute());
+      unawaited(_resumeBridge());
+    }
+  }
+
+  Future<void> _resumeBridge() async {
+    await _drainCapturedNotifications();
+    await _consumeLaunchRoute();
+  }
+
+  Future<void> _drainCapturedNotifications() async {
+    try {
+      final queued =
+          await _control.invokeMethod<List<dynamic>>(
+            'drainCapturedNotifications',
+          ) ??
+          [];
+      for (final item in queued) {
+        _enqueuePayloadEvent(item);
+      }
+      await _payloadChain;
+    } on MissingPluginException {
+      return;
+    } on PlatformException {
+      return;
     }
   }
 

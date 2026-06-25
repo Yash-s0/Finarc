@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart' hide isNotNull;
+import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -208,6 +208,119 @@ void main() {
       expect(snapshot.unbilledSpends, 0);
       expect(snapshot.totalOutstanding, 30000);
       expect(snapshot.availableLimit, 70000);
+    },
+  );
+
+  test(
+    'historical no-balance card transactions do not affect billing totals',
+    () async {
+      final cardId = await createCard(
+        billingDay: 20,
+        dueDay: 7,
+        outstanding: 1000,
+      );
+      await db
+          .into(db.transactions)
+          .insert(
+            TransactionsCompanion.insert(
+              type: TransactionType.creditCard,
+              amount: 500,
+              title: 'Imported old card txn',
+              category: 'Food',
+              transactionDate: DateTime(2026, 5, 10),
+              paymentSourceType: PaymentSourceType.creditCard,
+              paymentSourceId: cardId,
+              transactionImpactType: const Value(
+                TransactionImpactType.historicalNoBalance,
+              ),
+            ),
+          );
+
+      final service = BillingService(db, now: () => DateTime(2026, 5, 25));
+      final snapshot = await service.getCardBillingSnapshotById(cardId);
+      final importedTxn = await (db.select(
+        db.transactions,
+      )..where((t) => t.title.equals('Imported old card txn'))).getSingle();
+
+      expect(snapshot.billedDue, closeTo(1000, 0.01));
+      expect(snapshot.unbilledSpends, 0);
+      expect(snapshot.totalOutstanding, closeTo(1000, 0.01));
+      expect(snapshot.billedTransactions, isEmpty);
+      expect(snapshot.unbilledTransactions, isEmpty);
+      expect(snapshot.recentTransactions, hasLength(1));
+      expect(importedTxn.cardBillId, isNull);
+    },
+  );
+
+  test(
+    'billed transactions include all unpaid statement transactions',
+    () async {
+      final cardId = await createCard(billingDay: 20, dueDay: 7);
+      final firstBillId = await db
+          .into(db.cardBills)
+          .insert(
+            CardBillsCompanion.insert(
+              cardId: cardId,
+              cycleStartDate: Value(DateTime(2026, 3, 21)),
+              cycleEndDate: Value(DateTime(2026, 4, 20)),
+              billingDate: Value(DateTime(2026, 4, 20)),
+              dueDate: Value(DateTime(2026, 5, 7)),
+              billedAmount: 100,
+              status: const Value('overdue'),
+            ),
+          );
+      final secondBillId = await db
+          .into(db.cardBills)
+          .insert(
+            CardBillsCompanion.insert(
+              cardId: cardId,
+              cycleStartDate: Value(DateTime(2026, 4, 21)),
+              cycleEndDate: Value(DateTime(2026, 5, 20)),
+              billingDate: Value(DateTime(2026, 5, 20)),
+              dueDate: Value(DateTime(2026, 6, 7)),
+              billedAmount: 200,
+              status: const Value('billed'),
+            ),
+          );
+      await db
+          .into(db.transactions)
+          .insert(
+            TransactionsCompanion.insert(
+              type: TransactionType.creditCard,
+              amount: 100,
+              title: 'April billed',
+              category: 'Food',
+              transactionDate: DateTime(2026, 4, 10),
+              paymentSourceType: PaymentSourceType.creditCard,
+              paymentSourceId: cardId,
+              cardBillId: Value(firstBillId),
+            ),
+          );
+      await db
+          .into(db.transactions)
+          .insert(
+            TransactionsCompanion.insert(
+              type: TransactionType.creditCard,
+              amount: 200,
+              title: 'May billed',
+              category: 'Food',
+              transactionDate: DateTime(2026, 5, 10),
+              paymentSourceType: PaymentSourceType.creditCard,
+              paymentSourceId: cardId,
+              cardBillId: Value(secondBillId),
+            ),
+          );
+
+      final snapshot = await BillingService(
+        db,
+        now: () => DateTime(2026, 5, 25),
+      ).getCardBillingSnapshotById(cardId);
+
+      expect(snapshot.billedDue, closeTo(300, 0.01));
+      expect(snapshot.billedTransactions.map((txn) => txn.title), [
+        'May billed',
+        'April billed',
+      ]);
     },
   );
 

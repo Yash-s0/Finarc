@@ -22,6 +22,7 @@ class ReconcileScreen extends ConsumerStatefulWidget {
 class _ReconcileScreenState extends ConsumerState<ReconcileScreen> {
   final _balance = TextEditingController();
   final _reason = TextEditingController();
+  bool _isSaving = false;
 
   @override
   void dispose() {
@@ -50,7 +51,7 @@ class _ReconcileScreenState extends ConsumerState<ReconcileScreen> {
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (detail) {
           final current = detail.balance;
-          final next = double.tryParse(_balance.text) ?? current;
+          final next = _parseMoney(_balance.text) ?? current;
           final diff = next - current;
 
           return ListView(
@@ -92,6 +93,7 @@ class _ReconcileScreenState extends ConsumerState<ReconcileScreen> {
                         decimal: true,
                       ),
                       onTap: () => setState(() {}),
+                      onChanged: (_) => setState(() {}),
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     FinarcTextField(
@@ -129,21 +131,31 @@ class _ReconcileScreenState extends ConsumerState<ReconcileScreen> {
               ),
               const SizedBox(height: AppSpacing.md),
               FinarcPrimaryButton(
-                onPressed: () async {
-                  await ref
-                      .read(accountServiceProvider)
-                      .reconcileBalance(
-                        accountType: widget.type,
-                        accountId: widget.id,
-                        newBalance: double.tryParse(_balance.text) ?? current,
-                        reason: _reason.text.trim(),
-                      );
-                  ref.invalidate(accountsOverviewProvider);
-                  if (!mounted) return;
-                  this.context.pop();
-                },
+                onPressed: _isSaving
+                    ? null
+                    : () async {
+                        final parsed = _parseMoney(_balance.text);
+                        if (parsed == null) return;
+                        setState(() => _isSaving = true);
+                        try {
+                          await ref
+                              .read(accountServiceProvider)
+                              .reconcileBalance(
+                                accountType: widget.type,
+                                accountId: widget.id,
+                                newBalance: parsed,
+                                reason: _reason.text.trim(),
+                              );
+                          ref.invalidate(accountsOverviewProvider);
+                          if (!mounted) return;
+                          this.context.pop();
+                        } finally {
+                          if (mounted) setState(() => _isSaving = false);
+                        }
+                      },
                 label: 'Apply Reconciliation',
                 icon: Icons.rule_folder_outlined,
+                isLoading: _isSaving,
               ),
             ],
           );
@@ -176,5 +188,11 @@ class _ReconcileScreenState extends ConsumerState<ReconcileScreen> {
         ],
       ),
     );
+  }
+
+  static double? _parseMoney(String value) {
+    final normalized = value.trim().replaceAll(',', '');
+    if (normalized.isEmpty) return null;
+    return double.tryParse(normalized);
   }
 }

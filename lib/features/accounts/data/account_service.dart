@@ -212,33 +212,38 @@ class AccountService {
     required String reason,
     DateTime? at,
   }) async {
-    final old = await _getBalance(accountType, accountId);
-    final delta = newBalance - old;
-    await _setBalance(accountType, accountId, newBalance);
+    final old = _roundMoney(await _getBalance(accountType, accountId));
+    final next = _roundMoney(newBalance);
+    final delta = _roundMoney(next - old);
+    if (delta.abs() < 0.01) return;
 
-    await _db
-        .into(_db.transactions)
-        .insert(
-          TransactionsCompanion.insert(
-            type: 'transfer',
-            amount: delta.abs(),
-            title: 'Reconciliation Adjustment',
-            category: 'Reconciliation',
-            notes: Value(reason),
-            transactionDate: at ?? DateTime.now(),
-            paymentSourceType: accountType,
-            paymentSourceId: accountId,
-            sourceAccountId: Value(accountId),
-            destinationAccountId: Value(accountId),
-          ),
-        );
+    await _db.transaction(() async {
+      await _setBalance(accountType, accountId, next);
+
+      await _db
+          .into(_db.transactions)
+          .insert(
+            TransactionsCompanion.insert(
+              type: 'transfer',
+              amount: delta.abs(),
+              title: 'Reconciliation Adjustment',
+              category: 'Reconciliation',
+              notes: Value(reason),
+              transactionDate: at ?? DateTime.now(),
+              paymentSourceType: accountType,
+              paymentSourceId: accountId,
+              sourceAccountId: Value(accountId),
+              destinationAccountId: Value(accountId),
+            ),
+          );
+    });
   }
 
   Future<double> calculateNetWorthLiquidAssets() => getCombinedLiquidBalance();
 
   Future<void> _changeBalance(String type, int id, double delta) async {
     final current = await _getBalance(type, id);
-    await _setBalance(type, id, current + delta);
+    await _setBalance(type, id, _roundMoney(current + delta));
   }
 
   Future<double> _getBalance(String type, int id) async {
@@ -258,10 +263,11 @@ class AccountService {
   }
 
   Future<void> _setBalance(String type, int id, double balance) async {
+    final roundedBalance = _roundMoney(balance);
     if (type == 'bank' || type == 'upi') {
       await (_db.update(_db.bankAccounts)..where((x) => x.id.equals(id))).write(
         BankAccountsCompanion(
-          currentBalance: Value(balance),
+          currentBalance: Value(roundedBalance),
           updatedAt: Value(DateTime.now()),
         ),
       );
@@ -270,7 +276,7 @@ class AccountService {
     if (type == 'cash') {
       await (_db.update(_db.cashWallets)..where((x) => x.id.equals(id))).write(
         CashWalletsCompanion(
-          currentBalance: Value(balance),
+          currentBalance: Value(roundedBalance),
           updatedAt: Value(DateTime.now()),
         ),
       );
@@ -278,4 +284,6 @@ class AccountService {
     }
     throw ArgumentError('Unsupported account type $type');
   }
+
+  double _roundMoney(double value) => (value * 100).roundToDouble() / 100;
 }

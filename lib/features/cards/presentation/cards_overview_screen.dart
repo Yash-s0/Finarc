@@ -20,9 +20,6 @@ class CardsOverviewScreen extends ConsumerStatefulWidget {
 }
 
 class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
-  static const double _embeddedTransactionHeight = 320;
-  static const double _embeddedTransactionEstimate = 72;
-
   final PageController _pageController = PageController(viewportFraction: 0.93);
   int _selectedCardIndex = 0;
   int _activeTab = 0;
@@ -452,12 +449,13 @@ class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
             );
           }
 
-          return FinarcContainedList(
-            itemCount: txns.length,
-            itemExtentEstimate: _embeddedTransactionEstimate,
-            maxHeight: _embeddedTransactionHeight,
-            itemBuilder: (context, index) =>
-                _transactionRow(context, txns[index]),
+          return Column(
+            children: [
+              for (var i = 0; i < txns.length; i += 1) ...[
+                _transactionRow(context, txns[i]),
+                if (i != txns.length - 1) const SizedBox(height: AppSpacing.xs),
+              ],
+            ],
           );
         },
       ),

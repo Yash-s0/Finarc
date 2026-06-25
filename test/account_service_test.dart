@@ -121,6 +121,30 @@ void main() {
     expect(recon.title, 'Reconciliation Adjustment');
   });
 
+  test(
+    'decimal reconciliation creates one paise-accurate adjustment',
+    () async {
+      await service.reconcileBalance(
+        accountType: 'cash',
+        accountId: 2,
+        newBalance: 4709.97,
+        reason: 'amazon pay balance check',
+        at: DateTime(2026, 6, 25, 16, 4),
+      );
+
+      final amazonPay = await (db.select(
+        db.cashWallets,
+      )..where((c) => c.id.equals(2))).getSingle();
+      final rows = await (db.select(
+        db.transactions,
+      )..where((t) => t.category.equals('Reconciliation'))).get();
+
+      expect(amazonPay.currentBalance, 4709.97);
+      expect(rows, hasLength(1));
+      expect(rows.single.amount, 3909.97);
+    },
+  );
+
   test('bank account last4 is persisted on create and update', () async {
     final createdId = await service.createBankAccount(
       bankName: 'Kotak',
