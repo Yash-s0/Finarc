@@ -5,6 +5,7 @@ import '../parsing/parser_models.dart';
 import '../parsing/pending_ingestion_service.dart';
 import 'card_bill_due_notification_service.dart';
 import 'notification_ingestion_service.dart';
+import 'notification_burst_limiter.dart';
 import 'notification_keyword_filter.dart';
 import 'notification_local_notifier.dart';
 import 'notification_payload.dart';
@@ -12,7 +13,39 @@ import 'sms_fingerprint.dart';
 import 'sms_sender_filter.dart';
 
 class SmsIngestionService {
-  SmsIngestionService({
+  factory SmsIngestionService({
+    required AppDatabase database,
+    required PendingIngestionService pendingIngestionService,
+    required NotificationKeywordFilter keywordFilter,
+    required SmsFingerprint fingerprint,
+    required NotificationLocalNotifier localNotifier,
+    required bool Function() isSmsDetectionEnabled,
+    required bool Function() isSmsPermissionGranted,
+    required bool Function() shouldShowDetectionNotifications,
+    required void Function(NotificationDebugEntry entry) appendDebug,
+    required SmsSenderFilter senderFilter,
+    CardBillDueNotificationService? cardBillDueNotificationService,
+    NotificationBurstLimiter? burstLimiter,
+  }) {
+    return SmsIngestionService._(
+      database: database,
+      pendingIngestionService: pendingIngestionService,
+      keywordFilter: keywordFilter,
+      fingerprint: fingerprint,
+      localNotifier: localNotifier,
+      isSmsDetectionEnabled: isSmsDetectionEnabled,
+      isSmsPermissionGranted: isSmsPermissionGranted,
+      shouldShowDetectionNotifications: shouldShowDetectionNotifications,
+      appendDebug: appendDebug,
+      senderFilter: senderFilter,
+      cardBillDueNotificationService:
+          cardBillDueNotificationService ??
+          CardBillDueNotificationService(database: database),
+      burstLimiter: burstLimiter ?? NotificationBurstLimiter(),
+    );
+  }
+
+  SmsIngestionService._({
     required AppDatabase database,
     required this._pendingIngestionService,
     required this._keywordFilter,
@@ -23,11 +56,9 @@ class SmsIngestionService {
     required this._shouldShowDetectionNotifications,
     required this._appendDebug,
     required this._senderFilter,
-    CardBillDueNotificationService? cardBillDueNotificationService,
-  }) : _db = database,
-       _cardBillDueNotificationService =
-           cardBillDueNotificationService ??
-           CardBillDueNotificationService(database: database);
+    required this._cardBillDueNotificationService,
+    required this._burstLimiter,
+  }) : _db = database;
 
   final AppDatabase _db;
   final PendingIngestionService _pendingIngestionService;
@@ -40,6 +71,7 @@ class SmsIngestionService {
   final void Function(NotificationDebugEntry entry) _appendDebug;
   final SmsSenderFilter _senderFilter;
   final CardBillDueNotificationService _cardBillDueNotificationService;
+  final NotificationBurstLimiter _burstLimiter;
 
   Future<List<int>> processSmsPayload(
     NotificationPayload payload, {
@@ -61,6 +93,12 @@ class SmsIngestionService {
         return const [];
       }
       _log(payload, senderResult.reason);
+    }
+
+    final senderKey = payload.sender ?? payload.appName ?? payload.packageName;
+    if (!_burstLimiter.isAllowed('sms:$senderKey', payload.receivedAt)) {
+      _log(payload, 'rate-limited-notification-burst');
+      return const [];
     }
 
     final filterResult = _keywordFilter.evaluate(payload);
@@ -189,6 +227,7 @@ class SmsIngestionService {
       'duplicate-suppressed' => 'duplicate',
       'parsed-pending-created' => 'pending-created',
       'parser-failed' => 'parsed',
+      'rate-limited-notification-burst' => 'ignored',
       _ => result.startsWith('blocked') ? 'ignored' : 'parsed',
     };
     final preview = payload.combinedText.length > 120

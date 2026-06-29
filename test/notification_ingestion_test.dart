@@ -5,10 +5,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:finarc/core/database/app_database.dart';
 import 'package:finarc/features/expenses/data/transaction_engine.dart';
 import 'package:finarc/features/pending/data/pending_service.dart';
+import 'package:finarc/features/pending/notifications/notification_burst_limiter.dart';
 import 'package:finarc/features/pending/notifications/notification_fingerprint.dart';
 import 'package:finarc/features/pending/notifications/notification_ingestion_service.dart';
 import 'package:finarc/features/pending/notifications/notification_keyword_filter.dart';
 import 'package:finarc/features/pending/notifications/notification_local_notifier.dart';
+import 'package:finarc/features/pending/notifications/notification_log_sanitizer.dart';
 import 'package:finarc/features/pending/notifications/notification_payload.dart';
 import 'package:finarc/features/pending/notifications/notification_providers.dart';
 import 'package:finarc/features/pending/parsing/parsers/card_notification_parser.dart';
@@ -164,6 +166,33 @@ void main() {
         fingerprint.isDuplicate(key, DateTime(2026, 5, 24, 10, 5, 0, 500)),
         isFalse,
       );
+    });
+  });
+
+  group('notification persistent logs', () {
+    test('redacts notification text and amount hints from disk metadata', () {
+      final meta = notificationDiskLogMeta(
+        NotificationDebugEntry(
+          receivedAt: DateTime(2026, 5, 24, 12, 0),
+          packageName: 'com.bank.app',
+          title: 'Bank alert',
+          bodyPreview: 'INR 12,345 debited at SWIGGY from XX1234',
+          decision: 'ignored',
+          reason: 'promotional_offer_detected',
+          amountCandidate: 'INR 12,345',
+          blockedContext: 'gift card worth INR 12,345',
+          sender: 'AD-BANK-S',
+        ),
+      );
+
+      expect(meta['title'], '<redacted>');
+      expect(meta['bodyPreview'], '<redacted>');
+      expect(meta['amountCandidate'], '<redacted>');
+      expect(meta['blockedContext'], '<redacted>');
+      expect(meta['sender'], '<redacted>');
+      expect(meta['hasAmountCandidate'], isTrue);
+      expect(meta.values, isNot(contains('INR 12,345')));
+      expect(meta.values, isNot(contains('AD-BANK-S')));
     });
   });
 
@@ -353,6 +382,64 @@ void main() {
         expect(notifier.lastRoute, '/pending');
       },
     );
+
+    test('rate limits a noisy notification package before parsing', () async {
+      final pendingService = PendingService(db, TransactionEngine(db));
+      final parserRegistry = TransactionParserRegistry(
+        parsers: [
+          UpiNotificationParser(),
+          CardNotificationParser(),
+          GenericBankSmsParser(),
+        ],
+        fallbackParser: GenericFallbackParser(),
+      );
+      final limitedService = NotificationIngestionService(
+        database: db,
+        pendingIngestionService: PendingIngestionService(
+          db,
+          pendingService,
+          parserRegistry,
+        ),
+        pendingService: pendingService,
+        keywordFilter: NotificationKeywordFilter(),
+        fingerprint: NotificationFingerprint(),
+        localNotifier: notifier,
+        isDetectionEnabled: () => true,
+        areOptionalNotificationSourcesEnabled: () => true,
+        shouldShowDetectionNotifications: () => true,
+        appendDebug: debugEntries.add,
+        burstLimiter: NotificationBurstLimiter(
+          maxEvents: 1,
+          window: const Duration(minutes: 1),
+        ),
+      );
+
+      final first = await limitedService.processPayload(
+        NotificationPayload(
+          packageName: 'com.phonepe.app',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 24, 12, 0),
+          title: 'Paid ₹250',
+          body: 'to Zomato via UPI',
+        ),
+      );
+      final second = await limitedService.processPayload(
+        NotificationPayload(
+          packageName: 'com.phonepe.app',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 5, 24, 12, 0, 30),
+          title: 'Paid ₹399',
+          body: 'to Swiggy via UPI',
+        ),
+      );
+
+      expect(first.length, 1);
+      expect(second, isEmpty);
+      expect(debugEntries.last.decision, 'ignored');
+      expect(debugEntries.last.reason, 'rate-limited-notification-burst');
+      final rows = await db.select(db.pendingTransactions).get();
+      expect(rows.length, 1);
+    });
 
     test(
       'Amazon Pay notification suggests Amazon Pay wallet when available',

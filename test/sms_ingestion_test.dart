@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:finarc/core/database/app_database.dart';
 import 'package:finarc/features/expenses/data/transaction_engine.dart';
 import 'package:finarc/features/pending/data/pending_service.dart';
+import 'package:finarc/features/pending/notifications/notification_burst_limiter.dart';
 import 'package:finarc/features/pending/notifications/notification_keyword_filter.dart';
 import 'package:finarc/features/pending/notifications/notification_local_notifier.dart';
 import 'package:finarc/features/pending/notifications/notification_payload.dart';
@@ -194,6 +195,52 @@ void main() {
       expect(notifier.showCount, 1);
     });
 
+    test('rate limits a noisy SMS sender before parsing', () async {
+      final debugEntries = <NotificationDebugEntry>[];
+      final limitedService = SmsIngestionService(
+        database: db,
+        pendingIngestionService: pendingIngestion,
+        keywordFilter: NotificationKeywordFilter(),
+        fingerprint: SmsFingerprint(),
+        localNotifier: notifier,
+        isSmsDetectionEnabled: () => true,
+        isSmsPermissionGranted: () => true,
+        shouldShowDetectionNotifications: () => true,
+        appendDebug: debugEntries.add,
+        senderFilter: const SmsSenderFilter(),
+        burstLimiter: NotificationBurstLimiter(
+          maxEvents: 1,
+          window: const Duration(minutes: 1),
+        ),
+      );
+
+      final first = await limitedService.processSmsPayload(
+        NotificationPayload(
+          packageName: 'android.sms',
+          sourceType: 'sms',
+          receivedAt: DateTime(2026, 5, 25, 10),
+          sender: 'JD-HDFCBK-S',
+          body: 'INR 1499 spent at SWIGGY',
+        ),
+      );
+      final second = await limitedService.processSmsPayload(
+        NotificationPayload(
+          packageName: 'android.sms',
+          sourceType: 'sms',
+          receivedAt: DateTime(2026, 5, 25, 10, 0, 30),
+          sender: 'JD-HDFCBK-S',
+          body: 'INR 899 spent at ZOMATO',
+        ),
+      );
+
+      expect(first.length, 1);
+      expect(second, isEmpty);
+      expect(debugEntries.last.decision, 'ignored');
+      expect(debugEntries.last.reason, 'rate-limited-notification-burst');
+      final rows = await db.select(db.pendingTransactions).get();
+      expect(rows.length, 1);
+    });
+
     test('ignored SMS content is not stored', () async {
       final ids = await smsService.processSmsPayload(
         NotificationPayload(
@@ -209,7 +256,7 @@ void main() {
       expect(rows, isEmpty);
     });
 
-  test('OTP SMS is ignored', () async {
+    test('OTP SMS is ignored', () async {
       final ids = await smsService.processSmsPayload(
         NotificationPayload(
           packageName: 'android.sms',
@@ -222,25 +269,25 @@ void main() {
       );
       expect(ids, isEmpty);
       final rows = await db.select(db.pendingTransactions).get();
-    expect(rows, isEmpty);
-  });
+      expect(rows, isEmpty);
+    });
 
-  test('coupon offer SMS with credited upto wording is ignored', () async {
-    final ids = await smsService.processSmsPayload(
-      NotificationPayload(
-        packageName: 'android.sms',
-        sourceType: 'sms',
-        receivedAt: DateTime(2026, 6, 16, 19, 19, 55),
-        sender: 'AD-ONTIRA-S',
-        body:
-            'Your Tira account is credited Upto Rs.1000* off coupon - validity 6 hours Tira Tuesday deal is live!',
-      ),
-    );
+    test('coupon offer SMS with credited upto wording is ignored', () async {
+      final ids = await smsService.processSmsPayload(
+        NotificationPayload(
+          packageName: 'android.sms',
+          sourceType: 'sms',
+          receivedAt: DateTime(2026, 6, 16, 19, 19, 55),
+          sender: 'AD-ONTIRA-S',
+          body:
+              'Your Tira account is credited Upto Rs.1000* off coupon - validity 6 hours Tira Tuesday deal is live!',
+        ),
+      );
 
-    expect(ids, isEmpty);
-    final rows = await db.select(db.pendingTransactions).get();
-    expect(rows, isEmpty);
-  });
+      expect(ids, isEmpty);
+      final rows = await db.select(db.pendingTransactions).get();
+      expect(rows, isEmpty);
+    });
 
     test('duplicate SMS suppression and backfill-style repeat', () async {
       final payload = NotificationPayload(

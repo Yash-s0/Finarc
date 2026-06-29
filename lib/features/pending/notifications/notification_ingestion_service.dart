@@ -13,6 +13,7 @@ import '../parsing/transaction_direction_classifier.dart';
 import '../data/pending_service.dart';
 import 'card_bill_due_notification_service.dart';
 import 'card_payment_notification_service.dart';
+import 'notification_burst_limiter.dart';
 import 'notification_fingerprint.dart';
 import 'notification_keyword_filter.dart';
 import 'notification_local_notifier.dart';
@@ -83,6 +84,7 @@ class NotificationIngestionService {
     required this.appendDebug,
     CardBillDueNotificationService? cardBillDueNotificationService,
     CardPaymentNotificationService? cardPaymentNotificationService,
+    NotificationBurstLimiter? burstLimiter,
   }) : cardBillDueNotificationService =
            cardBillDueNotificationService ??
            CardBillDueNotificationService(database: database),
@@ -92,6 +94,7 @@ class NotificationIngestionService {
              database: database,
              pendingService: pendingService,
            ),
+       burstLimiter = burstLimiter ?? NotificationBurstLimiter(),
        areOptionalNotificationSourcesEnabled =
            areOptionalNotificationSourcesEnabled ??
            _optionalSourcesEnabledByDefault;
@@ -108,6 +111,7 @@ class NotificationIngestionService {
   final void Function(NotificationDebugEntry entry) appendDebug;
   final CardBillDueNotificationService cardBillDueNotificationService;
   final CardPaymentNotificationService cardPaymentNotificationService;
+  final NotificationBurstLimiter burstLimiter;
   static const Duration _nearDuplicateWindow = Duration(minutes: 8);
   static const Duration _genericDuplicateWindow = Duration(minutes: 2);
   static bool _optionalSourcesEnabledByDefault() => true;
@@ -136,6 +140,19 @@ class NotificationIngestionService {
     if (payload.sourceType != 'sms' &&
         NotificationProviderCatalog.isOptionalPackage(payload.packageName) &&
         !areOptionalNotificationSourcesEnabled()) {
+      return const [];
+    }
+
+    if (!burstLimiter.isAllowed(
+      _burstSourceKey(payload),
+      payload.captureTime,
+    )) {
+      _log(
+        payload,
+        decision: 'ignored',
+        reason: 'rate-limited-notification-burst',
+        parseResult: 'rate-limited',
+      );
       return const [];
     }
 
@@ -744,6 +761,16 @@ class NotificationIngestionService {
       default:
         return sourceType.toUpperCase();
     }
+  }
+
+  String _burstSourceKey(NotificationPayload payload) {
+    final sourceType = payload.sourceType.isEmpty
+        ? 'appNotification'
+        : payload.sourceType;
+    final packageName = payload.packageName.trim().isNotEmpty
+        ? payload.packageName.trim()
+        : (payload.appName ?? 'unknown');
+    return '$sourceType:$packageName';
   }
 }
 

@@ -41,9 +41,9 @@ fail=0
 check_forbidden() {
   local pattern="$1"
   local label="$2"
-  if rg -n "$pattern" "$MERGED_MANIFEST" >/dev/null 2>&1; then
+  if grep -qE "$pattern" "$MERGED_MANIFEST"; then
     echo "FAIL: Found forbidden entry in release manifest: $label"
-    rg -n "$pattern" "$MERGED_MANIFEST" || true
+    grep -nE "$pattern" "$MERGED_MANIFEST" || true
     fail=1
   else
     echo "OK: $label not present"
@@ -58,7 +58,7 @@ check_forbidden "SMS_RECEIVED" "SMS_RECEIVED intent filter"
 check_required() {
   local pattern="$1"
   local label="$2"
-  if rg -n "$pattern" "$MERGED_MANIFEST" >/dev/null 2>&1; then
+  if grep -qE "$pattern" "$MERGED_MANIFEST"; then
     echo "OK: $label present"
   else
     echo "FAIL: Missing required release manifest entry: $label"

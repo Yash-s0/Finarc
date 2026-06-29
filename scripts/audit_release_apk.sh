@@ -63,7 +63,7 @@ echo "[2/4] Scanning DEX entries..."
 declare -a dex_entries=()
 while IFS= read -r dex; do
   dex_entries+=("$dex")
-done < <(unzip -l "$APK_PATH" | awk '{print $4}' | rg '^classes[0-9]*\.dex$' -N)
+done < <(unzip -l "$APK_PATH" | awk '{print $4}' | grep -E '^classes[0-9]*\.dex$')
 if [[ "${#dex_entries[@]}" -eq 0 ]]; then
   echo "ERROR: No classes*.dex entries found in APK."
   exit 2
@@ -84,14 +84,14 @@ done
 for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
   found=0
   for dex in "${dex_entries[@]}"; do
-    if strings "$dex_tmp_dir/$dex" | rg -n "$pattern" >/tmp/finarc_apk_audit_match.txt 2>/dev/null; then
+    if strings "$dex_tmp_dir/$dex" | grep -nE "$pattern" >"$dex_tmp_dir/finarc_apk_audit_match.txt" 2>/dev/null; then
       if [[ "$found" -eq 0 ]]; then
         print_result "FAIL:" "Forbidden pattern in DEX: $pattern"
         found=1
         fail=1
       fi
       echo "  in $dex"
-      sed 's/^/    /' /tmp/finarc_apk_audit_match.txt | head -n 6
+      sed 's/^/    /' "$dex_tmp_dir/finarc_apk_audit_match.txt" | head -n 6
     fi
   done
   if [[ "$found" -eq 0 ]]; then
@@ -103,9 +103,9 @@ done
 echo
 echo "[3/4] Scanning whole APK strings (strict gate)..."
 for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
-  if strings "$APK_PATH" | rg -n "$pattern" >/tmp/finarc_apk_audit_whole.txt 2>/dev/null; then
+  if strings "$APK_PATH" | grep -nE "$pattern" >"$dex_tmp_dir/finarc_apk_audit_whole.txt" 2>/dev/null; then
     print_result "FAIL:" "Forbidden pattern in APK payload: $pattern"
-    sed 's/^/    /' /tmp/finarc_apk_audit_whole.txt | head -n 6
+    sed 's/^/    /' "$dex_tmp_dir/finarc_apk_audit_whole.txt" | head -n 6
     fail=1
   else
     print_result "OK:" "Forbidden pattern absent in APK payload: $pattern"
@@ -115,8 +115,6 @@ done
 echo
 echo "[4/4] Required checks are enforced via scripts/check_play_manifest.sh"
 echo "OK: Notification listener manifest requirements already validated."
-
-rm -f /tmp/finarc_apk_audit_match.txt /tmp/finarc_apk_audit_whole.txt
 
 if [[ "$fail" -ne 0 ]]; then
   echo

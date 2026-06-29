@@ -11,6 +11,7 @@ import 'notification_bridge.dart';
 import 'notification_fingerprint.dart';
 import 'notification_ingestion_service.dart';
 import 'notification_keyword_filter.dart';
+import 'notification_log_sanitizer.dart';
 import 'notification_payload.dart';
 import 'notification_providers.dart';
 import 'notification_permission_service.dart';
@@ -35,31 +36,7 @@ final _notificationIngestionServiceProvider =
               .log(
                 category: 'notification_event',
                 message: entry.decision,
-                meta: <String, Object?>{
-                  'source': entry.sourceType,
-                  'package': entry.packageName,
-                  'title': entry.title,
-                  'bodyPreview': entry.bodyPreview,
-                  'decision': entry.decision,
-                  'reason': entry.reason,
-                  'result': entry.result,
-                  'parseResult': entry.parseResult,
-                  'providerName': entry.providerName,
-                  'sender': entry.sender,
-                  'senderFilterResult': entry.senderFilterResult,
-                  'confidenceScore': entry.confidenceScore,
-                  'confidenceLevel': entry.confidenceLevel,
-                  'candidateCount': entry.candidateCount,
-                  'duplicateDecision': entry.duplicateDecision,
-                  'possibleDuplicateReason': entry.possibleDuplicateReason,
-                  'amountCandidate': entry.amountCandidate,
-                  'blockedContext': entry.blockedContext,
-                  'localNotificationSent': entry.localNotificationSent,
-                  'receivedAt': entry.receivedAt.toIso8601String(),
-                  'receivedAtUsed': entry.receivedAtUsed?.toIso8601String(),
-                  'transactionDateChosen': entry.transactionDateChosen
-                      ?.toIso8601String(),
-                },
+                meta: notificationDiskLogMeta(entry),
               ),
         );
       }
