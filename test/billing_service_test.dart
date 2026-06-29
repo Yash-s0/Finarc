@@ -227,7 +227,7 @@ void main() {
               amount: 500,
               title: 'Imported old card txn',
               category: 'Food',
-              transactionDate: DateTime(2026, 5, 10),
+              transactionDate: DateTime(2026, 4, 10),
               paymentSourceType: PaymentSourceType.creditCard,
               paymentSourceId: cardId,
               transactionImpactType: const Value(
@@ -249,6 +249,208 @@ void main() {
       expect(snapshot.unbilledTransactions, isEmpty);
       expect(snapshot.recentTransactions, hasLength(1));
       expect(importedTxn.cardBillId, isNull);
+    },
+  );
+
+  test(
+    'active-window balance-neutral imports are billed or unbilled by cycle',
+    () async {
+      final cardId = await createCard(billingDay: 20, dueDay: 7);
+
+      Future<void> insertImportedTxn(
+        String title,
+        DateTime date,
+        double amount,
+        String impactType,
+      ) {
+        return db
+            .into(db.transactions)
+            .insert(
+              TransactionsCompanion.insert(
+                type: TransactionType.creditCard,
+                amount: amount,
+                title: title,
+                category: 'Food',
+                transactionDate: date,
+                paymentSourceType: PaymentSourceType.creditCard,
+                paymentSourceId: cardId,
+                transactionImpactType: Value(impactType),
+              ),
+            );
+      }
+
+      await insertImportedTxn(
+        'Previous statement boundary',
+        DateTime(2026, 5, 20),
+        100,
+        TransactionImpactType.historicalNoBalance,
+      );
+      await insertImportedTxn(
+        'Latest statement start',
+        DateTime(2026, 5, 21),
+        200,
+        TransactionImpactType.cardStatementBalanceNeutral,
+      );
+      await insertImportedTxn(
+        'Latest statement end',
+        DateTime(2026, 6, 20),
+        300,
+        TransactionImpactType.cardStatementBalanceNeutral,
+      );
+      await insertImportedTxn(
+        'Current open cycle',
+        DateTime(2026, 6, 21),
+        400,
+        TransactionImpactType.cardStatementBalanceNeutral,
+      );
+
+      final snapshot = await BillingService(
+        db,
+        now: () => DateTime(2026, 6, 29),
+      ).getCardBillingSnapshotById(cardId);
+      final previousBoundary =
+          await (db.select(db.transactions)
+                ..where((t) => t.title.equals('Previous statement boundary')))
+              .getSingle();
+
+      expect(snapshot.billedDue, closeTo(500, 0.01));
+      expect(snapshot.unbilledSpends, closeTo(400, 0.01));
+      expect(snapshot.billedTransactions.map((txn) => txn.title), [
+        'Latest statement end',
+        'Latest statement start',
+      ]);
+      expect(snapshot.unbilledTransactions.map((txn) => txn.title), [
+        'Current open cycle',
+      ]);
+      expect(previousBoundary.cardBillId, isNull);
+    },
+  );
+
+  test(
+    'snapshot promotes existing active-window historical imports on app load',
+    () async {
+      final cardId = await createCard(billingDay: 20, dueDay: 7);
+
+      Future<void> insertHistoricalTxn(
+        String title,
+        DateTime date,
+        double amount,
+      ) {
+        return db
+            .into(db.transactions)
+            .insert(
+              TransactionsCompanion.insert(
+                type: TransactionType.creditCard,
+                amount: amount,
+                title: title,
+                category: 'Food',
+                transactionDate: date,
+                paymentSourceType: PaymentSourceType.creditCard,
+                paymentSourceId: cardId,
+                transactionImpactType: const Value(
+                  TransactionImpactType.historicalNoBalance,
+                ),
+              ),
+            );
+      }
+
+      await insertHistoricalTxn(
+        'Previous statement boundary',
+        DateTime(2026, 5, 20),
+        100,
+      );
+      await insertHistoricalTxn(
+        'Latest statement start',
+        DateTime(2026, 5, 21),
+        200,
+      );
+      await insertHistoricalTxn(
+        'Latest statement end',
+        DateTime(2026, 6, 20),
+        300,
+      );
+      await insertHistoricalTxn(
+        'Current open cycle',
+        DateTime(2026, 6, 21),
+        400,
+      );
+
+      final snapshot = await BillingService(
+        db,
+        now: () => DateTime(2026, 6, 29),
+      ).getCardBillingSnapshotById(cardId);
+      final txns = await (db.select(
+        db.transactions,
+      )..orderBy([(t) => OrderingTerm.asc(t.transactionDate)])).get();
+
+      expect(snapshot.billedDue, closeTo(500, 0.01));
+      expect(snapshot.unbilledSpends, closeTo(400, 0.01));
+      expect(snapshot.billedTransactions.map((txn) => txn.title), [
+        'Latest statement end',
+        'Latest statement start',
+      ]);
+      expect(snapshot.unbilledTransactions.map((txn) => txn.title), [
+        'Current open cycle',
+      ]);
+      expect(
+        txns.first.transactionImpactType,
+        TransactionImpactType.historicalNoBalance,
+      );
+      expect(
+        txns[1].transactionImpactType,
+        TransactionImpactType.cardStatementBalanceNeutral,
+      );
+      expect(
+        txns[2].transactionImpactType,
+        TransactionImpactType.cardStatementBalanceNeutral,
+      );
+      expect(
+        txns[3].transactionImpactType,
+        TransactionImpactType.cardStatementBalanceNeutral,
+      );
+    },
+  );
+
+  test(
+    'opening bill only covers outstanding not represented by promoted history',
+    () async {
+      final cardId = await createCard(
+        billingDay: 20,
+        dueDay: 7,
+        outstanding: 1000,
+      );
+      await db
+          .into(db.transactions)
+          .insert(
+            TransactionsCompanion.insert(
+              type: TransactionType.creditCard,
+              amount: 700,
+              title: 'Imported active statement txn',
+              category: 'Food',
+              transactionDate: DateTime(2026, 5, 21),
+              paymentSourceType: PaymentSourceType.creditCard,
+              paymentSourceId: cardId,
+              transactionImpactType: const Value(
+                TransactionImpactType.historicalNoBalance,
+              ),
+            ),
+          );
+
+      final snapshot = await BillingService(
+        db,
+        now: () => DateTime(2026, 6, 29),
+      ).getCardBillingSnapshotById(cardId);
+      final opening =
+          await (db.select(db.cardBills)..where(
+                (b) => b.cardId.equals(cardId) & b.status.equals('opening'),
+              ))
+              .getSingle();
+
+      expect(opening.billedAmount, closeTo(300, 0.01));
+      expect(snapshot.billedDue, closeTo(1000, 0.01));
+      expect(snapshot.billedTransactions.map((txn) => txn.title), [
+        'Imported active statement txn',
+      ]);
     },
   );
 

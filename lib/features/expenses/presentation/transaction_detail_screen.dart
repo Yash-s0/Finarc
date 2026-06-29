@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/database/app_database.dart' show CreditCard;
 import '../../../core/database/database_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -10,6 +11,7 @@ import '../../../core/utils/numeric_input_formatters.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
 import '../../accounts/data/wallet_types.dart';
 import '../../analytics/data/analytics_providers.dart';
+import '../../cards/data/billing_service.dart';
 import '../../dashboard/data/dashboard_providers.dart';
 import '../data/expenses_providers.dart';
 import '../data/transaction_engine.dart';
@@ -207,8 +209,7 @@ class _TransactionDetailScreenState
                           txn.paymentSourceType,
                         ),
                       ),
-                      amount:
-                          '${isPositive ? '+' : '-'}${inr(txn.amount)}',
+                      amount: '${isPositive ? '+' : '-'}${inr(txn.amount)}',
                       amountColor: isPositive
                           ? AppColors.darkSuccess
                           : AppColors.darkError,
@@ -538,7 +539,18 @@ class _TransactionDetailScreenState
       final recoveredAmount = forOthers
           ? txn.recoveredAmount.clamp(0, recoverableBase).toDouble()
           : 0.0;
-      final transactionImpactType = _dateOnly(_date).isBefore(_dateOnlyNow())
+      final selectedCard = _sourceType == PaymentSourceType.creditCard
+          ? _cardById(sources?.cards ?? const [], sourceId)
+          : null;
+      final transactionImpactType =
+          _sourceType == PaymentSourceType.creditCard && selectedCard != null
+          ? creditCardTransactionImpactTypeForDate(
+              card: selectedCard,
+              transactionDate: _date,
+              now: DateTime.now(),
+              transactionType: _type,
+            )
+          : _dateOnly(_date).isBefore(_dateOnlyNow())
           ? TransactionImpactType.historicalNoBalance
           : null;
 
@@ -600,6 +612,13 @@ class _TransactionDetailScreenState
   DateTime _dateOnlyNow() {
     final now = DateTime.now();
     return DateTime(now.year, now.month, now.day);
+  }
+
+  CreditCard? _cardById(List<CreditCard> cards, int cardId) {
+    for (final card in cards) {
+      if (card.id == cardId) return card;
+    }
+    return null;
   }
 
   bool _supportsCashback(PaymentSourcesData sources) {

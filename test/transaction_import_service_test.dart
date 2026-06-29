@@ -5,6 +5,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:finarc/core/database/app_database.dart';
+import 'package:finarc/features/cards/data/billing_service.dart';
 import 'package:finarc/features/expenses/data/transaction_engine.dart';
 import 'package:finarc/features/expenses/models/transaction_types.dart';
 import 'package:finarc/features/profile/data/transaction_import_service.dart';
@@ -60,7 +61,12 @@ void main() {
         );
   }
 
-  Future<int> seedCard({String nickname = 'Amazon'}) {
+  Future<int> seedCard({
+    String nickname = 'Amazon',
+    int billingDay = 15,
+    int dueDay = 25,
+    double currentOutstanding = 1000,
+  }) {
     return db
         .into(db.creditCards)
         .insert(
@@ -70,9 +76,9 @@ void main() {
             last4: '1234',
             maskedNumber: '**** **** **** 1234',
             creditLimit: 100000,
-            billingDay: 15,
-            dueDay: 25,
-            currentOutstanding: const Value(1000),
+            billingDay: billingDay,
+            dueDay: dueDay,
+            currentOutstanding: Value(currentOutstanding),
           ),
         );
   }
@@ -162,10 +168,15 @@ void main() {
     'historical card import preserves live card outstanding and records transaction',
     () async {
       final cardId = await seedCard();
+      service = TransactionImportService(
+        db,
+        engine,
+        now: () => DateTime(2026, 6, 29),
+      );
       final jsonText = jsonEncode({
         'transactions': [
           {
-            'date': '2026-05-31T14:30:00',
+            'date': '2026-04-30T14:30:00',
             'amount': 400,
             'type': 'expense',
             'title': 'Amazon',
@@ -193,6 +204,96 @@ void main() {
       );
     },
   );
+
+  test('active-window card import is balance-neutral but billable', () async {
+    final cardId = await seedCard(
+      billingDay: 20,
+      dueDay: 7,
+      currentOutstanding: 0,
+    );
+    service = TransactionImportService(
+      db,
+      engine,
+      now: () => DateTime(2026, 6, 29),
+    );
+    final jsonText = jsonEncode({
+      'transactions': [
+        {
+          'date': '2026-05-20T10:00:00',
+          'amount': 100,
+          'type': 'expense',
+          'title': 'Older boundary',
+          'paymentMode': 'card',
+          'sourceName': 'ICICI Amazon',
+        },
+        {
+          'date': '2026-05-21T10:00:00',
+          'amount': 200,
+          'type': 'expense',
+          'title': 'Cycle start',
+          'paymentMode': 'card',
+          'sourceName': 'ICICI Amazon',
+        },
+        {
+          'date': '2026-06-20T10:00:00',
+          'amount': 300,
+          'type': 'expense',
+          'title': 'Cycle end',
+          'paymentMode': 'card',
+          'sourceName': 'ICICI Amazon',
+        },
+        {
+          'date': '2026-06-21T10:00:00',
+          'amount': 400,
+          'type': 'expense',
+          'title': 'Open cycle',
+          'paymentMode': 'card',
+          'sourceName': 'ICICI Amazon',
+        },
+      ],
+    });
+
+    final preview = (await service.parsePreview(jsonText)).preview!;
+    expect(preview.validRows, 4);
+    expect(
+      preview.rows[0].resolved!.input.transactionImpactType,
+      TransactionImpactType.historicalNoBalance,
+    );
+    expect(
+      preview.rows[1].resolved!.input.transactionImpactType,
+      TransactionImpactType.cardStatementBalanceNeutral,
+    );
+    expect(
+      preview.rows[2].resolved!.input.transactionImpactType,
+      TransactionImpactType.cardStatementBalanceNeutral,
+    );
+    expect(
+      preview.rows[3].resolved!.input.transactionImpactType,
+      TransactionImpactType.cardStatementBalanceNeutral,
+    );
+
+    final execution = await service.importValidRows(preview);
+    final snapshot = await BillingService(
+      db,
+      now: () => DateTime(2026, 6, 29),
+    ).getCardBillingSnapshotById(cardId);
+    final card = await (db.select(
+      db.creditCards,
+    )..where((c) => c.id.equals(cardId))).getSingle();
+
+    expect(execution.importedCount, 4);
+    expect(execution.failedCount, 0);
+    expect(card.currentOutstanding, closeTo(900, 0.01));
+    expect(snapshot.billedDue, closeTo(500, 0.01));
+    expect(snapshot.unbilledSpends, closeTo(400, 0.01));
+    expect(snapshot.billedTransactions.map((txn) => txn.title), [
+      'Cycle end',
+      'Cycle start',
+    ]);
+    expect(snapshot.unbilledTransactions.map((txn) => txn.title), [
+      'Open cycle',
+    ]);
+  });
 
   test('historical cash import preserves live wallet balance', () async {
     final walletId = await seedWallet();

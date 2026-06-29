@@ -12,6 +12,7 @@ class TransactionType {
 
 class TransactionImpactType {
   static const historicalNoBalance = 'historicalNoBalance';
+  static const cardStatementBalanceNeutral = 'cardStatementBalanceNeutral';
 }
 
 class PaymentSourceType {

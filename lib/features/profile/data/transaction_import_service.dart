@@ -2,16 +2,19 @@ import 'dart:convert';
 
 import '../../accounts/data/wallet_types.dart';
 import '../../../core/database/app_database.dart';
+import '../../cards/data/billing_service.dart';
 import '../../expenses/data/transaction_engine.dart';
 import '../../expenses/models/cashback_destination_types.dart';
 import '../../expenses/models/transaction_types.dart';
 import 'transaction_import_models.dart';
 
 class TransactionImportService {
-  const TransactionImportService(this._db, this._engine);
+  TransactionImportService(this._db, this._engine, {DateTime Function()? now})
+    : _now = now ?? DateTime.now;
 
   final AppDatabase _db;
   final TransactionEngine _engine;
+  final DateTime Function() _now;
 
   Future<TransactionImportParseResult> parsePreview(String jsonText) async {
     final root = _decodeRoot(jsonText);
@@ -286,7 +289,18 @@ class TransactionImportService {
           : sourceType == PaymentSourceType.creditCard
           ? TransactionType.creditCard
           : sourceType;
-      final transactionImpactType = _dateOnly(date).isBefore(_dateOnlyNow())
+      final matchedCard = sourceType == PaymentSourceType.creditCard
+          ? _cardById(sources.cards, matchedSourceId)
+          : null;
+      final transactionImpactType =
+          sourceType == PaymentSourceType.creditCard && matchedCard != null
+          ? creditCardTransactionImpactTypeForDate(
+              card: matchedCard,
+              transactionDate: date,
+              now: _now(),
+              transactionType: transactionType,
+            )
+          : _dateOnly(date).isBefore(_dateOnlyNow())
           ? TransactionImpactType.historicalNoBalance
           : null;
 
@@ -365,14 +379,29 @@ class TransactionImportService {
     var imported = 0;
     var failed = 0;
     final failureReasons = <String>[];
+    final impactedCardIds = <int>{};
 
     for (final row in preview.validResolvedRows) {
       try {
-        await _engine.addTransaction(row.input);
+        await _engine.addTransaction(row.input, reconcileCardBilling: false);
+        if (_isCardBillingCandidate(row.input) &&
+            row.input.paymentSourceId != null) {
+          impactedCardIds.add(row.input.paymentSourceId!);
+        }
         imported += 1;
       } catch (error) {
         failed += 1;
         failureReasons.add('Row ${row.rowNumber}: $error');
+      }
+    }
+
+    final billing = BillingService(_db, now: _now);
+    final reconcileNow = _now();
+    for (final cardId in impactedCardIds) {
+      try {
+        await billing.reconcileCardById(cardId, now: reconcileNow);
+      } catch (error) {
+        failureReasons.add('Card $cardId billing reconciliation: $error');
       }
     }
 
@@ -396,8 +425,21 @@ class TransactionImportService {
       DateTime(value.year, value.month, value.day);
 
   DateTime _dateOnlyNow() {
-    final now = DateTime.now();
+    final now = _now();
     return DateTime(now.year, now.month, now.day);
+  }
+
+  CreditCard? _cardById(List<CreditCard> cards, int cardId) {
+    for (final card in cards) {
+      if (card.id == cardId) return card;
+    }
+    return null;
+  }
+
+  bool _isCardBillingCandidate(AddTransactionInput input) {
+    return input.paymentSourceType == PaymentSourceType.creditCard &&
+        (input.type == TransactionType.creditCard ||
+            input.type == TransactionType.refund);
   }
 
   Map<String, dynamic>? _decodeRoot(String jsonText) {

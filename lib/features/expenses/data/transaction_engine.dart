@@ -70,7 +70,10 @@ class TransactionEngine {
 
   BillingService get _billing => BillingService(_db);
 
-  Future<void> addTransaction(AddTransactionInput input) async {
+  Future<void> addTransaction(
+    AddTransactionInput input, {
+    bool reconcileCardBilling = true,
+  }) async {
     _validate(input);
     final sourceId = input.paymentSourceId!;
 
@@ -152,7 +155,7 @@ class TransactionEngine {
       }
     });
 
-    if (insertedId != null) {
+    if (insertedId != null && reconcileCardBilling) {
       final inserted = await (_db.select(
         _db.transactions,
       )..where((t) => t.id.equals(insertedId!))).getSingleOrNull();
@@ -368,7 +371,9 @@ class TransactionEngine {
   }
 
   bool _mutatesLiveBalances(String? transactionImpactType) {
-    return transactionImpactType != TransactionImpactType.historicalNoBalance;
+    return transactionImpactType != TransactionImpactType.historicalNoBalance &&
+        transactionImpactType !=
+            TransactionImpactType.cardStatementBalanceNeutral;
   }
 
   double _resolveRecoverableBase(AddTransactionInput input) {

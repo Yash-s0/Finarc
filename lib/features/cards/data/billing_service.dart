@@ -18,6 +18,79 @@ class BillingCycle {
   final DateTime dueDate;
 }
 
+DateTime _creditCardDateOnly(DateTime value) =>
+    DateTime(value.year, value.month, value.day);
+
+DateTime _creditCardSafeDay(int year, int month, int day) {
+  final maxDay = DateTime(year, month + 1, 0).day;
+  final safeDay = day.clamp(1, maxDay);
+  return DateTime(year, month, safeDay);
+}
+
+DateTime _latestBillingDateFor(CreditCard card, DateTime date) {
+  final today = _creditCardDateOnly(date);
+  final billingThisMonth = _creditCardSafeDay(
+    today.year,
+    today.month,
+    card.billingDay,
+  );
+  return today.isBefore(billingThisMonth)
+      ? _creditCardSafeDay(today.year, today.month - 1, card.billingDay)
+      : billingThisMonth;
+}
+
+DateTime _creditCardCycleStartForBillingDate(
+  CreditCard card,
+  DateTime billingDate,
+) {
+  final previousBillingDate = _creditCardSafeDay(
+    billingDate.year,
+    billingDate.month - 1,
+    card.billingDay,
+  );
+  return previousBillingDate.add(const Duration(days: 1));
+}
+
+bool isInActiveCreditCardBillingWindow({
+  required CreditCard card,
+  required DateTime transactionDate,
+  required DateTime now,
+}) {
+  final today = _creditCardDateOnly(now);
+  final txnDate = _creditCardDateOnly(transactionDate);
+  final latestBillingDate = _latestBillingDateFor(card, today);
+  final activeStart = _creditCardCycleStartForBillingDate(
+    card,
+    latestBillingDate,
+  );
+  return !txnDate.isBefore(activeStart) && !txnDate.isAfter(today);
+}
+
+String? creditCardTransactionImpactTypeForDate({
+  required CreditCard card,
+  required DateTime transactionDate,
+  required DateTime now,
+  required String transactionType,
+}) {
+  final txnDate = _creditCardDateOnly(transactionDate);
+  final today = _creditCardDateOnly(now);
+  if (!txnDate.isBefore(today)) return null;
+  if (transactionType == TransactionType.cardPayment) {
+    return TransactionImpactType.historicalNoBalance;
+  }
+  if (transactionType == TransactionType.creditCard ||
+      transactionType == TransactionType.refund) {
+    return isInActiveCreditCardBillingWindow(
+          card: card,
+          transactionDate: txnDate,
+          now: today,
+        )
+        ? TransactionImpactType.cardStatementBalanceNeutral
+        : TransactionImpactType.historicalNoBalance;
+  }
+  return TransactionImpactType.historicalNoBalance;
+}
+
 class CardBillingSnapshot {
   const CardBillingSnapshot({
     required this.cardId,
@@ -90,24 +163,11 @@ class BillingService {
   DateTime _dateOnly(DateTime value) =>
       DateTime(value.year, value.month, value.day);
 
-  DateTime _atDay(DateTime anchor, int day) {
-    final date = _dateOnly(anchor);
-    return _safeDay(date.year, date.month, day);
-  }
+  DateTime _safeDay(int year, int month, int day) =>
+      _creditCardSafeDay(year, month, day);
 
-  DateTime _safeDay(int year, int month, int day) {
-    final maxDay = DateTime(year, month + 1, 0).day;
-    final safeDay = day.clamp(1, maxDay);
-    return DateTime(year, month, safeDay);
-  }
-
-  DateTime _billingDateFor(CreditCard card, DateTime date) {
-    final today = _dateOnly(date);
-    final billingThisMonth = _atDay(today, card.billingDay);
-    return today.isBefore(billingThisMonth)
-        ? _safeDay(today.year, today.month - 1, card.billingDay)
-        : billingThisMonth;
-  }
+  DateTime _billingDateFor(CreditCard card, DateTime date) =>
+      _latestBillingDateFor(card, date);
 
   DateTime _billingDateForTransaction(CreditCard card, DateTime txnDate) {
     final date = _dateOnly(txnDate);
@@ -118,14 +178,8 @@ class BillingService {
     return _safeDay(date.year, date.month + 1, card.billingDay);
   }
 
-  DateTime _cycleStartForBillingDate(CreditCard card, DateTime billingDate) {
-    final previousBillingDate = _safeDay(
-      billingDate.year,
-      billingDate.month - 1,
-      card.billingDay,
-    );
-    return previousBillingDate.add(const Duration(days: 1));
-  }
+  DateTime _cycleStartForBillingDate(CreditCard card, DateTime billingDate) =>
+      _creditCardCycleStartForBillingDate(card, billingDate);
 
   DateTime _dueDateForBillingDate(CreditCard card, DateTime billingDate) {
     final dueThisMonth = _safeDay(
@@ -175,6 +229,7 @@ class BillingService {
       )..where((c) => c.id.equals(cardId))).getSingleOrNull();
       if (card == null) continue;
       await _db.transaction(() async {
+        await _promoteActiveHistoricalNoBalanceTransactions(card);
         await _ensureSyntheticOpeningBill(card);
         if (_isCardCharge(previous) && previous!.cardBillId != null) {
           await _flagPaidBillNeedsReview(previous.cardBillId!);
@@ -185,12 +240,26 @@ class BillingService {
     }
   }
 
+  Future<void> reconcileCardById(int cardId, {DateTime? now}) async {
+    final card = await (_db.select(
+      _db.creditCards,
+    )..where((c) => c.id.equals(cardId))).getSingleOrNull();
+    if (card == null) return;
+    await _db.transaction(() async {
+      await _promoteActiveHistoricalNoBalanceTransactions(card, now: now);
+      await _ensureSyntheticOpeningBill(card);
+      await _reconcileCardBillingAssignments(card, referenceNow: now);
+      await _syncLegacyOutstanding(card.id);
+    });
+  }
+
   Future<double> calculateBilledDueForCard(int cardId) async {
     final card = await (_db.select(
       _db.creditCards,
     )..where((c) => c.id.equals(cardId))).getSingleOrNull();
     if (card == null) return 0;
     await _db.transaction(() async {
+      await _promoteActiveHistoricalNoBalanceTransactions(card);
       await _ensureSyntheticOpeningBill(card);
       await _reconcileCardBillingAssignments(card);
     });
@@ -213,6 +282,7 @@ class BillingService {
   }) async {
     final reference = now ?? _now();
     await _db.transaction(() async {
+      await _promoteActiveHistoricalNoBalanceTransactions(card, now: reference);
       await _ensureSyntheticOpeningBill(card);
       await _reconcileCardBillingAssignments(card, referenceNow: reference);
     });
@@ -352,6 +422,7 @@ class BillingService {
     if (card == null) return null;
 
     await _db.transaction(() async {
+      await _promoteActiveHistoricalNoBalanceTransactions(card);
       await _ensureSyntheticOpeningBill(card);
       await _reconcileCardBillingAssignments(card);
     });
@@ -391,6 +462,7 @@ class BillingService {
     )..where((c) => c.id.equals(bill.cardId))).getSingleOrNull();
     if (cardBeforePayment != null) {
       await _db.transaction(() async {
+        await _promoteActiveHistoricalNoBalanceTransactions(cardBeforePayment);
         await _ensureSyntheticOpeningBill(cardBeforePayment);
         await _reconcileCardBillingAssignments(cardBeforePayment);
         await _syncLegacyOutstanding(cardBeforePayment.id);
@@ -502,6 +574,7 @@ class BillingService {
     )..where((c) => c.id.equals(cardId))).getSingleOrNull();
     if (cardBeforePayment != null) {
       await _db.transaction(() async {
+        await _promoteActiveHistoricalNoBalanceTransactions(cardBeforePayment);
         await _ensureSyntheticOpeningBill(cardBeforePayment);
         await _reconcileCardBillingAssignments(cardBeforePayment);
         await _syncLegacyOutstanding(cardBeforePayment.id);
@@ -722,6 +795,7 @@ class BillingService {
     DateTime? referenceNow,
   }) async {
     final now = _dateOnly(referenceNow ?? _now());
+    await _promoteActiveHistoricalNoBalanceTransactions(card, now: now);
     final bills =
         await (_db.select(_db.cardBills)
               ..where((b) => b.cardId.equals(card.id))
@@ -915,17 +989,79 @@ class BillingService {
     }
   }
 
+  Future<void> _promoteActiveHistoricalNoBalanceTransactions(
+    CreditCard card, {
+    DateTime? now,
+  }) async {
+    final reference = _dateOnly(now ?? _now());
+    final candidates =
+        await (_db.select(_db.transactions)
+              ..where(
+                (t) =>
+                    t.paymentSourceType.equals('creditCard') &
+                    t.paymentSourceId.equals(card.id) &
+                    (t.type.equals('creditCard') | t.type.equals('refund')) &
+                    t.transactionImpactType.equals(
+                      TransactionImpactType.historicalNoBalance,
+                    ),
+              )
+              ..orderBy([(t) => OrderingTerm.asc(t.transactionDate)]))
+            .get();
+
+    for (final txn in candidates) {
+      if (!isInActiveCreditCardBillingWindow(
+        card: card,
+        transactionDate: txn.transactionDate,
+        now: reference,
+      )) {
+        continue;
+      }
+      await (_db.update(
+        _db.transactions,
+      )..where((t) => t.id.equals(txn.id))).write(
+        TransactionsCompanion(
+          transactionImpactType: const Value(
+            TransactionImpactType.cardStatementBalanceNeutral,
+          ),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+    }
+  }
+
   Future<void> _ensureSyntheticOpeningBill(CreditCard card) async {
     final opening =
         await (_db.select(_db.cardBills)..where(
               (b) => b.cardId.equals(card.id) & b.status.equals('opening'),
             ))
             .getSingleOrNull();
-    if (opening != null) return;
 
     final representedOutstanding =
-        await _calculateRepresentedOutstandingForOpening(card.id);
-    final delta = (card.currentOutstanding - representedOutstanding).toDouble();
+        await _calculateRepresentedOutstandingForOpening(
+          card.id,
+          includeOpening: false,
+        );
+    final delta = (card.currentOutstanding - representedOutstanding)
+        .clamp(0, double.infinity)
+        .toDouble();
+
+    if (opening != null) {
+      if ((opening.billedAmount - delta).abs() <= 0.009 &&
+          opening.paidAmount <= 0.009) {
+        return;
+      }
+      await (_db.update(
+        _db.cardBills,
+      )..where((b) => b.id.equals(opening.id))).write(
+        CardBillsCompanion(
+          billedAmount: Value(delta),
+          paidAmount: const Value(0),
+          dueDate: Value(_dueDateForBillingDate(card, _dateOnly(_now()))),
+        ),
+      );
+      return;
+    }
+
     if (delta <= 0.009) return;
 
     final today = _dateOnly(_now());
@@ -945,13 +1081,19 @@ class BillingService {
         );
   }
 
-  Future<double> _calculateRepresentedOutstandingForOpening(int cardId) async {
+  Future<double> _calculateRepresentedOutstandingForOpening(
+    int cardId, {
+    bool includeOpening = true,
+  }) async {
     final bills =
         await (_db.select(_db.cardBills)..where(
               (b) => b.cardId.equals(cardId) & b.status.isNotValue('paid'),
             ))
             .get();
-    final billedDue = bills.fold<double>(
+    final representedBills = includeOpening
+        ? bills
+        : bills.where((bill) => bill.status != 'opening');
+    final billedDue = representedBills.fold<double>(
       0,
       (sum, bill) =>
           sum +
