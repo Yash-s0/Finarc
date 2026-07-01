@@ -13,6 +13,7 @@ import '../../../shared/widgets/finarc/finarc_widgets.dart';
 import '../data/pending_providers.dart';
 import '../data/pending_service.dart';
 import '../models/pending_models.dart';
+import '../notifications/card_payment_pending_codec.dart';
 import '../parsing/parser_text_utils.dart';
 import '../parsing/transaction_direction_classifier.dart';
 import '../parsing/parser_models.dart';
@@ -25,9 +26,38 @@ String _sourceLabelForPending(String source) {
       return 'Notification';
     case 'manualImport':
       return 'Import';
+    case 'cardPaymentNotification':
+      return 'Card payment';
     default:
       return source.toUpperCase();
   }
+}
+
+String _cardPaymentCardLabel(CardPaymentPendingData data) {
+  final issuer = data.issuer?.trim();
+  final last4 = data.cardLast4?.trim();
+  if (issuer != null &&
+      issuer.isNotEmpty &&
+      last4 != null &&
+      last4.isNotEmpty) {
+    return '$issuer Card XX$last4';
+  }
+  if (issuer != null && issuer.isNotEmpty) return '$issuer Card';
+  if (last4 != null && last4.isNotEmpty) return 'Card XX$last4';
+  return 'Credit card';
+}
+
+String _previewTextForPending(PendingTransaction item) {
+  final cardPaymentData = CardPaymentPendingCodec.tryDecode(item.rawText);
+  if (cardPaymentData == null) return item.rawText;
+  final stripped = CardPaymentPendingCodec.strip(item.rawText);
+  final parts = stripped
+      .split(RegExp(r'\n---\n'))
+      .map((part) => part.trim())
+      .where((part) => part.isNotEmpty)
+      .toList(growable: false);
+  if (parts.isEmpty) return stripped;
+  return parts.join('\n---\n');
 }
 
 String _pendingMetaWithExactTime(PendingTransaction item) {
@@ -618,11 +648,19 @@ class _ConfirmTransactionSheet extends ConsumerWidget {
       text: item.rawText,
       categoryHint: item.categorySuggestion,
     );
+    final cardPaymentData = CardPaymentPendingCodec.tryDecode(item.rawText);
+    final isCardPayment = cardPaymentData != null;
     final isIncome = direction == PendingTransactionDirection.income;
-    final sourceLabel = isIncome ? 'Received in' : 'Payment source';
+    final sourceLabel = isCardPayment
+        ? 'Paid from'
+        : isIncome
+        ? 'Received in'
+        : 'Payment source';
     final sourceValue =
+        cardPaymentData?.sourceHint ??
         ParserTextUtils.extractAccountHint(item.rawText) ??
         item.paymentSourceTypeSuggestion;
+    final previewText = _previewTextForPending(item);
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -636,7 +674,11 @@ class _ConfirmTransactionSheet extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            isIncome ? 'Confirm Income' : 'Confirm Transaction',
+            isCardPayment
+                ? 'Confirm Card Payment'
+                : isIncome
+                ? 'Confirm Income'
+                : 'Confirm Transaction',
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: AppSpacing.xs),
@@ -662,6 +704,12 @@ class _ConfirmTransactionSheet extends ConsumerWidget {
               children: [
                 _row(context, 'Category', item.categorySuggestion),
                 _row(context, sourceLabel, sourceValue),
+                if (cardPaymentData != null)
+                  _row(
+                    context,
+                    'Credit card',
+                    _cardPaymentCardLabel(cardPaymentData),
+                  ),
                 _row(
                   context,
                   'Date/Time',
@@ -696,7 +744,7 @@ class _ConfirmTransactionSheet extends ConsumerWidget {
               ),
             ),
             child: Text(
-              item.rawText,
+              previewText,
               style: TextStyle(
                 fontFamily: AppTextStyles.amountFontFamily,
                 fontSize: 11,

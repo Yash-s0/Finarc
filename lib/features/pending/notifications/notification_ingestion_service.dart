@@ -208,14 +208,19 @@ class NotificationIngestionService {
         .handleIfCardPayment(payload);
     if (cardPaymentResult != null) {
       var localNotificationSent = false;
-      if (cardPaymentResult.pendingId != null &&
-          shouldShowDetectionNotifications()) {
+      final notificationPendingId =
+          cardPaymentResult.pendingId ?? cardPaymentResult.mergedIntoPendingId;
+      if (notificationPendingId != null && shouldShowDetectionNotifications()) {
+        final displayAmount =
+            cardPaymentResult.displayAmount ?? cardPaymentResult.parsed.amount;
+        final displayMerchant =
+            cardPaymentResult.displayMerchantLabel ??
+            cardPaymentResult.parsed.merchantLabel;
         await localNotifier.showDetected(
           title: 'Card payment detected',
-          body:
-              '${inr(cardPaymentResult.parsed.amount)} • ${cardPaymentResult.parsed.merchantLabel} • Settlement',
+          body: '${inr(displayAmount)} • $displayMerchant • Settlement',
           route: '/pending',
-          pendingId: cardPaymentResult.pendingId,
+          pendingId: notificationPendingId,
           showActions: true,
         );
         localNotificationSent = true;

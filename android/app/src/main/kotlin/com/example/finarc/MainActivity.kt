@@ -25,6 +25,7 @@ class MainActivity : FlutterActivity() {
         private const val METHOD_CHANNEL = "finarc/notification_control"
         private const val DETECTED_CHANNEL_ID = "finarc_detected_txn"
         private const val DETECTED_CHANNEL_NAME = "Detected Transactions"
+        private const val DETECTED_NOTIFICATION_BASE_ID = 100_000
         private const val REMINDER_CHANNEL_ID = "finarc_reminders"
         private const val REMINDER_CHANNEL_NAME = "Finarc Reminders"
         private const val ALERTS_CHANNEL_ID = "finarc_alerts"
@@ -345,7 +346,9 @@ class MainActivity : FlutterActivity() {
 
         val notification = builder.build()
 
-        NotificationManagerCompat.from(this).notify((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), notification)
+        val notificationId = pendingId?.let { DETECTED_NOTIFICATION_BASE_ID + it }
+            ?: (System.currentTimeMillis() % Int.MAX_VALUE).toInt()
+        NotificationManagerCompat.from(this).notify(notificationId, notification)
     }
 
     private fun showReminderNotification(title: String, body: String, route: String) {
@@ -434,11 +437,19 @@ class MainActivity : FlutterActivity() {
 
             else -> {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    alarmManager.setExactAndAllowWhileIdle(
-                        AlarmManager.RTC_WAKEUP,
-                        triggerAtMillis,
-                        pendingIntent,
-                    )
+                    if (canScheduleExactAlarm(alarmManager)) {
+                        alarmManager.setExactAndAllowWhileIdle(
+                            AlarmManager.RTC_WAKEUP,
+                            triggerAtMillis,
+                            pendingIntent,
+                        )
+                    } else {
+                        alarmManager.setAndAllowWhileIdle(
+                            AlarmManager.RTC_WAKEUP,
+                            triggerAtMillis,
+                            pendingIntent,
+                        )
+                    }
                 } else {
                     alarmManager.setExact(
                         AlarmManager.RTC_WAKEUP,
@@ -448,6 +459,11 @@ class MainActivity : FlutterActivity() {
                 }
             }
         }
+    }
+
+    private fun canScheduleExactAlarm(alarmManager: AlarmManager): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true
+        return alarmManager.canScheduleExactAlarms()
     }
 
     private fun cancelReminder(reminderId: Int) {

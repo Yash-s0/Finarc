@@ -20,6 +20,7 @@ object NotificationCapturePolicy {
         "credited",
         "spent",
         "paid",
+        "used",
         "payment",
         "purchase",
         "transaction",
@@ -43,6 +44,8 @@ object NotificationCapturePolicy {
         "withdrawn",
         "received",
         "sent",
+        "deducted",
+        "charged",
         "deposited",
         "transfer",
     )

@@ -40,6 +40,22 @@ class NotificationCapturePolicyTest {
                 subText = null,
             ),
         )
+        assertTrue(
+            NotificationCapturePolicy.isLikelyFinancialContent(
+                title = "Card alert",
+                body = "Card ending 1234 used for INR 499.00 at Metro",
+                bigText = null,
+                subText = null,
+            ),
+        )
+        assertTrue(
+            NotificationCapturePolicy.isLikelyFinancialContent(
+                title = "Bank alert",
+                body = "INR 799.00 charged on your account",
+                bigText = null,
+                subText = null,
+            ),
+        )
         assertFalse(
             NotificationCapturePolicy.isLikelyFinancialContent(
                 title = "WhatsApp",

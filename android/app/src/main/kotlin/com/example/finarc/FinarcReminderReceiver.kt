@@ -1,14 +1,17 @@
 package com.yashsharma.finarc
 
+import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 
 class FinarcReminderReceiver : BroadcastReceiver() {
     companion object {
@@ -19,6 +22,7 @@ class FinarcReminderReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent?) {
         if (intent == null) return
+        if (!isPostNotificationsGranted(context)) return
         createChannelIfNeeded(context)
 
         val reminderId = intent.getIntExtra("reminder_id", (System.currentTimeMillis() % Int.MAX_VALUE).toInt())
@@ -48,6 +52,14 @@ class FinarcReminderReceiver : BroadcastReceiver() {
             .build()
 
         NotificationManagerCompat.from(context).notify(reminderId, notification)
+    }
+
+    private fun isPostNotificationsGranted(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
+        return ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.POST_NOTIFICATIONS,
+        ) == PackageManager.PERMISSION_GRANTED
     }
 
     private fun createChannelIfNeeded(context: Context) {

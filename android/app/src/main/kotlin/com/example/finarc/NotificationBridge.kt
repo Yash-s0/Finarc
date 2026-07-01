@@ -8,7 +8,7 @@ import org.json.JSONObject
 object NotificationBridge {
     private const val PREFS_NAME = "finarc_notification_bridge"
     private const val PREFS_KEY_PENDING_EVENTS = "pending_events"
-    private const val MAX_PERSISTED_EVENTS = 64
+    private const val MAX_PERSISTED_EVENTS = 256
 
     @Volatile
     private var sinkRef: ((Map<String, Any?>) -> Unit)? = null

@@ -23,7 +23,9 @@ import 'package:finarc/features/pending/parsing/transaction_parser_registry.dart
 class _FakeLocalNotifier extends NotificationLocalNotifier {
   int shownCount = 0;
   String? lastTitle;
+  String? lastBody;
   String? lastRoute;
+  int? lastPendingId;
 
   @override
   Future<void> showDetected({
@@ -35,7 +37,9 @@ class _FakeLocalNotifier extends NotificationLocalNotifier {
   }) async {
     shownCount += 1;
     lastTitle = title;
+    lastBody = body;
     lastRoute = route;
+    lastPendingId = pendingId;
   }
 }
 
@@ -1082,6 +1086,67 @@ void main() {
       );
       expect(rows.single.rawText, contains('has been processed'));
     });
+
+    test(
+      'merged kotak cred debit updates local notification to destination card',
+      () async {
+        final bankId = await createBank(bankName: 'Kotak', last4: '0754');
+        final cardId = await createCard(bankName: 'YES Bank', last4: '8731');
+
+        final debitIds = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.msf.kbank.mobile',
+            appName: 'Kotak811',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 7, 1, 4, 29),
+            title: '₹4,744.95 paid to Cred Club',
+            body: 'Amount debited from XX0754. Check out details.',
+          ),
+        );
+        final receiptIds = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.google.android.apps.messaging',
+            appName: 'Messages',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 7, 1, 4, 29, 20),
+            title: 'AD-YESBNK-S',
+            body:
+                'Dear Cardmember, payment of Rs.4,744.95 is received towards your YES BANK Credit Card ending 8731. It will reflect in your Credit Card within 1-2 working days',
+          ),
+        );
+        final processedIds = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.dreamplug.androidapp',
+            appName: 'CRED',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 7, 1, 4, 29, 40),
+            title: 'CRED',
+            body:
+                'paid instantly to YES Bank that was fast: payment of ₹4,744.95 on your YES Bank credit card XXXX-8731 has been processed.',
+          ),
+        );
+
+        expect(debitIds, hasLength(1));
+        expect(receiptIds, isEmpty);
+        expect(processedIds, isEmpty);
+
+        final pending = await (db.select(
+          db.pendingTransactions,
+        )..where((p) => p.id.equals(debitIds.single))).getSingle();
+        expect(pending.merchant, 'Yes Card XX8731');
+        expect(pending.paymentSourceIdSuggestion, bankId);
+        expect(pending.rawText, contains('destinationCardId=$cardId'));
+        expect(
+          pending.rawText,
+          contains(
+            'kinds=sourceDebit%2CdestinationReceipt%2CprocessorProcessed',
+          ),
+        );
+        expect(notifier.lastPendingId, debitIds.single);
+        expect(notifier.lastBody, contains('Yes Card XX8731'));
+        expect(notifier.lastBody, isNot(contains('Axis Card Payment')));
+      },
+    );
 
     test(
       'normal card spend notification still creates pending expense',

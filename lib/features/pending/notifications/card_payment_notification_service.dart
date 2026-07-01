@@ -68,12 +68,26 @@ class CardPaymentHandlingResult {
     required this.action,
     this.pendingId,
     this.mergedIntoPendingId,
+    this.displayMerchantLabel,
+    this.displayAmount,
   });
 
   final CardPaymentNotification parsed;
   final String action;
   final int? pendingId;
   final int? mergedIntoPendingId;
+  final String? displayMerchantLabel;
+  final double? displayAmount;
+}
+
+class _CardPaymentMergedDisplay {
+  const _CardPaymentMergedDisplay({
+    required this.merchantLabel,
+    required this.amount,
+  });
+
+  final String merchantLabel;
+  final double amount;
 }
 
 class CardPaymentNotificationService {
@@ -94,12 +108,14 @@ class CardPaymentNotificationService {
 
     final existing = await _findExistingPending(parsed);
     if (existing != null) {
-      await _mergeIntoPending(existing, parsed);
+      final mergedDisplay = await _mergeIntoPending(existing, parsed);
       await _log('mergedIntoPending', parsed, {'pendingId': existing.id});
       return CardPaymentHandlingResult(
         parsed: parsed,
         action: 'mergedIntoPending',
         mergedIntoPendingId: existing.id,
+        displayMerchantLabel: mergedDisplay.merchantLabel,
+        displayAmount: mergedDisplay.amount,
       );
     }
 
@@ -123,6 +139,8 @@ class CardPaymentNotificationService {
       parsed: parsed,
       action: 'pendingCreated',
       pendingId: pendingId,
+      displayMerchantLabel: parsed.merchantLabel,
+      displayAmount: parsed.amount,
     );
   }
 
@@ -242,7 +260,7 @@ class CardPaymentNotificationService {
     return score;
   }
 
-  Future<void> _mergeIntoPending(
+  Future<_CardPaymentMergedDisplay> _mergeIntoPending(
     PendingTransaction existing,
     CardPaymentNotification incoming,
   ) async {
@@ -303,6 +321,11 @@ class CardPaymentNotificationService {
         rawText: Value(nextRawText),
         updatedAt: Value(DateTime.now()),
       ),
+    );
+
+    return _CardPaymentMergedDisplay(
+      merchantLabel: effectiveMerchant,
+      amount: effectiveAmount,
     );
   }
 

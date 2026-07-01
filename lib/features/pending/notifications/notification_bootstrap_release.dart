@@ -98,6 +98,7 @@ class NotificationRouteAction {
 final notificationListenerBootstrapProvider = Provider<void>((ref) {
   final bridge = ref.read(_notificationBridgeProvider);
   final notificationIngestion = ref.read(_notificationIngestionServiceProvider);
+  ref.watch(reminderBootstrapProvider);
 
   Future<void> runAlertEvaluation() async {
     await ref.read(alertEvaluationActionsProvider).evaluateAll();
