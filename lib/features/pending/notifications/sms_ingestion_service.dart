@@ -230,8 +230,8 @@ class SmsIngestionService {
       'rate-limited-notification-burst' => 'ignored',
       _ => result.startsWith('blocked') ? 'ignored' : 'parsed',
     };
-    final preview = payload.combinedText.length > 120
-        ? '${payload.combinedText.substring(0, 120)}...'
+    final preview = payload.combinedText.length > 600
+        ? '${payload.combinedText.substring(0, 600)}...'
         : payload.combinedText;
     _appendDebug(
       NotificationDebugEntry(

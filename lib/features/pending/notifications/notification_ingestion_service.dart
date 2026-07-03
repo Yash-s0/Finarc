@@ -704,8 +704,8 @@ class NotificationIngestionService {
     final previewSource = payload.body?.trim().isNotEmpty == true
         ? payload.body!.trim()
         : payload.combinedText.trim();
-    final preview = previewSource.length > 120
-        ? '${previewSource.substring(0, 120)}...'
+    final preview = previewSource.length > 600
+        ? '${previewSource.substring(0, 600)}...'
         : previewSource;
     appendDebug(
       NotificationDebugEntry(

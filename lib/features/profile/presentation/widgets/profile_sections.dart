@@ -182,6 +182,65 @@ class DataControlsEntryCard extends StatelessWidget {
   }
 }
 
+class DeveloperSpaceEntryCard extends StatelessWidget {
+  const DeveloperSpaceEntryCard({super.key, required this.onOpen});
+
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    return FinarcCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.secondary.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  Icons.developer_mode_outlined,
+                  color: Theme.of(context).colorScheme.secondary,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Developer Space',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: AppSpacing.xxs),
+                    Text(
+                      'Review ignored, duplicate, low-confidence, and failed notification matches from this app session.',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          FinarcSecondaryButton(
+            onPressed: onOpen,
+            icon: Icons.arrow_forward_rounded,
+            label: 'Open Developer Space',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class DataControlsSection extends StatelessWidget {
   const DataControlsSection({
     super.key,
@@ -826,8 +885,7 @@ class ThemeSettingsSection extends StatelessWidget {
           LayoutBuilder(
             builder: (context, constraints) {
               const spacing = AppSpacing.xs;
-              final itemWidth =
-                  (constraints.maxWidth - (spacing * 2)) / 3;
+              final itemWidth = (constraints.maxWidth - (spacing * 2)) / 3;
 
               return Wrap(
                 spacing: spacing,
@@ -922,12 +980,7 @@ class _ThemeModeButton extends StatelessWidget {
           children: [
             Icon(icon, size: 18),
             const SizedBox(width: AppSpacing.xs),
-            Flexible(
-              child: Text(
-                label,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
+            Flexible(child: Text(label, overflow: TextOverflow.ellipsis)),
           ],
         ),
       ),

@@ -463,6 +463,10 @@ class ProfileScreen extends ConsumerWidget {
             onOpen: () => context.push(AppRoutes.profileDataControls),
           ),
           const SizedBox(height: AppSpacing.sm),
+          DeveloperSpaceEntryCard(
+            onOpen: () => context.push(AppRoutes.developerSpace),
+          ),
+          const SizedBox(height: AppSpacing.sm),
           const ReleaseDiagnosticsSection(),
           const SizedBox(height: AppSpacing.sm),
           const DeveloperSignatureFooter(),

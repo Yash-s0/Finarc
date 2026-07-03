@@ -9,6 +9,7 @@ class AppRoutes {
   static const releaseChecklist = '/internal/release-checklist';
   static const notificationDiagnostics = '/notifications/setup';
   static const notificationDiagnosticsLogs = logs;
+  static const developerSpace = '/profile/developer-space';
   static const profileDataControls = '/profile/data-controls';
   static const transactionImport = '/profile/transaction-import';
   static const transactionImportPaste = '/profile/transaction-import/paste';

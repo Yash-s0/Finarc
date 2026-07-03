@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/profile/presentation/debug_log_viewer_screen.dart';
+import '../../features/profile/presentation/developer_space_screen.dart';
 import '../../features/profile/presentation/release_checklist_screen.dart';
 import '../../features/analytics/presentation/analytics_screen.dart';
 import '../../features/alerts/presentation/alerts_center_screen.dart';
@@ -457,6 +458,10 @@ final appRouter = GoRouter(
         }
         return const DebugLogViewerScreen();
       },
+    ),
+    GoRoute(
+      path: AppRoutes.developerSpace,
+      builder: (_, _) => const DeveloperSpaceScreen(),
     ),
     GoRoute(
       path: AppRoutes.releaseChecklist,

@@ -16,6 +16,7 @@ import '../../features/expenses/presentation/add_expense_screen.dart';
 import '../../features/expenses/presentation/add_income_screen.dart';
 import '../../features/expenses/presentation/transaction_detail_screen.dart';
 import '../../features/profile/presentation/profile_data_controls_screen.dart';
+import '../../features/profile/presentation/developer_space_screen.dart';
 import '../../features/profile/presentation/profile_screen_safe.dart';
 import '../../features/profile/presentation/transaction_import_screen.dart';
 import '../../features/profile/data/transaction_import_models.dart';
@@ -452,6 +453,10 @@ final appRouterRelease = GoRouter(
         message: 'This screen is only available in personalDebug.',
         backRoute: AppRoutes.home,
       ),
+    ),
+    GoRoute(
+      path: AppRoutes.developerSpace,
+      builder: (_, _) => const DeveloperSpaceScreen(),
     ),
     GoRoute(
       path: AppRoutes.releaseChecklist,
