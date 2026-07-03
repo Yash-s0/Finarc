@@ -477,6 +477,53 @@ void main() {
       },
     );
 
+    test(
+      'Amazon Pay balance app and SMS notifications create one wallet pending',
+      () async {
+        final walletId = await db
+            .into(db.cashWallets)
+            .insert(
+              CashWalletsCompanion.insert(
+                walletName: 'Amazon Pay',
+                walletType: const drift.Value('amazonPay'),
+                currentBalance: const drift.Value(1833.13),
+              ),
+            );
+
+        final appIds = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.amazon.mshop.android.shopping',
+            appName: 'Amazon',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 7, 3, 15, 22),
+            title: 'Rs 1414.82 was paid on Amazon.in',
+            body:
+                'Payment of Rs 1414.82 using Amazon Pay Balance is successful at Amazon.in. Updated Balance: Rs 1833.13.',
+          ),
+        );
+        final smsIds = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.google.android.apps.messaging',
+            appName: 'Messages',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 7, 3, 15, 22, 20),
+            title: 'VM-QCAMZN-S',
+            body:
+                'Payment of Rs 1414.82 using Apay balance is successful at A.in. Updated balance is Rs 1833.13.',
+          ),
+        );
+
+        expect(appIds, hasLength(1));
+        expect(smsIds, isEmpty);
+        final rows = await db.select(db.pendingTransactions).get();
+        expect(rows, hasLength(1));
+        expect(rows.single.amount, 1414.82);
+        expect(rows.single.merchant, contains('Amazon'));
+        expect(rows.single.paymentSourceTypeSuggestion, 'cash');
+        expect(rows.single.paymentSourceIdSuggestion, walletId);
+      },
+    );
+
     test('ignores non-transaction notifications', () async {
       final ids = await service.processPayload(
         NotificationPayload(

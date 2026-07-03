@@ -645,6 +645,9 @@ class NotificationIngestionService {
       return false;
     }
     if (candidateRef != null && rowRef != null) return false;
+    if (candidateSourceHint == 'amazonpay') {
+      return candidateDate.difference(rowDate).abs() <= _genericDuplicateWindow;
+    }
     if (!_isWeakCounterparty(candidateCounterparty) &&
         !_isWeakCounterparty(rowCounterparty)) {
       return false;

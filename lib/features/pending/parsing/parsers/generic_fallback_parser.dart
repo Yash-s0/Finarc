@@ -46,10 +46,11 @@ class GenericFallbackParser implements TransactionParser {
     );
 
     final suggestion = _sourceSuggestion(input);
+    final sourceHint = _sourceHint(input);
     final confidence = ParserConfidenceScorer.assess(
       hasAmount: true,
       hasMerchant: merchant != 'Unknown Merchant',
-      hasSourceHint: false,
+      hasSourceHint: sourceHint != null,
       hasPatternMatch: false,
       hasDate: false,
       isFallback: true,
@@ -63,7 +64,7 @@ class GenericFallbackParser implements TransactionParser {
           transactionDate: input.captureTime,
           sourceType: input.sourceType,
           paymentSourceTypeSuggestion: suggestion,
-          paymentSourceHint: null,
+          paymentSourceHint: sourceHint,
           categorySuggestion: CategorySuggester.suggest(merchant),
           rawText: input.rawText,
           confidenceScore: confidence.score,
@@ -78,10 +79,24 @@ class GenericFallbackParser implements TransactionParser {
 
   String _sourceSuggestion(ParserInput input) {
     final text = input.fullText.toLowerCase();
+    if (_looksLikeAmazonPayBalance(text)) return PaymentSourceType.cash;
     if (text.contains('upi')) return PaymentSourceType.upi;
     if (text.contains('card')) return PaymentSourceType.creditCard;
     if (input.sourceType == 'sms') return PaymentSourceType.bank;
     return PaymentSourceType.cash;
+  }
+
+  String? _sourceHint(ParserInput input) {
+    final text = input.fullText.toLowerCase();
+    if (_looksLikeAmazonPayBalance(text)) return 'amazonpay';
+    return null;
+  }
+
+  bool _looksLikeAmazonPayBalance(String text) {
+    return text.contains('amazon pay balance') ||
+        text.contains('amazonpay') ||
+        text.contains('apay balance') ||
+        text.contains('using apay');
   }
 
   String? _extractPossibleProperNoun(String text) {

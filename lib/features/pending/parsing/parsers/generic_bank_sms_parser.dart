@@ -27,8 +27,10 @@ class GenericBankSmsParser implements TransactionParser {
         t.contains('received') ||
         t.contains('spent') ||
         t.contains('paid') ||
+        t.contains('payment') ||
         t.contains('sent') ||
         t.contains('used') ||
+        t.contains('successful') ||
         t.contains('txn') ||
         t.contains('transaction') ||
         t.contains('salary') ||
@@ -183,6 +185,7 @@ class GenericBankSmsParser implements TransactionParser {
                   lowered.contains('debited') ||
                   lowered.contains('sent') ||
                   lowered.contains('paid') ||
+                  lowered.contains('payment') ||
                   lowered.contains('salary') ||
                   lowered.contains('transfer'));
         })
@@ -324,6 +327,8 @@ class GenericBankSmsParser implements TransactionParser {
     if (lower.contains('card')) return PaymentSourceType.creditCard;
     if (lower.contains('amazon pay') ||
         lower.contains('amazonpay') ||
+        lower.contains('apay balance') ||
+        lower.contains('apay') ||
         lower.contains('amazon pay balance')) {
       return PaymentSourceType.cash;
     }
@@ -338,6 +343,8 @@ class GenericBankSmsParser implements TransactionParser {
     final lower = segment.toLowerCase();
     if (lower.contains('amazon pay') ||
         lower.contains('amazonpay') ||
+        lower.contains('apay balance') ||
+        lower.contains('apay') ||
         lower.contains('amazon pay balance')) {
       return 'amazonpay';
     }
