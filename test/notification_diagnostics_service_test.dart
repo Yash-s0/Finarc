@@ -58,7 +58,6 @@ void main() {
         'receivedAt': DateTime(2026, 5, 30, 10, 6).toIso8601String(),
       },
     );
-    // SMS events should not affect notification-only diagnostics snapshot.
     await logs.log(
       category: 'notification_event',
       message: 'pending-created',
@@ -73,14 +72,14 @@ void main() {
     );
 
     final snapshot = await service.loadSnapshot();
-    expect(snapshot.received, 3);
+    expect(snapshot.received, 4);
     expect(snapshot.ignored, 1);
-    expect(snapshot.parsed, 1);
-    expect(snapshot.pendingCreated, 1);
+    expect(snapshot.parsed, 2);
+    expect(snapshot.pendingCreated, 2);
     expect(snapshot.duplicatesBlocked, 1);
     expect(snapshot.localNotificationsSent, 1);
     expect(snapshot.lastEvent, isNotNull);
-    expect(snapshot.lastEvent!.packageName, 'com.sbi.lotusintouch');
+    expect(snapshot.lastEvent!.packageName, 'JD-HDFCBK-S');
   });
 
   test('clear removes persisted notification events', () async {

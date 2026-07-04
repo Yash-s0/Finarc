@@ -96,6 +96,24 @@ void main() {
       },
     );
 
+    test('accepts messages notification when sender code is in body', () {
+      final filter = NotificationKeywordFilter();
+      final payload = NotificationPayload(
+        packageName: 'com.google.android.apps.messaging',
+        appName: 'Messages',
+        sourceType: 'appNotification',
+        receivedAt: DateTime(2026, 7, 4, 12, 50),
+        title: 'Messages',
+        body:
+            'VA-ICICIT-S\nINR 328.00 spent using ICICI Bank Card XX9000 on 04-Jul-26 on AMAZON PAY IN E. Avl Limit: INR 48,347.00.',
+      );
+
+      final result = filter.evaluate(payload);
+      expect(result.accepted, isTrue);
+      expect(result.reason, 'accepted-messaging-sms-notification');
+      expect(result.senderFilterResult, 'allowed-transactional-sender');
+    });
+
     test('keeps truecaller mirrored SMS blocked', () {
       final filter = NotificationKeywordFilter();
       final payload = NotificationPayload(
@@ -1332,6 +1350,37 @@ void main() {
       expect(pending.merchant, 'Amazon');
       expect(pending.transactionDate, DateTime(2026, 6, 25, 16, 2));
       expect(debugEntries.last.reason, 'success');
+    });
+
+    test('parses ICICI card spend when Messages title hides sender', () async {
+      await createCard(bankName: 'ICICI Bank', last4: '9000');
+
+      final ids = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.google.android.apps.messaging',
+          appName: 'Messages',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 7, 4, 12, 50),
+          title: 'Messages',
+          body:
+              'VA-ICICIT-S\nINR 328.00 spent using ICICI Bank Card XX9000 on 04-Jul-26 on AMAZON PAY IN E. Avl Limit: INR 48,347.00. If not you, call 1800 2662/SMS BLOCK 9000 to 9215676766.',
+        ),
+      );
+
+      expect(ids, hasLength(1));
+      final pending = await (db.select(
+        db.pendingTransactions,
+      )..where((p) => p.id.equals(ids.first))).getSingle();
+      expect(pending.amount, 328);
+      expect(pending.paymentSourceTypeSuggestion, 'creditCard');
+      expect(pending.paymentSourceIdSuggestion, isNotNull);
+      expect(pending.merchant, 'Amazon');
+      expect(pending.transactionDate, DateTime(2026, 7, 4, 12, 50));
+      expect(debugEntries.last.reason, 'success');
+      expect(
+        debugEntries.last.senderFilterResult,
+        'allowed-transactional-sender',
+      );
     });
 
     test(

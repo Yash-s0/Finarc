@@ -88,7 +88,6 @@ class NotificationDiagnosticsService {
     final all = await _logs.readFromDisk();
     final events = all
         .where((row) => row.category == 'notification_event')
-        .where((row) => (row.meta['source'] as String?) == 'appNotification')
         .map(_toEvent)
         .whereType<NotificationDiagnosticsEvent>()
         .take(100)

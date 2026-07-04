@@ -263,7 +263,8 @@ class NotificationKeywordFilter {
       );
     }
 
-    final text = payload.combinedText.toLowerCase();
+    final messageText = _messagingContentText(payload);
+    final text = messageText.toLowerCase();
     final hasKeyword = _transactionKeywords.any(text.contains);
     final isChatLike = _chatHints.any(text.contains);
     final isOtpLike = _otpHints.any(text.contains);
@@ -292,7 +293,7 @@ class NotificationKeywordFilter {
       );
     }
 
-    final promoSignal = _promotionalSignal(payload.combinedText);
+    final promoSignal = _promotionalSignal(messageText);
     if (promoSignal.blocked) {
       return NotificationFilterResult(
         accepted: false,
@@ -307,7 +308,7 @@ class NotificationKeywordFilter {
       accepted: true,
       reason: 'accepted-messaging-sms-notification',
       senderFilterResult: senderResult.reason,
-      amountCandidate: _extractAmountCandidate(payload.combinedText),
+      amountCandidate: _extractAmountCandidate(messageText),
     );
   }
 
@@ -368,9 +369,46 @@ class NotificationKeywordFilter {
   String? _extractMessagingSender(NotificationPayload payload) {
     final sender = payload.sender?.trim();
     if (sender != null && sender.isNotEmpty) return sender;
+
+    final senderFromText = _extractSenderCodeFromText(
+      [
+        payload.body,
+        payload.bigText,
+        payload.subText,
+        payload.combinedText,
+      ].whereType<String>().join('\n'),
+    );
+    if (senderFromText != null) return senderFromText;
+
     final title = payload.title?.trim();
     if (title != null && title.isNotEmpty) return title;
     return null;
+  }
+
+  String _messagingContentText(NotificationPayload payload) {
+    final title = payload.title?.trim();
+    final hasGenericTitle =
+        title != null &&
+        RegExp(
+          r'^(?:messages?|sms|text messages?)$',
+          caseSensitive: false,
+        ).hasMatch(title);
+    final parts = <String>[
+      if (!hasGenericTitle && title != null && title.isNotEmpty) title,
+      if (payload.body?.trim().isNotEmpty == true) payload.body!.trim(),
+      if (payload.bigText?.trim().isNotEmpty == true) payload.bigText!.trim(),
+      if (payload.subText?.trim().isNotEmpty == true) payload.subText!.trim(),
+    ];
+    final text = parts.join(' ').trim();
+    return text.isEmpty ? payload.combinedText : text;
+  }
+
+  String? _extractSenderCodeFromText(String text) {
+    final match = RegExp(
+      r'\b[A-Z]{2}-[A-Z0-9]{2,12}-[PST]\b',
+      caseSensitive: false,
+    ).firstMatch(text);
+    return match?.group(0)?.toUpperCase();
   }
 
   _PromotionalSignal _promotionalSignal(String text) {

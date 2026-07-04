@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
+import '../../pending/notifications/notification_diagnostics_service.dart';
 import '../../pending/notifications/notification_ingestion_service.dart';
 import '../../pending/notifications/notification_providers.dart';
 
@@ -11,10 +12,18 @@ class DeveloperSpaceScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final entries = ref
+    final memoryEntries = ref
         .watch(notificationDebugLogProvider)
         .where(_isDebuggableMiss)
         .toList(growable: false);
+    final snapshot = ref.watch(notificationDiagnosticsSnapshotProvider);
+    final persistedEntries =
+        snapshot.valueOrNull?.events
+            .map(_entryFromEvent)
+            .where(_isDebuggableMiss)
+            .toList(growable: false) ??
+        const <NotificationDebugEntry>[];
+    final entries = _mergeEntries(persistedEntries, memoryEntries);
 
     return FinarcScaffold(
       appBar: FinarcAppBar(
@@ -23,21 +32,25 @@ class DeveloperSpaceScreen extends ConsumerWidget {
           IconButton(
             tooltip: 'Clear debug messages',
             icon: const Icon(Icons.delete_sweep_outlined),
-            onPressed: () {
+            onPressed: () async {
               ref.read(notificationDebugLogProvider.notifier).clear();
               ref.read(ingestionDiagnosticsProvider.notifier).clear();
+              await ref.read(notificationDiagnosticsServiceProvider).clear();
+              ref.invalidate(notificationDiagnosticsSnapshotProvider);
             },
           ),
         ],
       ),
-      body: entries.isEmpty
+      body: snapshot.isLoading && entries.isEmpty
+          ? const Center(child: CircularProgressIndicator())
+          : entries.isEmpty
           ? const Center(
               child: Padding(
                 padding: EdgeInsets.all(AppSpacing.md),
                 child: FinarcEmptyState(
                   title: 'No missed messages yet',
                   subtitle:
-                      'Ignored, duplicate, failed-parse, and low-confidence notification decisions from this app session will appear here.',
+                      'Ignored, duplicate, failed-parse, and low-confidence notification decisions will appear here.',
                 ),
               ),
             )
@@ -61,6 +74,52 @@ class DeveloperSpaceScreen extends ConsumerWidget {
         entry.reason == 'confidence-low' ||
         entry.parseResult == 'parser-failed' ||
         entry.parseResult == 'parsed-low-confidence';
+  }
+
+  List<NotificationDebugEntry> _mergeEntries(
+    List<NotificationDebugEntry> persisted,
+    List<NotificationDebugEntry> memory,
+  ) {
+    final seen = <String>{};
+    final merged = <NotificationDebugEntry>[];
+    for (final entry in [...memory, ...persisted]) {
+      final key = [
+        entry.receivedAt.toIso8601String(),
+        entry.packageName,
+        entry.decision,
+        entry.reason,
+        entry.bodyPreview,
+      ].join('|');
+      if (seen.add(key)) merged.add(entry);
+    }
+    merged.sort((a, b) => b.receivedAt.compareTo(a.receivedAt));
+    return merged.take(100).toList(growable: false);
+  }
+
+  NotificationDebugEntry _entryFromEvent(NotificationDiagnosticsEvent event) {
+    return NotificationDebugEntry(
+      receivedAt: event.timestamp,
+      packageName: event.packageName,
+      title: event.title,
+      bodyPreview: event.bodyPreview,
+      decision: event.decision,
+      reason: event.reason,
+      parseResult: event.parseResult,
+      result: event.parseResult,
+      providerName: event.providerName,
+      confidenceScore: event.confidenceScore,
+      confidenceLevel: event.confidenceLevel,
+      localNotificationSent: event.localNotificationSent,
+      sender: event.sender,
+      senderFilterResult: event.senderFilterResult,
+      candidateCount: event.candidateCount,
+      duplicateDecision: event.duplicateDecision,
+      possibleDuplicateReason: event.possibleDuplicateReason,
+      amountCandidate: event.amountCandidate,
+      blockedContext: event.blockedContext,
+      receivedAtUsed: event.receivedAtUsed,
+      transactionDateChosen: event.transactionDateChosen,
+    );
   }
 }
 

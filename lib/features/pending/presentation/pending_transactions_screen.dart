@@ -662,208 +662,210 @@ class _ConfirmTransactionSheet extends ConsumerWidget {
         item.paymentSourceTypeSuggestion;
     final previewText = _previewTextForPending(item);
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        AppSpacing.xs,
-        AppSpacing.md,
-        MediaQuery.of(context).viewInsets.bottom + AppSpacing.lg,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            isCardPayment
-                ? 'Confirm Card Payment'
-                : isIncome
-                ? 'Confirm Income'
-                : 'Confirm Transaction',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            '${isIncome ? '+' : '-'}${inr(item.amount)}',
-            style: AppTextStyles.amountStyle(
-              color: isIncome
-                  ? (Theme.of(context).brightness == Brightness.dark
-                        ? AppColors.darkSuccess
-                        : AppColors.lightSuccess)
-                  : Theme.of(context).colorScheme.onSurface,
-              size: 30,
-              weight: FontWeight.w700,
+    return SingleChildScrollView(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          AppSpacing.xs,
+          AppSpacing.md,
+          MediaQuery.of(context).viewInsets.bottom + AppSpacing.lg,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              isCardPayment
+                  ? 'Confirm Card Payment'
+                  : isIncome
+                  ? 'Confirm Income'
+                  : 'Confirm Transaction',
+              style: Theme.of(context).textTheme.titleLarge,
             ),
-          ),
-          const SizedBox(height: AppSpacing.xxs),
-          Text(item.merchant, style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: AppSpacing.sm),
-          FinarcCard(
-            padding: const EdgeInsets.all(AppSpacing.sm),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _row(context, 'Category', item.categorySuggestion),
-                _row(context, sourceLabel, sourceValue),
-                if (cardPaymentData != null)
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              '${isIncome ? '+' : '-'}${inr(item.amount)}',
+              style: AppTextStyles.amountStyle(
+                color: isIncome
+                    ? (Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkSuccess
+                          : AppColors.lightSuccess)
+                    : Theme.of(context).colorScheme.onSurface,
+                size: 30,
+                weight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xxs),
+            Text(item.merchant, style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: AppSpacing.sm),
+            FinarcCard(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _row(context, 'Category', item.categorySuggestion),
+                  _row(context, sourceLabel, sourceValue),
+                  if (cardPaymentData != null)
+                    _row(
+                      context,
+                      'Credit card',
+                      _cardPaymentCardLabel(cardPaymentData),
+                    ),
                   _row(
                     context,
-                    'Credit card',
-                    _cardPaymentCardLabel(cardPaymentData),
+                    'Date/Time',
+                    '${item.transactionDate.toLocal()}'.split('.').first,
                   ),
-                _row(
-                  context,
-                  'Date/Time',
-                  '${item.transactionDate.toLocal()}'.split('.').first,
+                  _row(
+                    context,
+                    'Confidence',
+                    '${(item.confidenceScore * 100).toStringAsFixed(0)}% • ${_sourceLabelForPending(item.sourceType)}',
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Raw Text Preview',
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
+            const SizedBox(height: AppSpacing.xxs),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.darkSurfaceLow
+                    : AppColors.lightSurfaceHigh,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.darkBorder
+                      : AppColors.lightBorder,
                 ),
-                _row(
-                  context,
-                  'Confidence',
-                  '${(item.confidenceScore * 100).toStringAsFixed(0)}% • ${_sourceLabelForPending(item.sourceType)}',
+              ),
+              child: Text(
+                previewText,
+                style: TextStyle(
+                  fontFamily: AppTextStyles.amountFontFamily,
+                  fontSize: 11,
+                  height: 1.35,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.darkTextMuted
+                      : AppColors.lightTextMuted,
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              children: [
+                Expanded(
+                  child: FinarcPrimaryButton(
+                    onPressed: () async {
+                      try {
+                        final duplicate = await action.detectDuplicate(item);
+                        if (duplicate != null && context.mounted) {
+                          await FinarcBottomSheet.show<void>(
+                            context,
+                            child: _DuplicateWarningSheet(
+                              pending: item,
+                              existing: duplicate,
+                            ),
+                          );
+                          return;
+                        }
+                        await action.confirm(
+                          item.id,
+                          PendingEditData(
+                            amount: item.amount,
+                            merchant: item.merchant,
+                            category: item.categorySuggestion,
+                            paymentSourceType: item.paymentSourceTypeSuggestion,
+                            paymentSourceId: item.paymentSourceIdSuggestion,
+                            transactionDate: item.transactionDate,
+                            cashbackAmount: item.cashbackAmount,
+                            isForOthers: item.isForOthers,
+                            recoverableAmount: item.recoverableAmount,
+                            recoveredAmount: item.recoveredAmount,
+                            recoverablePartyName: item.recoverablePartyName,
+                            notes: item.notes,
+                          ),
+                        );
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                          context.push('/pending/success');
+                        }
+                      } on PendingConfirmationException catch (error) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(error.userMessage)),
+                        );
+                        if (error.reason == 'missing-destination-account') {
+                          Navigator.pop(context);
+                          context.push('/pending/edit/${item.id}');
+                        }
+                      } catch (_) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Unable to confirm transaction. Please edit and try again.',
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    label: 'Confirm',
+                    icon: Icons.check_circle_outline,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: FinarcSecondaryButton(
+                    onPressed: () => context.push('/pending/edit/${item.id}'),
+                    label: 'Edit',
+                  ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            'Raw Text Preview',
-            style: Theme.of(context).textTheme.labelSmall,
-          ),
-          const SizedBox(height: AppSpacing.xxs),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(AppSpacing.sm),
-            decoration: BoxDecoration(
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? AppColors.darkSurfaceLow
-                  : AppColors.lightSurfaceHigh,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? AppColors.darkBorder
-                    : AppColors.lightBorder,
-              ),
-            ),
-            child: Text(
-              previewText,
-              style: TextStyle(
-                fontFamily: AppTextStyles.amountFontFamily,
-                fontSize: 11,
-                height: 1.35,
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? AppColors.darkTextMuted
-                    : AppColors.lightTextMuted,
-              ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              Expanded(
-                child: FinarcPrimaryButton(
-                  onPressed: () async {
-                    try {
-                      final duplicate = await action.detectDuplicate(item);
-                      if (duplicate != null && context.mounted) {
-                        await FinarcBottomSheet.show<void>(
-                          context,
-                          child: _DuplicateWarningSheet(
-                            pending: item,
-                            existing: duplicate,
-                          ),
-                        );
-                        return;
-                      }
-                      await action.confirm(
-                        item.id,
-                        PendingEditData(
-                          amount: item.amount,
-                          merchant: item.merchant,
-                          category: item.categorySuggestion,
-                          paymentSourceType: item.paymentSourceTypeSuggestion,
-                          paymentSourceId: item.paymentSourceIdSuggestion,
-                          transactionDate: item.transactionDate,
-                          cashbackAmount: item.cashbackAmount,
-                          isForOthers: item.isForOthers,
-                          recoverableAmount: item.recoverableAmount,
-                          recoveredAmount: item.recoveredAmount,
-                          recoverablePartyName: item.recoverablePartyName,
-                          notes: item.notes,
-                        ),
-                      );
-                      if (context.mounted) {
-                        Navigator.pop(context);
-                        context.push('/pending/success');
-                      }
-                    } on PendingConfirmationException catch (error) {
-                      if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(error.userMessage)),
-                      );
-                      if (error.reason == 'missing-destination-account') {
-                        Navigator.pop(context);
-                        context.push('/pending/edit/${item.id}');
-                      }
-                    } catch (_) {
-                      if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Unable to confirm transaction. Please edit and try again.',
-                          ),
-                        ),
-                      );
+            const SizedBox(height: AppSpacing.xs),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FinarcActionChip(
+                  onTap: () => context.push('/pending/for-others/${item.id}'),
+                  label: 'For Others',
+                  icon: Icons.group_outlined,
+                ),
+                FinarcActionChip(
+                  onTap: () => context.push('/pending/cashback/${item.id}'),
+                  label: 'Add Cashback',
+                  icon: Icons.local_offer_outlined,
+                ),
+                FinarcActionChip(
+                  onTap: () async {
+                    final duplicate = await action.detectDuplicate(item);
+                    if (duplicate != null) {
+                      await action.markDuplicate(item.id, duplicate.id);
+                      if (context.mounted) Navigator.pop(context);
                     }
                   },
-                  label: 'Confirm',
-                  icon: Icons.check_circle_outline,
+                  label: 'Mark Duplicate',
+                  icon: Icons.content_copy_outlined,
                 ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: FinarcSecondaryButton(
-                  onPressed: () => context.push('/pending/edit/${item.id}'),
-                  label: 'Edit',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              FinarcActionChip(
-                onTap: () => context.push('/pending/for-others/${item.id}'),
-                label: 'For Others',
-                icon: Icons.group_outlined,
-              ),
-              FinarcActionChip(
-                onTap: () => context.push('/pending/cashback/${item.id}'),
-                label: 'Add Cashback',
-                icon: Icons.local_offer_outlined,
-              ),
-              FinarcActionChip(
-                onTap: () async {
-                  final duplicate = await action.detectDuplicate(item);
-                  if (duplicate != null) {
-                    await action.markDuplicate(item.id, duplicate.id);
+                FinarcActionChip(
+                  onTap: () async {
+                    await action.ignore(item.id);
                     if (context.mounted) Navigator.pop(context);
-                  }
-                },
-                label: 'Mark Duplicate',
-                icon: Icons.content_copy_outlined,
-              ),
-              FinarcActionChip(
-                onTap: () async {
-                  await action.ignore(item.id);
-                  if (context.mounted) Navigator.pop(context);
-                },
-                label: 'Ignore',
-                icon: Icons.visibility_off_outlined,
-              ),
-            ],
-          ),
-        ],
+                  },
+                  label: 'Ignore',
+                  icon: Icons.visibility_off_outlined,
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
