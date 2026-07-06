@@ -19,13 +19,29 @@ class BillDetailScreen extends ConsumerStatefulWidget {
     super.key,
     required this.billId,
     required this.cardId,
+    this.reviewContext,
   });
 
   final int billId;
   final int cardId;
+  final BillReviewContext? reviewContext;
 
   @override
   ConsumerState<BillDetailScreen> createState() => _BillDetailScreenState();
+}
+
+class BillReviewContext {
+  const BillReviewContext({
+    required this.kind,
+    this.appAmount,
+    this.notificationAmount,
+  });
+
+  final String kind;
+  final double? appAmount;
+  final double? notificationAmount;
+
+  bool get isBillMismatch => kind == 'billMismatch';
 }
 
 class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
@@ -123,6 +139,22 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(AppSpacing.md),
               children: [
+                if (widget.reviewContext?.isBillMismatch == true) ...[
+                  _BillMismatchReviewCard(
+                    bill: bill,
+                    reviewContext: widget.reviewContext!,
+                    pendingAmount: pendingAmount,
+                    onRecordPayment: pendingAmount <= 0 || !hasAnyPaymentSource
+                        ? null
+                        : () => _openPaymentSheet(
+                            context,
+                            data: data,
+                            bill: bill,
+                            remainingDue: pendingAmount,
+                          ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                ],
                 FinarcCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -652,5 +684,136 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
   static String _dateText(DateTime date) {
     final d = date.toLocal();
     return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+  }
+}
+
+class _BillMismatchReviewCard extends StatelessWidget {
+  const _BillMismatchReviewCard({
+    required this.bill,
+    required this.reviewContext,
+    required this.pendingAmount,
+    required this.onRecordPayment,
+  });
+
+  final CardBill bill;
+  final BillReviewContext reviewContext;
+  final double pendingAmount;
+  final VoidCallback? onRecordPayment;
+
+  @override
+  Widget build(BuildContext context) {
+    final appAmount = reviewContext.appAmount ?? bill.billedAmount;
+    final notificationAmount = reviewContext.notificationAmount;
+    final diff = notificationAmount == null
+        ? null
+        : (notificationAmount - appAmount).abs();
+
+    return FinarcCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: AppColors.darkWarning.withValues(alpha: 0.16),
+                child: const Icon(
+                  Icons.report_problem_outlined,
+                  color: AppColors.darkWarning,
+                  size: 19,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Bill Amount Review',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
+              const FinarcStatusBadge(
+                label: 'REVIEW',
+                tone: FinarcStatusTone.warning,
+                compact: true,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'A bill reminder reported a different amount than this statement. Review the amount before recording payment or changing local records.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _BillReviewMetric(label: 'App bill amount', value: inr(appAmount)),
+          if (notificationAmount != null)
+            _BillReviewMetric(
+              label: 'Notification amount',
+              value: inr(notificationAmount),
+              color: AppColors.darkWarning,
+            ),
+          if (diff != null)
+            _BillReviewMetric(
+              label: 'Difference',
+              value: inr(diff),
+              color: AppColors.darkError,
+            ),
+          _BillReviewMetric(
+            label: 'Remaining due',
+            value: inr(pendingAmount),
+            color: pendingAmount <= 0
+                ? AppColors.darkSuccess
+                : AppColors.darkWarning,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            pendingAmount <= 0
+                ? 'This bill is already marked paid. If the notification amount is correct, check for missing statement transactions or bank-side fee adjustments.'
+                : 'If the notification amount is correct, review included transactions first. Then record the actual payment amount from this bill.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          if (onRecordPayment != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            FinarcPrimaryButton(
+              onPressed: onRecordPayment,
+              icon: Icons.payments_outlined,
+              label: 'Record Payment',
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _BillReviewMetric extends StatelessWidget {
+  const _BillReviewMetric({
+    required this.label,
+    required this.value,
+    this.color,
+  });
+
+  final String label;
+  final String value;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(label, style: Theme.of(context).textTheme.labelMedium),
+          ),
+          Text(
+            value,
+            style: AppTextStyles.amountStyle(
+              color: color ?? Theme.of(context).colorScheme.onSurface,
+              size: 15,
+              weight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

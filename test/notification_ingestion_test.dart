@@ -877,6 +877,92 @@ void main() {
         expect(alerts.length, 1);
         expect(alerts.first.priority, 'warning');
         expect(alerts.first.title.toLowerCase(), contains('amount mismatch'));
+        expect(
+          alerts.first.actionRoute,
+          '/cards/$cardId/bills/$billId?review=billMismatch&appAmount=16000.00&notificationAmount=17027.10',
+        );
+        expect(debugEntries.last.reason, 'card-bill-due-mismatchAlert');
+      },
+    );
+
+    test(
+      'partial paid bill reminder matching remaining due is verified',
+      () async {
+        final cardId = await createCard(bankName: 'ICICI Bank', last4: '9000');
+        final billId = await createBill(
+          cardId: cardId,
+          billedAmount: 5000,
+          paidAmount: 1000,
+          dueDate: DateTime(2026, 6, 7),
+          status: 'billed',
+        );
+        final ids = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.dreamplug.androidapp',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 6, 5, 9, 20),
+            title: 'CRED',
+            body:
+                'Outstanding amount due Rs 4,000.00 by 07-Jun-26 towards ICICI Bank Credit Card XX9000. Ignore if paid.',
+          ),
+        );
+
+        expect(ids, isEmpty);
+        expect(await db.select(db.pendingTransactions).get(), isEmpty);
+        final bill = await (db.select(
+          db.cardBills,
+        )..where((b) => b.id.equals(billId))).getSingle();
+        expect(bill.billedAmount, 5000);
+        expect(bill.paidAmount, 1000);
+        expect(bill.status, 'billed');
+
+        final alerts = await db.select(db.alerts).get();
+        expect(alerts, hasLength(1));
+        expect(alerts.single.priority, 'info');
+        expect(alerts.single.title, contains('remaining bill verified'));
+        expect(alerts.single.payload, contains('"appRemainingDue":4000.0'));
+        expect(
+          alerts.single.payload,
+          contains('"notificationAmountBasis":"remainingDue"'),
+        );
+        expect(debugEntries.last.reason, 'card-bill-due-remainingDueVerified');
+      },
+    );
+
+    test(
+      'partial paid bill reminder mismatch compares bill and remaining due',
+      () async {
+        final cardId = await createCard(bankName: 'ICICI Bank', last4: '9000');
+        final billId = await createBill(
+          cardId: cardId,
+          billedAmount: 5000,
+          paidAmount: 1000,
+          dueDate: DateTime(2026, 6, 7),
+          status: 'billed',
+        );
+        final ids = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.dreamplug.androidapp',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 6, 5, 9, 20),
+            title: 'CRED',
+            body:
+                'Outstanding amount due Rs 4,500.00 by 07-Jun-26 towards ICICI Bank Credit Card XX9000. Ignore if paid.',
+          ),
+        );
+
+        expect(ids, isEmpty);
+        expect(await db.select(db.pendingTransactions).get(), isEmpty);
+        final alerts = await db.select(db.alerts).get();
+        expect(alerts, hasLength(1));
+        expect(alerts.single.priority, 'warning');
+        expect(alerts.single.body, contains('App bill: ₹5,000.00'));
+        expect(alerts.single.body, contains('App remaining: ₹4,000.00'));
+        expect(alerts.single.body, contains('Notification: ₹4,500.00'));
+        expect(
+          alerts.single.actionRoute,
+          '/cards/$cardId/bills/$billId?review=billMismatch&appAmount=5000.00&notificationAmount=4500.00',
+        );
         expect(debugEntries.last.reason, 'card-bill-due-mismatchAlert');
       },
     );
@@ -947,7 +1033,7 @@ void main() {
 
     test('yes bank overdue reminder warns when paid amount differs', () async {
       final cardId = await createCard(bankName: 'YES Bank', last4: '8731');
-      await createBill(
+      final billId = await createBill(
         cardId: cardId,
         billedAmount: 4000,
         dueDate: DateTime(2026, 7, 4),
@@ -974,6 +1060,10 @@ void main() {
       expect(alerts, hasLength(1));
       expect(alerts.single.priority, 'warning');
       expect(alerts.single.title, 'Paid bill amount differs from notification');
+      expect(
+        alerts.single.actionRoute,
+        '/cards/$cardId/bills/$billId?review=billMismatch&appAmount=4000.00&notificationAmount=4126.95',
+      );
       expect(alerts.single.body, contains('App: ₹4,000.00'));
       expect(alerts.single.body, contains('Notification: ₹4,126.95'));
       expect(debugEntries.last.reason, 'card-bill-due-paidBillMismatch');
@@ -1007,6 +1097,10 @@ void main() {
         expect(
           alerts.first.title,
           'Paid bill amount differs from notification',
+        );
+        expect(
+          alerts.first.actionRoute,
+          '/cards/$cardId/bills/$billId?review=billMismatch&appAmount=18000.00&notificationAmount=17027.10',
         );
         expect(debugEntries.last.reason, 'card-bill-due-paidBillMismatch');
       },

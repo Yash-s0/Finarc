@@ -112,6 +112,35 @@ void main() {
     },
   );
 
+  testWidgets('bill detail shows bill mismatch review context', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final cardId = await createCard();
+    final billId = await createBill(cardId);
+
+    await tester.pumpWidget(
+      wrap(
+        BillDetailScreen(
+          cardId: cardId,
+          billId: billId,
+          reviewContext: const BillReviewContext(
+            kind: 'billMismatch',
+            appAmount: 1200,
+            notificationAmount: 1250,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Bill Amount Review'), findsOneWidget);
+    expect(find.text('App bill amount'), findsOneWidget);
+    expect(find.text('Notification amount'), findsOneWidget);
+    expect(find.text('Difference'), findsOneWidget);
+    expect(find.text('₹1,250.00'), findsOneWidget);
+    expect(find.text('₹50.00'), findsOneWidget);
+  });
+
   testWidgets(
     'partial payment reduces remaining due and supports cash wallet source',
     (tester) async {

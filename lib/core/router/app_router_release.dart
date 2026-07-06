@@ -174,7 +174,21 @@ final appRouterRelease = GoRouter(
             backRoute: AppRoutes.cards,
           );
         }
-        return BillDetailScreen(cardId: cardId, billId: billId);
+        final query = state.uri.queryParameters;
+        final review = query['review'];
+        return BillDetailScreen(
+          cardId: cardId,
+          billId: billId,
+          reviewContext: review == 'billMismatch'
+              ? BillReviewContext(
+                  kind: 'billMismatch',
+                  appAmount: double.tryParse(query['appAmount'] ?? ''),
+                  notificationAmount: double.tryParse(
+                    query['notificationAmount'] ?? '',
+                  ),
+                )
+              : null,
+        );
       },
     ),
     GoRoute(path: '/expenses/add', builder: (_, _) => const AddExpenseScreen()),

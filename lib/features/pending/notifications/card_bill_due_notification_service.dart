@@ -244,9 +244,16 @@ class CardBillDueNotificationService {
     required CardBillDueNotification parsed,
     required String dedupeKey,
   }) async {
-    final amountDiff = (bill.billedAmount - parsed.totalAmountDue).abs();
+    final remainingDue = _remainingDue(bill);
+    final matchesBilledAmount = _amountsMatch(
+      bill.billedAmount,
+      parsed.totalAmountDue,
+    );
+    final matchesRemainingDue =
+        bill.paidAmount > 0 &&
+        _amountsMatch(remainingDue, parsed.totalAmountDue);
     final issuer = _issuerDisplay(parsed, card);
-    if (amountDiff <= 1) {
+    if (matchesBilledAmount || matchesRemainingDue) {
       final dueDateChanged =
           _dateOnly(bill.dueDate) != _dateOnly(parsed.dueDate);
       if (dueDateChanged) {
@@ -268,10 +275,12 @@ class CardBillDueNotificationService {
       await _alertService.createAlert(
         CreateAlertInput(
           alertType: AlertType.cardDue,
-          title:
-              '$issuer bill verified: ${inr(parsed.totalAmountDue)} due ${_dayMonth(parsed.dueDate)}',
-          body:
-              'Matched with existing unpaid bill for card XX${parsed.cardLast4}.',
+          title: matchesRemainingDue
+              ? '$issuer remaining bill verified: ${inr(parsed.totalAmountDue)} due ${_dayMonth(parsed.dueDate)}'
+              : '$issuer bill verified: ${inr(parsed.totalAmountDue)} due ${_dayMonth(parsed.dueDate)}',
+          body: matchesRemainingDue
+              ? 'Matched with remaining due after partial payments for card XX${parsed.cardLast4}.'
+              : 'Matched with existing unpaid bill for card XX${parsed.cardLast4}.',
           priority: AlertPriority.info,
           actionRoute: '/cards/${card.id}',
           dedupeKey: dedupeKey,
@@ -285,19 +294,37 @@ class CardBillDueNotificationService {
             'dueDate': parsed.dueDate.toIso8601String(),
             'last4': parsed.cardLast4,
             'issuer': parsed.issuer,
+            'appBilledAmount': bill.billedAmount,
+            'appPaidAmount': bill.paidAmount,
+            'appRemainingDue': remainingDue,
+            'notificationAmountBasis': matchesRemainingDue
+                ? 'remainingDue'
+                : 'billedAmount',
             'source': 'verifiedFromNotification',
           },
         ),
         dedupeWindow: const Duration(days: 90),
       );
 
-      final action = dueDateChanged ? 'updatedDueDate' : 'verified';
+      final action = dueDateChanged
+          ? 'updatedDueDate'
+          : matchesRemainingDue
+          ? 'remainingDueVerified'
+          : 'verified';
       await _logAction(
         parsed,
         cardId: card.id,
         billId: bill.id,
         action: action,
-        meta: {'dedupeKey': dedupeKey},
+        meta: {
+          'dedupeKey': dedupeKey,
+          'appBilledAmount': bill.billedAmount,
+          'appPaidAmount': bill.paidAmount,
+          'appRemainingDue': remainingDue,
+          'notificationAmountBasis': matchesRemainingDue
+              ? 'remainingDue'
+              : 'billedAmount',
+        },
       );
       return action;
     }
@@ -307,9 +334,13 @@ class CardBillDueNotificationService {
         alertType: AlertType.cardDue,
         title: '$issuer bill amount mismatch',
         body:
-            'App: ${inr(bill.billedAmount)}\nNotification: ${inr(parsed.totalAmountDue)}\nPlease review card XX${parsed.cardLast4}.',
+            'App bill: ${inr(bill.billedAmount)}\nApp remaining: ${inr(remainingDue)}\nNotification: ${inr(parsed.totalAmountDue)}\nPlease review card XX${parsed.cardLast4}.',
         priority: AlertPriority.warning,
-        actionRoute: '/cards/${card.id}',
+        actionRoute: _billMismatchReviewRoute(
+          card: card,
+          bill: bill,
+          parsed: parsed,
+        ),
         dedupeKey: dedupeKey,
         payload: {
           'kind': 'cardBillDueNotification',
@@ -317,6 +348,8 @@ class CardBillDueNotificationService {
           'cardId': card.id,
           'billId': bill.id,
           'appAmount': bill.billedAmount,
+          'appPaidAmount': bill.paidAmount,
+          'appRemainingDue': remainingDue,
           'notificationAmount': parsed.totalAmountDue,
           'dueDate': parsed.dueDate.toIso8601String(),
           'last4': parsed.cardLast4,
@@ -333,6 +366,8 @@ class CardBillDueNotificationService {
       action: 'mismatchAlert',
       meta: {
         'appAmount': bill.billedAmount,
+        'appPaidAmount': bill.paidAmount,
+        'appRemainingDue': remainingDue,
         'notificationAmount': parsed.totalAmountDue,
         'dedupeKey': dedupeKey,
       },
@@ -371,7 +406,11 @@ class CardBillDueNotificationService {
         body:
             'App: ${inr(bill.billedAmount)}\nNotification: ${inr(parsed.totalAmountDue)}\nPlease review card XX${parsed.cardLast4}.',
         priority: AlertPriority.warning,
-        actionRoute: '/cards/${card.id}',
+        actionRoute: _billMismatchReviewRoute(
+          card: card,
+          bill: bill,
+          parsed: parsed,
+        ),
         dedupeKey: dedupeKey,
         payload: {
           'kind': 'cardBillDueNotification',
@@ -597,6 +636,12 @@ class CardBillDueNotificationService {
     return bill.paidAmount >= bill.billedAmount;
   }
 
+  bool _amountsMatch(double left, double right) => (left - right).abs() <= 1;
+
+  double _remainingDue(CardBill bill) => (bill.billedAmount - bill.paidAmount)
+      .clamp(0, bill.billedAmount)
+      .toDouble();
+
   Future<bool> _hasProcessedNotification(String dedupeKey) async {
     final cutoff = _now().subtract(const Duration(days: 90));
     final existing =
@@ -818,6 +863,21 @@ class CardBillDueNotificationService {
     final date = _dateOnly(parsed.dueDate).toIso8601String();
     final amount = parsed.totalAmountDue.toStringAsFixed(2);
     return 'card_bill_due|$issuer|${parsed.cardLast4}|$amount|$date';
+  }
+
+  String _billMismatchReviewRoute({
+    required CreditCard card,
+    required CardBill bill,
+    required CardBillDueNotification parsed,
+  }) {
+    return Uri(
+      path: '/cards/${card.id}/bills/${bill.id}',
+      queryParameters: {
+        'review': 'billMismatch',
+        'appAmount': bill.billedAmount.toStringAsFixed(2),
+        'notificationAmount': parsed.totalAmountDue.toStringAsFixed(2),
+      },
+    ).toString();
   }
 
   String _issuerDisplay(CardBillDueNotification parsed, CreditCard? card) {
