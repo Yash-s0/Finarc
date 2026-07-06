@@ -26,6 +26,8 @@ class _FakeLocalNotifier extends NotificationLocalNotifier {
   String? lastBody;
   String? lastRoute;
   int? lastPendingId;
+  final titles = <String>[];
+  final bodies = <String>[];
 
   @override
   Future<void> showDetected({
@@ -36,6 +38,8 @@ class _FakeLocalNotifier extends NotificationLocalNotifier {
     bool showActions = true,
   }) async {
     shownCount += 1;
+    titles.add(title);
+    bodies.add(body);
     lastTitle = title;
     lastBody = body;
     lastRoute = route;
@@ -504,7 +508,7 @@ void main() {
               CashWalletsCompanion.insert(
                 walletName: 'Amazon Pay',
                 walletType: const drift.Value('amazonPay'),
-                currentBalance: const drift.Value(1833.13),
+                currentBalance: const drift.Value(2033.13),
               ),
             );
 
@@ -513,10 +517,10 @@ void main() {
             packageName: 'com.amazon.mshop.android.shopping',
             appName: 'Amazon',
             sourceType: 'appNotification',
-            receivedAt: DateTime(2026, 7, 3, 15, 22),
-            title: 'Rs 1414.82 was paid on Amazon.in',
+            receivedAt: DateTime(2026, 7, 5, 12, 2),
+            title: 'Rs 323.00 was paid on Amazon.in',
             body:
-                'Payment of Rs 1414.82 using Amazon Pay Balance is successful at Amazon.in. Updated Balance: Rs 1833.13.',
+                'Payment of Rs 323.00 using Amazon Pay Balance is successful at Amazon.in. Updated Balance: Rs 1710.13. For help/stmt: https://www.amazon.in/cstxn',
           ),
         );
         final smsIds = await service.processPayload(
@@ -524,10 +528,10 @@ void main() {
             packageName: 'com.google.android.apps.messaging',
             appName: 'Messages',
             sourceType: 'appNotification',
-            receivedAt: DateTime(2026, 7, 3, 15, 22, 20),
+            receivedAt: DateTime(2026, 7, 5, 12, 2, 20),
             title: 'VM-QCAMZN-S',
             body:
-                'Payment of Rs 1414.82 using Apay balance is successful at A.in. Updated balance is Rs 1833.13.',
+                'Payment of Rs 323.00 using Apay balance is successful at A.in. Updated balance is Rs 1710.13.',
           ),
         );
 
@@ -535,10 +539,16 @@ void main() {
         expect(smsIds, isEmpty);
         final rows = await db.select(db.pendingTransactions).get();
         expect(rows, hasLength(1));
-        expect(rows.single.amount, 1414.82);
+        expect(rows.single.amount, 323);
         expect(rows.single.merchant, contains('Amazon'));
         expect(rows.single.paymentSourceTypeSuggestion, 'cash');
         expect(rows.single.paymentSourceIdSuggestion, walletId);
+        final wallet = await (db.select(
+          db.cashWallets,
+        )..where((w) => w.id.equals(walletId))).getSingle();
+        expect(wallet.currentBalance, closeTo(1710.13, 0.01));
+        expect(notifier.titles, contains('Amazon Pay balance updated'));
+        expect(notifier.titles, contains('Transaction detected'));
       },
     );
 
@@ -871,7 +881,7 @@ void main() {
       },
     );
 
-    test('already paid bill same amount creates info alert only', () async {
+    test('already paid bill same amount is ignored quietly', () async {
       final cardId = await createCard(bankName: 'ICICI Bank', last4: '9000');
       final billId = await createBill(
         cardId: cardId,
@@ -892,10 +902,81 @@ void main() {
       expect(bill.status, 'paid');
 
       final alerts = await db.select(db.alerts).get();
-      expect(alerts.length, 1);
-      expect(alerts.first.priority, 'info');
-      expect(alerts.first.title, 'Paid bill notification matches your record');
-      expect(debugEntries.last.reason, 'card-bill-due-paidBillVerified');
+      expect(alerts, isEmpty);
+      expect(debugEntries.last.decision, 'ignored');
+      expect(debugEntries.last.reason, 'card-bill-due-paidBillIgnored');
+    });
+
+    test(
+      'yes bank overdue reminder is not parsed as expense when already paid',
+      () async {
+        final cardId = await createCard(bankName: 'YES Bank', last4: '8731');
+        await createBill(
+          cardId: cardId,
+          billedAmount: 4126.95,
+          dueDate: DateTime(2026, 7, 4),
+          status: 'paid',
+          paidAmount: 4126.95,
+        );
+        final payload = NotificationPayload(
+          packageName: 'com.google.android.apps.messaging',
+          appName: 'Messages',
+          sender: 'AD-YESBNK-S',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 7, 6, 17, 19, 13),
+          title: '4th Jul',
+          body:
+              'URGENT: Bill Overdue! Credit card bill of ₹4,126.95 for Yes Bank card - 8731 was due on 4th Jul. Pay now with ₹0 fees & avoid penalties. Ignore if already paid!',
+        );
+
+        final parsed = service.cardBillDueNotificationService.parse(payload);
+        expect(parsed, isNotNull);
+        expect(parsed!.totalAmountDue, 4126.95);
+        expect(parsed.dueDate, DateTime(2026, 7, 4));
+        expect(parsed.cardLast4, '8731');
+        expect(parsed.issuer, 'YES');
+
+        final ids = await service.processPayload(payload);
+        expect(ids, isEmpty);
+        expect(await db.select(db.pendingTransactions).get(), isEmpty);
+        expect(await db.select(db.alerts).get(), isEmpty);
+        expect(debugEntries.last.decision, 'ignored');
+        expect(debugEntries.last.reason, 'card-bill-due-paidBillIgnored');
+      },
+    );
+
+    test('yes bank overdue reminder warns when paid amount differs', () async {
+      final cardId = await createCard(bankName: 'YES Bank', last4: '8731');
+      await createBill(
+        cardId: cardId,
+        billedAmount: 4000,
+        dueDate: DateTime(2026, 7, 4),
+        status: 'paid',
+        paidAmount: 4000,
+      );
+
+      final ids = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.google.android.apps.messaging',
+          appName: 'Messages',
+          sender: 'AD-YESBNK-S',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 7, 6, 17, 19, 13),
+          title: '4th Jul',
+          body:
+              'URGENT: Bill Overdue! Credit card bill of ₹4,126.95 for Yes Bank card - 8731 was due on 4th Jul. Pay now with ₹0 fees & avoid penalties. Ignore if already paid!',
+        ),
+      );
+
+      expect(ids, isEmpty);
+      expect(await db.select(db.pendingTransactions).get(), isEmpty);
+      final alerts = await db.select(db.alerts).get();
+      expect(alerts, hasLength(1));
+      expect(alerts.single.priority, 'warning');
+      expect(alerts.single.title, 'Paid bill amount differs from notification');
+      expect(alerts.single.body, contains('App: ₹4,000.00'));
+      expect(alerts.single.body, contains('Notification: ₹4,126.95'));
+      expect(debugEntries.last.reason, 'card-bill-due-paidBillMismatch');
     });
 
     test(

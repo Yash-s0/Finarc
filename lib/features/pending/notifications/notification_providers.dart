@@ -6,7 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/database_providers.dart';
 import '../../../core/logging/logging_providers.dart';
 import '../../../core/router/app_router.dart';
+import '../../accounts/data/accounts_providers.dart';
 import '../../alerts/data/alerts_providers.dart';
+import '../../dashboard/data/dashboard_providers.dart';
 import '../data/pending_providers.dart';
 import 'detection_settings.dart';
 import 'detection_settings_service.dart';
@@ -608,6 +610,8 @@ final notificationListenerBootstrapProvider = Provider<void>((ref) {
             }
             ref.invalidate(pendingTransactionsProvider);
             ref.invalidate(pendingCountProvider);
+            ref.invalidate(accountsOverviewProvider);
+            ref.invalidate(dashboardProvider);
             return;
           }
           if (!notificationIngestionAvailable) return;
@@ -623,6 +627,8 @@ final notificationListenerBootstrapProvider = Provider<void>((ref) {
           }
           ref.invalidate(pendingTransactionsProvider);
           ref.invalidate(pendingCountProvider);
+          ref.invalidate(accountsOverviewProvider);
+          ref.invalidate(dashboardProvider);
         },
         onRoute: handleRoute,
       ),

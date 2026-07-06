@@ -66,6 +66,7 @@ class DeveloperSpaceScreen extends ConsumerWidget {
   }
 
   bool _isDebuggableMiss(NotificationDebugEntry entry) {
+    if (entry.sourceType == 'manualPaste') return true;
     if (entry.decision == 'pending-created') return false;
     if (entry.decision == 'ignored' || entry.decision == 'duplicate') {
       return true;

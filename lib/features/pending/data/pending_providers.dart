@@ -147,6 +147,10 @@ final pendingActionProvider = Provider((ref) {
     return ids;
   }
 
+  ParserResult previewParsedInput(ParserInput input) {
+    return ingestion.previewParserInput(input);
+  }
+
   return (
     confirm: confirm,
     ignore: ignore,
@@ -156,5 +160,6 @@ final pendingActionProvider = Provider((ref) {
     markDuplicate: markDuplicate,
     mergeDuplicate: mergeDuplicate,
     ingestParsedInput: ingestParsedInput,
+    previewParsedInput: previewParsedInput,
   );
 });

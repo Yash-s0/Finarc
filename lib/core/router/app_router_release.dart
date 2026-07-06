@@ -30,6 +30,7 @@ import '../../features/split/presentation/split_settlement_success_screen.dart';
 import '../../features/pending/presentation/cashback_screen.dart';
 import '../../features/pending/presentation/edit_pending_transaction_screen.dart';
 import '../../features/pending/presentation/for_others_screen.dart';
+import '../../features/pending/presentation/manual_message_parser_screen.dart';
 import '../../features/pending/presentation/pending_success_screen.dart';
 import '../../features/pending/presentation/pending_transactions_screen.dart';
 import '../../features/pending/notifications/notification_access_setup_screen_safe.dart';
@@ -200,6 +201,10 @@ final appRouterRelease = GoRouter(
         );
         return PendingTransactionsScreen(openPendingId: openPendingId);
       },
+    ),
+    GoRoute(
+      path: '/pending/paste',
+      builder: (_, _) => const ManualMessageParserScreen(),
     ),
     GoRoute(
       path: '/notifications/setup',

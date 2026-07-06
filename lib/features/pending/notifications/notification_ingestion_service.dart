@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/utils/formatters.dart';
+import '../../accounts/data/wallet_types.dart';
 import '../../expenses/models/transaction_types.dart';
 import '../parsing/confidence_level.dart';
 import '../parsing/counterparty_normalizer.dart';
@@ -194,6 +195,8 @@ class NotificationIngestionService {
         payload,
         decision: billDueResult.action == 'ignoredDuplicate'
             ? 'duplicate'
+            : billDueResult.action == 'paidBillIgnored'
+            ? 'ignored'
             : 'parsed',
         reason: 'card-bill-due-${billDueResult.action}',
         parseResult: 'card-bill-due-notification',
@@ -374,6 +377,12 @@ class NotificationIngestionService {
       return const [];
     }
 
+    final balanceSync = await _syncAmazonPayWalletBalanceIfPresent(
+      pendingId: ids.first,
+      rawText: parserInput.rawText,
+      shouldNotify: shouldShowDetectionNotifications(),
+    );
+
     var localNotificationSent = false;
     if (shouldShowDetectionNotifications()) {
       final previewAmount = _extractAmountText(payload.combinedText);
@@ -400,13 +409,69 @@ class NotificationIngestionService {
       providerName: filterResult.providerName,
       senderFilterResult: filterResult.senderFilterResult,
       candidateCount: candidateCount,
-      localNotificationSent: localNotificationSent,
+      localNotificationSent:
+          localNotificationSent || balanceSync.notificationSent,
       possibleDuplicateReason: nearDuplicateDecision.possibleDuplicate
           ? nearDuplicateDecision.reason
           : null,
       transactionDateChosen: bestCandidate?.transactionDate,
     );
     return ids;
+  }
+
+  Future<_WalletBalanceSyncResult> _syncAmazonPayWalletBalanceIfPresent({
+    required int pendingId,
+    required String rawText,
+    required bool shouldNotify,
+  }) async {
+    final updatedBalance = _extractUpdatedBalance(rawText);
+    if (updatedBalance == null) return const _WalletBalanceSyncResult.none();
+
+    final pending = await (database.select(
+      database.pendingTransactions,
+    )..where((p) => p.id.equals(pendingId))).getSingleOrNull();
+    if (pending == null ||
+        pending.paymentSourceTypeSuggestion != PaymentSourceType.cash ||
+        pending.paymentSourceIdSuggestion == null ||
+        !_mentionsAmazonPayBalance(rawText)) {
+      return const _WalletBalanceSyncResult.none();
+    }
+
+    final walletId = pending.paymentSourceIdSuggestion!;
+    final wallet = await (database.select(
+      database.cashWallets,
+    )..where((w) => w.id.equals(walletId))).getSingleOrNull();
+    if (wallet == null ||
+        !WalletType.matches(wallet, WalletType.amazonPay) ||
+        (wallet.currentBalance - updatedBalance).abs() < 0.01) {
+      return const _WalletBalanceSyncResult.none();
+    }
+
+    final oldBalance = wallet.currentBalance;
+    await (database.update(
+      database.cashWallets,
+    )..where((w) => w.id.equals(walletId))).write(
+      CashWalletsCompanion(
+        currentBalance: Value(updatedBalance),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+
+    var notificationSent = false;
+    if (shouldNotify) {
+      final delta = updatedBalance - oldBalance;
+      final direction = delta >= 0 ? 'increased' : 'decreased';
+      await localNotifier.showDetected(
+        title: 'Amazon Pay balance updated',
+        body:
+            'Balance $direction by ${inr(delta.abs())} to ${inr(updatedBalance)}.',
+        route: '/accounts/detail/cash/$walletId',
+        showActions: false,
+      );
+      notificationSent = true;
+    }
+
+    return _WalletBalanceSyncResult(notificationSent: notificationSent);
   }
 
   String _parserRawText(
@@ -745,6 +810,23 @@ class NotificationIngestionService {
     return text.replaceAll('Rs.', '₹').replaceAll('INR', '₹').trim();
   }
 
+  double? _extractUpdatedBalance(String raw) {
+    final match = RegExp(
+      r'updated\s+balance\s*(?::|is)?\s*(?:INR|Rs\.?|₹)\s*((?:[0-9]{1,3}(?:,[0-9]{2,3})+|[0-9]+)(?:\.[0-9]{1,2})?)',
+      caseSensitive: false,
+    ).firstMatch(raw);
+    final value = match?.group(1)?.replaceAll(',', '').trim();
+    if (value == null || value.isEmpty) return null;
+    return double.tryParse(value);
+  }
+
+  bool _mentionsAmazonPayBalance(String raw) {
+    final lower = raw.toLowerCase();
+    return lower.contains('amazon pay balance') ||
+        lower.contains('apay balance') ||
+        lower.contains('amazonpay balance');
+  }
+
   String _extractMerchantPreview(NotificationPayload payload) {
     final base = payload.title?.trim();
     if (base != null && base.isNotEmpty) return base;
@@ -792,4 +874,12 @@ class _NearDuplicateDecision {
   final bool suppress;
   final bool possibleDuplicate;
   final String? reason;
+}
+
+class _WalletBalanceSyncResult {
+  const _WalletBalanceSyncResult({required this.notificationSent});
+
+  const _WalletBalanceSyncResult.none() : notificationSent = false;
+
+  final bool notificationSent;
 }

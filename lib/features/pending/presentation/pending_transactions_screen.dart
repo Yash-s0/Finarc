@@ -16,7 +16,6 @@ import '../models/pending_models.dart';
 import '../notifications/card_payment_pending_codec.dart';
 import '../parsing/parser_text_utils.dart';
 import '../parsing/transaction_direction_classifier.dart';
-import '../parsing/parser_models.dart';
 
 String _sourceLabelForPending(String source) {
   switch (source) {
@@ -96,16 +95,11 @@ class _PendingTransactionsScreenState
             icon: const Icon(Icons.notifications_active_outlined),
             tooltip: 'Notification setup',
           ),
-          if (kDebugMode)
-            TextButton.icon(
-              onPressed: () => FinarcBottomSheet.show<void>(
-                context,
-                isScrollControlled: true,
-                child: const _ParseSampleInputSheet(),
-              ),
-              icon: const Icon(Icons.text_snippet_outlined, size: 16),
-              label: const Text('Parse Sample'),
-            ),
+          IconButton(
+            onPressed: () => context.push('/pending/paste'),
+            icon: const Icon(Icons.text_snippet_outlined),
+            tooltip: 'Paste missed message',
+          ),
           if (kDebugMode)
             TextButton.icon(
               onPressed: () => ref.read(pendingActionProvider).seedDemo(),
@@ -177,18 +171,12 @@ class _PendingTransactionsScreenState
                           icon: Icons.notifications_active_outlined,
                           label: 'Enable Notification Detection',
                         ),
-                        if (kDebugMode) ...[
-                          const SizedBox(height: AppSpacing.xs),
-                          FinarcSecondaryButton(
-                            onPressed: () => FinarcBottomSheet.show<void>(
-                              context,
-                              isScrollControlled: true,
-                              child: const _ParseSampleInputSheet(),
-                            ),
-                            icon: Icons.text_snippet_outlined,
-                            label: 'Parse Sample (Debug)',
-                          ),
-                        ],
+                        const SizedBox(height: AppSpacing.xs),
+                        FinarcSecondaryButton(
+                          onPressed: () => context.push('/pending/paste'),
+                          icon: Icons.text_snippet_outlined,
+                          label: 'Paste Missed Message',
+                        ),
                       ],
                     ),
                   );
@@ -486,152 +474,6 @@ class _PendingTransactionsScreenState
     return PendingDirectionClassifier.detect(
       text: item.rawText,
       categoryHint: item.categorySuggestion,
-    );
-  }
-}
-
-class _ParseSampleInputSheet extends ConsumerStatefulWidget {
-  const _ParseSampleInputSheet();
-
-  @override
-  ConsumerState<_ParseSampleInputSheet> createState() =>
-      _ParseSampleInputSheetState();
-}
-
-class _ParseSampleInputSheetState
-    extends ConsumerState<_ParseSampleInputSheet> {
-  final _rawText = TextEditingController();
-  final _sender = TextEditingController();
-  final _packageName = TextEditingController();
-  String _sourceType = 'sms';
-
-  @override
-  void dispose() {
-    _rawText.dispose();
-    _sender.dispose();
-    _packageName.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        AppSpacing.xs,
-        AppSpacing.md,
-        MediaQuery.of(context).viewInsets.bottom + AppSpacing.lg,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Parse Sample Text',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            'Paste raw SMS/notification text to create pending transactions.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _sourceChip('sms', 'SMS'),
-              _sourceChip('upiNotification', 'UPI'),
-              _sourceChip('appNotification', 'Notification'),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          FinarcTextField(controller: _rawText, label: 'Raw text', maxLines: 5),
-          const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              Expanded(
-                child: FinarcTextField(
-                  controller: _sender,
-                  label: 'Sender (optional)',
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: FinarcTextField(
-                  controller: _packageName,
-                  label: 'Package (optional)',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              Expanded(
-                child: FinarcSecondaryButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  label: 'Cancel',
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: FinarcPrimaryButton(
-                  onPressed: () async {
-                    if (_rawText.text.trim().isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Enter raw text to parse.'),
-                        ),
-                      );
-                      return;
-                    }
-
-                    final created = await ref
-                        .read(pendingActionProvider)
-                        .ingestParsedInput(
-                          ParserInput(
-                            rawText: _rawText.text.trim(),
-                            sourceType: _sourceType,
-                            sender: _sender.text.trim().isEmpty
-                                ? null
-                                : _sender.text.trim(),
-                            packageName: _packageName.text.trim().isEmpty
-                                ? null
-                                : _packageName.text.trim(),
-                            receivedAt: DateTime.now(),
-                            notificationTitle: null,
-                            notificationBody: null,
-                          ),
-                        );
-                    if (!mounted) return;
-                    Navigator.of(this.context).pop();
-                    ScaffoldMessenger.of(this.context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          created.isEmpty
-                              ? 'No transaction candidate detected.'
-                              : 'Created ${created.length} pending transaction(s).',
-                        ),
-                      ),
-                    );
-                  },
-                  label: 'Parse & Add',
-                  icon: Icons.playlist_add_check_circle_outlined,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _sourceChip(String value, String label) {
-    return FinarcActionChip(
-      label: label,
-      selected: _sourceType == value,
-      onTap: () => setState(() => _sourceType = value),
     );
   }
 }

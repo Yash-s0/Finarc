@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/logging/app_log_service.dart';
 import '../../cards/data/billing_service.dart';
+import '../../accounts/data/wallet_types.dart';
 import '../../expenses/data/transaction_engine.dart';
 import '../../expenses/models/transaction_types.dart';
 import '../models/pending_models.dart';
@@ -135,6 +136,11 @@ class PendingService {
     );
 
     try {
+      final transactionImpactType =
+          await _balanceSyncedWalletTransactionImpactType(
+            pending: pending,
+            resolvedData: resolvedData,
+          );
       await _engine.addTransaction(
         AddTransactionInput(
           type: type,
@@ -155,6 +161,7 @@ class PendingService {
           recoverablePartyName: resolvedData.recoverablePartyName,
           notes: resolvedData.notes,
           detectedSourceType: pending.sourceType,
+          transactionImpactType: transactionImpactType,
         ),
       );
     } on ArgumentError catch (error) {
@@ -233,6 +240,50 @@ class PendingService {
       default:
         return null;
     }
+  }
+
+  Future<String?> _balanceSyncedWalletTransactionImpactType({
+    required PendingTransaction pending,
+    required PendingEditData resolvedData,
+  }) async {
+    final paymentSourceId = resolvedData.paymentSourceId;
+    if (resolvedData.paymentSourceType != PaymentSourceType.cash ||
+        paymentSourceId == null ||
+        !_mentionsAmazonPayBalance(pending.rawText)) {
+      return null;
+    }
+
+    final updatedBalance = _extractUpdatedBalance(pending.rawText);
+    if (updatedBalance == null) return null;
+
+    final wallet = await (_db.select(
+      _db.cashWallets,
+    )..where((w) => w.id.equals(paymentSourceId))).getSingleOrNull();
+    if (wallet == null || !WalletType.matches(wallet, WalletType.amazonPay)) {
+      return null;
+    }
+
+    if ((wallet.currentBalance - updatedBalance).abs() < 0.01) {
+      return TransactionImpactType.historicalNoBalance;
+    }
+    return null;
+  }
+
+  double? _extractUpdatedBalance(String raw) {
+    final match = RegExp(
+      r'updated\s+balance\s*(?::|is)?\s*(?:INR|Rs\.?|₹)\s*((?:[0-9]{1,3}(?:,[0-9]{2,3})+|[0-9]+)(?:\.[0-9]{1,2})?)',
+      caseSensitive: false,
+    ).firstMatch(raw);
+    final value = match?.group(1)?.replaceAll(',', '').trim();
+    if (value == null || value.isEmpty) return null;
+    return double.tryParse(value);
+  }
+
+  bool _mentionsAmazonPayBalance(String raw) {
+    final lower = raw.toLowerCase();
+    return lower.contains('amazon pay balance') ||
+        lower.contains('apay balance') ||
+        lower.contains('amazonpay balance');
   }
 
   Future<int?> _resolveSuggestedBankId(String rawText) async {

@@ -69,6 +69,10 @@ class CardBillDueNotificationService {
     r'amount\s+due(?:\s+of)?(?:\s+is)?\s*(?:inr|rs\.?|₹)\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)',
     caseSensitive: false,
   );
+  static final RegExp _billOfAmountPattern = RegExp(
+    r'(?:credit\s*card\s*)?bill\s+of\s*(?:inr|rs\.?|₹)\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)',
+    caseSensitive: false,
+  );
   static final RegExp _last4Pattern = RegExp(
     r'(?:credit\s*card|card)[^0-9]{0,24}(?:ending\s*|xx|x{2,}|\*{2,})?(\d{4})',
     caseSensitive: false,
@@ -95,7 +99,8 @@ class CardBillDueNotificationService {
 
     final totalAmountDue =
         _extractAmount(text, _totalDuePattern) ??
-        _extractGenericAmountDue(text);
+        _extractGenericAmountDue(text) ??
+        _extractAmount(text, _billOfAmountPattern);
     final minimumAmountDue = _extractAmount(text, _minimumDuePattern);
     final dueDate = _extractDueDate(text, payload.captureTime);
     final cardLast4 = _extractCardLast4(text);
@@ -344,21 +349,33 @@ class CardBillDueNotificationService {
     final amountDiff = (bill.billedAmount - parsed.totalAmountDue).abs();
     final isMatch = amountDiff <= 1;
 
+    if (isMatch) {
+      await _logAction(
+        parsed,
+        cardId: card.id,
+        billId: bill.id,
+        action: 'paidBillIgnored',
+        meta: {
+          'appAmount': bill.billedAmount,
+          'notificationAmount': parsed.totalAmountDue,
+          'dedupeKey': dedupeKey,
+        },
+      );
+      return 'paidBillIgnored';
+    }
+
     await _alertService.createAlert(
       CreateAlertInput(
         alertType: AlertType.cardDue,
-        title: isMatch
-            ? 'Paid bill notification matches your record'
-            : 'Paid bill amount differs from notification',
-        body: isMatch
-            ? '${_issuerDisplay(parsed, card)} XX${parsed.cardLast4} • ${inr(parsed.totalAmountDue)} due ${_dayMonth(parsed.dueDate)}'
-            : 'App: ${inr(bill.billedAmount)}\nNotification: ${inr(parsed.totalAmountDue)}\nPlease review card XX${parsed.cardLast4}.',
-        priority: isMatch ? AlertPriority.info : AlertPriority.warning,
+        title: 'Paid bill amount differs from notification',
+        body:
+            'App: ${inr(bill.billedAmount)}\nNotification: ${inr(parsed.totalAmountDue)}\nPlease review card XX${parsed.cardLast4}.',
+        priority: AlertPriority.warning,
         actionRoute: '/cards/${card.id}',
         dedupeKey: dedupeKey,
         payload: {
           'kind': 'cardBillDueNotification',
-          'action': isMatch ? 'paidBillVerified' : 'paidBillMismatch',
+          'action': 'paidBillMismatch',
           'cardId': card.id,
           'billId': bill.id,
           'appAmount': bill.billedAmount,
@@ -371,19 +388,18 @@ class CardBillDueNotificationService {
       dedupeWindow: const Duration(days: 90),
     );
 
-    final action = isMatch ? 'paidBillVerified' : 'paidBillMismatch';
     await _logAction(
       parsed,
       cardId: card.id,
       billId: bill.id,
-      action: action,
+      action: 'paidBillMismatch',
       meta: {
         'appAmount': bill.billedAmount,
         'notificationAmount': parsed.totalAmountDue,
         'dedupeKey': dedupeKey,
       },
     );
-    return action;
+    return 'paidBillMismatch';
   }
 
   Future<String> _createExternalBillFromNotification({
@@ -674,6 +690,20 @@ class CardBillDueNotificationService {
       if (parsed != null) return parsed;
     }
 
+    final ordinalDueMatch = RegExp(
+      r'(?:due|was\s+due)\s+on\s+(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]{3,9})(?:\s+(\d{2,4}))?',
+      caseSensitive: false,
+    ).firstMatch(text);
+    if (ordinalDueMatch != null) {
+      final parsed = _parseOrdinalDateToken(
+        dayText: ordinalDueMatch.group(1),
+        monthText: ordinalDueMatch.group(2),
+        yearText: ordinalDueMatch.group(3),
+        fallbackYear: fallback.year,
+      );
+      if (parsed != null) return parsed;
+    }
+
     final standalone = RegExp(
       r'\b(\d{1,2}[-/](?:[A-Za-z]{3}|\d{1,2})[-/](?:\d{2,4}))\b',
       caseSensitive: false,
@@ -683,6 +713,20 @@ class CardBillDueNotificationService {
       return _parseDateToken(standaloneToken, fallback.year);
     }
     return null;
+  }
+
+  DateTime? _parseOrdinalDateToken({
+    required String? dayText,
+    required String? monthText,
+    required String? yearText,
+    required int fallbackYear,
+  }) {
+    final day = int.tryParse(dayText ?? '');
+    final monthKey = (monthText ?? '').toLowerCase();
+    final month = _months.indexWhere((m) => monthKey.startsWith(m)) + 1;
+    final year = _resolveYear(yearText, fallbackYear);
+    if (day == null || month < 1 || month > 12 || year == null) return null;
+    return DateTime(year, month, day);
   }
 
   DateTime? _parseDateToken(String token, int fallbackYear) {
@@ -730,6 +774,13 @@ class CardBillDueNotificationService {
   }
 
   String? _extractIssuer(String text) {
+    final cardDash = RegExp(
+      r'for\s+([A-Za-z0-9&.\- ]{2,40})\s+card\s*[-–]\s*\d{3,4}',
+      caseSensitive: false,
+    ).firstMatch(text);
+    final cardDashClean = _cleanIssuer(cardDash?.group(1));
+    if (cardDashClean != null) return cardDashClean;
+
     final towards = RegExp(
       r'towards\s+([A-Za-z0-9&.\- ]{2,40})\s+credit\s*card',
       caseSensitive: false,

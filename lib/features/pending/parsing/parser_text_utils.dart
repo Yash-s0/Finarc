@@ -166,15 +166,21 @@ class ParserTextUtils {
     if (!hasCard) return false;
 
     final duePhrases = [
+      'bill overdue',
+      'bill was due',
+      'was due on',
       'min due',
       'minimum due',
       'total due',
       'amount due',
+      'bill of',
       'payment of credit card',
       'pay before last date',
       'avoid charges',
+      'avoid penalties',
       'due date',
       'due by',
+      'ignore if already paid',
     ];
     return duePhrases.any(lower.contains);
   }

@@ -43,6 +43,18 @@ class _AppShellState extends State<AppShell> {
               Navigator.pop(context);
               context.push('/income/add');
             }),
+            _actionTile(Icons.fact_check_outlined, 'Pending Transactions', () {
+              Navigator.pop(context);
+              context.push('/pending');
+            }),
+            _actionTile(
+              Icons.text_snippet_outlined,
+              'Paste Missed Message',
+              () {
+                Navigator.pop(context);
+                context.push('/pending/paste');
+              },
+            ),
             _actionTile(Icons.credit_card, 'Add Card', () {
               Navigator.pop(context);
               context.push('/cards/add');

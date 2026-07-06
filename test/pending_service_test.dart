@@ -212,6 +212,59 @@ void main() {
     expect(p.status, 'ignored');
   });
 
+  test(
+    'confirm synced Amazon Pay balance notification does not double deduct',
+    () async {
+      final walletId = await db
+          .into(db.cashWallets)
+          .insert(
+            CashWalletsCompanion.insert(
+              walletName: 'Amazon Pay',
+              walletType: const Value('amazonPay'),
+              currentBalance: const Value(1710.13),
+            ),
+          );
+      final rawText =
+          'Payment of Rs 323.00 using Amazon Pay Balance is successful at Amazon.in. Updated Balance: Rs 1710.13.';
+      final pendingId = await service.createPendingTransaction(
+        amount: 323,
+        merchant: 'Amazon',
+        categorySuggestion: 'Shopping',
+        paymentSourceTypeSuggestion: PaymentSourceType.cash,
+        paymentSourceIdSuggestion: walletId,
+        transactionDate: DateTime(2026, 7, 5, 12, 2),
+        sourceType: 'appNotification',
+        rawText: rawText,
+        confidenceScore: 0.9,
+      );
+
+      await service.confirmPendingTransaction(
+        pendingId,
+        PendingEditData(
+          amount: 323,
+          merchant: 'Amazon',
+          category: 'Shopping',
+          paymentSourceType: PaymentSourceType.cash,
+          paymentSourceId: walletId,
+          transactionDate: DateTime(2026, 7, 5, 12, 2),
+        ),
+      );
+
+      final wallet = await (db.select(
+        db.cashWallets,
+      )..where((w) => w.id.equals(walletId))).getSingle();
+      final txn = await (db.select(
+        db.transactions,
+      )..where((t) => t.paymentSourceId.equals(walletId))).getSingle();
+
+      expect(wallet.currentBalance, closeTo(1710.13, 0.01));
+      expect(
+        txn.transactionImpactType,
+        TransactionImpactType.historicalNoBalance,
+      );
+    },
+  );
+
   test('detect duplicate finds matching transaction', () async {
     await db
         .into(db.transactions)
