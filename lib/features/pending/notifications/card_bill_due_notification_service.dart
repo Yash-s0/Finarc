@@ -14,6 +14,7 @@ class CardBillDueNotification {
     required this.totalAmountDue,
     required this.minimumAmountDue,
     required this.dueDate,
+    required this.receivedAt,
     required this.cardLast4,
     required this.issuer,
     required this.rawText,
@@ -22,6 +23,7 @@ class CardBillDueNotification {
   final double totalAmountDue;
   final double? minimumAmountDue;
   final DateTime dueDate;
+  final DateTime receivedAt;
   final String cardLast4;
   final String? issuer;
   final String rawText;
@@ -114,6 +116,7 @@ class CardBillDueNotificationService {
       totalAmountDue: totalAmountDue,
       minimumAmountDue: minimumAmountDue,
       dueDate: _dateOnly(dueDate),
+      receivedAt: _dateOnly(payload.captureTime),
       cardLast4: cardLast4,
       issuer: issuer,
       rawText: text,
@@ -187,7 +190,7 @@ class CardBillDueNotificationService {
 
     final unpaidBill = _findBestBillForCycle(
       bills,
-      parsed.dueDate,
+      parsed,
       predicate: (bill) => !_isBillPaidLike(bill),
     );
     if (unpaidBill != null) {
@@ -207,7 +210,7 @@ class CardBillDueNotificationService {
 
     final paidBill = _findBestBillForCycle(
       bills,
-      parsed.dueDate,
+      parsed,
       predicate: _isBillPaidLike,
     );
     if (paidBill != null) {
@@ -603,31 +606,90 @@ class CardBillDueNotificationService {
 
   CardBill? _findBestBillForCycle(
     List<CardBill> bills,
-    DateTime dueDate, {
+    CardBillDueNotification parsed, {
     required bool Function(CardBill bill) predicate,
   }) {
-    final candidates = bills.where(predicate).toList(growable: false);
-    if (candidates.isEmpty) return null;
-
-    final sameMonth = candidates
-        .where((bill) {
-          final due = _dateOnly(bill.dueDate);
-          return due.year == dueDate.year && due.month == dueDate.month;
-        })
+    final matches = bills
+        .where(predicate)
+        .map((bill) => _scoreBillCycleMatch(bill, parsed))
+        .whereType<_BillCycleMatch>()
         .toList(growable: false);
+    if (matches.isEmpty) return null;
 
-    final pool = sameMonth.isNotEmpty ? sameMonth : candidates;
-    final sorted = [...pool]
+    final sorted = [...matches]
       ..sort((a, b) {
-        final ad = _absDays(_dateOnly(a.dueDate), dueDate);
-        final bd = _absDays(_dateOnly(b.dueDate), dueDate);
-        if (ad != bd) return ad.compareTo(bd);
-        return b.billingDate.compareTo(a.billingDate);
+        final score = a.score.compareTo(b.score);
+        if (score != 0) return score;
+        final due = a.dueDays.compareTo(b.dueDays);
+        if (due != 0) return due;
+        return b.bill.billingDate.compareTo(a.bill.billingDate);
       });
 
-    final best = sorted.first;
-    if (_absDays(_dateOnly(best.dueDate), dueDate) > 45) return null;
-    return best;
+    return sorted.first.bill;
+  }
+
+  _BillCycleMatch? _scoreBillCycleMatch(
+    CardBill bill,
+    CardBillDueNotification parsed,
+  ) {
+    final dueDays = _absDays(_dateOnly(bill.dueDate), parsed.dueDate);
+    if (dueDays > 45) return null;
+
+    final sameDueMonth =
+        bill.dueDate.year == parsed.dueDate.year &&
+        bill.dueDate.month == parsed.dueDate.month;
+    final amountDistance = _bestAmountDistance(bill, parsed.totalAmountDue);
+    final amountBucket = _amountDistanceBucket(amountDistance);
+    final notificationPenalty = _notificationCyclePenalty(bill, parsed);
+    final dueMonthPenalty = sameDueMonth ? 0 : 30;
+    final score =
+        (dueDays * 10) +
+        dueMonthPenalty +
+        (amountBucket * 8) +
+        notificationPenalty;
+    return _BillCycleMatch(bill: bill, score: score, dueDays: dueDays);
+  }
+
+  double _bestAmountDistance(CardBill bill, double notificationAmount) {
+    final distances = <double>[(bill.billedAmount - notificationAmount).abs()];
+    final remainingDue = _remainingDue(bill);
+    if (bill.paidAmount > 0) {
+      distances.add((remainingDue - notificationAmount).abs());
+    }
+    distances.sort();
+    return distances.first;
+  }
+
+  int _amountDistanceBucket(double diff) {
+    if (diff <= 1) return 0;
+    if (diff <= 50) return 1;
+    if (diff <= 500) return 2;
+    return 3;
+  }
+
+  int _notificationCyclePenalty(CardBill bill, CardBillDueNotification parsed) {
+    final receivedAt = parsed.receivedAt;
+    final cycleStart = _dateOnly(bill.cycleStartDate);
+    final cycleEnd = _dateOnly(bill.cycleEndDate);
+    final billingDate = _dateOnly(bill.billingDate);
+    final dueDate = _dateOnly(bill.dueDate);
+
+    if (receivedAt.isBefore(cycleStart.subtract(const Duration(days: 2)))) {
+      return 60;
+    }
+    if (receivedAt.isBefore(cycleEnd.subtract(const Duration(days: 1)))) {
+      return 45;
+    }
+    if (receivedAt.isBefore(billingDate.subtract(const Duration(days: 3)))) {
+      return 18;
+    }
+    if (receivedAt.isAfter(dueDate.add(const Duration(days: 45)))) {
+      return 25;
+    }
+    if (receivedAt.isAfter(dueDate.add(const Duration(days: 14)))) {
+      return 10;
+    }
+    return 0;
   }
 
   bool _isBillPaidLike(CardBill bill) {
@@ -744,7 +806,7 @@ class CardBillDueNotificationService {
         dayText: ordinalDueMatch.group(1),
         monthText: ordinalDueMatch.group(2),
         yearText: ordinalDueMatch.group(3),
-        fallbackYear: fallback.year,
+        fallback: fallback,
       );
       if (parsed != null) return parsed;
     }
@@ -764,14 +826,36 @@ class CardBillDueNotificationService {
     required String? dayText,
     required String? monthText,
     required String? yearText,
-    required int fallbackYear,
+    required DateTime fallback,
   }) {
     final day = int.tryParse(dayText ?? '');
     final monthKey = (monthText ?? '').toLowerCase();
     final month = _months.indexWhere((m) => monthKey.startsWith(m)) + 1;
-    final year = _resolveYear(yearText, fallbackYear);
+    final year = _resolveOrdinalYear(
+      yearText: yearText,
+      month: month,
+      fallback: fallback,
+    );
     if (day == null || month < 1 || month > 12 || year == null) return null;
     return DateTime(year, month, day);
+  }
+
+  int? _resolveOrdinalYear({
+    required String? yearText,
+    required int month,
+    required DateTime fallback,
+  }) {
+    final explicitYear = _resolveYear(yearText, fallback.year);
+    if (yearText != null && yearText.isNotEmpty) return explicitYear;
+    if (month < 1 || month > 12) return null;
+
+    if (fallback.month == DateTime.december && month == DateTime.january) {
+      return fallback.year + 1;
+    }
+    if (fallback.month == DateTime.january && month == DateTime.december) {
+      return fallback.year - 1;
+    }
+    return fallback.year;
   }
 
   DateTime? _parseDateToken(String token, int fallbackYear) {
@@ -922,4 +1006,16 @@ class CardBillDueNotificationService {
 
   DateTime _dateOnly(DateTime value) =>
       DateTime(value.year, value.month, value.day);
+}
+
+class _BillCycleMatch {
+  const _BillCycleMatch({
+    required this.bill,
+    required this.score,
+    required this.dueDays,
+  });
+
+  final CardBill bill;
+  final int score;
+  final int dueDays;
 }

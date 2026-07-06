@@ -315,15 +315,20 @@ void main() {
       required DateTime dueDate,
       required String status,
       double paidAmount = 0,
+      DateTime? cycleStartDate,
+      DateTime? cycleEndDate,
+      DateTime? billingDate,
     }) {
       return db
           .into(db.cardBills)
           .insert(
             CardBillsCompanion.insert(
               cardId: cardId,
-              cycleStartDate: drift.Value(DateTime(2026, 5, 1)),
-              cycleEndDate: drift.Value(DateTime(2026, 5, 31)),
-              billingDate: drift.Value(DateTime(2026, 5, 31)),
+              cycleStartDate: drift.Value(
+                cycleStartDate ?? DateTime(2026, 5, 1),
+              ),
+              cycleEndDate: drift.Value(cycleEndDate ?? DateTime(2026, 5, 31)),
+              billingDate: drift.Value(billingDate ?? DateTime(2026, 5, 31)),
               billedAmount: billedAmount,
               paidAmount: drift.Value(paidAmount),
               dueDate: drift.Value(dueDate),
@@ -814,6 +819,73 @@ void main() {
       expect(debugEntries.last.reason, 'card-bill-due-verified');
     });
 
+    test('ordinal Jan due date received in Dec resolves to next year', () async {
+      final cardId = await createCard(bankName: 'YES Bank', last4: '8731');
+      await createBill(
+        cardId: cardId,
+        billedAmount: 4126.95,
+        dueDate: DateTime(2027, 1, 1),
+        status: 'billed',
+        billingDate: DateTime(2026, 12, 25),
+        cycleStartDate: DateTime(2026, 11, 26),
+        cycleEndDate: DateTime(2026, 12, 25),
+      );
+      final payload = NotificationPayload(
+        packageName: 'com.google.android.apps.messaging',
+        appName: 'Messages',
+        sender: 'AD-YESBNK-S',
+        sourceType: 'appNotification',
+        receivedAt: DateTime(2026, 12, 29, 10, 0),
+        title: '1st Jan',
+        body:
+            'Credit card bill of ₹4,126.95 for Yes Bank card - 8731 is due on 1st Jan. Ignore if already paid!',
+      );
+
+      final parsed = service.cardBillDueNotificationService.parse(payload);
+      expect(parsed, isNotNull);
+      expect(parsed!.dueDate, DateTime(2027, 1, 1));
+
+      final ids = await service.processPayload(payload);
+      expect(ids, isEmpty);
+      expect(await db.select(db.pendingTransactions).get(), isEmpty);
+      expect(debugEntries.last.reason, 'card-bill-due-verified');
+    });
+
+    test(
+      'ordinal Dec overdue date received in Jan resolves to previous year',
+      () async {
+        final cardId = await createCard(bankName: 'YES Bank', last4: '8731');
+        await createBill(
+          cardId: cardId,
+          billedAmount: 4126.95,
+          dueDate: DateTime(2026, 12, 31),
+          status: 'billed',
+          billingDate: DateTime(2026, 12, 24),
+          cycleStartDate: DateTime(2026, 11, 25),
+          cycleEndDate: DateTime(2026, 12, 24),
+        );
+        final payload = NotificationPayload(
+          packageName: 'com.google.android.apps.messaging',
+          appName: 'Messages',
+          sender: 'AD-YESBNK-S',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2027, 1, 2, 10, 0),
+          title: '31st Dec',
+          body:
+              'URGENT: Bill Overdue! Credit card bill of ₹4,126.95 for Yes Bank card - 8731 was due on 31st Dec. Ignore if already paid!',
+        );
+
+        final parsed = service.cardBillDueNotificationService.parse(payload);
+        expect(parsed, isNotNull);
+        expect(parsed!.dueDate, DateTime(2026, 12, 31));
+
+        final ids = await service.processPayload(payload);
+        expect(ids, isEmpty);
+        expect(await db.select(db.pendingTransactions).get(), isEmpty);
+        expect(debugEntries.last.reason, 'card-bill-due-verified');
+      },
+    );
+
     test('card bill due with no matching card creates alert only', () async {
       final ids = await service.processPayload(iciciBillPayload());
       expect(ids, isEmpty);
@@ -882,6 +954,97 @@ void main() {
           '/cards/$cardId/bills/$billId?review=billMismatch&appAmount=16000.00&notificationAmount=17027.10',
         );
         expect(debugEntries.last.reason, 'card-bill-due-mismatchAlert');
+      },
+    );
+
+    test(
+      'cycle matching prefers amount-matched paid bill over newer same-date duplicate',
+      () async {
+        final cardId = await createCard(bankName: 'ICICI Bank', last4: '9000');
+        final matchedBillId = await createBill(
+          cardId: cardId,
+          billedAmount: 17027.10,
+          dueDate: DateTime(2026, 6, 7),
+          status: 'paid',
+          paidAmount: 17027.10,
+          billingDate: DateTime(2026, 5, 31),
+          cycleStartDate: DateTime(2026, 5, 1),
+          cycleEndDate: DateTime(2026, 5, 31),
+        );
+        final newerDuplicateId = await createBill(
+          cardId: cardId,
+          billedAmount: 16000,
+          dueDate: DateTime(2026, 6, 7),
+          status: 'paid',
+          paidAmount: 16000,
+          billingDate: DateTime(2026, 6, 1),
+          cycleStartDate: DateTime(2026, 5, 2),
+          cycleEndDate: DateTime(2026, 6, 1),
+        );
+
+        final ids = await service.processPayload(iciciBillPayload());
+
+        expect(ids, isEmpty);
+        expect(await db.select(db.pendingTransactions).get(), isEmpty);
+        expect(await db.select(db.alerts).get(), isEmpty);
+        expect(debugEntries.last.reason, 'card-bill-due-paidBillIgnored');
+
+        final matched = await (db.select(
+          db.cardBills,
+        )..where((b) => b.id.equals(matchedBillId))).getSingle();
+        final newer = await (db.select(
+          db.cardBills,
+        )..where((b) => b.id.equals(newerDuplicateId))).getSingle();
+        expect(matched.status, 'paid');
+        expect(newer.status, 'paid');
+      },
+    );
+
+    test(
+      'cycle matching avoids future-cycle duplicate for old notification',
+      () async {
+        final cardId = await createCard(bankName: 'ICICI Bank', last4: '9000');
+        final matchedBillId = await createBill(
+          cardId: cardId,
+          billedAmount: 16000,
+          dueDate: DateTime(2026, 6, 7),
+          status: 'paid',
+          paidAmount: 16000,
+          billingDate: DateTime(2026, 5, 31),
+          cycleStartDate: DateTime(2026, 5, 1),
+          cycleEndDate: DateTime(2026, 5, 31),
+        );
+        final futureCycleBillId = await createBill(
+          cardId: cardId,
+          billedAmount: 17027.10,
+          dueDate: DateTime(2026, 6, 7),
+          status: 'paid',
+          paidAmount: 17027.10,
+          billingDate: DateTime(2026, 7, 31),
+          cycleStartDate: DateTime(2026, 7, 1),
+          cycleEndDate: DateTime(2026, 7, 31),
+        );
+
+        final ids = await service.processPayload(iciciBillPayload());
+
+        expect(ids, isEmpty);
+        expect(await db.select(db.pendingTransactions).get(), isEmpty);
+        final alerts = await db.select(db.alerts).get();
+        expect(alerts, hasLength(1));
+        expect(
+          alerts.single.actionRoute,
+          '/cards/$cardId/bills/$matchedBillId?review=billMismatch&appAmount=16000.00&notificationAmount=17027.10',
+        );
+        expect(debugEntries.last.reason, 'card-bill-due-paidBillMismatch');
+
+        final matched = await (db.select(
+          db.cardBills,
+        )..where((b) => b.id.equals(matchedBillId))).getSingle();
+        final future = await (db.select(
+          db.cardBills,
+        )..where((b) => b.id.equals(futureCycleBillId))).getSingle();
+        expect(matched.billingDate, DateTime(2026, 5, 31));
+        expect(future.billingDate, DateTime(2026, 7, 31));
       },
     );
 

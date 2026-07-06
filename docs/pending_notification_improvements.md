@@ -21,8 +21,10 @@ Date: 2026-07-06
 - Added support for overdue reminder wording like:
   `Credit card bill of ₹4,126.95 for Yes Bank card - 8731 was due on 4th Jul`
 - Added ordinal date parsing for due dates like `4th Jul`.
+- Ordinal due dates without a year now handle New Year boundaries, so `1st Jan` from December resolves to the next year and `31st Dec` from January resolves to the previous year.
 - If a bill due notification matches an already paid bill with the same amount, it is ignored quietly.
 - If a bill due notification matches the remaining due on a partially paid bill, it is verified as a remaining-due reminder instead of treated as a mismatch.
+- Bill matching now scores due date, statement cycle timing, notification date, and amount closeness to avoid matching stale or future duplicate bill rows.
 - If the notification amount differs from the paid bill amount, the app creates a warning alert instead of reopening or overwriting the bill.
 - If the notification amount differs from an unpaid local bill, the app creates a mismatch warning and does not overwrite the local amount.
 - If no matching card exists, the app creates a review alert instead of creating a pending expense.
@@ -80,9 +82,9 @@ Date: 2026-07-06
 
 1. Done: Add an in-app review screen for bill mismatch alerts.
 2. Done: Add explicit partial-payment rules for bill due notifications.
-3. Next: Add cycle-aware bill matching that uses billing date, due date, amount, and notification date together.
-4. Add tests for year-boundary dates like `31st Dec` and `1st Jan`.
-5. Add tests for same last four digits across multiple issuers.
+3. Done: Add cycle-aware bill matching that uses billing date, due date, amount, and notification date together.
+4. Done: Add tests for year-boundary dates like `31st Dec` and `1st Jan`.
+5. Next: Add tests for same last four digits across multiple issuers.
 6. Add tests for minimum-due-only notifications.
 7. Add developer-space filters for `bill due`, `card payment`, `wallet balance`, `manual paste`, and `parser failed`.
 8. Persist manual paste learning samples in a structured table instead of only diagnostics/logs.
