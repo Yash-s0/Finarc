@@ -1407,6 +1407,79 @@ void main() {
     );
 
     test(
+      'minimum-due-only card reminder creates review alert without bill write',
+      () async {
+        final cardId = await createCard(bankName: 'Axis Bank', last4: '1266');
+        final payload = NotificationPayload(
+          packageName: 'com.axis.mobile',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 6, 3, 9, 0),
+          title: 'AXISBK',
+          body:
+              'Axis Bank Credit Card X1266 is due on 03/06/26. Min due Rs.200.00. Pay before last date to avoid charges.',
+        );
+
+        final parsed = service.cardBillDueNotificationService.parse(payload);
+        expect(parsed, isNotNull);
+        expect(parsed!.cardLast4, '1266');
+        expect(parsed.minimumAmountDue, 200);
+        expect(parsed.minimumDueOnly, isTrue);
+
+        final ids = await service.processPayload(payload);
+        expect(ids, isEmpty);
+        expect(await db.select(db.pendingTransactions).get(), isEmpty);
+        expect(await db.select(db.cardBills).get(), isEmpty);
+
+        final alerts = await db.select(db.alerts).get();
+        expect(alerts, hasLength(1));
+        expect(alerts.single.priority, 'warning');
+        expect(alerts.single.title, 'AXIS minimum due detected');
+        expect(alerts.single.actionRoute, '/cards/$cardId');
+        expect(alerts.single.payload, contains('"action":"minimumDueOnly"'));
+        expect(alerts.single.payload, contains('"minimumAmountDue":200.0'));
+        expect(alerts.single.payload, contains('"needsReview":true'));
+        expect(debugEntries.last.reason, 'card-bill-due-minimumDueOnly');
+      },
+    );
+
+    test(
+      'minimum-due-only reminder does not mismatch against existing total bill',
+      () async {
+        final cardId = await createCard(bankName: 'Axis Bank', last4: '1266');
+        final billId = await createBill(
+          cardId: cardId,
+          billedAmount: 8384.59,
+          dueDate: DateTime(2026, 6, 3),
+          status: 'billed',
+        );
+        final payload = NotificationPayload(
+          packageName: 'com.axis.mobile',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 6, 3, 9, 0),
+          title: 'AXISBK',
+          body:
+              'Axis Bank Credit Card X1266 is due on 03/06/26. Min due Rs.200.00. Pay before last date to avoid charges.',
+        );
+
+        final ids = await service.processPayload(payload);
+
+        expect(ids, isEmpty);
+        expect(await db.select(db.pendingTransactions).get(), isEmpty);
+        final bill = await (db.select(
+          db.cardBills,
+        )..where((b) => b.id.equals(billId))).getSingle();
+        expect(bill.billedAmount, 8384.59);
+        expect(bill.status, 'billed');
+
+        final alerts = await db.select(db.alerts).get();
+        expect(alerts, hasLength(1));
+        expect(alerts.single.title, 'AXIS minimum due detected');
+        expect(alerts.single.payload, isNot(contains('mismatchAlert')));
+        expect(debugEntries.last.reason, 'card-bill-due-minimumDueOnly');
+      },
+    );
+
+    test(
       'axis payment received towards credit card becomes card payment pending',
       () async {
         await createCard(bankName: 'Axis Bank', last4: '0374');

@@ -13,6 +13,7 @@ class CardBillDueNotification {
   const CardBillDueNotification({
     required this.totalAmountDue,
     required this.minimumAmountDue,
+    this.minimumDueOnly = false,
     required this.dueDate,
     required this.receivedAt,
     required this.cardLast4,
@@ -22,6 +23,7 @@ class CardBillDueNotification {
 
   final double totalAmountDue;
   final double? minimumAmountDue;
+  final bool minimumDueOnly;
   final DateTime dueDate;
   final DateTime receivedAt;
   final String cardLast4;
@@ -108,13 +110,16 @@ class CardBillDueNotificationService {
     final cardLast4 = _extractCardLast4(text);
     final issuer = _extractIssuer(text);
 
-    if (totalAmountDue == null || dueDate == null || cardLast4 == null) {
+    if ((totalAmountDue == null && minimumAmountDue == null) ||
+        dueDate == null ||
+        cardLast4 == null) {
       return null;
     }
 
     return CardBillDueNotification(
-      totalAmountDue: totalAmountDue,
+      totalAmountDue: totalAmountDue ?? minimumAmountDue!,
       minimumAmountDue: minimumAmountDue,
+      minimumDueOnly: totalAmountDue == null && minimumAmountDue != null,
       dueDate: _dateOnly(dueDate),
       receivedAt: _dateOnly(payload.captureTime),
       cardLast4: cardLast4,
@@ -182,6 +187,26 @@ class CardBillDueNotificationService {
     }
 
     final card = matchedCards.first;
+    if (parsed.minimumDueOnly) {
+      final created = await _createMinimumDueOnlyAlert(
+        card: card,
+        parsed: parsed,
+        dedupeKey: dedupeKey,
+      );
+      await _logAction(
+        parsed,
+        cardId: card.id,
+        action: 'minimumDueOnly',
+        meta: {'dedupeKey': dedupeKey},
+      );
+      return CardBillDueHandlingResult(
+        parsed: parsed,
+        action: 'minimumDueOnly',
+        matchedCardId: card.id,
+        alertCreated: created,
+      );
+    }
+
     final bills =
         await (_db.select(_db.cardBills)
               ..where((b) => b.cardId.equals(card.id))
@@ -530,19 +555,25 @@ class CardBillDueNotificationService {
     CardBillDueNotification parsed, {
     required String dedupeKey,
   }) async {
+    final amount = parsed.minimumDueOnly
+        ? parsed.minimumAmountDue ?? parsed.totalAmountDue
+        : parsed.totalAmountDue;
     final alert = await _alertService.createAlert(
       CreateAlertInput(
         alertType: AlertType.cardDue,
-        title: 'Card bill detected but no matching card found',
+        title: parsed.minimumDueOnly
+            ? 'Minimum due detected but no matching card found'
+            : 'Card bill detected but no matching card found',
         body:
-            '${_issuerDisplay(parsed, null)} XX${parsed.cardLast4} • ${inr(parsed.totalAmountDue)} due ${_dayMonth(parsed.dueDate)}',
+            '${_issuerDisplay(parsed, null)} XX${parsed.cardLast4} • ${parsed.minimumDueOnly ? 'minimum due ' : ''}${inr(amount)} due ${_dayMonth(parsed.dueDate)}',
         priority: AlertPriority.warning,
         dedupeKey: dedupeKey,
         payload: {
           'kind': 'cardBillDueNotification',
           'action': 'noMatchingCard',
-          'totalAmountDue': parsed.totalAmountDue,
+          if (!parsed.minimumDueOnly) 'totalAmountDue': parsed.totalAmountDue,
           'minimumAmountDue': parsed.minimumAmountDue,
+          'minimumDueOnly': parsed.minimumDueOnly,
           'dueDate': parsed.dueDate.toIso8601String(),
           'last4': parsed.cardLast4,
           'issuer': parsed.issuer,
@@ -558,23 +589,61 @@ class CardBillDueNotificationService {
     List<CreditCard> cards, {
     required String dedupeKey,
   }) async {
+    final amount = parsed.minimumDueOnly
+        ? parsed.minimumAmountDue ?? parsed.totalAmountDue
+        : parsed.totalAmountDue;
     final alert = await _alertService.createAlert(
       CreateAlertInput(
         alertType: AlertType.cardDue,
-        title: 'Card bill detected: multiple matching cards found',
+        title: parsed.minimumDueOnly
+            ? 'Minimum due detected: multiple matching cards found'
+            : 'Card bill detected: multiple matching cards found',
         body:
-            '${_issuerDisplay(parsed, null)} XX${parsed.cardLast4} • ${inr(parsed.totalAmountDue)} due ${_dayMonth(parsed.dueDate)}. Please review.',
+            '${_issuerDisplay(parsed, null)} XX${parsed.cardLast4} • ${parsed.minimumDueOnly ? 'minimum due ' : ''}${inr(amount)} due ${_dayMonth(parsed.dueDate)}. Please review.',
         priority: AlertPriority.warning,
         dedupeKey: dedupeKey,
         payload: {
           'kind': 'cardBillDueNotification',
           'action': 'multipleMatchingCards',
-          'totalAmountDue': parsed.totalAmountDue,
+          if (!parsed.minimumDueOnly) 'totalAmountDue': parsed.totalAmountDue,
           'minimumAmountDue': parsed.minimumAmountDue,
+          'minimumDueOnly': parsed.minimumDueOnly,
           'dueDate': parsed.dueDate.toIso8601String(),
           'last4': parsed.cardLast4,
           'issuer': parsed.issuer,
           'cardIds': cards.map((c) => c.id).toList(),
+        },
+      ),
+      dedupeWindow: const Duration(days: 90),
+    );
+    return alert != null;
+  }
+
+  Future<bool> _createMinimumDueOnlyAlert({
+    required CreditCard card,
+    required CardBillDueNotification parsed,
+    required String dedupeKey,
+  }) async {
+    final issuer = _issuerDisplay(parsed, card);
+    final alert = await _alertService.createAlert(
+      CreateAlertInput(
+        alertType: AlertType.cardDue,
+        title: '$issuer minimum due detected',
+        body:
+            'Minimum due ${inr(parsed.minimumAmountDue ?? parsed.totalAmountDue)} is due ${_dayMonth(parsed.dueDate)} for card XX${parsed.cardLast4}. Total bill amount was not present in the notification, so no bill was created or updated.',
+        priority: AlertPriority.warning,
+        actionRoute: '/cards/${card.id}',
+        dedupeKey: dedupeKey,
+        payload: {
+          'kind': 'cardBillDueNotification',
+          'action': 'minimumDueOnly',
+          'cardId': card.id,
+          'minimumAmountDue': parsed.minimumAmountDue,
+          'dueDate': parsed.dueDate.toIso8601String(),
+          'last4': parsed.cardLast4,
+          'issuer': parsed.issuer,
+          'source': 'notification',
+          'needsReview': true,
         },
       ),
       dedupeWindow: const Duration(days: 90),
@@ -750,6 +819,7 @@ class CardBillDueNotificationService {
         'cardLast4': parsed.cardLast4,
         'totalAmountDue': parsed.totalAmountDue,
         'minimumAmountDue': parsed.minimumAmountDue,
+        'minimumDueOnly': parsed.minimumDueOnly,
         'dueDate': parsed.dueDate.toIso8601String(),
         'cardId': cardId,
         'billId': billId,
@@ -939,14 +1009,23 @@ class CardBillDueNotificationService {
     if (cleaned.isEmpty) return null;
     final parts = cleaned.split(' ').where((part) => part.isNotEmpty).toList();
     if (parts.isEmpty) return null;
+    if (parts.length > 1 && _looksLikeSenderIssuerPrefix(parts.first)) {
+      return parts[1].toUpperCase();
+    }
     return parts.first.toUpperCase();
+  }
+
+  bool _looksLikeSenderIssuerPrefix(String value) {
+    final upper = value.toUpperCase();
+    return upper.endsWith('BK') || upper.endsWith('BNK');
   }
 
   String _notificationDedupeKey(CardBillDueNotification parsed) {
     final issuer = _normalize(parsed.issuer) ?? 'unknown';
     final date = _dateOnly(parsed.dueDate).toIso8601String();
     final amount = parsed.totalAmountDue.toStringAsFixed(2);
-    return 'card_bill_due|$issuer|${parsed.cardLast4}|$amount|$date';
+    final basis = parsed.minimumDueOnly ? 'minimum' : 'total';
+    return 'card_bill_due|$issuer|${parsed.cardLast4}|$basis|$amount|$date';
   }
 
   String _billMismatchReviewRoute({
