@@ -50,11 +50,6 @@ check_forbidden() {
   fi
 }
 
-check_forbidden "android\.permission\.READ_SMS" "READ_SMS permission"
-check_forbidden "android\.permission\.RECEIVE_SMS" "RECEIVE_SMS permission"
-check_forbidden "FinarcSmsReceiver" "FinarcSmsReceiver declaration"
-check_forbidden "SMS_RECEIVED" "SMS_RECEIVED intent filter"
-
 check_required() {
   local pattern="$1"
   local label="$2"
@@ -69,6 +64,10 @@ check_required() {
 check_required "FinarcNotificationListenerService" "Notification listener service declaration"
 check_required "BIND_NOTIFICATION_LISTENER_SERVICE" "Notification listener service permission"
 check_required "android\.service\.notification\.NotificationListenerService" "Notification listener intent action"
+check_required "android\.permission\.READ_SMS" "READ_SMS permission"
+check_required "android\.permission\.RECEIVE_SMS" "RECEIVE_SMS permission"
+check_required "FinarcSmsReceiver" "FinarcSmsReceiver declaration"
+check_required "SMS_RECEIVED" "SMS_RECEIVED intent filter"
 
 if [[ "$fail" -ne 0 ]]; then
   echo
@@ -77,5 +76,5 @@ if [[ "$fail" -ne 0 ]]; then
 fi
 
 echo
-echo "Notification listener allowed; SMS permissions absent."
+echo "Notification listener and SMS recovery entries present."
 echo "Play manifest check passed."

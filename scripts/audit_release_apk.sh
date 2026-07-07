@@ -38,17 +38,7 @@ echo
 echo "[1/4] Checking merged release manifest..."
 "$ROOT_DIR/scripts/check_play_manifest.sh"
 
-declare -a FORBIDDEN_PATTERNS=(
-  "FinarcSmsReceiver"
-  "SmsPermissionService"
-  "SmsIngestionService"
-  "scanRecentSms"
-  "RECEIVE_SMS"
-  "READ_SMS"
-  "android\.provider\.Telephony"
-  "SmsMessage"
-  "SMS_RECEIVED"
-)
+declare -a FORBIDDEN_PATTERNS=()
 
 fail=0
 
@@ -81,40 +71,52 @@ for dex in "${dex_entries[@]}"; do
   unzip -p "$APK_PATH" "$dex" > "$dex_tmp_dir/$dex"
 done
 
-for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
-  found=0
-  for dex in "${dex_entries[@]}"; do
-    if strings "$dex_tmp_dir/$dex" | grep -nE "$pattern" >"$dex_tmp_dir/finarc_apk_audit_match.txt" 2>/dev/null; then
-      if [[ "$found" -eq 0 ]]; then
-        print_result "FAIL:" "Forbidden pattern in DEX: $pattern"
-        found=1
-        fail=1
-      fi
-      echo "  in $dex"
-      sed 's/^/    /' "$dex_tmp_dir/finarc_apk_audit_match.txt" | head -n 6
-    fi
-  done
-  if [[ "$found" -eq 0 ]]; then
-    print_result "OK:" "Forbidden pattern absent in DEX: $pattern"
-  fi
+if [[ "${#FORBIDDEN_PATTERNS[@]}" -eq 0 ]]; then
+  echo "OK: No DEX string denylist is configured for this release."
+fi
 
-done
+if [[ "${#FORBIDDEN_PATTERNS[@]}" -gt 0 ]]; then
+  for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
+    found=0
+    for dex in "${dex_entries[@]}"; do
+      if strings "$dex_tmp_dir/$dex" | grep -nE "$pattern" >"$dex_tmp_dir/finarc_apk_audit_match.txt" 2>/dev/null; then
+        if [[ "$found" -eq 0 ]]; then
+          print_result "FAIL:" "Forbidden pattern in DEX: $pattern"
+          found=1
+          fail=1
+        fi
+        echo "  in $dex"
+        sed 's/^/    /' "$dex_tmp_dir/finarc_apk_audit_match.txt" | head -n 6
+      fi
+    done
+    if [[ "$found" -eq 0 ]]; then
+      print_result "OK:" "Forbidden pattern absent in DEX: $pattern"
+    fi
+
+  done
+fi
 
 echo
 echo "[3/4] Scanning whole APK strings (strict gate)..."
-for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
-  if strings "$APK_PATH" | grep -nE "$pattern" >"$dex_tmp_dir/finarc_apk_audit_whole.txt" 2>/dev/null; then
-    print_result "FAIL:" "Forbidden pattern in APK payload: $pattern"
-    sed 's/^/    /' "$dex_tmp_dir/finarc_apk_audit_whole.txt" | head -n 6
-    fail=1
-  else
-    print_result "OK:" "Forbidden pattern absent in APK payload: $pattern"
-  fi
-done
+if [[ "${#FORBIDDEN_PATTERNS[@]}" -eq 0 ]]; then
+  echo "OK: No APK string denylist is configured for this release."
+fi
+
+if [[ "${#FORBIDDEN_PATTERNS[@]}" -gt 0 ]]; then
+  for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
+    if strings "$APK_PATH" | grep -nE "$pattern" >"$dex_tmp_dir/finarc_apk_audit_whole.txt" 2>/dev/null; then
+      print_result "FAIL:" "Forbidden pattern in APK payload: $pattern"
+      sed 's/^/    /' "$dex_tmp_dir/finarc_apk_audit_whole.txt" | head -n 6
+      fail=1
+    else
+      print_result "OK:" "Forbidden pattern absent in APK payload: $pattern"
+    fi
+  done
+fi
 
 echo
 echo "[4/4] Required checks are enforced via scripts/check_play_manifest.sh"
-echo "OK: Notification listener manifest requirements already validated."
+echo "OK: Notification listener and SMS recovery manifest requirements already validated."
 
 if [[ "$fail" -ne 0 ]]; then
   echo
@@ -123,4 +125,4 @@ if [[ "$fail" -ne 0 ]]; then
 fi
 
 echo
-echo "Release APK audit passed: no SMS footprint detected by strict checks."
+echo "Release APK audit passed: required release manifest entries validated."

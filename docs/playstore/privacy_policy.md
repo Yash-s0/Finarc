@@ -37,10 +37,9 @@ Finarc is an offline-first, local-first personal finance tracker. Financial data
 - UPI, payment, wallet, and CRED notification detection is optional and disabled by default unless enabled by the user.
 
 ## Play Store Release Scope
-- The Play Store/release build does not request or use SMS permissions.
-- The Play Store/release build does not request `READ_SMS`.
-- The Play Store/release build does not request `RECEIVE_SMS`.
-- The Play Store/release build does not register an SMS receiver.
+- The Play Store/release build may request SMS permissions for local transaction SMS detection and recovery.
+- If the user grants SMS permission, Finarc can read transaction-like SMS on-device to create pending transactions for review.
+- SMS contents are processed locally for app functionality and are not uploaded by Finarc in normal app usage.
 - The Play Store/release build may include the notification listener service for optional, user-enabled transaction-like notification detection.
 
 ## Personal/Debug Builds

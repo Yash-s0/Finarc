@@ -53,6 +53,63 @@ class SmsRuntimeDiagnostics {
   }
 }
 
+class SmsPreviewRow {
+  const SmsPreviewRow({
+    required this.packageName,
+    required this.appName,
+    required this.sender,
+    required this.title,
+    required this.body,
+    required this.receivedAt,
+    required this.sourceType,
+    required this.isOngoing,
+    required this.category,
+  });
+
+  final String packageName;
+  final String appName;
+  final String sender;
+  final String title;
+  final String body;
+  final DateTime receivedAt;
+  final String sourceType;
+  final bool isOngoing;
+  final String category;
+
+  factory SmsPreviewRow.fromMap(Map<dynamic, dynamic> map) {
+    final receivedAtMillis =
+        (map['receivedAt'] as num?)?.toInt() ??
+        DateTime.now().millisecondsSinceEpoch;
+    return SmsPreviewRow(
+      packageName: (map['packageName'] as String?) ?? 'android.sms',
+      appName: (map['appName'] as String?) ?? 'SMS',
+      sender: (map['sender'] as String?) ?? '',
+      title: (map['title'] as String?) ?? '',
+      body: (map['body'] as String?) ?? '',
+      receivedAt: DateTime.fromMillisecondsSinceEpoch(receivedAtMillis),
+      sourceType: (map['sourceType'] as String?) ?? 'sms',
+      isOngoing: (map['isOngoing'] as bool?) ?? false,
+      category: (map['category'] as String?) ?? 'sms',
+    );
+  }
+
+  Map<String, Object?> toPayloadMap() {
+    return {
+      'packageName': packageName,
+      'appName': appName,
+      'sender': sender,
+      'title': title,
+      'body': body,
+      'bigText': null,
+      'subText': null,
+      'receivedAt': receivedAt.millisecondsSinceEpoch,
+      'sourceType': sourceType,
+      'isOngoing': isOngoing,
+      'category': category,
+    };
+  }
+}
+
 class SmsPermissionService {
   static const MethodChannel _channel = MethodChannel(
     'finarc/notification_control',
@@ -193,6 +250,52 @@ class SmsPermissionService {
       return 0;
     } on PlatformException {
       return 0;
+    }
+  }
+
+  Future<List<SmsPreviewRow>> previewRecentSms(int days) async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      return const [];
+    }
+    try {
+      final rows = await _channel.invokeMethod<List<dynamic>>(
+        'previewRecentSms',
+        {'days': days},
+      );
+      if (rows == null) return const [];
+      return rows
+          .whereType<Map<dynamic, dynamic>>()
+          .map(SmsPreviewRow.fromMap)
+          .toList(growable: false);
+    } on MissingPluginException {
+      return const [];
+    } on PlatformException {
+      return const [];
+    }
+  }
+
+  Future<List<SmsPreviewRow>> previewSmsRange({
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      return const [];
+    }
+    try {
+      final rows = await _channel
+          .invokeMethod<List<dynamic>>('previewSmsRange', {
+            'fromMillis': from.millisecondsSinceEpoch,
+            'toMillis': to.millisecondsSinceEpoch,
+          });
+      if (rows == null) return const [];
+      return rows
+          .whereType<Map<dynamic, dynamic>>()
+          .map(SmsPreviewRow.fromMap)
+          .toList(growable: false);
+    } on MissingPluginException {
+      return const [];
+    } on PlatformException {
+      return const [];
     }
   }
 }

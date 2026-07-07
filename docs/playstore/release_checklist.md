@@ -7,10 +7,11 @@
 - [ ] Final app ID verified
 
 ## Permissions and policy
-- [ ] Play release manifest has no `READ_SMS`
-- [ ] Play release manifest has no `RECEIVE_SMS`
-- [ ] Play release manifest has no `FinarcSmsReceiver`
-- [ ] Play release manifest has Notification Listener service only for optional user-enabled local detection
+- [ ] Play release manifest has `READ_SMS` for local transaction SMS recovery
+- [ ] Play release manifest has `RECEIVE_SMS` for local transaction SMS detection
+- [ ] Play release manifest has `FinarcSmsReceiver`
+- [ ] Play release manifest has Notification Listener service for optional user-enabled local detection
+- [ ] SMS/Call Log permission declaration completed in Play Console, if required
 - [ ] Privacy policy URL prepared and hosted
 - [ ] Data Safety form completed accurately
 - [ ] Content rating questionnaire completed

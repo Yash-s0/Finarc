@@ -23,11 +23,11 @@ void main() {
     expect(result.exitCode, 0, reason: '${result.stdout}\n${result.stderr}');
     expect(
       result.stdout.toString(),
-      contains('Notification listener allowed; SMS permissions absent.'),
+      contains('Notification listener and SMS recovery entries present.'),
     );
   });
 
-  test('fails when READ_SMS is present', () async {
+  test('fails when READ_SMS is missing', () async {
     final result = await runScriptWithFixture(
       'play_release_invalid_read_sms.xml',
     );
@@ -35,12 +35,12 @@ void main() {
     expect(
       result.stdout.toString(),
       contains(
-        'FAIL: Found forbidden entry in release manifest: READ_SMS permission',
+        'FAIL: Missing required release manifest entry: READ_SMS permission',
       ),
     );
   });
 
-  test('fails when RECEIVE_SMS is present', () async {
+  test('fails when RECEIVE_SMS is missing', () async {
     final result = await runScriptWithFixture(
       'play_release_invalid_receive_sms.xml',
     );
@@ -48,12 +48,12 @@ void main() {
     expect(
       result.stdout.toString(),
       contains(
-        'FAIL: Found forbidden entry in release manifest: RECEIVE_SMS permission',
+        'FAIL: Missing required release manifest entry: RECEIVE_SMS permission',
       ),
     );
   });
 
-  test('fails when SMS receiver declaration is present', () async {
+  test('fails when SMS receiver declaration is missing', () async {
     final result = await runScriptWithFixture(
       'play_release_invalid_sms_receiver.xml',
     );
@@ -61,12 +61,12 @@ void main() {
     expect(
       result.stdout.toString(),
       contains(
-        'FAIL: Found forbidden entry in release manifest: FinarcSmsReceiver declaration',
+        'FAIL: Missing required release manifest entry: FinarcSmsReceiver declaration',
       ),
     );
   });
 
-  test('fails when SMS_RECEIVED intent filter is present', () async {
+  test('fails when SMS_RECEIVED intent filter is missing', () async {
     final result = await runScriptWithFixture(
       'play_release_invalid_sms_received_intent.xml',
     );
@@ -74,7 +74,7 @@ void main() {
     expect(
       result.stdout.toString(),
       contains(
-        'FAIL: Found forbidden entry in release manifest: SMS_RECEIVED intent filter',
+        'FAIL: Missing required release manifest entry: SMS_RECEIVED intent filter',
       ),
     );
   });

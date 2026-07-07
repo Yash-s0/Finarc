@@ -65,6 +65,18 @@ String _pendingMetaWithExactTime(PendingTransaction item) {
   return '$exact • ${_sourceLabelForPending(item.sourceType)}';
 }
 
+class _PendingMonthGroup {
+  const _PendingMonthGroup({
+    required this.key,
+    required this.month,
+    required this.items,
+  });
+
+  final String key;
+  final DateTime month;
+  final List<PendingTransaction> items;
+}
+
 class PendingTransactionsScreen extends ConsumerStatefulWidget {
   const PendingTransactionsScreen({super.key, this.openPendingId});
 
@@ -78,6 +90,7 @@ class PendingTransactionsScreen extends ConsumerStatefulWidget {
 class _PendingTransactionsScreenState
     extends ConsumerState<PendingTransactionsScreen> {
   int? _lastAutoOpenedPendingId;
+  final Set<String> _collapsedMonthKeys = {};
 
   @override
   Widget build(BuildContext context) {
@@ -182,104 +195,127 @@ class _PendingTransactionsScreenState
                   );
                 }
 
-                final grouped = <String, List<PendingTransaction>>{};
-                for (final item in items) {
-                  final day =
-                      '${item.transactionDate.year}-${item.transactionDate.month.toString().padLeft(2, '0')}-${item.transactionDate.day.toString().padLeft(2, '0')}';
-                  grouped
-                      .putIfAbsent('${item.sourceType}::$day', () => [])
-                      .add(item);
-                }
+                final monthGroups = _groupByTransactionMonth(items);
 
-                final listChildren = grouped.entries.map<Widget>((entry) {
-                  final source = entry.key.split('::').first;
-                  final day = entry.key.split('::').last;
-
+                final listChildren = monthGroups.map<Widget>((group) {
+                  final collapsed = _collapsedMonthKeys.contains(group.key);
                   return Padding(
                     padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         FinarcSectionHeader(
-                          title:
-                              '${_sourceLabelForPending(source)} • ${_prettyDay(day)}',
-                          trailing: FinarcStatusBadge(
-                            label: '${entry.value.length}',
-                            tone: FinarcStatusTone.info,
-                            compact: true,
+                          title: _prettyMonth(group.month),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              FinarcStatusBadge(
+                                label: '${group.items.length}',
+                                tone: FinarcStatusTone.info,
+                                compact: true,
+                              ),
+                              const SizedBox(width: AppSpacing.xxs),
+                              IconButton(
+                                constraints: const BoxConstraints.tightFor(
+                                  width: 36,
+                                  height: 36,
+                                ),
+                                padding: EdgeInsets.zero,
+                                visualDensity: VisualDensity.compact,
+                                tooltip: collapsed
+                                    ? 'Expand ${_prettyMonth(group.month)}'
+                                    : 'Collapse ${_prettyMonth(group.month)}',
+                                icon: Icon(
+                                  collapsed
+                                      ? Icons.keyboard_arrow_down_rounded
+                                      : Icons.keyboard_arrow_up_rounded,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    if (collapsed) {
+                                      _collapsedMonthKeys.remove(group.key);
+                                    } else {
+                                      _collapsedMonthKeys.add(group.key);
+                                    }
+                                  });
+                                },
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: AppSpacing.xs),
-                        ...entry.value.map((item) {
-                          final confidenceLabel = _confidenceLabel(
-                            item.confidenceScore,
-                          );
-                          final confidenceTone = _confidenceTone(
-                            item.confidenceScore,
-                          );
-                          final direction = _pendingDirection(item);
-                          final isIncome =
-                              direction == PendingTransactionDirection.income;
+                        if (!collapsed) ...[
+                          const SizedBox(height: AppSpacing.xs),
+                          ...group.items.map((item) {
+                            final confidenceLabel = _confidenceLabel(
+                              item.confidenceScore,
+                            );
+                            final confidenceTone = _confidenceTone(
+                              item.confidenceScore,
+                            );
+                            final direction = _pendingDirection(item);
+                            final isIncome =
+                                direction == PendingTransactionDirection.income;
 
-                          return Padding(
-                            padding: const EdgeInsets.only(
-                              bottom: AppSpacing.xs,
-                            ),
-                            child: FinarcTransactionTile(
-                              onTap: () => FinarcBottomSheet.show<void>(
-                                context,
-                                isScrollControlled: true,
-                                child: _ConfirmTransactionSheet(item: item),
+                            return Padding(
+                              padding: const EdgeInsets.only(
+                                bottom: AppSpacing.xs,
                               ),
-                              title: item.merchant,
-                              subtitle: item.categorySuggestion,
-                              meta: _pendingMetaWithExactTime(item),
-                              amount:
-                                  '${isIncome ? '+' : '-'}${inr(item.amount)}',
-                              amountColor: isIncome
-                                  ? (isDark
-                                        ? AppColors.darkSuccess
-                                        : AppColors.lightSuccess)
-                                  : (isDark
-                                        ? AppColors.darkError
-                                        : AppColors.lightError),
-                              prefix: CircleAvatar(
-                                radius: 15,
-                                backgroundColor: isDark
-                                    ? AppColors.darkPrimarySoft
-                                    : AppColors.lightPrimarySoft,
-                                child: Icon(
-                                  _pendingIcon(item.sourceType),
-                                  size: 14,
-                                  color: isDark
-                                      ? AppColors.darkAccent
-                                      : AppColors.lightAccent,
+                              child: FinarcTransactionTile(
+                                onTap: () => FinarcBottomSheet.show<void>(
+                                  context,
+                                  isScrollControlled: true,
+                                  child: _ConfirmTransactionSheet(item: item),
                                 ),
-                              ),
-                              badges: [
-                                FinarcTransactionPresentation.pendingStatusBadge(
-                                  'pending',
+                                title: item.merchant,
+                                subtitle: item.categorySuggestion,
+                                meta: _pendingMetaWithExactTime(item),
+                                amount:
+                                    '${isIncome ? '+' : '-'}${inr(item.amount)}',
+                                amountColor: isIncome
+                                    ? (isDark
+                                          ? AppColors.darkSuccess
+                                          : AppColors.lightSuccess)
+                                    : (isDark
+                                          ? AppColors.darkError
+                                          : AppColors.lightError),
+                                prefix: CircleAvatar(
+                                  radius: 15,
+                                  backgroundColor: isDark
+                                      ? AppColors.darkPrimarySoft
+                                      : AppColors.lightPrimarySoft,
+                                  child: Icon(
+                                    _pendingIcon(item.sourceType),
+                                    size: 14,
+                                    color: isDark
+                                        ? AppColors.darkAccent
+                                        : AppColors.lightAccent,
+                                  ),
                                 ),
-                                if (isIncome)
-                                  const FinarcStatusBadge(
-                                    label: 'Income',
-                                    tone: FinarcStatusTone.success,
+                                badges: [
+                                  FinarcTransactionPresentation.pendingStatusBadge(
+                                    'pending',
+                                  ),
+                                  if (isIncome)
+                                    const FinarcStatusBadge(
+                                      label: 'Income',
+                                      tone: FinarcStatusTone.success,
+                                      compact: true,
+                                    ),
+                                  FinarcStatusBadge(
+                                    label: confidenceLabel,
+                                    tone: confidenceTone,
                                     compact: true,
                                   ),
-                                FinarcStatusBadge(
-                                  label: confidenceLabel,
-                                  tone: confidenceTone,
-                                  compact: true,
-                                ),
-                                FinarcStatusBadge(
-                                  label: _timeAgo(item.detectedAt),
-                                  tone: FinarcStatusTone.neutral,
-                                  compact: true,
-                                ),
-                              ],
-                            ),
-                          );
-                        }),
+                                  FinarcStatusBadge(
+                                    label: _timeAgo(item.detectedAt),
+                                    tone: FinarcStatusTone.neutral,
+                                    compact: true,
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
+                        ],
                       ],
                     ),
                   );
@@ -445,16 +481,56 @@ class _PendingTransactionsScreenState
     return '${diff.inDays}d ago';
   }
 
-  static String _prettyDay(String yyyyMmDd) {
-    final date = DateTime.tryParse(yyyyMmDd);
-    if (date == null) return yyyyMmDd;
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final target = DateTime(date.year, date.month, date.day);
-    final diff = today.difference(target).inDays;
-    if (diff == 0) return 'Today';
-    if (diff == 1) return 'Yesterday';
-    return '${target.day.toString().padLeft(2, '0')}/${target.month.toString().padLeft(2, '0')}/${target.year}';
+  static List<_PendingMonthGroup> _groupByTransactionMonth(
+    List<PendingTransaction> items,
+  ) {
+    final sortedItems = [...items]
+      ..sort((a, b) {
+        final dateCompare = b.transactionDate.compareTo(a.transactionDate);
+        if (dateCompare != 0) return dateCompare;
+        return b.detectedAt.compareTo(a.detectedAt);
+      });
+    final grouped = <String, List<PendingTransaction>>{};
+    final months = <String, DateTime>{};
+    for (final item in sortedItems) {
+      final local = item.transactionDate.toLocal();
+      final month = DateTime(local.year, local.month);
+      final key = _monthKey(month);
+      months[key] = month;
+      grouped.putIfAbsent(key, () => []).add(item);
+    }
+    final groups = grouped.entries
+        .map(
+          (entry) => _PendingMonthGroup(
+            key: entry.key,
+            month: months[entry.key]!,
+            items: entry.value,
+          ),
+        )
+        .toList(growable: false);
+    return groups..sort((a, b) => b.month.compareTo(a.month));
+  }
+
+  static String _monthKey(DateTime month) {
+    return '${month.year}-${month.month.toString().padLeft(2, '0')}';
+  }
+
+  static String _prettyMonth(DateTime month) {
+    const names = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+    return '${names[month.month - 1]} ${month.year}';
   }
 
   static IconData _pendingIcon(String sourceType) {

@@ -509,6 +509,7 @@ class DetectionSettingsSection extends StatelessWidget {
     required this.smsDetectionEnabled,
     required this.onOpenNotificationSetup,
     required this.onOpenSmsSetup,
+    required this.onOpenSmsRecovery,
     required this.onDetectionToggle,
     required this.onSmsDetectionToggle,
   });
@@ -521,6 +522,7 @@ class DetectionSettingsSection extends StatelessWidget {
   final bool smsDetectionEnabled;
   final VoidCallback onOpenNotificationSetup;
   final VoidCallback onOpenSmsSetup;
+  final VoidCallback onOpenSmsRecovery;
   final ValueChanged<bool> onDetectionToggle;
   final ValueChanged<bool> onSmsDetectionToggle;
 
@@ -603,6 +605,12 @@ class DetectionSettingsSection extends StatelessWidget {
                 onPressed: onOpenSmsSetup,
                 label: 'Open SMS Setup',
                 icon: Icons.sms_outlined,
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              FinarcSecondaryButton(
+                onPressed: onOpenSmsRecovery,
+                label: 'Import Past SMS',
+                icon: Icons.history_toggle_off_outlined,
               ),
               const SizedBox(height: AppSpacing.xs),
               Row(

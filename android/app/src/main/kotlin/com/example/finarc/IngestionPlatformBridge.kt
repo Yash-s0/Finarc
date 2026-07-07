@@ -1,8 +1,8 @@
 package com.yashsharma.finarc
 
-import io.flutter.embedding.android.FlutterActivity
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.embedding.android.FlutterActivity
 
 interface IngestionPlatformBridge {
     fun isIngestionAvailable(): Boolean
@@ -53,11 +53,5 @@ private class NoOpIngestionPlatformBridge : IngestionPlatformBridge {
 }
 
 fun createIngestionPlatformBridge(activity: FlutterActivity): IngestionPlatformBridge {
-    return try {
-        val clazz = Class.forName("com.yashsharma.finarc.PersonalDebugIngestionPlatformBridge")
-        val ctor = clazz.getConstructor(FlutterActivity::class.java)
-        ctor.newInstance(activity) as IngestionPlatformBridge
-    } catch (_: Throwable) {
-        NoOpIngestionPlatformBridge()
-    }
+    return AndroidSmsIngestionPlatformBridge(activity)
 }

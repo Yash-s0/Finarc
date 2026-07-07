@@ -76,8 +76,9 @@ class SmsIngestionService {
   Future<List<int>> processSmsPayload(
     NotificationPayload payload, {
     bool bypassSenderFilter = false,
+    bool bypassDetectionGate = false,
   }) async {
-    if (!_isSmsDetectionEnabled()) {
+    if (!bypassDetectionGate && !_isSmsDetectionEnabled()) {
       _log(payload, 'blocked-sms-detection-disabled');
       return const [];
     }

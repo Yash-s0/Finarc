@@ -94,12 +94,11 @@ Runtime mode is controlled with `--dart-define=APP_MODE=...`.
 
 ### `playRelease` / release
 
-- Play-safe release path.
-- No `READ_SMS` permission.
-- No `RECEIVE_SMS` permission.
-- No SMS receiver registration.
+- Play Store release path.
+- Includes optional `READ_SMS` and `RECEIVE_SMS` access for local SMS transaction recovery.
+- Registers the SMS receiver for user-enabled transaction-like SMS detection.
 - Notification listener service is present for optional, user-enabled transaction-like notification detection.
-- Release manifest checks fail if restricted SMS permissions or SMS receivers are present.
+- Release manifest checks require notification listener and SMS recovery entries to be present.
 
 ## Notification Detection Behavior
 
@@ -168,7 +167,7 @@ Script summary:
 - `build_personal_debug.sh`: Builds `personalDebug` for local personal testing.
 - `install_debug.sh`: Builds if needed and installs the safe debug APK with `adb install -r`.
 - `install_personal_debug.sh`: Builds and installs the personal debug APK with `adb install -r`.
-- `check_play_manifest.sh`: Validates merged Play/release manifests and fails on restricted SMS permissions or receivers.
+- `check_play_manifest.sh`: Validates merged Play/release manifests include notification listener and SMS recovery entries.
 - `build_play_release.sh`: Runs analyze, tests, release APK/AAB builds, manifest validation, and release APK audit.
 
 Play release output paths:
@@ -216,7 +215,7 @@ Before Play Store submission:
 
 - Host `docs/privacy-policy.html` or equivalent static page and add the final hosted URL in Play Console.
 - Verify `./scripts/build_play_release.sh` passes for the exact submitted artifact.
-- Re-check the final merged manifest for no SMS permissions or SMS receiver.
+- Re-check the final merged manifest for notification listener and SMS recovery entries.
 - Confirm Data Safety answers match the exact released binary and privacy policy.
 
 ## Signing Setup (Local Only)

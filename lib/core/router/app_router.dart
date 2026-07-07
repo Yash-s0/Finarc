@@ -38,6 +38,7 @@ import '../../features/pending/presentation/pending_success_screen.dart';
 import '../../features/pending/presentation/pending_transactions_screen.dart';
 import '../../features/pending/notifications/notification_access_setup_screen.dart';
 import '../../features/pending/notifications/sms_access_setup_screen.dart';
+import '../../features/pending/notifications/sms_recovery_screen.dart';
 import '../../features/onboarding/presentation/onboarding_flow_screen.dart';
 import '../../features/accounts/presentation/account_detail_screen.dart';
 import '../../features/accounts/presentation/accounts_overview_screen.dart';
@@ -227,6 +228,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/sms/setup',
       builder: (_, _) => const SmsAccessSetupScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.smsRecovery,
+      builder: (_, _) => const SmsRecoveryScreen(),
     ),
     GoRoute(
       path: '/pending/edit/:id',

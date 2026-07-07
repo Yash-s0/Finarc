@@ -159,6 +159,12 @@ class ProfileScreenSafe extends ConsumerWidget {
                   icon: Icons.notifications_active_outlined,
                   label: 'Notification Access',
                 ),
+                const SizedBox(height: AppSpacing.xs),
+                FinarcSecondaryButton(
+                  onPressed: () => context.push(AppRoutes.smsRecovery),
+                  icon: Icons.history_toggle_off_outlined,
+                  label: 'Import Past SMS',
+                ),
               ],
             ),
           ),

@@ -8,6 +8,7 @@ class AppRoutes {
   static const logs = '/internal/logs';
   static const releaseChecklist = '/internal/release-checklist';
   static const notificationDiagnostics = '/notifications/setup';
+  static const smsRecovery = '/sms/recovery';
   static const notificationDiagnosticsLogs = logs;
   static const manualMessageParser = '/pending/paste';
   static const developerSpace = '/profile/developer-space';

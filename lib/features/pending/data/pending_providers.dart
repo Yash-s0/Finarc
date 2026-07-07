@@ -50,7 +50,10 @@ final pendingTransactionsProvider = FutureProvider<List<PendingTransaction>>((
 
   final base = db.select(db.pendingTransactions)
     ..where((p) => p.status.equals('pending'))
-    ..orderBy([(p) => OrderingTerm.desc(p.detectedAt)]);
+    ..orderBy([
+      (p) => OrderingTerm.desc(p.transactionDate),
+      (p) => OrderingTerm.desc(p.detectedAt),
+    ]);
 
   if (filter != 'All') {
     base.where((p) => p.sourceType.equals(filter));

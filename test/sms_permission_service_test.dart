@@ -39,6 +39,21 @@ void main() {
                 'lastCallbackSuccessAtMillis': 1716700001000,
                 'lastError': null,
               };
+            case 'previewRecentSms':
+            case 'previewSmsRange':
+              return <Map<String, Object?>>[
+                {
+                  'packageName': 'android.sms',
+                  'appName': 'SMS',
+                  'sender': 'CP-AXISBK-S',
+                  'title': 'CP-AXISBK-S',
+                  'body': 'Spent INR 33275.73 Axis Bank Card no. XX0374',
+                  'receivedAt': 1783429500000,
+                  'sourceType': 'sms',
+                  'isOngoing': false,
+                  'category': 'sms',
+                },
+              ];
           }
           return null;
         });
@@ -77,5 +92,28 @@ void main() {
     expect(diagnostics.lastSender, 'JD-HDFCBK-S');
     expect(diagnostics.lastReceivedAt, isNotNull);
     expect(diagnostics.lastCallbackSuccessAt, isNotNull);
+  });
+
+  test('previewRecentSms maps native rows', () async {
+    final service = SmsPermissionService();
+    final rows = await service.previewRecentSms(60);
+
+    expect(calls, contains('previewRecentSms'));
+    expect(rows, hasLength(1));
+    expect(rows.single.sender, 'CP-AXISBK-S');
+    expect(rows.single.body, contains('33275.73'));
+    expect(rows.single.toPayloadMap()['sourceType'], 'sms');
+  });
+
+  test('previewSmsRange maps native rows', () async {
+    final service = SmsPermissionService();
+    final rows = await service.previewSmsRange(
+      from: DateTime(2026, 7, 1),
+      to: DateTime(2026, 7, 7, 23, 59),
+    );
+
+    expect(calls, contains('previewSmsRange'));
+    expect(rows, hasLength(1));
+    expect(rows.single.sender, 'CP-AXISBK-S');
   });
 }

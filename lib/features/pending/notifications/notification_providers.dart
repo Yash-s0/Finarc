@@ -9,6 +9,7 @@ import '../../../core/router/app_router.dart';
 import '../../accounts/data/accounts_providers.dart';
 import '../../alerts/data/alerts_providers.dart';
 import '../../dashboard/data/dashboard_providers.dart';
+import '../../expenses/data/expenses_providers.dart';
 import '../data/pending_providers.dart';
 import 'detection_settings.dart';
 import 'detection_settings_service.dart';
@@ -27,6 +28,7 @@ import 'reminder_service.dart';
 import 'sms_fingerprint.dart';
 import 'sms_ingestion_service.dart';
 import 'sms_permission_service.dart';
+import 'sms_recovery_service.dart';
 import 'sms_sender_filter.dart';
 import 'real_ingestion_mode_service.dart';
 
@@ -425,6 +427,17 @@ final smsIngestionServiceProvider = Provider<SmsIngestionService>((ref) {
         ref.read(showDetectionNotificationsProvider),
     appendDebug: append,
     senderFilter: const SmsSenderFilter(),
+  );
+});
+
+final smsRecoveryServiceProvider = Provider<SmsRecoveryService>((ref) {
+  return SmsRecoveryService(
+    ref.read(appDatabaseProvider),
+    ref.read(smsPermissionServiceProvider),
+    ref.read(pendingIngestionServiceProvider),
+    ref.read(transactionEngineProvider),
+    NotificationKeywordFilter(),
+    const SmsSenderFilter(),
   );
 });
 

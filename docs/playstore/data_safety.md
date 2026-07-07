@@ -1,12 +1,12 @@
 # Finarc Play Data Safety Guidance (Draft)
 
-_Last updated: 2026-06-18_
+_Last updated: 2026-07-07_
 
 ## Intended Play-safe release behavior
 - Offline-first, local-only storage.
 - No backend upload in v1.
 - No cloud sync in v1.
-- No SMS permissions or SMS receiver in Play release.
+- Optional SMS permissions and receiver may be used for local transaction SMS detection and 60-day SMS recovery when enabled by the user.
 - Optional notification access may be used for local transaction-like notification detection when enabled by the user.
 
 ## Suggested Play Console Data Safety posture
@@ -26,9 +26,9 @@ Use final answers only after verifying the exact shipped binary and privacy poli
 
 5. Permissions
 - `POST_NOTIFICATIONS` may be used for local reminders/alerts.
-- Play-safe release should not declare `READ_SMS`/`RECEIVE_SMS`.
+- Play release may declare `READ_SMS`/`RECEIVE_SMS` for local transaction SMS recovery and detection.
 - Play-safe release may declare a `NotificationListenerService` for optional, user-enabled local notification detection.
-- Notification detection should be disclosed as local-only and confirmation-based.
+- SMS and notification detection should be disclosed as local-only and confirmation-based.
 
 ## Plugin telemetry check
 Current project dependencies reviewed in `pubspec.yaml` do not indicate analytics SDK/network telemetry by default.

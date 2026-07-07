@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
 import 'notification_providers.dart';
@@ -52,14 +54,14 @@ class SmsAccessSetupScreen extends ConsumerWidget {
                     Text(
                       smsIngestionAvailable
                           ? 'SMS permission is currently disabled.'
-                          : 'SMS reading is not included in this Play-safe release build.',
+                          : 'SMS reading is not available in this build.',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   if (!smsIngestionAvailable)
                     Padding(
                       padding: const EdgeInsets.only(top: AppSpacing.xs),
                       child: Text(
-                        'Manual/mock SMS parsing is only available in debug builds.',
+                        'SMS parsing requires a build with local SMS access.',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ),
@@ -257,6 +259,14 @@ class SmsAccessSetupScreen extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: AppSpacing.sm),
+                  FinarcSecondaryButton(
+                    onPressed: smsIngestionAvailable
+                        ? () => context.push(AppRoutes.smsRecovery)
+                        : null,
+                    icon: Icons.manage_search_outlined,
+                    label: 'Review Past SMS Before Import',
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
                   FinarcPrimaryButton(
                     onPressed: () async {
                       if (!smsIngestionAvailable) return;
@@ -291,7 +301,7 @@ class SmsAccessSetupScreen extends ConsumerWidget {
                       );
                     },
                     icon: Icons.history_toggle_off_outlined,
-                    label: 'Backfill Last ${settings.smsBackfillDays} Days',
+                    label: 'Quick Queue Last ${settings.smsBackfillDays} Days',
                   ),
                 ],
               ),

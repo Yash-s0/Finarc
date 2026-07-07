@@ -24,7 +24,7 @@ class RealIngestionModeService {
   }
 
   Future<bool> isSmsIngestionAvailable() async {
-    if (!AppModeConfig.isPersonalDebug) return false;
+    if (AppModeConfig.isSafeDebug) return false;
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return false;
     try {
       final available = await _channel.invokeMethod<bool>(

@@ -12,7 +12,7 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 
-class PersonalDebugIngestionPlatformBridge(
+class AndroidSmsIngestionPlatformBridge(
     private val activity: FlutterActivity,
 ) : IngestionPlatformBridge {
     companion object {
@@ -106,23 +106,32 @@ class PersonalDebugIngestionPlatformBridge(
         )
     }
 
-    private fun scanRecentSms(days: Int): Int {
-        if (!isIngestionAvailable()) return 0
-        if (!isPermissionGranted()) return 0
+    private fun recentSmsRows(days: Int): List<Map<String, Any?>> {
+        val boundedDays = days.coerceIn(1, 3650)
+        val toMillis = System.currentTimeMillis()
+        val fromMillis = toMillis - boundedDays * 24L * 60L * 60L * 1000L
+        return smsRowsBetween(fromMillis, toMillis)
+    }
 
-        val boundedDays = days.coerceIn(1, 30)
-        val sinceMillis = System.currentTimeMillis() - boundedDays * 24L * 60L * 60L * 1000L
+    private fun smsRowsBetween(fromMillis: Long, toMillis: Long): List<Map<String, Any?>> {
+        if (!isIngestionAvailable()) return emptyList()
+        if (!isPermissionGranted()) return emptyList()
+
+        val startMillis = minOf(fromMillis, toMillis).coerceAtLeast(0L)
+        val endMillis = maxOf(fromMillis, toMillis).coerceAtMost(System.currentTimeMillis())
+        if (startMillis > endMillis) return emptyList()
+
         val uri = Telephony.Sms.Inbox.CONTENT_URI
         val projection = arrayOf(
             Telephony.Sms.ADDRESS,
             Telephony.Sms.BODY,
             Telephony.Sms.DATE,
         )
-        val selection = "${Telephony.Sms.DATE} >= ?"
-        val selectionArgs = arrayOf(sinceMillis.toString())
+        val selection = "${Telephony.Sms.DATE} >= ? AND ${Telephony.Sms.DATE} <= ?"
+        val selectionArgs = arrayOf(startMillis.toString(), endMillis.toString())
         val sortOrder = "${Telephony.Sms.DATE} DESC"
 
-        var count = 0
+        val rows = mutableListOf<Map<String, Any?>>()
         activity.contentResolver.query(uri, projection, selection, selectionArgs, sortOrder)?.use { cursor ->
             val addressIdx = cursor.getColumnIndex(Telephony.Sms.ADDRESS)
             val bodyIdx = cursor.getColumnIndex(Telephony.Sms.BODY)
@@ -134,24 +143,30 @@ class PersonalDebugIngestionPlatformBridge(
                 val date = if (dateIdx >= 0) cursor.getLong(dateIdx) else System.currentTimeMillis()
                 if (body.isBlank()) continue
 
-                val payload = mapOf(
-                    "packageName" to "android.sms",
-                    "appName" to "SMS",
-                    "sender" to sender.trim(),
-                    "title" to sender.trim(),
-                    "body" to body.trim(),
-                    "bigText" to null,
-                    "subText" to null,
-                    "receivedAt" to date,
-                    "sourceType" to "sms",
-                    "isOngoing" to false,
-                    "category" to "sms",
+                rows.add(
+                    mapOf(
+                        "packageName" to "android.sms",
+                        "appName" to "SMS",
+                        "sender" to sender.trim(),
+                        "title" to sender.trim(),
+                        "body" to body.trim(),
+                        "bigText" to null,
+                        "subText" to null,
+                        "receivedAt" to date,
+                        "sourceType" to "sms",
+                        "isOngoing" to false,
+                        "category" to "sms",
+                    ),
                 )
-                NotificationBridge.publish(payload)
-                count += 1
             }
         }
-        return count
+        return rows
+    }
+
+    private fun scanRecentSms(days: Int): Int {
+        val rows = recentSmsRows(days)
+        rows.forEach { NotificationBridge.publish(it) }
+        return rows.size
     }
 
     override fun handleMethodCall(call: MethodCall, result: MethodChannel.Result): Boolean {
@@ -195,6 +210,19 @@ class PersonalDebugIngestionPlatformBridge(
             "scanRecentSms" -> {
                 val days = call.argument<Int>("days") ?: 7
                 result.success(scanRecentSms(days))
+                true
+            }
+            "previewRecentSms" -> {
+                val days = call.argument<Int>("days") ?: 60
+                result.success(recentSmsRows(days))
+                true
+            }
+            "previewSmsRange" -> {
+                val fromMillis = call.argument<Number>("fromMillis")?.toLong()
+                    ?: (System.currentTimeMillis() - 60L * 24L * 60L * 60L * 1000L)
+                val toMillis = call.argument<Number>("toMillis")?.toLong()
+                    ?: System.currentTimeMillis()
+                result.success(smsRowsBetween(fromMillis, toMillis))
                 true
             }
             else -> false

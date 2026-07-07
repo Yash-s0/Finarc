@@ -43,16 +43,19 @@ void main() {
     expect(calls, isEmpty);
   });
 
-  test('release mode enables notification ingestion but not SMS', () async {
-    AppModeConfig.debugOverride = AppMode.release;
-    final service = RealIngestionModeService();
+  test(
+    'release mode enables notification and SMS ingestion when native bridge is available',
+    () async {
+      AppModeConfig.debugOverride = AppMode.release;
+      final service = RealIngestionModeService();
 
-    expect(await service.isNotificationIngestionAvailable(), isTrue);
-    expect(await service.isSmsIngestionAvailable(), isFalse);
-    expect(await service.isAvailable(), isTrue);
-    expect(calls, contains('isNotificationIngestionAvailable'));
-    expect(calls, isNot(contains('isSmsIngestionAvailable')));
-  });
+      expect(await service.isNotificationIngestionAvailable(), isTrue);
+      expect(await service.isSmsIngestionAvailable(), isTrue);
+      expect(await service.isAvailable(), isTrue);
+      expect(calls, contains('isNotificationIngestionAvailable'));
+      expect(calls, contains('isSmsIngestionAvailable'));
+    },
+  );
 
   test('personalDebug mode enables notification and SMS ingestion', () async {
     AppModeConfig.debugOverride = AppMode.personalDebug;

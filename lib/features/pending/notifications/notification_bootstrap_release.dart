@@ -98,6 +98,7 @@ class NotificationRouteAction {
 final notificationListenerBootstrapProvider = Provider<void>((ref) {
   final bridge = ref.read(_notificationBridgeProvider);
   final notificationIngestion = ref.read(_notificationIngestionServiceProvider);
+  final smsIngestion = ref.read(smsIngestionServiceProvider);
   ref.watch(reminderBootstrapProvider);
 
   Future<void> runAlertEvaluation() async {
@@ -134,14 +135,38 @@ final notificationListenerBootstrapProvider = Provider<void>((ref) {
   }
 
   Future<void> initializeBridgeIfAvailable() async {
-    final available = await ref
+    final notificationAvailable = await ref
         .read(_notificationPermissionServiceProvider)
         .isListenerComponentAvailable();
-    if (!available) return;
+    final smsAvailable = await ref.read(smsIngestionAvailableProvider.future);
+    if (!notificationAvailable && !smsAvailable) return;
+
+    if (smsAvailable) {
+      final smsGranted = await ref
+          .read(smsPermissionServiceProvider)
+          .isPermissionGranted();
+      ref.read(smsPermissionCachedProvider.notifier).state = smsGranted;
+    }
 
     await bridge.initialize(
       onPayload: (payload) async {
-        if (payload.sourceType == 'sms') return;
+        if (payload.sourceType == 'sms') {
+          if (!smsAvailable) return;
+          final ids = await smsIngestion.processSmsPayload(payload);
+          if (ids.isNotEmpty) {
+            await ref
+                .read(alertEvaluationActionsProvider)
+                .onPendingDetected(
+                  pendingId: ids.first,
+                  title: pendingAlertTitle(payload),
+                  body: 'Confirm this transaction in Finarc.',
+                );
+          }
+          ref.invalidate(pendingTransactionsProvider);
+          ref.invalidate(pendingCountProvider);
+          ref.invalidate(notificationDiagnosticsSnapshotProvider);
+          return;
+        }
 
         final ids = await notificationIngestion.processPayload(payload);
         if (ids.isNotEmpty) {

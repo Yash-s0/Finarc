@@ -22,9 +22,7 @@ class SmsAccessSetupScreenSafe extends StatelessWidget {
                   tone: FinarcStatusTone.neutral,
                 ),
                 SizedBox(height: AppSpacing.xs),
-                Text(
-                  'SMS reading is not included in this Play-safe release build.',
-                ),
+                Text('SMS reading is not available in this build.'),
                 SizedBox(height: AppSpacing.xs),
                 Text(
                   'Notification listener ingestion remains available for local pending detection.',

@@ -178,7 +178,7 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.xs),
                   if (!smsIngestionAvailable)
                     Text(
-                      'SMS reading is not included in this Play-safe release build.',
+                      'SMS reading is not available in this build.',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   if (!smsIngestionAvailable)

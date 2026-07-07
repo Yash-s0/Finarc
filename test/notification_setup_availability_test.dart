@@ -198,7 +198,7 @@ void main() {
 
     expect(find.text('SMS NOT AVAILABLE IN THIS BUILD'), findsOneWidget);
     expect(
-      find.text('SMS reading is not included in this Play-safe release build.'),
+      find.text('SMS reading is not available in this build.'),
       findsOneWidget,
     );
     final enableSmsButton = tester.widget<FilledButton>(

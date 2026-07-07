@@ -28,6 +28,20 @@ class PendingIngestionService {
     return _parserRegistry.parseInput(input);
   }
 
+  String defaultSourceSuggestion(ParserInput input) {
+    return _defaultSourceSuggestion(input);
+  }
+
+  Future<int?> suggestPaymentSourceId({
+    required String sourceType,
+    required String? sourceHint,
+  }) {
+    return _suggestPaymentSourceId(
+      sourceType: sourceType,
+      sourceHint: sourceHint,
+    );
+  }
+
   Future<List<int>> ingestParserInput(ParserInput input) async {
     final result = previewParserInput(input);
     await globalAppLogService.log(

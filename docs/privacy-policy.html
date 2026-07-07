@@ -692,9 +692,11 @@
         <section id="sms-permissions">
           <h2>6. SMS Permissions</h2>
           <p>
-            The Play Store/release build of Finarc does not request or use SMS
-            permissions. It does not request <code>READ_SMS</code>, does not request
-            <code>RECEIVE_SMS</code>, and does not register an SMS receiver.
+            The Play Store/release build of Finarc may request SMS permissions for
+            local transaction SMS detection and recovery. If you grant SMS permission,
+            Finarc can read transaction-like SMS on your device to create pending
+            transactions for your review. SMS contents are processed locally for app
+            functionality and are not uploaded by Finarc in normal app usage.
           </p>
         </section>
 
