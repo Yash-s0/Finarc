@@ -222,6 +222,65 @@ class ParserTextUtils {
     return hasSourceDebit;
   }
 
+  static bool looksLikeCardOtpMessage(String text) {
+    final lower = text.toLowerCase();
+    final hasCard =
+        lower.contains('card') ||
+        RegExp(
+          r'\bcard\s*[x* -]*\d{3,4}\b',
+          caseSensitive: false,
+        ).hasMatch(text);
+    if (!hasCard) return false;
+    return lower.contains('otp') ||
+        lower.contains('one-time password') ||
+        lower.contains('one time password') ||
+        lower.contains('do not disclose') ||
+        lower.contains('secret');
+  }
+
+  static bool looksLikeCardRestrictionMessage(String text) {
+    final lower = text.toLowerCase();
+    final hasCard = lower.contains('card');
+    if (!hasCard) return false;
+    return lower.contains('transaction restriction') ||
+        lower.contains('restriction setting') ||
+        lower.contains('restriction settings') ||
+        lower.contains('transaction controls') ||
+        lower.contains('setting(s)') ||
+        lower.contains('settings modified') ||
+        lower.contains('has been modified');
+  }
+
+  static bool looksLikeAvailableLimitOnlyCardMessage(String text) {
+    final lower = text.toLowerCase();
+    final hasCard =
+        lower.contains('card') ||
+        RegExp(
+          r'\bcard\s*[x* -]*\d{3,4}\b',
+          caseSensitive: false,
+        ).hasMatch(text);
+    if (!hasCard) return false;
+    final hasAvailableLimit =
+        lower.contains('avl limit') ||
+        lower.contains('avl lmt') ||
+        lower.contains('available limit') ||
+        lower.contains('credit limit');
+    if (!hasAvailableLimit) return false;
+    final hasSpendAction = RegExp(
+      r'\b(?:spent|used|purchase(?:d)?|charged|debited|paid)\b',
+      caseSensitive: false,
+    ).hasMatch(text);
+    return !hasSpendAction;
+  }
+
+  static bool looksLikeNonExpenseCardMessage(String text) {
+    return looksLikeCardBillDueMessage(text) ||
+        looksLikeCardPaymentSettlementMessage(text) ||
+        looksLikeCardOtpMessage(text) ||
+        looksLikeCardRestrictionMessage(text) ||
+        looksLikeAvailableLimitOnlyCardMessage(text);
+  }
+
   static String? extractMerchantAfterKeyword(
     String text,
     List<String> keywords,
@@ -420,7 +479,11 @@ class ParserTextUtils {
     final normalized = value.trim();
     if (normalized.isEmpty) return false;
     return RegExp(
-          r'^\d{1,2}[-/\s](?:\d{1,2}|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(?:[-/\s]\d{2,4})?$',
+          r'^\d{1,2}[-/\s](?:\d{1,2}|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(?:[-/\s]\d{2,4})?(?:\s+\d{1,2}:\d{2}(?::\d{2})?\s*(?:IST|[AaPp][Mm])?)?$',
+          caseSensitive: false,
+        ).hasMatch(normalized) ||
+        RegExp(
+          r'^\d{1,2}[-/\s](?:\d{1,2}|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(?:[-/\s]\d{2,4})?(?:\s+\d{1,2}\s+\d{2}(?:\s+\d{2})?\s*(?:IST|[AaPp][Mm])?)?$',
           caseSensitive: false,
         ).hasMatch(normalized) ||
         RegExp(r'^\d{1,2}:\d{2}(?:\s*[AaPp][Mm])?$').hasMatch(normalized);

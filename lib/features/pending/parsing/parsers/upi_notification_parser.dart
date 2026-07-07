@@ -14,8 +14,7 @@ class UpiNotificationParser implements TransactionParser {
   @override
   bool canParse(ParserInput input) {
     final t = input.fullText.toLowerCase();
-    if (ParserTextUtils.looksLikeCardBillDueMessage(input.fullText) ||
-        ParserTextUtils.looksLikeCardPaymentSettlementMessage(input.fullText)) {
+    if (ParserTextUtils.looksLikeNonExpenseCardMessage(input.fullText)) {
       return false;
     }
     return input.sourceType == 'upiNotification' ||
@@ -28,11 +27,10 @@ class UpiNotificationParser implements TransactionParser {
 
   @override
   ParserResult parse(ParserInput input) {
-    if (ParserTextUtils.looksLikeCardBillDueMessage(input.fullText) ||
-        ParserTextUtils.looksLikeCardPaymentSettlementMessage(input.fullText)) {
+    if (ParserTextUtils.looksLikeNonExpenseCardMessage(input.fullText)) {
       return ParserResult(
         candidates: const [],
-        warnings: const ['Skipped bill due/card payment settlement message'],
+        warnings: const ['Skipped non-expense card message'],
         parserName: parserName,
         parsedAt: DateTime.now(),
       );

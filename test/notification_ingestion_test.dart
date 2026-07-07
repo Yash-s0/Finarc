@@ -1602,6 +1602,42 @@ void main() {
       expect(debugEntries.last.decision, 'pending-created');
     });
 
+    test(
+      'parses unknown Axis-style merchant without normalizer entry',
+      () async {
+        final cardId = await createCard(bankName: 'Axis Bank', last4: '0374');
+        final ids = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.google.android.apps.messaging',
+            appName: 'Messages',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 7, 7, 13, 4),
+            title: 'CP-AXISBK-S',
+            body:
+                'Spent INR 33275.73\n'
+                'Axis Bank Card no. XX0374\n'
+                '07-07-26 13:04:46 IST\n'
+                'TRAVELPORTAL\n'
+                'Avl Limit: INR 114844.17\n'
+                'Not you? SMS BLOCK 0374 to\n'
+                '919951860002',
+          ),
+        );
+
+        expect(ids, hasLength(1));
+        final pending = await (db.select(
+          db.pendingTransactions,
+        )..where((p) => p.id.equals(ids.single))).getSingle();
+        expect(pending.amount, 33275.73);
+        expect(pending.merchant, 'Travelportal');
+        expect(pending.paymentSourceTypeSuggestion, 'creditCard');
+        expect(pending.paymentSourceIdSuggestion, cardId);
+        expect(pending.transactionDate, DateTime(2026, 7, 7, 13, 4, 46));
+        expect(pending.merchant.toLowerCase(), isNot(contains('limit')));
+        expect(debugEntries.last.decision, 'pending-created');
+      },
+    );
+
     test('parses large YES Bank card SMS from Messages notification', () async {
       final cardId = await createCard(bankName: 'YES Bank', last4: '8731');
       final ids = await service.processPayload(
@@ -1627,6 +1663,90 @@ void main() {
       expect(pending.transactionDate, DateTime(2026, 7, 7, 13, 8, 48));
       expect(debugEntries.last.decision, 'pending-created');
     });
+
+    test(
+      'parses unknown YES-style UPI merchant without normalizer entry',
+      () async {
+        final cardId = await createCard(bankName: 'YES Bank', last4: '8731');
+        final ids = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.google.android.apps.messaging',
+            appName: 'Messages',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 7, 7, 13, 8),
+            title: 'AX-YESBNK-S',
+            body:
+                'INR 20,929.19 spent on YES BANK\n'
+                'Card X8731 @UPI_HOTELBOOKING\n'
+                'PAYMENTS IN 07-07-2026\n'
+                '01:08:48 pm. Avl Lmt INR\n'
+                '35,645.51. SMS BLKCC 8731 to\n'
+                '9840909000 if not you',
+          ),
+        );
+
+        expect(ids, hasLength(1));
+        final pending = await (db.select(
+          db.pendingTransactions,
+        )..where((p) => p.id.equals(ids.single))).getSingle();
+        expect(pending.amount, 20929.19);
+        expect(pending.merchant, 'Hotelbooking');
+        expect(pending.paymentSourceTypeSuggestion, 'creditCard');
+        expect(pending.paymentSourceIdSuggestion, cardId);
+        expect(pending.transactionDate, DateTime(2026, 7, 7, 13, 8, 48));
+        expect(pending.merchant.toLowerCase(), isNot(contains('payment')));
+        expect(debugEntries.last.decision, 'pending-created');
+      },
+    );
+
+    test(
+      'available-limit-only card SMS does not create pending expense',
+      () async {
+        await createCard(bankName: 'Axis Bank', last4: '6865');
+        final ids = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.google.android.apps.messaging',
+            appName: 'Messages',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 7, 7, 13, 1),
+            title: 'CP-AXISBK-S',
+            body:
+                'Axis Bank Card no. XX6865\n'
+                'Avl Limit: INR 147406.9\n'
+                'Not you? SMS BLOCK 6865 to 919951860002',
+          ),
+        );
+
+        expect(ids, isEmpty);
+        expect(await db.select(db.pendingTransactions).get(), isEmpty);
+        expect(debugEntries.last.reason, 'parser-no-candidate');
+      },
+    );
+
+    test(
+      'card restriction settings SMS does not create pending expense',
+      () async {
+        await createCard(bankName: 'YES Bank', last4: '8731');
+        final ids = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.google.android.apps.messaging',
+            appName: 'Messages',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 7, 7, 13, 8),
+            title: 'AX-YESBNK-S',
+            body:
+                'Dear Cardmember, as per your request, transaction restriction '
+                'setting(s) on your YES BANK Credit Card ending 8731 has been '
+                'modified. Visit iris by YES BANK app or YES ONLINE to view the '
+                'latest transaction controls set on your card -YES BANK LTD',
+          ),
+        );
+
+        expect(ids, isEmpty);
+        expect(await db.select(db.pendingTransactions).get(), isEmpty);
+        expect(debugEntries.last.reason, 'parser-no-candidate');
+      },
+    );
 
     test(
       'card refund notification creates refund pending instead of expense',

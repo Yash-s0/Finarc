@@ -205,6 +205,130 @@ void main() {
     expect(candidate.paymentSourceHint, contains('4567'));
   });
 
+  test('card parser extracts Axis style merchant from timestamp line', () {
+    final result = registry.parseInput(
+      ParserInput(
+        rawText:
+            'Spent INR 33275.73\n'
+            'Axis Bank Card no. XX0374\n'
+            '07-07-26 13:04:46 IST\n'
+            'TRAVELPORTAL\n'
+            'Avl Limit: INR 114844.17\n'
+            'Not you? SMS BLOCK 0374 to 919951860002',
+        sourceType: 'sms',
+        receivedAt: DateTime(2026, 7, 7, 13, 4),
+      ),
+    );
+
+    expect(result.parserName, 'CardNotificationParser');
+    final candidate = result.candidates.single;
+    expect(candidate.amount, 33275.73);
+    expect(candidate.merchant, 'Travelportal');
+    expect(candidate.paymentSourceHint, contains('0374'));
+    expect(candidate.transactionDate, DateTime(2026, 7, 7, 13, 4, 46));
+    expect(
+      candidate.metadata?['merchantExtractionStrategy'],
+      'line-after-timestamp',
+    );
+    expect(
+      candidate.metadata?['amountExtractionStrategy'],
+      'nearest-spend-action',
+    );
+    expect(candidate.metadata?['cardLast4'], '0374');
+    expect(candidate.metadata?['hasParsedDate'], isTrue);
+    expect(candidate.metadata?['hasParsedTime'], isTrue);
+  });
+
+  test('card parser extracts YES style merchant from UPI descriptor', () {
+    final result = registry.parseInput(
+      ParserInput(
+        rawText:
+            'INR 20,929.19 spent on YES BANK\n'
+            'Card X8731 @UPI_HOTELBOOKING\n'
+            'PAYMENTS IN 07-07-2026\n'
+            '01:08:48 pm. Avl Lmt INR\n'
+            '35,645.51. SMS BLKCC 8731 to\n'
+            '9840909000 if not you',
+        sourceType: 'sms',
+        receivedAt: DateTime(2026, 7, 7, 13, 8),
+      ),
+    );
+
+    expect(result.parserName, 'CardNotificationParser');
+    final candidate = result.candidates.single;
+    expect(candidate.amount, 20929.19);
+    expect(candidate.merchant, 'Hotelbooking');
+    expect(candidate.paymentSourceHint, contains('8731'));
+    expect(candidate.transactionDate, DateTime(2026, 7, 7, 13, 8, 48));
+    expect(candidate.metadata?['merchantExtractionStrategy'], 'upi-descriptor');
+  });
+
+  test('card parser extracts ICICI style merchant after date keyword', () {
+    final result = registry.parseInput(
+      ParserInput(
+        rawText:
+            'INR 328 spent using ICICI Bank Card XX9000 on 04-Jul-26 '
+            'on AMAZON PAY IN E. Avl Limit: INR 48,347.00. '
+            'If not you, call 1800 2662/SMS BLOCK 9000 to 9215676766.',
+        sourceType: 'sms',
+        receivedAt: DateTime(2026, 7, 4, 12, 50),
+      ),
+    );
+
+    expect(result.parserName, 'CardNotificationParser');
+    final candidate = result.candidates.single;
+    expect(candidate.amount, 328);
+    expect(candidate.merchant, 'Amazon');
+    expect(candidate.paymentSourceHint, contains('9000'));
+    expect(candidate.transactionDate, DateTime(2026, 7, 4, 12, 50));
+    expect(
+      candidate.metadata?['merchantExtractionStrategy'],
+      'merchant-keyword',
+    );
+  });
+
+  test('card parser creates fallback merchant when merchant is absent', () {
+    final result = registry.parseInput(
+      ParserInput(
+        rawText:
+            'INR 9999 spent using Test Bank Card XX1234 on 07-07-26 '
+            '10:11:12 IST. Avl Limit: INR 50,000.',
+        sourceType: 'sms',
+        receivedAt: DateTime(2026, 7, 7, 10, 11),
+      ),
+    );
+
+    expect(result.parserName, 'CardNotificationParser');
+    final candidate = result.candidates.single;
+    expect(candidate.amount, 9999);
+    expect(candidate.merchant, 'Card spend XX1234');
+    expect(candidate.confidenceLevel, 'MEDIUM');
+    expect(
+      candidate.metadata?['merchantExtractionStrategy'],
+      'fallback-card-spend',
+    );
+  });
+
+  test('non-expense card messages do not produce parser candidates', () {
+    final samples = [
+      'Axis Bank Card no. XX6865 Avl Limit: INR 147406.9. Not you? SMS BLOCK 6865.',
+      'Dear Cardmember, transaction restriction setting(s) on your YES BANK Credit Card ending 8731 has been modified.',
+      'URGENT: Bill Overdue! Credit card bill of ₹4,126.95 for Yes Bank card - 8731 was due on 4th Jul. Ignore if already paid!',
+      'Payment of INR 1145 has been received towards your Axis Bank Credit Card XX0374 on 01-07-26 - Axis Bank',
+    ];
+
+    for (final sample in samples) {
+      final result = registry.parseInput(
+        ParserInput(
+          rawText: sample,
+          sourceType: 'sms',
+          receivedAt: DateTime(2026, 7, 7, 12),
+        ),
+      );
+      expect(result.candidates, isEmpty, reason: sample);
+    }
+  });
+
   test('merchant normalization maps known merchants', () {
     expect(MerchantNormalizer.normalize('SWIGGY INSTAMART UPI TXN'), 'Swiggy');
     expect(MerchantNormalizer.normalize('AMAZON PAY INFO'), 'Amazon');
