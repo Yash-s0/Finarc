@@ -49,6 +49,7 @@ Date: 2026-07-06
 
 - Added and updated focused tests in `test/notification_ingestion_test.dart`.
 - Added service-level tests for Amazon Pay wallet balance sync behavior.
+- Added bill-due tests for cards from different issuers sharing the same last four digits.
 - Verified with:
   - `flutter test test/notification_ingestion_test.dart`
   - `flutter test test/app_shell_test.dart test/app_shell_responsive_test.dart test/pending_service_test.dart test/notification_diagnostics_service_test.dart`
@@ -84,8 +85,8 @@ Date: 2026-07-06
 2. Done: Add explicit partial-payment rules for bill due notifications.
 3. Done: Add cycle-aware bill matching that uses billing date, due date, amount, and notification date together.
 4. Done: Add tests for year-boundary dates like `31st Dec` and `1st Jan`.
-5. Next: Add tests for same last four digits across multiple issuers.
-6. Add tests for minimum-due-only notifications.
+5. Done: Add tests for same last four digits across multiple issuers.
+6. Next: Add tests for minimum-due-only notifications.
 7. Add developer-space filters for `bill due`, `card payment`, `wallet balance`, `manual paste`, and `parser failed`.
 8. Persist manual paste learning samples in a structured table instead of only diagnostics/logs.
 9. Add an export option for missed-message samples so parser improvements can be reviewed outside the app.

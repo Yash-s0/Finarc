@@ -900,6 +900,89 @@ void main() {
       expect(debugEntries.last.reason, 'card-bill-due-noMatchingCard');
     });
 
+    test('bill due with duplicate last4 matches card by issuer', () async {
+      final iciciCardId = await createCard(
+        bankName: 'ICICI Bank',
+        last4: '9000',
+        nickname: 'ICICI Primary',
+      );
+      final axisCardId = await createCard(
+        bankName: 'Axis Bank',
+        last4: '9000',
+        nickname: 'Axis Reserve',
+      );
+      final iciciBillId = await createBill(
+        cardId: iciciCardId,
+        billedAmount: 17027.10,
+        dueDate: DateTime(2026, 6, 7),
+        status: 'billed',
+      );
+      await createBill(
+        cardId: axisCardId,
+        billedAmount: 17027.10,
+        dueDate: DateTime(2026, 6, 7),
+        status: 'billed',
+      );
+
+      final ids = await service.processPayload(iciciBillPayload());
+
+      expect(ids, isEmpty);
+      expect(await db.select(db.pendingTransactions).get(), isEmpty);
+      final alerts = await db.select(db.alerts).get();
+      expect(alerts, hasLength(1));
+      expect(alerts.single.title, contains('ICICI bill verified'));
+      expect(alerts.single.payload, contains('"cardId":$iciciCardId'));
+      expect(alerts.single.payload, contains('"billId":$iciciBillId'));
+      expect(alerts.single.payload, isNot(contains('"cardId":$axisCardId')));
+      expect(debugEntries.last.reason, 'card-bill-due-verified');
+    });
+
+    test(
+      'bill due with duplicate last4 and no issuer creates multiple-card alert',
+      () async {
+        final axisCardId = await createCard(
+          bankName: 'Axis Bank',
+          last4: '1266',
+        );
+        final hdfcCardId = await createCard(
+          bankName: 'HDFC Bank',
+          last4: '1266',
+        );
+        final payload = NotificationPayload(
+          packageName: 'com.google.android.apps.messaging',
+          appName: 'Messages',
+          sender: 'AD-CARD-S',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 6, 3, 9, 0),
+          title: 'Card bill',
+          body:
+              'Payment of Credit Card X1266 is due on 03/06/26. Min due Rs.200.00. Total Due Rs.8384.59. Pay before last date to avoid charges.',
+        );
+
+        final parsed = service.cardBillDueNotificationService.parse(payload);
+        expect(parsed, isNotNull);
+        expect(parsed!.cardLast4, '1266');
+        expect(parsed.totalAmountDue, 8384.59);
+
+        final ids = await service.processPayload(payload);
+
+        expect(ids, isEmpty);
+        expect(await db.select(db.pendingTransactions).get(), isEmpty);
+        expect(await db.select(db.cardBills).get(), isEmpty);
+        final alerts = await db.select(db.alerts).get();
+        expect(alerts, hasLength(1));
+        expect(
+          alerts.single.title,
+          'Card bill detected: multiple matching cards found',
+        );
+        expect(alerts.single.priority, 'warning');
+        expect(alerts.single.payload, contains('"multipleMatchingCards"'));
+        expect(alerts.single.payload, contains('$axisCardId'));
+        expect(alerts.single.payload, contains('$hdfcCardId'));
+        expect(debugEntries.last.reason, 'card-bill-due-multipleMatchingCards');
+      },
+    );
+
     test(
       'existing unpaid bill same amount verifies and updates due date',
       () async {
