@@ -11,6 +11,8 @@ class MerchantNormalizer {
     'OLA': 'Ola',
     'DOMINOS': "Domino's",
     'MYNTRA': 'Myntra',
+    'MAKEMYTRIP': 'MakeMyTrip',
+    'AIRBNB': 'Airbnb',
     'IRCTC': 'IRCTC',
     'BIGBASKET': 'BigBasket',
     'ZEPTO': 'Zepto',

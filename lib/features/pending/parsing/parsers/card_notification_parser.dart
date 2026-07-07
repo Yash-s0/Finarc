@@ -46,11 +46,9 @@ class CardNotificationParser implements TransactionParser {
       );
     }
 
-    final merchantRaw = ParserTextUtils.extractMerchantAfterKeyword(text, [
-      'at',
-      'for',
-      'on',
-    ]);
+    final merchantRaw =
+        _extractBankCardSpendMerchant(text) ??
+        ParserTextUtils.extractMerchantAfterKeyword(text, ['at', 'for', 'on']);
 
     final merchant = MerchantNormalizer.normalize(
       merchantRaw ?? 'Unknown Merchant',
@@ -96,5 +94,84 @@ class CardNotificationParser implements TransactionParser {
       parserName: parserName,
       parsedAt: DateTime.now(),
     );
+  }
+
+  String? _extractBankCardSpendMerchant(String text) {
+    final upiMerchant = RegExp(
+      r'@\s*([A-Za-z0-9_ .&\-]{2,100})',
+      caseSensitive: false,
+    ).firstMatch(text);
+    final upiValue = _cleanBankCardMerchant(upiMerchant?.group(1));
+    if (upiValue != null) return upiValue;
+
+    final timestampMerchant = RegExp(
+      r'\b\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\s+\d{1,2}:\d{2}(?::\d{2})?\s*(?:IST|[AaPp][Mm])?\s+([A-Za-z0-9_ .&\-]{2,100})',
+      caseSensitive: false,
+    ).firstMatch(text);
+    final timestampValue = _cleanBankCardMerchant(timestampMerchant?.group(1));
+    if (timestampValue != null) return timestampValue;
+
+    return null;
+  }
+
+  String? _cleanBankCardMerchant(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+    var value = raw.replaceAll('_', ' ');
+    final lower = value.toLowerCase();
+    var cut = value.length;
+    final markers = [
+      ' avl ',
+      ' available ',
+      ' sms ',
+      ' if not',
+      ' not you',
+      ' block ',
+      ' blkcc ',
+      ' on ',
+      ' in ',
+      ' 07-',
+      ' 01-',
+      ' 02-',
+      ' 03-',
+      ' 04-',
+      ' 05-',
+      ' 06-',
+      ' 08-',
+      ' 09-',
+      ' 10-',
+      ' 11-',
+      ' 12-',
+      ' 13-',
+      ' 14-',
+      ' 15-',
+      ' 16-',
+      ' 17-',
+      ' 18-',
+      ' 19-',
+      ' 20-',
+      ' 21-',
+      ' 22-',
+      ' 23-',
+      ' 24-',
+      ' 25-',
+      ' 26-',
+      ' 27-',
+      ' 28-',
+      ' 29-',
+      ' 30-',
+      ' 31-',
+    ];
+    for (final marker in markers) {
+      final index = lower.indexOf(marker);
+      if (index != -1 && index < cut) cut = index;
+    }
+    value = value.substring(0, cut);
+    value = value
+        .replaceAll(RegExp(r'\bUPI\b', caseSensitive: false), ' ')
+        .replaceAll(RegExp(r'\bPAYMENTS?\b', caseSensitive: false), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    if (value.isEmpty) return null;
+    return value;
   }
 }

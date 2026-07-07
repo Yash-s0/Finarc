@@ -1576,6 +1576,58 @@ void main() {
       },
     );
 
+    test('parses large Axis card SMS from Messages notification', () async {
+      final cardId = await createCard(bankName: 'Axis Bank', last4: '0374');
+      final ids = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.google.android.apps.messaging',
+          appName: 'Messages',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 7, 7, 13, 4),
+          title: 'CP-AXISBK-S',
+          body:
+              'Spent INR 33275.73\nAxis Bank Card no. XX0374\n07-07-26 13:04:46 IST\nMAKEMYTRIP\nAvl Limit: INR 114844.17\nNot you? SMS BLOCK 0374 to\n919951860002',
+        ),
+      );
+
+      expect(ids, hasLength(1));
+      final pending = await (db.select(
+        db.pendingTransactions,
+      )..where((p) => p.id.equals(ids.single))).getSingle();
+      expect(pending.amount, 33275.73);
+      expect(pending.merchant, 'MakeMyTrip');
+      expect(pending.paymentSourceTypeSuggestion, 'creditCard');
+      expect(pending.paymentSourceIdSuggestion, cardId);
+      expect(pending.transactionDate, DateTime(2026, 7, 7, 13, 4, 46));
+      expect(debugEntries.last.decision, 'pending-created');
+    });
+
+    test('parses large YES Bank card SMS from Messages notification', () async {
+      final cardId = await createCard(bankName: 'YES Bank', last4: '8731');
+      final ids = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.google.android.apps.messaging',
+          appName: 'Messages',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 7, 7, 13, 8),
+          title: 'AX-YESBNK-S',
+          body:
+              'INR 20,929.19 spent on YES BANK\nCard X8731 @UPI_AIRBNB\nPAYMENTS IN 07-07-2026\n01:08:48 pm. Avl Lmt INR\n35,645.51. SMS BLKCC 8731 to\n9840909000 if not you',
+        ),
+      );
+
+      expect(ids, hasLength(1));
+      final pending = await (db.select(
+        db.pendingTransactions,
+      )..where((p) => p.id.equals(ids.single))).getSingle();
+      expect(pending.amount, 20929.19);
+      expect(pending.merchant, 'Airbnb');
+      expect(pending.paymentSourceTypeSuggestion, 'creditCard');
+      expect(pending.paymentSourceIdSuggestion, cardId);
+      expect(pending.transactionDate, DateTime(2026, 7, 7, 13, 8, 48));
+      expect(debugEntries.last.decision, 'pending-created');
+    });
+
     test(
       'card refund notification creates refund pending instead of expense',
       () async {

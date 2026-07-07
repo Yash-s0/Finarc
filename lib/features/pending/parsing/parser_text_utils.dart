@@ -25,16 +25,16 @@ class ParserTextUtils {
   };
 
   static final RegExp _dateNumericWithOptionalTimePattern = RegExp(
-    r'\b(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})(?:[,\s]+(?:at\s*)?(\d{1,2}):(\d{2})(?:\s*([AaPp][Mm]))?)?\b',
+    r'\b(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})(?:[,\s]+(?:at\s*)?(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s*(?:IST|([AaPp][Mm])))?)?\b',
   );
 
   static final RegExp _dateMonthWithOptionalTimePattern = RegExp(
-    r'\b(\d{1,2})[-\s](Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(?:[-\s](\d{2,4}))?\b(?:[,\s]+(?:at\s*)?(\d{1,2}):(\d{2})(?:\s*([AaPp][Mm]))?)?',
+    r'\b(\d{1,2})[-\s](Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(?:[-\s](\d{2,4}))?\b(?:[,\s]+(?:at\s*)?(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s*(?:IST|([AaPp][Mm])))?)?',
     caseSensitive: false,
   );
 
   static final RegExp _timeOnlyPattern = RegExp(
-    r'\b(?:at\s*)?(\d{1,2}):(\d{2})(?:\s*([AaPp][Mm]))?\b',
+    r'\b(?:at\s*)?(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s*(?:IST|([AaPp][Mm])))?\b',
   );
 
   static double? extractAmount(String text) {
@@ -77,7 +77,8 @@ class ParserTextUtils {
         final resolvedTime = _resolveTime(
           hourText: numeric.group(4),
           minuteText: numeric.group(5),
-          periodText: numeric.group(6),
+          secondText: numeric.group(6),
+          periodText: numeric.group(7),
           fallback: captureTime,
         );
         return ParsedDateTime(
@@ -108,7 +109,8 @@ class ParserTextUtils {
         final resolvedTime = _resolveTime(
           hourText: dayMonth.group(4),
           minuteText: dayMonth.group(5),
-          periodText: dayMonth.group(6),
+          secondText: dayMonth.group(6),
+          periodText: dayMonth.group(7),
           fallback: captureTime,
         );
         return ParsedDateTime(
@@ -131,7 +133,8 @@ class ParserTextUtils {
       final resolvedTime = _resolveTime(
         hourText: timeOnly.group(1),
         minuteText: timeOnly.group(2),
-        periodText: timeOnly.group(3),
+        secondText: timeOnly.group(3),
+        periodText: timeOnly.group(4),
         fallback: captureTime,
       );
       return ParsedDateTime(
@@ -288,6 +291,7 @@ class ParserTextUtils {
   static _ResolvedTime _resolveTime({
     required String? hourText,
     required String? minuteText,
+    String? secondText,
     required String? periodText,
     required DateTime fallback,
   }) {
@@ -302,7 +306,16 @@ class ParserTextUtils {
 
     var hour = int.tryParse(hourText);
     final minute = int.tryParse(minuteText);
+    final second = secondText == null ? 0 : int.tryParse(secondText);
     if (hour == null || minute == null || minute < 0 || minute > 59) {
+      return _ResolvedTime(
+        hour: fallback.hour,
+        minute: fallback.minute,
+        second: fallback.second,
+        explicit: false,
+      );
+    }
+    if (second == null || second < 0 || second > 59) {
       return _ResolvedTime(
         hour: fallback.hour,
         minute: fallback.minute,
@@ -337,7 +350,7 @@ class ParserTextUtils {
     return _ResolvedTime(
       hour: hour,
       minute: minute,
-      second: fallback.second,
+      second: second,
       explicit: true,
     );
   }
