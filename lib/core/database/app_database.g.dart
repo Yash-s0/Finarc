@@ -3665,6 +3665,839 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   }
 }
 
+class $TransactionSourceEventsTable extends TransactionSourceEvents
+    with TableInfo<$TransactionSourceEventsTable, TransactionSourceEvent> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TransactionSourceEventsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _transactionIdMeta = const VerificationMeta(
+    'transactionId',
+  );
+  @override
+  late final GeneratedColumn<int> transactionId = GeneratedColumn<int>(
+    'transaction_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sourceTypeMeta = const VerificationMeta(
+    'sourceType',
+  );
+  @override
+  late final GeneratedColumn<String> sourceType = GeneratedColumn<String>(
+    'source_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceFingerprintMeta = const VerificationMeta(
+    'sourceFingerprint',
+  );
+  @override
+  late final GeneratedColumn<String> sourceFingerprint =
+      GeneratedColumn<String>(
+        'source_fingerprint',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _senderMeta = const VerificationMeta('sender');
+  @override
+  late final GeneratedColumn<String> sender = GeneratedColumn<String>(
+    'sender',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sourceReceivedAtMeta = const VerificationMeta(
+    'sourceReceivedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> sourceReceivedAt =
+      GeneratedColumn<DateTime>(
+        'source_received_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _parserNameMeta = const VerificationMeta(
+    'parserName',
+  );
+  @override
+  late final GeneratedColumn<String> parserName = GeneratedColumn<String>(
+    'parser_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
+  @override
+  late final GeneratedColumn<double> amount = GeneratedColumn<double>(
+    'amount',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _merchantMeta = const VerificationMeta(
+    'merchant',
+  );
+  @override
+  late final GeneratedColumn<String> merchant = GeneratedColumn<String>(
+    'merchant',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _transactionDateMeta = const VerificationMeta(
+    'transactionDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> transactionDate =
+      GeneratedColumn<DateTime>(
+        'transaction_date',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _rawTextMeta = const VerificationMeta(
+    'rawText',
+  );
+  @override
+  late final GeneratedColumn<String> rawText = GeneratedColumn<String>(
+    'raw_text',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _metaJsonMeta = const VerificationMeta(
+    'metaJson',
+  );
+  @override
+  late final GeneratedColumn<String> metaJson = GeneratedColumn<String>(
+    'meta_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    transactionId,
+    sourceType,
+    sourceFingerprint,
+    status,
+    sender,
+    sourceReceivedAt,
+    parserName,
+    amount,
+    merchant,
+    transactionDate,
+    rawText,
+    metaJson,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'transaction_source_events';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TransactionSourceEvent> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('transaction_id')) {
+      context.handle(
+        _transactionIdMeta,
+        transactionId.isAcceptableOrUnknown(
+          data['transaction_id']!,
+          _transactionIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('source_type')) {
+      context.handle(
+        _sourceTypeMeta,
+        sourceType.isAcceptableOrUnknown(data['source_type']!, _sourceTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceTypeMeta);
+    }
+    if (data.containsKey('source_fingerprint')) {
+      context.handle(
+        _sourceFingerprintMeta,
+        sourceFingerprint.isAcceptableOrUnknown(
+          data['source_fingerprint']!,
+          _sourceFingerprintMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceFingerprintMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('sender')) {
+      context.handle(
+        _senderMeta,
+        sender.isAcceptableOrUnknown(data['sender']!, _senderMeta),
+      );
+    }
+    if (data.containsKey('source_received_at')) {
+      context.handle(
+        _sourceReceivedAtMeta,
+        sourceReceivedAt.isAcceptableOrUnknown(
+          data['source_received_at']!,
+          _sourceReceivedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('parser_name')) {
+      context.handle(
+        _parserNameMeta,
+        parserName.isAcceptableOrUnknown(data['parser_name']!, _parserNameMeta),
+      );
+    }
+    if (data.containsKey('amount')) {
+      context.handle(
+        _amountMeta,
+        amount.isAcceptableOrUnknown(data['amount']!, _amountMeta),
+      );
+    }
+    if (data.containsKey('merchant')) {
+      context.handle(
+        _merchantMeta,
+        merchant.isAcceptableOrUnknown(data['merchant']!, _merchantMeta),
+      );
+    }
+    if (data.containsKey('transaction_date')) {
+      context.handle(
+        _transactionDateMeta,
+        transactionDate.isAcceptableOrUnknown(
+          data['transaction_date']!,
+          _transactionDateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('raw_text')) {
+      context.handle(
+        _rawTextMeta,
+        rawText.isAcceptableOrUnknown(data['raw_text']!, _rawTextMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_rawTextMeta);
+    }
+    if (data.containsKey('meta_json')) {
+      context.handle(
+        _metaJsonMeta,
+        metaJson.isAcceptableOrUnknown(data['meta_json']!, _metaJsonMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {sourceFingerprint},
+  ];
+  @override
+  TransactionSourceEvent map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TransactionSourceEvent(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      transactionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}transaction_id'],
+      ),
+      sourceType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_type'],
+      )!,
+      sourceFingerprint: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_fingerprint'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      sender: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sender'],
+      ),
+      sourceReceivedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}source_received_at'],
+      ),
+      parserName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}parser_name'],
+      ),
+      amount: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}amount'],
+      ),
+      merchant: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}merchant'],
+      ),
+      transactionDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}transaction_date'],
+      ),
+      rawText: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}raw_text'],
+      )!,
+      metaJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}meta_json'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $TransactionSourceEventsTable createAlias(String alias) {
+    return $TransactionSourceEventsTable(attachedDatabase, alias);
+  }
+}
+
+class TransactionSourceEvent extends DataClass
+    implements Insertable<TransactionSourceEvent> {
+  final int id;
+  final int? transactionId;
+  final String sourceType;
+  final String sourceFingerprint;
+  final String status;
+  final String? sender;
+  final DateTime? sourceReceivedAt;
+  final String? parserName;
+  final double? amount;
+  final String? merchant;
+  final DateTime? transactionDate;
+  final String rawText;
+  final String? metaJson;
+  final DateTime createdAt;
+  const TransactionSourceEvent({
+    required this.id,
+    this.transactionId,
+    required this.sourceType,
+    required this.sourceFingerprint,
+    required this.status,
+    this.sender,
+    this.sourceReceivedAt,
+    this.parserName,
+    this.amount,
+    this.merchant,
+    this.transactionDate,
+    required this.rawText,
+    this.metaJson,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    if (!nullToAbsent || transactionId != null) {
+      map['transaction_id'] = Variable<int>(transactionId);
+    }
+    map['source_type'] = Variable<String>(sourceType);
+    map['source_fingerprint'] = Variable<String>(sourceFingerprint);
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || sender != null) {
+      map['sender'] = Variable<String>(sender);
+    }
+    if (!nullToAbsent || sourceReceivedAt != null) {
+      map['source_received_at'] = Variable<DateTime>(sourceReceivedAt);
+    }
+    if (!nullToAbsent || parserName != null) {
+      map['parser_name'] = Variable<String>(parserName);
+    }
+    if (!nullToAbsent || amount != null) {
+      map['amount'] = Variable<double>(amount);
+    }
+    if (!nullToAbsent || merchant != null) {
+      map['merchant'] = Variable<String>(merchant);
+    }
+    if (!nullToAbsent || transactionDate != null) {
+      map['transaction_date'] = Variable<DateTime>(transactionDate);
+    }
+    map['raw_text'] = Variable<String>(rawText);
+    if (!nullToAbsent || metaJson != null) {
+      map['meta_json'] = Variable<String>(metaJson);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  TransactionSourceEventsCompanion toCompanion(bool nullToAbsent) {
+    return TransactionSourceEventsCompanion(
+      id: Value(id),
+      transactionId: transactionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(transactionId),
+      sourceType: Value(sourceType),
+      sourceFingerprint: Value(sourceFingerprint),
+      status: Value(status),
+      sender: sender == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sender),
+      sourceReceivedAt: sourceReceivedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceReceivedAt),
+      parserName: parserName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(parserName),
+      amount: amount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(amount),
+      merchant: merchant == null && nullToAbsent
+          ? const Value.absent()
+          : Value(merchant),
+      transactionDate: transactionDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(transactionDate),
+      rawText: Value(rawText),
+      metaJson: metaJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(metaJson),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory TransactionSourceEvent.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TransactionSourceEvent(
+      id: serializer.fromJson<int>(json['id']),
+      transactionId: serializer.fromJson<int?>(json['transactionId']),
+      sourceType: serializer.fromJson<String>(json['sourceType']),
+      sourceFingerprint: serializer.fromJson<String>(json['sourceFingerprint']),
+      status: serializer.fromJson<String>(json['status']),
+      sender: serializer.fromJson<String?>(json['sender']),
+      sourceReceivedAt: serializer.fromJson<DateTime?>(
+        json['sourceReceivedAt'],
+      ),
+      parserName: serializer.fromJson<String?>(json['parserName']),
+      amount: serializer.fromJson<double?>(json['amount']),
+      merchant: serializer.fromJson<String?>(json['merchant']),
+      transactionDate: serializer.fromJson<DateTime?>(json['transactionDate']),
+      rawText: serializer.fromJson<String>(json['rawText']),
+      metaJson: serializer.fromJson<String?>(json['metaJson']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'transactionId': serializer.toJson<int?>(transactionId),
+      'sourceType': serializer.toJson<String>(sourceType),
+      'sourceFingerprint': serializer.toJson<String>(sourceFingerprint),
+      'status': serializer.toJson<String>(status),
+      'sender': serializer.toJson<String?>(sender),
+      'sourceReceivedAt': serializer.toJson<DateTime?>(sourceReceivedAt),
+      'parserName': serializer.toJson<String?>(parserName),
+      'amount': serializer.toJson<double?>(amount),
+      'merchant': serializer.toJson<String?>(merchant),
+      'transactionDate': serializer.toJson<DateTime?>(transactionDate),
+      'rawText': serializer.toJson<String>(rawText),
+      'metaJson': serializer.toJson<String?>(metaJson),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  TransactionSourceEvent copyWith({
+    int? id,
+    Value<int?> transactionId = const Value.absent(),
+    String? sourceType,
+    String? sourceFingerprint,
+    String? status,
+    Value<String?> sender = const Value.absent(),
+    Value<DateTime?> sourceReceivedAt = const Value.absent(),
+    Value<String?> parserName = const Value.absent(),
+    Value<double?> amount = const Value.absent(),
+    Value<String?> merchant = const Value.absent(),
+    Value<DateTime?> transactionDate = const Value.absent(),
+    String? rawText,
+    Value<String?> metaJson = const Value.absent(),
+    DateTime? createdAt,
+  }) => TransactionSourceEvent(
+    id: id ?? this.id,
+    transactionId: transactionId.present
+        ? transactionId.value
+        : this.transactionId,
+    sourceType: sourceType ?? this.sourceType,
+    sourceFingerprint: sourceFingerprint ?? this.sourceFingerprint,
+    status: status ?? this.status,
+    sender: sender.present ? sender.value : this.sender,
+    sourceReceivedAt: sourceReceivedAt.present
+        ? sourceReceivedAt.value
+        : this.sourceReceivedAt,
+    parserName: parserName.present ? parserName.value : this.parserName,
+    amount: amount.present ? amount.value : this.amount,
+    merchant: merchant.present ? merchant.value : this.merchant,
+    transactionDate: transactionDate.present
+        ? transactionDate.value
+        : this.transactionDate,
+    rawText: rawText ?? this.rawText,
+    metaJson: metaJson.present ? metaJson.value : this.metaJson,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  TransactionSourceEvent copyWithCompanion(
+    TransactionSourceEventsCompanion data,
+  ) {
+    return TransactionSourceEvent(
+      id: data.id.present ? data.id.value : this.id,
+      transactionId: data.transactionId.present
+          ? data.transactionId.value
+          : this.transactionId,
+      sourceType: data.sourceType.present
+          ? data.sourceType.value
+          : this.sourceType,
+      sourceFingerprint: data.sourceFingerprint.present
+          ? data.sourceFingerprint.value
+          : this.sourceFingerprint,
+      status: data.status.present ? data.status.value : this.status,
+      sender: data.sender.present ? data.sender.value : this.sender,
+      sourceReceivedAt: data.sourceReceivedAt.present
+          ? data.sourceReceivedAt.value
+          : this.sourceReceivedAt,
+      parserName: data.parserName.present
+          ? data.parserName.value
+          : this.parserName,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      merchant: data.merchant.present ? data.merchant.value : this.merchant,
+      transactionDate: data.transactionDate.present
+          ? data.transactionDate.value
+          : this.transactionDate,
+      rawText: data.rawText.present ? data.rawText.value : this.rawText,
+      metaJson: data.metaJson.present ? data.metaJson.value : this.metaJson,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TransactionSourceEvent(')
+          ..write('id: $id, ')
+          ..write('transactionId: $transactionId, ')
+          ..write('sourceType: $sourceType, ')
+          ..write('sourceFingerprint: $sourceFingerprint, ')
+          ..write('status: $status, ')
+          ..write('sender: $sender, ')
+          ..write('sourceReceivedAt: $sourceReceivedAt, ')
+          ..write('parserName: $parserName, ')
+          ..write('amount: $amount, ')
+          ..write('merchant: $merchant, ')
+          ..write('transactionDate: $transactionDate, ')
+          ..write('rawText: $rawText, ')
+          ..write('metaJson: $metaJson, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    transactionId,
+    sourceType,
+    sourceFingerprint,
+    status,
+    sender,
+    sourceReceivedAt,
+    parserName,
+    amount,
+    merchant,
+    transactionDate,
+    rawText,
+    metaJson,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TransactionSourceEvent &&
+          other.id == this.id &&
+          other.transactionId == this.transactionId &&
+          other.sourceType == this.sourceType &&
+          other.sourceFingerprint == this.sourceFingerprint &&
+          other.status == this.status &&
+          other.sender == this.sender &&
+          other.sourceReceivedAt == this.sourceReceivedAt &&
+          other.parserName == this.parserName &&
+          other.amount == this.amount &&
+          other.merchant == this.merchant &&
+          other.transactionDate == this.transactionDate &&
+          other.rawText == this.rawText &&
+          other.metaJson == this.metaJson &&
+          other.createdAt == this.createdAt);
+}
+
+class TransactionSourceEventsCompanion
+    extends UpdateCompanion<TransactionSourceEvent> {
+  final Value<int> id;
+  final Value<int?> transactionId;
+  final Value<String> sourceType;
+  final Value<String> sourceFingerprint;
+  final Value<String> status;
+  final Value<String?> sender;
+  final Value<DateTime?> sourceReceivedAt;
+  final Value<String?> parserName;
+  final Value<double?> amount;
+  final Value<String?> merchant;
+  final Value<DateTime?> transactionDate;
+  final Value<String> rawText;
+  final Value<String?> metaJson;
+  final Value<DateTime> createdAt;
+  const TransactionSourceEventsCompanion({
+    this.id = const Value.absent(),
+    this.transactionId = const Value.absent(),
+    this.sourceType = const Value.absent(),
+    this.sourceFingerprint = const Value.absent(),
+    this.status = const Value.absent(),
+    this.sender = const Value.absent(),
+    this.sourceReceivedAt = const Value.absent(),
+    this.parserName = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.merchant = const Value.absent(),
+    this.transactionDate = const Value.absent(),
+    this.rawText = const Value.absent(),
+    this.metaJson = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  TransactionSourceEventsCompanion.insert({
+    this.id = const Value.absent(),
+    this.transactionId = const Value.absent(),
+    required String sourceType,
+    required String sourceFingerprint,
+    required String status,
+    this.sender = const Value.absent(),
+    this.sourceReceivedAt = const Value.absent(),
+    this.parserName = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.merchant = const Value.absent(),
+    this.transactionDate = const Value.absent(),
+    required String rawText,
+    this.metaJson = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  }) : sourceType = Value(sourceType),
+       sourceFingerprint = Value(sourceFingerprint),
+       status = Value(status),
+       rawText = Value(rawText);
+  static Insertable<TransactionSourceEvent> custom({
+    Expression<int>? id,
+    Expression<int>? transactionId,
+    Expression<String>? sourceType,
+    Expression<String>? sourceFingerprint,
+    Expression<String>? status,
+    Expression<String>? sender,
+    Expression<DateTime>? sourceReceivedAt,
+    Expression<String>? parserName,
+    Expression<double>? amount,
+    Expression<String>? merchant,
+    Expression<DateTime>? transactionDate,
+    Expression<String>? rawText,
+    Expression<String>? metaJson,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (transactionId != null) 'transaction_id': transactionId,
+      if (sourceType != null) 'source_type': sourceType,
+      if (sourceFingerprint != null) 'source_fingerprint': sourceFingerprint,
+      if (status != null) 'status': status,
+      if (sender != null) 'sender': sender,
+      if (sourceReceivedAt != null) 'source_received_at': sourceReceivedAt,
+      if (parserName != null) 'parser_name': parserName,
+      if (amount != null) 'amount': amount,
+      if (merchant != null) 'merchant': merchant,
+      if (transactionDate != null) 'transaction_date': transactionDate,
+      if (rawText != null) 'raw_text': rawText,
+      if (metaJson != null) 'meta_json': metaJson,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  TransactionSourceEventsCompanion copyWith({
+    Value<int>? id,
+    Value<int?>? transactionId,
+    Value<String>? sourceType,
+    Value<String>? sourceFingerprint,
+    Value<String>? status,
+    Value<String?>? sender,
+    Value<DateTime?>? sourceReceivedAt,
+    Value<String?>? parserName,
+    Value<double?>? amount,
+    Value<String?>? merchant,
+    Value<DateTime?>? transactionDate,
+    Value<String>? rawText,
+    Value<String?>? metaJson,
+    Value<DateTime>? createdAt,
+  }) {
+    return TransactionSourceEventsCompanion(
+      id: id ?? this.id,
+      transactionId: transactionId ?? this.transactionId,
+      sourceType: sourceType ?? this.sourceType,
+      sourceFingerprint: sourceFingerprint ?? this.sourceFingerprint,
+      status: status ?? this.status,
+      sender: sender ?? this.sender,
+      sourceReceivedAt: sourceReceivedAt ?? this.sourceReceivedAt,
+      parserName: parserName ?? this.parserName,
+      amount: amount ?? this.amount,
+      merchant: merchant ?? this.merchant,
+      transactionDate: transactionDate ?? this.transactionDate,
+      rawText: rawText ?? this.rawText,
+      metaJson: metaJson ?? this.metaJson,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (transactionId.present) {
+      map['transaction_id'] = Variable<int>(transactionId.value);
+    }
+    if (sourceType.present) {
+      map['source_type'] = Variable<String>(sourceType.value);
+    }
+    if (sourceFingerprint.present) {
+      map['source_fingerprint'] = Variable<String>(sourceFingerprint.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (sender.present) {
+      map['sender'] = Variable<String>(sender.value);
+    }
+    if (sourceReceivedAt.present) {
+      map['source_received_at'] = Variable<DateTime>(sourceReceivedAt.value);
+    }
+    if (parserName.present) {
+      map['parser_name'] = Variable<String>(parserName.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<double>(amount.value);
+    }
+    if (merchant.present) {
+      map['merchant'] = Variable<String>(merchant.value);
+    }
+    if (transactionDate.present) {
+      map['transaction_date'] = Variable<DateTime>(transactionDate.value);
+    }
+    if (rawText.present) {
+      map['raw_text'] = Variable<String>(rawText.value);
+    }
+    if (metaJson.present) {
+      map['meta_json'] = Variable<String>(metaJson.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TransactionSourceEventsCompanion(')
+          ..write('id: $id, ')
+          ..write('transactionId: $transactionId, ')
+          ..write('sourceType: $sourceType, ')
+          ..write('sourceFingerprint: $sourceFingerprint, ')
+          ..write('status: $status, ')
+          ..write('sender: $sender, ')
+          ..write('sourceReceivedAt: $sourceReceivedAt, ')
+          ..write('parserName: $parserName, ')
+          ..write('amount: $amount, ')
+          ..write('merchant: $merchant, ')
+          ..write('transactionDate: $transactionDate, ')
+          ..write('rawText: $rawText, ')
+          ..write('metaJson: $metaJson, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $PendingTransactionsTable extends PendingTransactions
     with TableInfo<$PendingTransactionsTable, PendingTransaction> {
   @override
@@ -13330,6 +14163,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $CashWalletsTable cashWallets = $CashWalletsTable(this);
   late final $CreditCardsTable creditCards = $CreditCardsTable(this);
   late final $TransactionsTable transactions = $TransactionsTable(this);
+  late final $TransactionSourceEventsTable transactionSourceEvents =
+      $TransactionSourceEventsTable(this);
   late final $PendingTransactionsTable pendingTransactions =
       $PendingTransactionsTable(this);
   late final $CardBillsTable cardBills = $CardBillsTable(this);
@@ -13354,6 +14189,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     cashWallets,
     creditCards,
     transactions,
+    transactionSourceEvents,
     pendingTransactions,
     cardBills,
     splitGroups,
@@ -14993,6 +15829,402 @@ typedef $$TransactionsTableProcessedTableManager =
         BaseReferences<_$AppDatabase, $TransactionsTable, Transaction>,
       ),
       Transaction,
+      PrefetchHooks Function()
+    >;
+typedef $$TransactionSourceEventsTableCreateCompanionBuilder =
+    TransactionSourceEventsCompanion Function({
+      Value<int> id,
+      Value<int?> transactionId,
+      required String sourceType,
+      required String sourceFingerprint,
+      required String status,
+      Value<String?> sender,
+      Value<DateTime?> sourceReceivedAt,
+      Value<String?> parserName,
+      Value<double?> amount,
+      Value<String?> merchant,
+      Value<DateTime?> transactionDate,
+      required String rawText,
+      Value<String?> metaJson,
+      Value<DateTime> createdAt,
+    });
+typedef $$TransactionSourceEventsTableUpdateCompanionBuilder =
+    TransactionSourceEventsCompanion Function({
+      Value<int> id,
+      Value<int?> transactionId,
+      Value<String> sourceType,
+      Value<String> sourceFingerprint,
+      Value<String> status,
+      Value<String?> sender,
+      Value<DateTime?> sourceReceivedAt,
+      Value<String?> parserName,
+      Value<double?> amount,
+      Value<String?> merchant,
+      Value<DateTime?> transactionDate,
+      Value<String> rawText,
+      Value<String?> metaJson,
+      Value<DateTime> createdAt,
+    });
+
+class $$TransactionSourceEventsTableFilterComposer
+    extends Composer<_$AppDatabase, $TransactionSourceEventsTable> {
+  $$TransactionSourceEventsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get transactionId => $composableBuilder(
+    column: $table.transactionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceType => $composableBuilder(
+    column: $table.sourceType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceFingerprint => $composableBuilder(
+    column: $table.sourceFingerprint,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sender => $composableBuilder(
+    column: $table.sender,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get sourceReceivedAt => $composableBuilder(
+    column: $table.sourceReceivedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get parserName => $composableBuilder(
+    column: $table.parserName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get merchant => $composableBuilder(
+    column: $table.merchant,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get transactionDate => $composableBuilder(
+    column: $table.transactionDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rawText => $composableBuilder(
+    column: $table.rawText,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get metaJson => $composableBuilder(
+    column: $table.metaJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$TransactionSourceEventsTableOrderingComposer
+    extends Composer<_$AppDatabase, $TransactionSourceEventsTable> {
+  $$TransactionSourceEventsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get transactionId => $composableBuilder(
+    column: $table.transactionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceType => $composableBuilder(
+    column: $table.sourceType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceFingerprint => $composableBuilder(
+    column: $table.sourceFingerprint,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sender => $composableBuilder(
+    column: $table.sender,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get sourceReceivedAt => $composableBuilder(
+    column: $table.sourceReceivedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get parserName => $composableBuilder(
+    column: $table.parserName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get merchant => $composableBuilder(
+    column: $table.merchant,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get transactionDate => $composableBuilder(
+    column: $table.transactionDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rawText => $composableBuilder(
+    column: $table.rawText,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get metaJson => $composableBuilder(
+    column: $table.metaJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$TransactionSourceEventsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TransactionSourceEventsTable> {
+  $$TransactionSourceEventsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get transactionId => $composableBuilder(
+    column: $table.transactionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sourceType => $composableBuilder(
+    column: $table.sourceType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sourceFingerprint => $composableBuilder(
+    column: $table.sourceFingerprint,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get sender =>
+      $composableBuilder(column: $table.sender, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get sourceReceivedAt => $composableBuilder(
+    column: $table.sourceReceivedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get parserName => $composableBuilder(
+    column: $table.parserName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<String> get merchant =>
+      $composableBuilder(column: $table.merchant, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get transactionDate => $composableBuilder(
+    column: $table.transactionDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get rawText =>
+      $composableBuilder(column: $table.rawText, builder: (column) => column);
+
+  GeneratedColumn<String> get metaJson =>
+      $composableBuilder(column: $table.metaJson, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$TransactionSourceEventsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TransactionSourceEventsTable,
+          TransactionSourceEvent,
+          $$TransactionSourceEventsTableFilterComposer,
+          $$TransactionSourceEventsTableOrderingComposer,
+          $$TransactionSourceEventsTableAnnotationComposer,
+          $$TransactionSourceEventsTableCreateCompanionBuilder,
+          $$TransactionSourceEventsTableUpdateCompanionBuilder,
+          (
+            TransactionSourceEvent,
+            BaseReferences<
+              _$AppDatabase,
+              $TransactionSourceEventsTable,
+              TransactionSourceEvent
+            >,
+          ),
+          TransactionSourceEvent,
+          PrefetchHooks Function()
+        > {
+  $$TransactionSourceEventsTableTableManager(
+    _$AppDatabase db,
+    $TransactionSourceEventsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TransactionSourceEventsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$TransactionSourceEventsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$TransactionSourceEventsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int?> transactionId = const Value.absent(),
+                Value<String> sourceType = const Value.absent(),
+                Value<String> sourceFingerprint = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> sender = const Value.absent(),
+                Value<DateTime?> sourceReceivedAt = const Value.absent(),
+                Value<String?> parserName = const Value.absent(),
+                Value<double?> amount = const Value.absent(),
+                Value<String?> merchant = const Value.absent(),
+                Value<DateTime?> transactionDate = const Value.absent(),
+                Value<String> rawText = const Value.absent(),
+                Value<String?> metaJson = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => TransactionSourceEventsCompanion(
+                id: id,
+                transactionId: transactionId,
+                sourceType: sourceType,
+                sourceFingerprint: sourceFingerprint,
+                status: status,
+                sender: sender,
+                sourceReceivedAt: sourceReceivedAt,
+                parserName: parserName,
+                amount: amount,
+                merchant: merchant,
+                transactionDate: transactionDate,
+                rawText: rawText,
+                metaJson: metaJson,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int?> transactionId = const Value.absent(),
+                required String sourceType,
+                required String sourceFingerprint,
+                required String status,
+                Value<String?> sender = const Value.absent(),
+                Value<DateTime?> sourceReceivedAt = const Value.absent(),
+                Value<String?> parserName = const Value.absent(),
+                Value<double?> amount = const Value.absent(),
+                Value<String?> merchant = const Value.absent(),
+                Value<DateTime?> transactionDate = const Value.absent(),
+                required String rawText,
+                Value<String?> metaJson = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => TransactionSourceEventsCompanion.insert(
+                id: id,
+                transactionId: transactionId,
+                sourceType: sourceType,
+                sourceFingerprint: sourceFingerprint,
+                status: status,
+                sender: sender,
+                sourceReceivedAt: sourceReceivedAt,
+                parserName: parserName,
+                amount: amount,
+                merchant: merchant,
+                transactionDate: transactionDate,
+                rawText: rawText,
+                metaJson: metaJson,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$TransactionSourceEventsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TransactionSourceEventsTable,
+      TransactionSourceEvent,
+      $$TransactionSourceEventsTableFilterComposer,
+      $$TransactionSourceEventsTableOrderingComposer,
+      $$TransactionSourceEventsTableAnnotationComposer,
+      $$TransactionSourceEventsTableCreateCompanionBuilder,
+      $$TransactionSourceEventsTableUpdateCompanionBuilder,
+      (
+        TransactionSourceEvent,
+        BaseReferences<
+          _$AppDatabase,
+          $TransactionSourceEventsTable,
+          TransactionSourceEvent
+        >,
+      ),
+      TransactionSourceEvent,
       PrefetchHooks Function()
     >;
 typedef $$PendingTransactionsTableCreateCompanionBuilder =
@@ -19327,6 +20559,11 @@ class $AppDatabaseManager {
       $$CreditCardsTableTableManager(_db, _db.creditCards);
   $$TransactionsTableTableManager get transactions =>
       $$TransactionsTableTableManager(_db, _db.transactions);
+  $$TransactionSourceEventsTableTableManager get transactionSourceEvents =>
+      $$TransactionSourceEventsTableTableManager(
+        _db,
+        _db.transactionSourceEvents,
+      );
   $$PendingTransactionsTableTableManager get pendingTransactions =>
       $$PendingTransactionsTableTableManager(_db, _db.pendingTransactions);
   $$CardBillsTableTableManager get cardBills =>

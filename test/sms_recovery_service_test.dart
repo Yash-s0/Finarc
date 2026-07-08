@@ -133,21 +133,21 @@ void main() {
     test(
       'adds selected preview as a confirmed transaction without pending',
       () async {
-        final preview = await recoveryService.classifyPayload(
-          NotificationPayload(
-            packageName: 'android.sms',
-            sourceType: 'sms',
-            receivedAt: DateTime(2026, 7, 7, 13, 8, 48),
-            sender: 'AX-YESBNK-S',
-            title: 'AX-YESBNK-S',
-            body:
-                'INR 20,929.19 spent on YES BANK Card X8731 @UPI_HOTELBOOKING PAYMENTS IN 07-07-2026 01:08:48 pm. Avl Lmt INR 35,645.51. SMS BLKCC 8731 to 9840909000 if not you',
-          ),
+        final payload = NotificationPayload(
+          packageName: 'android.sms',
+          sourceType: 'sms',
+          receivedAt: DateTime(2026, 7, 7, 13, 8, 48),
+          sender: 'AX-YESBNK-S',
+          title: 'AX-YESBNK-S',
+          body:
+              'INR 20,929.19 spent on YES BANK Card X8731 @UPI_HOTELBOOKING PAYMENTS IN 07-07-2026 01:08:48 pm. Avl Lmt INR 35,645.51. SMS BLKCC 8731 to 9840909000 if not you',
         );
+        final preview = await recoveryService.classifyPayload(payload);
 
         final result = await recoveryService.importPreviews([preview]);
         final pending = await db.select(db.pendingTransactions).get();
         final transactions = await db.select(db.transactions).get();
+        final sourceEvents = await db.select(db.transactionSourceEvents).get();
 
         expect(preview.status, SmsBackfillPreviewStatus.importable);
         expect(result.importedCount, 1);
@@ -156,7 +156,71 @@ void main() {
         expect(transactions, hasLength(1));
         expect(transactions.single.amount, 20929.19);
         expect(transactions.single.detectedSourceType, 'smsRecovery');
+        expect(sourceEvents, hasLength(1));
+        expect(sourceEvents.single.transactionId, transactions.single.id);
+        expect(sourceEvents.single.sourceFingerprint, preview.id);
+        expect(sourceEvents.single.status, 'imported');
+
+        final duplicatePreview = await recoveryService.classifyPayload(payload);
+        final duplicateResult = await recoveryService.importPreviews([
+          duplicatePreview,
+        ]);
+        final transactionsAfterDuplicate = await db
+            .select(db.transactions)
+            .get();
+        final sourceEventsAfterDuplicate = await db
+            .select(db.transactionSourceEvents)
+            .get();
+
+        expect(
+          duplicatePreview.status,
+          SmsBackfillPreviewStatus.duplicateLikely,
+        );
+        expect(duplicateResult.importedCount, 0);
+        expect(duplicateResult.duplicateOrSkippedCount, 1);
+        expect(transactionsAfterDuplicate, hasLength(1));
+        expect(sourceEventsAfterDuplicate, hasLength(1));
       },
     );
+
+    test('attaches duplicate SMS proof to an existing transaction', () async {
+      final payload = NotificationPayload(
+        packageName: 'android.sms',
+        sourceType: 'sms',
+        receivedAt: DateTime(2026, 7, 7, 13, 4, 46),
+        sender: 'CP-AXISBK-S',
+        title: 'CP-AXISBK-S',
+        body:
+            'Spent INR 33275.73\nAxis Bank Card no. XX0374\n07-07-26 13:04:46 IST\nTRAVELPORTAL\nAvl Limit: INR 114844.17',
+      );
+      final preview = await recoveryService.classifyPayload(payload);
+      final existingTransactionId = await TransactionEngine(db).addTransaction(
+        AddTransactionInput(
+          type: 'creditCard',
+          amount: preview.amount!,
+          title: preview.merchant!,
+          category: preview.category ?? 'Travel',
+          transactionDate: preview.transactionDate!,
+          paymentSourceType: preview.paymentSourceType!,
+          paymentSourceId: preview.paymentSourceId,
+          detectedSourceType: 'manual',
+          transactionImpactType: 'historicalNoBalance',
+        ),
+      );
+
+      final duplicatePreview = await recoveryService.classifyPayload(payload);
+      final result = await recoveryService.importPreviews([duplicatePreview]);
+      final transactions = await db.select(db.transactions).get();
+      final sourceEvents = await db.select(db.transactionSourceEvents).get();
+
+      expect(duplicatePreview.status, SmsBackfillPreviewStatus.duplicateLikely);
+      expect(result.importedCount, 0);
+      expect(result.duplicateOrSkippedCount, 1);
+      expect(result.previews.single.reason, contains('proof attached'));
+      expect(transactions, hasLength(1));
+      expect(sourceEvents, hasLength(1));
+      expect(sourceEvents.single.transactionId, existingTransactionId);
+      expect(sourceEvents.single.status, 'duplicateAttached');
+    });
   });
 }

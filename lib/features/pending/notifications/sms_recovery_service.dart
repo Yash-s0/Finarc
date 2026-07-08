@@ -36,6 +36,7 @@ class SmsBackfillPreview {
     required this.payload,
     this.amount,
     this.merchant,
+    this.category,
     this.transactionDate,
     this.parserName,
     this.paymentSourceType,
@@ -53,6 +54,7 @@ class SmsBackfillPreview {
   final NotificationPayload payload;
   final double? amount;
   final String? merchant;
+  final String? category;
   final DateTime? transactionDate;
   final String? parserName;
   final String? paymentSourceType;
@@ -61,10 +63,23 @@ class SmsBackfillPreview {
   final List<int> pendingIds;
 
   bool get canImport => status == SmsBackfillPreviewStatus.importable;
+  bool get isTransactionCandidate {
+    return amount != null &&
+        merchant != null &&
+        transactionDate != null &&
+        status != SmsBackfillPreviewStatus.ignored &&
+        status != SmsBackfillPreviewStatus.parserFailed;
+  }
 
   SmsBackfillPreview copyWith({
     SmsBackfillPreviewStatus? status,
     String? reason,
+    double? amount,
+    String? merchant,
+    String? category,
+    DateTime? transactionDate,
+    String? paymentSourceType,
+    int? paymentSourceId,
     List<int>? pendingIds,
     int? createdTransactionCount,
   }) {
@@ -76,12 +91,13 @@ class SmsBackfillPreview {
       status: status ?? this.status,
       reason: reason ?? this.reason,
       payload: payload,
-      amount: amount,
-      merchant: merchant,
-      transactionDate: transactionDate,
+      amount: amount ?? this.amount,
+      merchant: merchant ?? this.merchant,
+      category: category ?? this.category,
+      transactionDate: transactionDate ?? this.transactionDate,
       parserName: parserName,
-      paymentSourceType: paymentSourceType,
-      paymentSourceId: paymentSourceId,
+      paymentSourceType: paymentSourceType ?? this.paymentSourceType,
+      paymentSourceId: paymentSourceId ?? this.paymentSourceId,
       createdTransactionCount:
           createdTransactionCount ?? this.createdTransactionCount,
       pendingIds: pendingIds ?? this.pendingIds,
@@ -208,7 +224,10 @@ class SmsRecoveryService {
     }
 
     final candidate = result.candidates.first;
-    final duplicate = await _hasLikelyDuplicate(candidate);
+    final existingEvidence = await _hasSourceEvidence(previewId);
+    final duplicate = existingEvidence
+        ? const _SmsDuplicateMatch(sourceEvidenceExists: true)
+        : await _findLikelyDuplicate(candidate);
     final paymentSourceType =
         candidate.paymentSourceTypeSuggestion ??
         _pendingIngestionService.defaultSourceSuggestion(parserInput);
@@ -228,6 +247,9 @@ class SmsRecoveryService {
         payload: payload,
         amount: candidate.amount,
         merchant: candidate.merchant,
+        category:
+            candidate.categorySuggestion ??
+            CategorySuggester.suggest(candidate.merchant),
         transactionDate: candidate.transactionDate,
         parserName: candidate.parserName,
         paymentSourceType: paymentSourceType,
@@ -238,13 +260,20 @@ class SmsRecoveryService {
       sender: sender,
       body: body,
       receivedAt: payload.receivedAt,
-      status: duplicate
+      status: duplicate != null
           ? SmsBackfillPreviewStatus.duplicateLikely
           : SmsBackfillPreviewStatus.importable,
-      reason: duplicate ? 'Likely already exists' : 'Ready to import',
+      reason: existingEvidence
+          ? 'SMS already imported or attached'
+          : duplicate != null
+          ? 'Likely already exists'
+          : 'Ready to import',
       payload: payload,
       amount: candidate.amount,
       merchant: candidate.merchant,
+      category:
+          candidate.categorySuggestion ??
+          CategorySuggester.suggest(candidate.merchant),
       transactionDate: candidate.transactionDate,
       parserName: candidate.parserName,
       paymentSourceType: paymentSourceType,
@@ -259,7 +288,8 @@ class SmsRecoveryService {
     var skipped = 0;
     final updated = <SmsBackfillPreview>[];
     for (final preview in previews) {
-      if (!preview.canImport) {
+      if (!preview.canImport &&
+          preview.status != SmsBackfillPreviewStatus.duplicateLikely) {
         skipped += 1;
         updated.add(preview);
         continue;
@@ -275,21 +305,42 @@ class SmsRecoveryService {
         );
         continue;
       }
-      if (await _hasLikelyDuplicate(candidate)) {
+      if (await _hasSourceEvidence(preview.id)) {
         skipped += 1;
         updated.add(
           preview.copyWith(
             status: SmsBackfillPreviewStatus.duplicateLikely,
-            reason: 'Likely already exists',
+            reason: 'SMS already imported or attached',
           ),
         );
         continue;
       }
-      final didImport = await _addRecoveredTransaction(
+      final duplicate = await _findLikelyDuplicatePreview(preview, candidate);
+      if (duplicate != null) {
+        if (duplicate.transactionId != null) {
+          await _recordSourceEvidence(
+            preview: preview,
+            candidate: candidate,
+            transactionId: duplicate.transactionId,
+            status: 'duplicateAttached',
+          );
+        }
+        skipped += 1;
+        updated.add(
+          preview.copyWith(
+            status: SmsBackfillPreviewStatus.duplicateLikely,
+            reason: duplicate.transactionId != null
+                ? 'SMS proof attached to existing transaction'
+                : 'Likely already exists',
+          ),
+        );
+        continue;
+      }
+      final transactionId = await _addRecoveredTransaction(
         preview: preview,
         candidate: candidate,
       );
-      if (!didImport) {
+      if (transactionId == null) {
         skipped += 1;
         updated.add(
           preview.copyWith(
@@ -298,6 +349,12 @@ class SmsRecoveryService {
           ),
         );
       } else {
+        await _recordSourceEvidence(
+          preview: preview,
+          candidate: candidate,
+          transactionId: transactionId,
+          status: 'imported',
+        );
         imported += 1;
         updated.add(
           preview.copyWith(
@@ -336,7 +393,7 @@ class SmsRecoveryService {
     return result.candidates.first;
   }
 
-  Future<bool> _addRecoveredTransaction({
+  Future<int?> _addRecoveredTransaction({
     required SmsBackfillPreview preview,
     required DetectedTransactionCandidate candidate,
   }) async {
@@ -350,9 +407,10 @@ class SmsRecoveryService {
             sourceType: paymentSourceType,
             sourceHint: candidate.paymentSourceHint,
           );
-    if (paymentSourceId == null) return false;
+    if (paymentSourceId == null) return null;
 
     final category =
+        preview.category ??
         candidate.categorySuggestion ??
         CategorySuggester.suggest(candidate.merchant);
     final transactionType = _transactionTypeFor(
@@ -360,27 +418,60 @@ class SmsRecoveryService {
       category: category,
       paymentSourceType: paymentSourceType,
     );
+    final amount = preview.amount ?? candidate.amount;
+    final merchant = preview.merchant ?? candidate.merchant;
+    final transactionDate =
+        preview.transactionDate ?? candidate.transactionDate;
     final transactionImpactType = await _transactionImpactTypeFor(
       transactionType: transactionType,
       paymentSourceType: paymentSourceType,
       paymentSourceId: paymentSourceId,
-      transactionDate: candidate.transactionDate,
+      transactionDate: transactionDate,
     );
-    await _transactionEngine.addTransaction(
+    return _transactionEngine.addTransaction(
       AddTransactionInput(
         type: transactionType,
-        amount: candidate.amount,
-        title: candidate.merchant,
+        amount: amount,
+        title: merchant,
         category: category,
         notes: 'Imported from SMS recovery',
-        transactionDate: candidate.transactionDate,
+        transactionDate: transactionDate,
         paymentSourceType: paymentSourceType,
         paymentSourceId: paymentSourceId,
         detectedSourceType: 'smsRecovery',
         transactionImpactType: transactionImpactType,
       ),
     );
-    return true;
+  }
+
+  Future<void> _recordSourceEvidence({
+    required SmsBackfillPreview preview,
+    required DetectedTransactionCandidate candidate,
+    required int? transactionId,
+    required String status,
+  }) async {
+    final amount = preview.amount ?? candidate.amount;
+    final merchant = preview.merchant ?? candidate.merchant;
+    final transactionDate =
+        preview.transactionDate ?? candidate.transactionDate;
+    await _db
+        .into(_db.transactionSourceEvents)
+        .insert(
+          TransactionSourceEventsCompanion.insert(
+            transactionId: Value(transactionId),
+            sourceType: 'smsRecovery',
+            sourceFingerprint: preview.id,
+            status: status,
+            sender: Value(preview.sender),
+            sourceReceivedAt: Value(preview.receivedAt),
+            parserName: Value(preview.parserName ?? candidate.parserName),
+            amount: Value(amount),
+            merchant: Value(merchant),
+            transactionDate: Value(transactionDate),
+            rawText: preview.body,
+          ),
+          mode: InsertMode.insertOrIgnore,
+        );
   }
 
   String _transactionTypeFor({
@@ -463,44 +554,77 @@ class SmsRecoveryService {
     return 'Parser did not find a transaction candidate';
   }
 
-  Future<bool> _hasLikelyDuplicate(
+  Future<_SmsDuplicateMatch?> _findLikelyDuplicate(
     DetectedTransactionCandidate candidate,
   ) async {
-    final start = candidate.transactionDate.subtract(
-      const Duration(minutes: 10),
+    return _findLikelyDuplicateValues(
+      amount: candidate.amount,
+      merchant: candidate.merchant,
+      transactionDate: candidate.transactionDate,
     );
-    final end = candidate.transactionDate.add(const Duration(minutes: 10));
-    final pendingRows =
-        await (_db.select(_db.pendingTransactions)..where(
-              (p) =>
-                  p.amount.equals(candidate.amount) &
-                  p.transactionDate.isBiggerOrEqualValue(start) &
-                  p.transactionDate.isSmallerOrEqualValue(end),
-            ))
-            .get();
-    if (pendingRows.any((row) => _sameCounterparty(row.merchant, candidate))) {
-      return true;
-    }
+  }
 
+  Future<_SmsDuplicateMatch?> _findLikelyDuplicatePreview(
+    SmsBackfillPreview preview,
+    DetectedTransactionCandidate candidate,
+  ) {
+    return _findLikelyDuplicateValues(
+      amount: preview.amount ?? candidate.amount,
+      merchant: preview.merchant ?? candidate.merchant,
+      transactionDate: preview.transactionDate ?? candidate.transactionDate,
+    );
+  }
+
+  Future<_SmsDuplicateMatch?> _findLikelyDuplicateValues({
+    required double amount,
+    required String merchant,
+    required DateTime transactionDate,
+  }) async {
+    final start = transactionDate.subtract(const Duration(minutes: 10));
+    final end = transactionDate.add(const Duration(minutes: 10));
     final transactionRows =
         await (_db.select(_db.transactions)..where(
               (t) =>
-                  t.amount.equals(candidate.amount) &
+                  t.amount.equals(amount) &
                   t.transactionDate.isBiggerOrEqualValue(start) &
                   t.transactionDate.isSmallerOrEqualValue(end),
             ))
             .get();
-    return transactionRows.any(
-      (row) => _sameCounterparty(row.title, candidate),
-    );
+    for (final row in transactionRows) {
+      if (_sameCounterparty(row.title, merchant)) {
+        return _SmsDuplicateMatch(transactionId: row.id);
+      }
+    }
+
+    final pendingRows =
+        await (_db.select(_db.pendingTransactions)..where(
+              (p) =>
+                  p.amount.equals(amount) &
+                  p.transactionDate.isBiggerOrEqualValue(start) &
+                  p.transactionDate.isSmallerOrEqualValue(end),
+            ))
+            .get();
+    for (final row in pendingRows) {
+      if (_sameCounterparty(row.merchant, merchant)) {
+        return _SmsDuplicateMatch(pendingId: row.id);
+      }
+    }
+
+    return null;
   }
 
-  bool _sameCounterparty(
-    String existing,
-    DetectedTransactionCandidate candidate,
-  ) {
+  Future<bool> _hasSourceEvidence(String sourceFingerprint) async {
+    final row =
+        await (_db.select(_db.transactionSourceEvents)..where(
+              (event) => event.sourceFingerprint.equals(sourceFingerprint),
+            ))
+            .getSingleOrNull();
+    return row != null;
+  }
+
+  bool _sameCounterparty(String existing, String merchant) {
     final left = CounterpartyNormalizer.normalize(existing);
-    final right = CounterpartyNormalizer.normalize(candidate.merchant);
+    final right = CounterpartyNormalizer.normalize(merchant);
     if (left.isEmpty || right.isEmpty) return false;
     if (left == right) return true;
     return left.contains(right) || right.contains(left);
@@ -522,4 +646,19 @@ class SmsRecoveryService {
     }
     return hash.toRadixString(16);
   }
+}
+
+class _SmsDuplicateMatch {
+  const _SmsDuplicateMatch({
+    this.transactionId,
+    this.pendingId,
+    this.sourceEvidenceExists = false,
+  });
+
+  final int? transactionId;
+  final int? pendingId;
+  final bool sourceEvidenceExists;
+
+  bool get exists =>
+      transactionId != null || pendingId != null || sourceEvidenceExists;
 }

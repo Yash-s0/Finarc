@@ -119,6 +119,24 @@ void main() {
     );
 
     await db
+        .into(db.transactionSourceEvents)
+        .insert(
+          TransactionSourceEventsCompanion.insert(
+            transactionId: Value(txnId),
+            sourceType: 'smsRecovery',
+            sourceFingerprint: 'sms-proof-1',
+            status: 'imported',
+            sender: const Value('AX-ICICIB-S'),
+            sourceReceivedAt: Value(DateTime(2026, 5, 25, 12, 30)),
+            parserName: const Value('CardNotificationParser'),
+            amount: const Value(1499),
+            merchant: const Value('Swiggy'),
+            transactionDate: Value(DateTime(2026, 5, 25)),
+            rawText: 'INR 1499 spent on ICICI Card XX1234 at SWIGGY',
+          ),
+        );
+
+    await db
         .into(db.pendingTransactions)
         .insert(
           PendingTransactionsCompanion.insert(
@@ -281,6 +299,7 @@ void main() {
           'cashWallets',
           'creditCards',
           'transactions',
+          'transactionSourceEvents',
           'cardBills',
           'pendingTransactions',
           'splitGroups',
@@ -302,6 +321,10 @@ void main() {
       expect(
         (data['transactions'] as List).single['cashbackDestinationType'],
         'amazonPay',
+      );
+      expect(
+        (data['transactionSourceEvents'] as List).single['sourceFingerprint'],
+        'sms-proof-1',
       );
       expect((data['settings'] as List).single['userName'], 'Yash');
       expect((data['settings'] as List).single['monthlySalary'], 150000);

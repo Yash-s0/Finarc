@@ -71,6 +71,7 @@ class ImportService {
       'cashWallets',
       'creditCards',
       'transactions',
+      'transactionSourceEvents',
       'cardBills',
       'pendingTransactions',
       'splitGroups',
@@ -125,6 +126,10 @@ class ImportService {
         'cashWallets': _list(data, 'cashWallets').length,
         'creditCards': _list(data, 'creditCards').length,
         'transactions': _list(data, 'transactions').length,
+        'transactionSourceEvents': _list(
+          data,
+          'transactionSourceEvents',
+        ).length,
         'cardBills': _list(data, 'cardBills').length,
         'pendingTransactions': _list(data, 'pendingTransactions').length,
         'splitGroups': _list(data, 'splitGroups').length,
@@ -149,6 +154,7 @@ class ImportService {
     final data = payload['data'] as Map<String, dynamic>;
 
     await _db.transaction(() async {
+      await _db.delete(_db.transactionSourceEvents).go();
       await _db.delete(_db.transactions).go();
       await _db.delete(_db.pendingTransactions).go();
       await _db.delete(_db.cardBills).go();
@@ -401,6 +407,33 @@ class ImportService {
                 createdAt: Value(_date(row['createdAt']) ?? DateTime.now()),
                 updatedAt: Value(_date(row['updatedAt']) ?? DateTime.now()),
               ),
+            );
+      }
+
+      for (final raw in _list(data, 'transactionSourceEvents')) {
+        final row = _asMap(raw);
+        await _db
+            .into(_db.transactionSourceEvents)
+            .insert(
+              TransactionSourceEventsCompanion(
+                id: Value(_int(row['id']) ?? 0),
+                transactionId: Value(_int(row['transactionId'])),
+                sourceType: Value(
+                  _string(row['sourceType'], fallback: 'unknown'),
+                ),
+                sourceFingerprint: Value(_string(row['sourceFingerprint'])),
+                status: Value(_string(row['status'], fallback: 'imported')),
+                sender: Value(_stringOrNull(row['sender'])),
+                sourceReceivedAt: Value(_date(row['sourceReceivedAt'])),
+                parserName: Value(_stringOrNull(row['parserName'])),
+                amount: Value(_double(row['amount'])),
+                merchant: Value(_stringOrNull(row['merchant'])),
+                transactionDate: Value(_date(row['transactionDate'])),
+                rawText: Value(_string(row['rawText'])),
+                metaJson: Value(_stringOrNull(row['metaJson'])),
+                createdAt: Value(_date(row['createdAt']) ?? DateTime.now()),
+              ),
+              mode: InsertMode.insertOrIgnore,
             );
       }
 

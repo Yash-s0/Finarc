@@ -34,6 +34,7 @@ class BackupData {
     required this.cashWallets,
     required this.creditCards,
     required this.transactions,
+    required this.transactionSourceEvents,
     required this.cardBills,
     required this.pendingTransactions,
     required this.splitGroups,
@@ -51,6 +52,7 @@ class BackupData {
   final List<Map<String, dynamic>> cashWallets;
   final List<Map<String, dynamic>> creditCards;
   final List<Map<String, dynamic>> transactions;
+  final List<Map<String, dynamic>> transactionSourceEvents;
   final List<Map<String, dynamic>> cardBills;
   final List<Map<String, dynamic>> pendingTransactions;
   final List<Map<String, dynamic>> splitGroups;
@@ -69,6 +71,7 @@ class BackupData {
       'cashWallets': cashWallets,
       'creditCards': creditCards,
       'transactions': transactions,
+      'transactionSourceEvents': transactionSourceEvents,
       'cardBills': cardBills,
       'pendingTransactions': pendingTransactions,
       'splitGroups': splitGroups,

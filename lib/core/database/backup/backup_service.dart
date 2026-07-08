@@ -18,6 +18,9 @@ class BackupService {
     final cashWallets = await _db.select(_db.cashWallets).get();
     final creditCards = await _db.select(_db.creditCards).get();
     final transactions = await _db.select(_db.transactions).get();
+    final transactionSourceEvents = await _db
+        .select(_db.transactionSourceEvents)
+        .get();
     final cardBills = await _db.select(_db.cardBills).get();
     final pendingTransactions = await _db.select(_db.pendingTransactions).get();
     final splitGroups = await _db.select(_db.splitGroups).get();
@@ -41,6 +44,9 @@ class BackupService {
         cashWallets: cashWallets.map(_mapCashWallet).toList(growable: false),
         creditCards: creditCards.map(_mapCreditCard).toList(growable: false),
         transactions: transactions.map(_mapTransaction).toList(growable: false),
+        transactionSourceEvents: transactionSourceEvents
+            .map(_mapTransactionSourceEvent)
+            .toList(growable: false),
         cardBills: cardBills.map(_mapCardBill).toList(growable: false),
         pendingTransactions: pendingTransactions
             .map(_mapPendingTransaction)
@@ -480,6 +486,25 @@ class BackupService {
     'status': row.status,
     'createdAt': _iso(row.createdAt),
     'paidAt': _iso(row.paidAt),
+  };
+
+  static Map<String, dynamic> _mapTransactionSourceEvent(
+    TransactionSourceEvent row,
+  ) => {
+    'id': row.id,
+    'transactionId': row.transactionId,
+    'sourceType': row.sourceType,
+    'sourceFingerprint': row.sourceFingerprint,
+    'status': row.status,
+    'sender': row.sender,
+    'sourceReceivedAt': _iso(row.sourceReceivedAt),
+    'parserName': row.parserName,
+    'amount': row.amount,
+    'merchant': row.merchant,
+    'transactionDate': _iso(row.transactionDate),
+    'rawText': row.rawText,
+    'metaJson': row.metaJson,
+    'createdAt': _iso(row.createdAt),
   };
 
   static Map<String, dynamic> _mapPendingTransaction(PendingTransaction row) =>

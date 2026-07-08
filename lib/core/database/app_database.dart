@@ -83,6 +83,28 @@ class Transactions extends Table {
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }
 
+class TransactionSourceEvents extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get transactionId => integer().nullable()();
+  TextColumn get sourceType => text()();
+  TextColumn get sourceFingerprint => text()();
+  TextColumn get status => text()();
+  TextColumn get sender => text().nullable()();
+  DateTimeColumn get sourceReceivedAt => dateTime().nullable()();
+  TextColumn get parserName => text().nullable()();
+  RealColumn get amount => real().nullable()();
+  TextColumn get merchant => text().nullable()();
+  DateTimeColumn get transactionDate => dateTime().nullable()();
+  TextColumn get rawText => text()();
+  TextColumn get metaJson => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  List<Set<Column<Object>>> get uniqueKeys => [
+    {sourceFingerprint},
+  ];
+}
+
 class PendingTransactions extends Table {
   IntColumn get id => integer().autoIncrement()();
   RealColumn get amount => real()();
@@ -312,6 +334,7 @@ class AppSettings extends Table {
     CashWallets,
     CreditCards,
     Transactions,
+    TransactionSourceEvents,
     PendingTransactions,
     CardBills,
     SplitGroups,
@@ -329,7 +352,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 23;
+  int get schemaVersion => 24;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -551,6 +574,9 @@ class AppDatabase extends _$AppDatabase {
           'SET payment_app_notifications_enabled = 1 '
           'WHERE notification_detection_enabled = 1',
         );
+      }
+      if (from < 24) {
+        await m.createTable(transactionSourceEvents);
       }
       await globalAppLogService.log(
         category: 'migration',

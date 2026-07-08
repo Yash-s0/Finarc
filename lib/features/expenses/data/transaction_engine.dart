@@ -70,7 +70,7 @@ class TransactionEngine {
 
   BillingService get _billing => BillingService(_db);
 
-  Future<void> addTransaction(
+  Future<int> addTransaction(
     AddTransactionInput input, {
     bool reconcileCardBilling = true,
   }) async {
@@ -163,6 +163,10 @@ class TransactionEngine {
         await _billing.reconcileCardAfterMutation(current: inserted);
       }
     }
+    if (insertedId == null) {
+      throw StateError('Transaction insert did not return an id');
+    }
+    return insertedId!;
   }
 
   bool isEditable(Transaction txn) {
