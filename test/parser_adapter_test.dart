@@ -329,6 +329,26 @@ void main() {
     }
   });
 
+  test('non-transaction mandate and offer messages do not produce candidates', () {
+    final samples = [
+      'Your ASPRESENTED UPI AutoPay Mandate from 15/07/2026 to 15/07/2036 is successfully created towards SAVESAGE SOLUTIONS PRIVATE LIMITED for Rs.99.00. Refer UPI no. 1a535e97547046288f389e22bb5dd280@okicici. Regards, Kotak Bank',
+      '🔵 🔶Up to ₹60,000 Credit limit💸 🟢 🔶No Joining Fee 🟢 🔶No Joining Fee 🔴 🔶No Paperwork 👉 Tap to activate Paytm Postpaid today 😇',
+    ];
+
+    for (final sample in samples) {
+      final result = registry.parseInput(
+        ParserInput(
+          rawText: sample,
+          sourceType: 'appNotification',
+          packageName: 'com.google.android.apps.messaging',
+          sender: 'TEST',
+          receivedAt: DateTime(2026, 7, 16, 12),
+        ),
+      );
+      expect(result.candidates, isEmpty, reason: sample);
+    }
+  });
+
   test('merchant normalization maps known merchants', () {
     expect(MerchantNormalizer.normalize('SWIGGY INSTAMART UPI TXN'), 'Swiggy');
     expect(MerchantNormalizer.normalize('AMAZON PAY INFO'), 'Amazon');

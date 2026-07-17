@@ -281,6 +281,71 @@ class ParserTextUtils {
         looksLikeAvailableLimitOnlyCardMessage(text);
   }
 
+  static bool looksLikeNonTransactionMessage(String text) {
+    return looksLikeNonExpenseCardMessage(text) ||
+        looksLikeAutopayMandateSetupMessage(text) ||
+        looksLikeCreditLimitOfferMessage(text);
+  }
+
+  static bool looksLikeAutopayMandateSetupMessage(String text) {
+    final lower = text.toLowerCase();
+    final mentionsAutopay =
+        lower.contains('autopay') ||
+        lower.contains('auto pay') ||
+        lower.contains('auto-pay') ||
+        lower.contains('mandate');
+    if (!mentionsAutopay) return false;
+
+    final setupPhrases = [
+      'mandate',
+      'successfully created',
+      'created towards',
+      'has been created',
+      'is created',
+      'is successfully created',
+      'activated',
+      'enabled',
+      'registered',
+      'setup',
+      'set up',
+    ];
+    final hasSetupSignal = setupPhrases.any(lower.contains);
+    if (!hasSetupSignal) return false;
+
+    final hasActualDebit = RegExp(
+      r'\b(?:debited|deducted|paid|spent|charged|withdrawn|transferred|sent)\b',
+      caseSensitive: false,
+    ).hasMatch(text);
+    return !hasActualDebit;
+  }
+
+  static bool looksLikeCreditLimitOfferMessage(String text) {
+    final lower = text.toLowerCase();
+    final hasOfferSignal =
+        lower.contains('credit limit') ||
+        lower.contains('limit') ||
+        lower.contains('postpaid') ||
+        lower.contains('no joining fee') ||
+        lower.contains('no paperwork') ||
+        lower.contains('tap to activate') ||
+        lower.contains('activate');
+    if (!hasOfferSignal) return false;
+
+    final hasMarketingSignal =
+        lower.contains('up to') ||
+        lower.contains('no joining fee') ||
+        lower.contains('no paperwork') ||
+        lower.contains('tap to activate') ||
+        lower.contains('postpaid');
+    if (!hasMarketingSignal) return false;
+
+    final hasTransactionSignal = RegExp(
+      r'\b(?:debited|credited|received|paid|spent|sent|deducted|charged|withdrawn|purchase(?:d)?|txn|transaction|upi ref|rrn)\b',
+      caseSensitive: false,
+    ).hasMatch(text);
+    return !hasTransactionSignal;
+  }
+
   static String? extractMerchantAfterKeyword(
     String text,
     List<String> keywords,

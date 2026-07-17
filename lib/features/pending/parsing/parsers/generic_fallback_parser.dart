@@ -15,10 +15,10 @@ class GenericFallbackParser implements TransactionParser {
 
   @override
   ParserResult parse(ParserInput input) {
-    if (ParserTextUtils.looksLikeNonExpenseCardMessage(input.fullText)) {
+    if (ParserTextUtils.looksLikeNonTransactionMessage(input.fullText)) {
       return ParserResult(
         candidates: const [],
-        warnings: const ['Skipped non-expense card message'],
+        warnings: const ['Skipped non-transaction message'],
         parserName: parserName,
         parsedAt: DateTime.now(),
       );
