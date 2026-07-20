@@ -254,7 +254,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                             const SizedBox(height: AppSpacing.xs),
                             FinarcTextField(
                               controller: _category,
-                              label: 'Category',
+                              hint: 'Type or choose category',
                             ),
                             const SizedBox(height: AppSpacing.xs),
                             Wrap(

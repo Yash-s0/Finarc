@@ -33,6 +33,7 @@ class AddTransactionInput {
     this.cashbackDestinationType,
     this.cashbackDestinationId,
     this.relatedTransactionId,
+    this.applyCardRefundToOutstanding = false,
   });
 
   final String type;
@@ -61,6 +62,7 @@ class AddTransactionInput {
   final String? cashbackDestinationType;
   final int? cashbackDestinationId;
   final int? relatedTransactionId;
+  final bool applyCardRefundToOutstanding;
 }
 
 class TransactionEngine {
@@ -86,7 +88,12 @@ class TransactionEngine {
             input.paymentSourceType == PaymentSourceType.creditCard) {
           await _applyCardPaymentIn(sourceId, input.amount);
         } else if (input.type == TransactionType.refund) {
-          await _applyRefund(input.paymentSourceType, sourceId, input.amount);
+          await _applyRefund(
+            input.paymentSourceType,
+            sourceId,
+            input.amount,
+            applyCardRefundToOutstanding: input.applyCardRefundToOutstanding,
+          );
         } else {
           await _applyExpense(input.paymentSourceType, sourceId, input.amount);
         }
@@ -367,7 +374,12 @@ class TransactionEngine {
         input.paymentSourceType == PaymentSourceType.creditCard) {
       await _applyCardPaymentIn(sourceId, input.amount);
     } else if (input.type == TransactionType.refund) {
-      await _applyRefund(input.paymentSourceType, sourceId, input.amount);
+      await _applyRefund(
+        input.paymentSourceType,
+        sourceId,
+        input.amount,
+        applyCardRefundToOutstanding: input.applyCardRefundToOutstanding,
+      );
     } else {
       await _applyExpense(input.paymentSourceType, sourceId, input.amount);
     }
@@ -580,9 +592,14 @@ class TransactionEngine {
   Future<void> _applyRefund(
     String sourceType,
     int sourceId,
-    double amount,
-  ) async {
-    if (sourceType == PaymentSourceType.creditCard) return;
+    double amount, {
+    bool applyCardRefundToOutstanding = false,
+  }) async {
+    if (sourceType == PaymentSourceType.creditCard) {
+      if (!applyCardRefundToOutstanding) return;
+      await _applyCardPaymentIn(sourceId, amount);
+      return;
+    }
     await _applyIncome(sourceType, sourceId, amount);
   }
 

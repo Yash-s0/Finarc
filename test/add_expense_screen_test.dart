@@ -318,7 +318,14 @@ void main() {
     final db = await createDb();
     addTearDown(() async => db.close());
 
-    await tester.pumpWidget(wrap(db, const AddIncomeScreen()));
+    await tester.pumpWidget(
+      wrap(
+        db,
+        AddIncomeScreen(
+          initialDateTime: DateTime.now().add(const Duration(minutes: 5)),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     await enterAmount(tester, '500');
@@ -332,7 +339,7 @@ void main() {
     expect(saved.type, 'income');
   });
 
-  testWidgets('Add Income uses destination selector and no card/wallet mode', (
+  testWidgets('Add Income uses destination selector with card refund mode', (
     tester,
   ) async {
     final db = await createDb();
@@ -341,11 +348,47 @@ void main() {
     await tester.pumpWidget(wrap(db, const AddIncomeScreen()));
     await tester.pumpAndSettle();
 
-    expect(find.text('RECEIVE INTO'), findsWidgets);
+    expect(find.text('RECEIVE INTO'), findsOneWidget);
     expect(find.byKey(const Key('income-mode-cash')), findsOneWidget);
     expect(find.byKey(const Key('income-mode-upi')), findsOneWidget);
     expect(find.byKey(const Key('income-mode-bank')), findsOneWidget);
+    expect(find.byKey(const Key('income-mode-creditCard')), findsOneWidget);
     expect(find.byKey(const Key('income-mode-wallet')), findsNothing);
-    expect(find.byKey(const Key('income-mode-creditCard')), findsNothing);
+    expect(find.text('Category'), findsNothing);
   });
+
+  testWidgets(
+    'Add Income card destination saves refund and reduces outstanding',
+    (tester) async {
+      final db = await createDb();
+      addTearDown(() async => db.close());
+      final card = await db.select(db.creditCards).getSingle();
+      await (db.update(
+        db.creditCards,
+      )..where((c) => c.id.equals(card.id))).write(
+        const CreditCardsCompanion(currentOutstanding: drift.Value(1000)),
+      );
+
+      await tester.pumpWidget(wrap(db, const AddIncomeScreen()));
+      await tester.pumpAndSettle();
+
+      await enterAmount(tester, '250');
+      await tester.tap(find.byKey(const Key('income-mode-creditCard')));
+      await tester.pumpAndSettle();
+      await scrollTo(tester, find.text('Save Income'));
+      await tester.tap(find.text('Save Income'));
+      await tester.pumpAndSettle();
+
+      final saved = await latestTransaction(db);
+      final updatedCard = await (db.select(
+        db.creditCards,
+      )..where((c) => c.id.equals(card.id))).getSingle();
+      expect(saved, isNotNull);
+      expect(saved!.type, 'refund');
+      expect(saved.paymentSourceType, 'creditCard');
+      expect(saved.transactionImpactType, isNull);
+      expect(saved.title, 'Card Refund');
+      expect(updatedCard.currentOutstanding, 750);
+    },
+  );
 }

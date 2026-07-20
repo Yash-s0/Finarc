@@ -43,6 +43,11 @@ class _AddIncomeScreenState extends ConsumerState<AddIncomeScreen> {
       label: 'Bank',
       icon: Icons.account_balance_rounded,
     ),
+    FinarcPaymentModeOption(
+      value: PaymentSourceType.creditCard,
+      label: 'Card',
+      icon: Icons.credit_card_rounded,
+    ),
   ];
 
   static const _incomeCategories = [
@@ -190,8 +195,6 @@ class _AddIncomeScreenState extends ConsumerState<AddIncomeScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const FinarcSectionHeader(title: 'Receive Into'),
-                            const SizedBox(height: AppSpacing.xs),
                             FinarcPaymentSelector(
                               title: 'Receive into',
                               selectedMode: _destinationType,
@@ -199,6 +202,10 @@ class _AddIncomeScreenState extends ConsumerState<AddIncomeScreen> {
                               onModeChanged: (mode) => setState(() {
                                 _destinationType = mode;
                                 _destinationId = null;
+                                if (mode == PaymentSourceType.creditCard &&
+                                    _category == 'General') {
+                                  _category = 'Refund';
+                                }
                               }),
                               sources: destinationConfig.options,
                               selectedSourceId: _destinationId,
@@ -224,9 +231,7 @@ class _AddIncomeScreenState extends ConsumerState<AddIncomeScreen> {
                             const SizedBox(height: AppSpacing.xs),
                             DropdownButtonFormField<String>(
                               initialValue: _category,
-                              decoration: const InputDecoration(
-                                labelText: 'Category',
-                              ),
+                              decoration: const InputDecoration(),
                               items: _incomeCategories
                                   .map(
                                     (category) => DropdownMenuItem<String>(
@@ -348,14 +353,21 @@ class _AddIncomeScreenState extends ConsumerState<AddIncomeScreen> {
     _destinationId = destinationId;
 
     final amount = double.parse(_amount.text.trim());
+    final isCardRefund =
+        _resolvedDestinationType == PaymentSourceType.creditCard;
     final rawCategory = _category.trim();
     final category = rawCategory.isEmpty ? 'General' : rawCategory;
     final title = _title.text.trim().isEmpty
-        ? ((category.toLowerCase() == 'general' ||
-                  category.toLowerCase() == 'income')
-              ? 'Income'
-              : '$category Income')
+        ? (isCardRefund
+              ? 'Card Refund'
+              : ((category.toLowerCase() == 'general' ||
+                        category.toLowerCase() == 'income')
+                    ? 'Income'
+                    : '$category Income'))
         : _title.text.trim();
+    final transactionType = isCardRefund
+        ? TransactionType.refund
+        : TransactionType.income;
     final transactionImpactType = _dateOnly(_date).isBefore(_dateOnlyNow())
         ? TransactionImpactType.historicalNoBalance
         : null;
@@ -365,7 +377,7 @@ class _AddIncomeScreenState extends ConsumerState<AddIncomeScreen> {
           .read(transactionEngineProvider)
           .addTransaction(
             AddTransactionInput(
-              type: TransactionType.income,
+              type: transactionType,
               amount: amount,
               title: title,
               category: category,
@@ -374,7 +386,9 @@ class _AddIncomeScreenState extends ConsumerState<AddIncomeScreen> {
               paymentSourceType: _resolvedDestinationType,
               paymentSourceId: _destinationId,
               transactionImpactType: transactionImpactType,
+              applyCardRefundToOutstanding: isCardRefund,
             ),
+            reconcileCardBilling: !isCardRefund,
           );
 
       final db = ref.read(appDatabaseProvider);
