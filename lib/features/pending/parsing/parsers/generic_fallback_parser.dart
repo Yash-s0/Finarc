@@ -23,7 +23,7 @@ class GenericFallbackParser implements TransactionParser {
         parsedAt: DateTime.now(),
       );
     }
-    final amount = ParserTextUtils.extractAmount(input.fullText);
+    final amount = ParserTextUtils.extractTransactionAmount(input.fullText);
     if (amount == null) {
       return ParserResult(
         candidates: const [],

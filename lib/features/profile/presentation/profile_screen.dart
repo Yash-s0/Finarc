@@ -250,8 +250,8 @@ class ProfileScreen extends ConsumerWidget {
       data: (enabled) {
         if (!smsIngestionAvailable) {
           return const FinarcStatusBadge(
-            label: 'SMS NOT AVAILABLE IN THIS BUILD',
-            tone: FinarcStatusTone.neutral,
+            label: 'SMS ACCESS NEEDS DEVICE SUPPORT',
+            tone: FinarcStatusTone.warning,
             compact: true,
           );
         }

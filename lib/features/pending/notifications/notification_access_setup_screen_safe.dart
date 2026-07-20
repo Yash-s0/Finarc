@@ -64,18 +64,13 @@ class NotificationAccessSetupScreenSafe extends ConsumerWidget {
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'Bank and card issuer notifications stay enabled separately.',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: AppSpacing.xs),
                 const FinarcStatusBadge(
-                  label: 'SMS is unavailable in this build.',
-                  tone: FinarcStatusTone.neutral,
+                  label: 'SMS DETECTION IS AVAILABLE SEPARATELY',
+                  tone: FinarcStatusTone.info,
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
-                  'On Android 13 and newer, allow Finarc app notifications too. Detection can still create pending items without that permission, but you will not see local alerts from Finarc.',
+                  'Use SMS Access for local SMS parsing. On Android 13 and newer, allow Finarc app notifications too so local alerts can be shown.',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],

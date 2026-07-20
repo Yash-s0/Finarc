@@ -44,6 +44,41 @@ class ParserTextUtils {
     return double.tryParse(raw);
   }
 
+  static double? extractTransactionAmount(String text) {
+    final amounts = _amountPattern
+        .allMatches(text)
+        .map((match) {
+          final raw = (match.group(1) ?? '').replaceAll(',', '').trim();
+          final value = double.tryParse(raw);
+          if (value == null) return null;
+          return _AmountMatch(value: value, start: match.start, end: match.end);
+        })
+        .whereType<_AmountMatch>()
+        .where((amount) => !_looksLikeNoiseAmount(text, amount))
+        .toList(growable: false);
+    if (amounts.isEmpty) return null;
+    if (amounts.length == 1) return amounts.single.value;
+
+    final actions = RegExp(
+      r'\b(?:debited|credited|received|paid|spent|sent|deducted|charged|withdrawn|transferred|refund(?:ed)?|reversal|purchase(?:d)?|used)\b',
+      caseSensitive: false,
+    ).allMatches(text).toList(growable: false);
+    if (actions.isEmpty) return amounts.first.value;
+
+    _AmountMatch? best;
+    var bestScore = 1 << 30;
+    for (final amount in amounts) {
+      final distance = actions
+          .map((action) => _distanceBetween(amount.start, amount.end, action))
+          .reduce((a, b) => a < b ? a : b);
+      if (distance < bestScore) {
+        best = amount;
+        bestScore = distance;
+      }
+    }
+    return best?.value ?? amounts.first.value;
+  }
+
   static String? extractLast4Hint(String text) {
     final match = _last4Pattern.firstMatch(text);
     return match?.group(1);
@@ -553,6 +588,76 @@ class ParserTextUtils {
         ).hasMatch(normalized) ||
         RegExp(r'^\d{1,2}:\d{2}(?:\s*[AaPp][Mm])?$').hasMatch(normalized);
   }
+
+  static bool _looksLikeNoiseAmount(String text, _AmountMatch amount) {
+    final nearAction =
+        RegExp(
+          r'\b(?:debited|credited|received|paid|spent|sent|deducted|charged|withdrawn|transferred|refund(?:ed)?|reversal|purchase(?:d)?|used)\b',
+          caseSensitive: false,
+        ).allMatches(text).any((action) {
+          final distance = _distanceBetween(amount.start, amount.end, action);
+          if (distance <= 14) return true;
+          if (action.end <= amount.start && distance <= 44) {
+            final between = text.substring(action.end, amount.start);
+            return !RegExp(r'[.!?]').hasMatch(between);
+          }
+          return false;
+        });
+    if (nearAction) return false;
+
+    final lower = text.toLowerCase();
+    final before = lower.substring(
+      amount.start - 36 < 0 ? 0 : amount.start - 36,
+      amount.start,
+    );
+    final after = lower.substring(
+      amount.end,
+      amount.end + 30 > lower.length ? lower.length : amount.end + 30,
+    );
+    final window = '$before $after';
+    const markers = [
+      'avl bal',
+      'available bal',
+      'available balance',
+      'updated balance',
+      'closing balance',
+      'current balance',
+      'balance is',
+      'balance:',
+      'bal:',
+      'avl limit',
+      'avl lmt',
+      'available limit',
+      'credit limit',
+      'limit:',
+      'limit ',
+      'min due',
+      'minimum due',
+      'total due',
+      'amount due',
+      'outstanding amount',
+      'joining fee',
+    ];
+    return markers.any(window.contains);
+  }
+
+  static int _distanceBetween(int start, int end, RegExpMatch match) {
+    if (end < match.start) return match.start - end;
+    if (match.end < start) return start - match.end;
+    return 0;
+  }
+}
+
+class _AmountMatch {
+  const _AmountMatch({
+    required this.value,
+    required this.start,
+    required this.end,
+  });
+
+  final double value;
+  final int start;
+  final int end;
 }
 
 class ParsedDateTime {

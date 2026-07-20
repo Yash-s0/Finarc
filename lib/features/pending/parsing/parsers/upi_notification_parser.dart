@@ -37,7 +37,7 @@ class UpiNotificationParser implements TransactionParser {
     }
     final text = input.fullText;
     final lower = text.toLowerCase();
-    final amount = ParserTextUtils.extractAmount(text);
+    final amount = ParserTextUtils.extractTransactionAmount(text);
     if (amount == null) {
       return ParserResult(
         candidates: const [],

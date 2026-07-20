@@ -151,6 +151,39 @@ void main() {
     expect(candidate.categorySuggestion, 'Transfer');
   });
 
+  test('bank parser ignores balance amount before debit amount', () {
+    final result = registry.parseInput(
+      ParserInput(
+        rawText:
+            'Avl Bal Rs.50,000.00. Rs.249.00 debited from A/c XX7821 to SWIGGY on 15-07-26. UPI Ref 123456789.',
+        sourceType: 'sms',
+        sender: 'VM-TESTBK',
+        receivedAt: DateTime(2026, 7, 15, 12, 0),
+      ),
+    );
+
+    final candidate = result.candidates.first;
+    expect(candidate.amount, 249);
+    expect(candidate.merchant, 'Swiggy');
+    expect(candidate.metadata?['transactionRef'], '123456789');
+  });
+
+  test('upi parser ignores available limit before paid amount', () {
+    final result = registry.parseInput(
+      ParserInput(
+        rawText:
+            'Available limit Rs.60,000.00. Paid Rs.349.00 to ZOMATO via UPI. UPI Ref 998877665544.',
+        sourceType: 'upiNotification',
+        receivedAt: DateTime(2026, 7, 15, 12, 0),
+      ),
+    );
+
+    final candidate = result.candidates.first;
+    expect(candidate.amount, 349);
+    expect(candidate.merchant, 'Zomato');
+    expect(candidate.metadata?['transactionRef'], '998877665544');
+  });
+
   test('parses salary transfer as income', () {
     final result = registry.parseInput(
       ParserInput(

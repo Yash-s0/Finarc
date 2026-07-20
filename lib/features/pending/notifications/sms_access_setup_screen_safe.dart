@@ -18,11 +18,13 @@ class SmsAccessSetupScreenSafe extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 FinarcStatusBadge(
-                  label: 'SMS NOT AVAILABLE IN THIS BUILD',
-                  tone: FinarcStatusTone.neutral,
+                  label: 'SMS ACCESS NEEDS ANDROID SUPPORT',
+                  tone: FinarcStatusTone.warning,
                 ),
                 SizedBox(height: AppSpacing.xs),
-                Text('SMS reading is not available in this build.'),
+                Text(
+                  'SMS parsing runs locally when Android permission and receiver access are available.',
+                ),
                 SizedBox(height: AppSpacing.xs),
                 Text(
                   'Notification listener ingestion remains available for local pending detection.',

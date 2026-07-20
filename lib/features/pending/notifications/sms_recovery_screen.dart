@@ -928,13 +928,11 @@ class SmsRecoveryScreenSafe extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 FinarcStatusBadge(
-                  label: 'SMS NOT AVAILABLE IN THIS BUILD',
-                  tone: FinarcStatusTone.neutral,
+                  label: 'SMS ACCESS REQUIRED',
+                  tone: FinarcStatusTone.warning,
                 ),
                 SizedBox(height: AppSpacing.xs),
-                Text(
-                  'Past SMS recovery requires local SMS access and is not available in this build.',
-                ),
+                Text('Enable local SMS access before importing past messages.'),
               ],
             ),
           ),
@@ -954,12 +952,12 @@ class _UnavailableCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           FinarcStatusBadge(
-            label: 'SMS NOT AVAILABLE IN THIS BUILD',
-            tone: FinarcStatusTone.neutral,
+            label: 'SMS ACCESS REQUIRED',
+            tone: FinarcStatusTone.warning,
           ),
           SizedBox(height: AppSpacing.xs),
           Text(
-            'SMS recovery is only available in builds with local SMS access.',
+            'Enable local SMS permission and receiver access before importing past messages.',
           ),
         ],
       ),

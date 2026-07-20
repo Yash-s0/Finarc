@@ -54,14 +54,14 @@ class SmsAccessSetupScreen extends ConsumerWidget {
                     Text(
                       smsIngestionAvailable
                           ? 'SMS permission is currently disabled.'
-                          : 'SMS reading is not available in this build.',
+                          : 'SMS access needs Android permission and receiver support on this device.',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   if (!smsIngestionAvailable)
                     Padding(
                       padding: const EdgeInsets.only(top: AppSpacing.xs),
                       child: Text(
-                        'SMS parsing requires a build with local SMS access.',
+                        'Notification detection remains available while SMS access is off.',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ),
@@ -88,8 +88,8 @@ class SmsAccessSetupScreen extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.xs),
                   if (!smsIngestionAvailable)
                     const FinarcStatusBadge(
-                      label: 'SMS NOT AVAILABLE IN THIS BUILD',
-                      tone: FinarcStatusTone.neutral,
+                      label: 'SMS ACCESS NEEDS DEVICE SUPPORT',
+                      tone: FinarcStatusTone.warning,
                       compact: true,
                     )
                   else
@@ -128,7 +128,7 @@ class SmsAccessSetupScreen extends ConsumerWidget {
                       return const Padding(
                         padding: EdgeInsets.only(bottom: AppSpacing.xs),
                         child: FinarcStatusBadge(
-                          label: 'Unavailable in this build',
+                          label: 'SMS RECEIVER NEEDS ANDROID SUPPORT',
                           tone: FinarcStatusTone.warning,
                           compact: true,
                         ),

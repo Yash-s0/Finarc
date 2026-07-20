@@ -143,12 +143,12 @@ void main() {
   List<Override> releaseOverrides() {
     return [
       notificationIngestionAvailableProvider.overrideWith((ref) async => true),
-      smsIngestionAvailableProvider.overrideWith((ref) async => false),
+      smsIngestionAvailableProvider.overrideWith((ref) async => true),
       notificationAccessStatusProvider.overrideWith((ref) async => true),
       notificationListenerAvailableProvider.overrideWith((ref) async => true),
       smsPermissionStatusProvider.overrideWith((ref) async => false),
-      smsReceiverAvailableProvider.overrideWith((ref) async => false),
-      smsReceiverEnabledProvider.overrideWith((ref) async => false),
+      smsReceiverAvailableProvider.overrideWith((ref) async => true),
+      smsReceiverEnabledProvider.overrideWith((ref) async => true),
       smsPermissionRationaleProvider.overrideWith((ref) async => false),
       smsRuntimeDiagnosticsProvider.overrideWith(
         (ref) async => SmsRuntimeDiagnostics.empty,
@@ -187,7 +187,7 @@ void main() {
     expect(openSettingsButton.onPressed, isNotNull);
   });
 
-  testWidgets('release SMS setup shows SMS unavailable', (tester) async {
+  testWidgets('release SMS setup shows SMS access controls', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: releaseOverrides(),
@@ -196,15 +196,16 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('SMS NOT AVAILABLE IN THIS BUILD'), findsOneWidget);
+    expect(find.text('SMS ACCESS DISABLED'), findsOneWidget);
+    expect(find.text('SMS NOT AVAILABLE IN THIS BUILD'), findsNothing);
     expect(
       find.text('SMS reading is not available in this build.'),
-      findsOneWidget,
+      findsNothing,
     );
     final enableSmsButton = tester.widget<FilledButton>(
       find.widgetWithText(FilledButton, 'Enable SMS Access'),
     );
-    expect(enableSmsButton.onPressed, isNull);
+    expect(enableSmsButton.onPressed, isNotNull);
   });
 
   testWidgets('release-safe notification setup shows UPI toggle', (
@@ -225,6 +226,7 @@ void main() {
     expect(find.text('Detection enabled'), findsOneWidget);
     expect(find.text('Show local detection notifications'), findsOneWidget);
     expect(find.text('UPI/payment app notifications'), findsOneWidget);
+    expect(find.text('SMS is unavailable in this build.'), findsNothing);
     expect(
       find.text(
         'UPI/payment app notifications can improve detection but may create duplicates. Turn this on if you expect Google Pay, PhonePe, Paytm, Amazon Pay, or CRED app notifications to be parsed.',

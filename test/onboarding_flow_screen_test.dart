@@ -117,7 +117,7 @@ void main() {
     await pumpOnboarding(tester);
 
     expect(find.text('Private by default'), findsOneWidget);
-    expect(find.text('One privacy promise'), findsOneWidget);
+    expect(find.text('Quick privacy tour'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     for (final title in [
@@ -143,9 +143,28 @@ void main() {
     }
 
     expect(find.text('Connect detection'), findsOneWidget);
-    expect(find.text('Notification Setup'), findsOneWidget);
+    expect(find.text('Notifications'), findsOneWidget);
     expect(find.text('SMS Setup'), findsOneWidget);
     expect(find.text('SMS setup unavailable in this build'), findsNothing);
+  });
+
+  testWidgets('privacy tour popup opens and closes from onboarding', (
+    tester,
+  ) async {
+    await pumpOnboarding(tester);
+
+    await tester.tap(find.text('Quick privacy tour'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('How privacy works'), findsOneWidget);
+    expect(find.text('Stored on this device'), findsOneWidget);
+    expect(find.text('Pending before saved'), findsOneWidget);
+    expect(find.text('Backups are manual'), findsOneWidget);
+
+    await tester.tap(find.text('Got it'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('How privacy works'), findsNothing);
   });
 
   testWidgets('skip name moves to summary and completes with empty profile', (
@@ -230,10 +249,10 @@ void main() {
     await pumpOnboarding(tester);
 
     const detail =
-        'Accounts, expenses, cards, splits and loans are stored locally. Backup and restore are manual Profile actions.';
+        'SMS and notification parsing are helpers. They create pending items, not final transactions.';
     expect(find.text(detail), findsNothing);
 
-    await tester.tap(find.text('Offline-first').last);
+    await tester.tap(find.text('Review first'));
     await tester.pumpAndSettle();
 
     expect(find.text(detail), findsOneWidget);
@@ -243,13 +262,13 @@ void main() {
     await pumpOnboarding(tester);
 
     const detail =
-        'Accounts, expenses, cards, splits and loans are stored locally. Backup and restore are manual Profile actions.';
+        'SMS and notification parsing are helpers. They create pending items, not final transactions.';
 
-    await tester.tap(find.text('Offline-first').last);
+    await tester.tap(find.text('Review first'));
     await tester.pumpAndSettle();
     expect(find.text(detail), findsOneWidget);
 
-    await tester.tap(find.text('Offline-first').last);
+    await tester.tap(find.text('Review first'));
     await tester.pumpAndSettle();
     expect(find.text(detail), findsNothing);
   });
@@ -257,21 +276,29 @@ void main() {
   testWidgets('opening another feature tile collapses the first', (
     tester,
   ) async {
+    await tester.binding.setSurfaceSize(const Size(420, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
     await pumpOnboarding(tester);
 
-    const offlineDetail =
-        'Accounts, expenses, cards, splits and loans are stored locally. Backup and restore are manual Profile actions.';
     const reviewDetail =
         'SMS and notification parsing are helpers. They create pending items, not final transactions.';
-
-    await tester.tap(find.text('Offline-first').last);
-    await tester.pumpAndSettle();
-    expect(find.text(offlineDetail), findsOneWidget);
+    const offlineDetail =
+        'Accounts, expenses, cards, splits and loans are stored locally. Backup and restore are manual Profile actions.';
 
     await tester.tap(find.text('Review first'));
     await tester.pumpAndSettle();
-    expect(find.text(offlineDetail), findsNothing);
     expect(find.text(reviewDetail), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('Offline-first').last,
+      80,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Offline-first').last);
+    await tester.pumpAndSettle();
+    expect(find.text(reviewDetail), findsNothing);
+    expect(find.text(offlineDetail), findsOneWidget);
   });
 
   testWidgets('final onboarding action completes onboarding', (tester) async {
@@ -301,7 +328,7 @@ void main() {
 
     expect(find.text('Allow Finarc notifications?'), findsOneWidget);
     expect(find.text('Not now'), findsOneWidget);
-    expect(find.text('Allow'), findsOneWidget);
+    expect(find.text('Allow notifications'), findsOneWidget);
 
     await tester.tap(find.text('Not now'));
     await tester.pumpAndSettle();
@@ -318,7 +345,7 @@ void main() {
     );
 
     await pumpOnboarding(tester, permissionService: permissionService);
-    await tester.tap(find.text('Allow'));
+    await tester.tap(find.text('Allow notifications'));
     await tester.pumpAndSettle();
 
     expect(permissionService.requestCount, 1);

@@ -149,8 +149,8 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                     data: (granted) {
                       if (!smsIngestionAvailable) {
                         return const FinarcStatusBadge(
-                          label: 'SMS NOT AVAILABLE IN THIS BUILD',
-                          tone: FinarcStatusTone.neutral,
+                          label: 'SMS ACCESS NEEDS DEVICE SUPPORT',
+                          tone: FinarcStatusTone.warning,
                           compact: true,
                         );
                       }
@@ -178,7 +178,7 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.xs),
                   if (!smsIngestionAvailable)
                     Text(
-                      'SMS reading is not available in this build.',
+                      'Open SMS setup to check Android SMS permission and receiver access on this device.',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   if (!smsIngestionAvailable)
@@ -209,9 +209,7 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                     children: [
                       Expanded(
                         child: FinarcSecondaryButton(
-                          onPressed: smsIngestionAvailable
-                              ? () => context.push('/sms/setup')
-                              : null,
+                          onPressed: () => context.push('/sms/setup'),
                           icon: Icons.sms_outlined,
                           label: 'Open SMS Setup',
                         ),

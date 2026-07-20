@@ -56,7 +56,7 @@ class GenericBankSmsParser implements TransactionParser {
     final candidates = <DetectedTransactionCandidate>[];
 
     for (final segment in segments) {
-      final amount = ParserTextUtils.extractAmount(segment);
+      final amount = ParserTextUtils.extractTransactionAmount(segment);
       if (amount == null) continue;
 
       final direction = _detectDirection(segment);

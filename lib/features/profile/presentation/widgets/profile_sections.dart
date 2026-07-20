@@ -596,7 +596,7 @@ class DetectionSettingsSection extends StatelessWidget {
               if (!smsIngestionAvailable) ...[
                 const SizedBox(height: AppSpacing.xs),
                 Text(
-                  'SMS reading is not available in this build.',
+                  'SMS access needs Android permission and receiver support on this device.',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
