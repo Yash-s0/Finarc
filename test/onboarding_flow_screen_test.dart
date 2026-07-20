@@ -116,15 +116,15 @@ void main() {
 
     await pumpOnboarding(tester);
 
-    expect(find.text('Welcome to Finarc'), findsOneWidget);
-    expect(find.text('Privacy-first'), findsOneWidget);
+    expect(find.text('Private by default'), findsOneWidget);
+    expect(find.text('One privacy promise'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     for (final title in [
       'Set up your first account',
-      'Optional detection setup',
+      'Connect detection',
       'Tell us about you',
-      'You’re ready to track smarter',
+      'Ready',
     ]) {
       await tapNext(tester);
       expect(find.text(title), findsOneWidget);
@@ -132,9 +132,7 @@ void main() {
     }
   });
 
-  testWidgets('release onboarding does not expose SMS setup CTA', (
-    tester,
-  ) async {
+  testWidgets('release onboarding exposes SMS setup CTA', (tester) async {
     AppModeConfig.debugOverride = AppMode.release;
 
     await pumpOnboarding(tester);
@@ -144,10 +142,10 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    expect(find.text('Optional detection setup'), findsOneWidget);
+    expect(find.text('Connect detection'), findsOneWidget);
     expect(find.text('Notification Setup'), findsOneWidget);
-    expect(find.text('SMS Setup'), findsNothing);
-    expect(find.text('SMS setup unavailable in this build'), findsOneWidget);
+    expect(find.text('SMS Setup'), findsOneWidget);
+    expect(find.text('SMS setup unavailable in this build'), findsNothing);
   });
 
   testWidgets('skip name moves to summary and completes with empty profile', (
@@ -160,7 +158,7 @@ void main() {
 
     await tester.tap(find.text('Skip name for now'));
     await tester.pumpAndSettle();
-    expect(find.text('You’re ready to track smarter'), findsOneWidget);
+    expect(find.text('Ready'), findsOneWidget);
 
     await tester.tap(find.text('Finish Setup'));
     await tester.pumpAndSettle();
@@ -177,7 +175,7 @@ void main() {
 
     await advanceToProfileStep(tester);
     await tapNext(tester);
-    expect(find.text('You’re ready to track smarter'), findsOneWidget);
+    expect(find.text('Ready'), findsOneWidget);
 
     await tester.tap(find.text('Finish Setup'));
     await tester.pumpAndSettle();
@@ -189,16 +187,53 @@ void main() {
     expect(row.salaryCreditDay, isNull);
   });
 
+  testWidgets('profile keyboard next moves through optional fields', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(420, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await pumpOnboarding(tester);
+    await advanceToProfileStep(tester);
+
+    await tester.tap(find.widgetWithText(TextFormField, 'Your name'));
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Your name'),
+      'Yash',
+    );
+    await tester.testTextInput.receiveAction(TextInputAction.next);
+    await tester.pump();
+    tester.testTextInput.enterText('120000');
+    await tester.pump();
+
+    await tester.testTextInput.receiveAction(TextInputAction.next);
+    await tester.pump();
+    tester.testTextInput.enterText('5');
+    await tester.pump();
+
+    await tester.testTextInput.receiveAction(TextInputAction.next);
+    await tester.pump();
+    tester.testTextInput.enterText('Acme');
+    await tester.pump();
+
+    final fieldValues = tester
+        .widgetList<EditableText>(find.byType(EditableText))
+        .map((field) => field.controller.text)
+        .toList(growable: false);
+
+    expect(fieldValues, containsAllInOrder(['Yash', '120000', '5', 'Acme']));
+  });
+
   testWidgets('expandable feature tile opens and shows details', (
     tester,
   ) async {
     await pumpOnboarding(tester);
 
     const detail =
-        'Your data stays on your device, no account is required, and there is no cloud sync in v1.';
+        'Accounts, expenses, cards, splits and loans are stored locally. Backup and restore are manual Profile actions.';
     expect(find.text(detail), findsNothing);
 
-    await tester.tap(find.text('Privacy-first'));
+    await tester.tap(find.text('Offline-first').last);
     await tester.pumpAndSettle();
 
     expect(find.text(detail), findsOneWidget);
@@ -208,13 +243,13 @@ void main() {
     await pumpOnboarding(tester);
 
     const detail =
-        'Your data stays on your device, no account is required, and there is no cloud sync in v1.';
+        'Accounts, expenses, cards, splits and loans are stored locally. Backup and restore are manual Profile actions.';
 
-    await tester.tap(find.text('Privacy-first'));
+    await tester.tap(find.text('Offline-first').last);
     await tester.pumpAndSettle();
     expect(find.text(detail), findsOneWidget);
 
-    await tester.tap(find.text('Privacy-first'));
+    await tester.tap(find.text('Offline-first').last);
     await tester.pumpAndSettle();
     expect(find.text(detail), findsNothing);
   });
@@ -224,19 +259,19 @@ void main() {
   ) async {
     await pumpOnboarding(tester);
 
-    const privacyDetail =
-        'Your data stays on your device, no account is required, and there is no cloud sync in v1.';
     const offlineDetail =
-        'The app is built around local storage. Notification detection is optional, and detected transactions require confirmation before entering your ledger.';
+        'Accounts, expenses, cards, splits and loans are stored locally. Backup and restore are manual Profile actions.';
+    const reviewDetail =
+        'SMS and notification parsing are helpers. They create pending items, not final transactions.';
 
-    await tester.tap(find.text('Privacy-first'));
+    await tester.tap(find.text('Offline-first').last);
     await tester.pumpAndSettle();
-    expect(find.text(privacyDetail), findsOneWidget);
-
-    await tester.tap(find.text('Offline-first'));
-    await tester.pumpAndSettle();
-    expect(find.text(privacyDetail), findsNothing);
     expect(find.text(offlineDetail), findsOneWidget);
+
+    await tester.tap(find.text('Review first'));
+    await tester.pumpAndSettle();
+    expect(find.text(offlineDetail), findsNothing);
+    expect(find.text(reviewDetail), findsOneWidget);
   });
 
   testWidgets('final onboarding action completes onboarding', (tester) async {
@@ -246,7 +281,7 @@ void main() {
       await tapNext(tester);
     }
 
-    expect(find.text('You’re ready to track smarter'), findsOneWidget);
+    expect(find.text('Ready'), findsOneWidget);
     await tester.tap(find.text('Finish Setup'));
     await tester.pumpAndSettle();
 

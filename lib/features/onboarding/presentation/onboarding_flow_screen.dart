@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/config/app_mode.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_shadows.dart';
@@ -32,6 +31,10 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
   final _salary = TextEditingController();
   final _salaryDay = TextEditingController();
   final _company = TextEditingController();
+  final _nameFocus = FocusNode();
+  final _salaryFocus = FocusNode();
+  final _salaryDayFocus = FocusNode();
+  final _companyFocus = FocusNode();
   int _index = 0;
   static const int _profileStepIndex = 3;
   bool _notificationPromptHandled = false;
@@ -51,6 +54,10 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
     _salary.dispose();
     _salaryDay.dispose();
     _company.dispose();
+    _nameFocus.dispose();
+    _salaryFocus.dispose();
+    _salaryDayFocus.dispose();
+    _companyFocus.dispose();
     super.dispose();
   }
 
@@ -94,62 +101,35 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final smsSetupAvailable = AppModeConfig.isPersonalDebug;
     final pages = <Widget>[
       _StepTemplate(
-        title: 'Welcome to Finarc',
-        subtitle:
-            'Track expenses, cards, bills, cash, UPI, splits and loans. Your first finance OS stays fast, local and private.',
+        title: 'Private by default',
+        subtitle: 'Track money on this device. No account. No cloud sync.',
         icon: Icons.wallet_rounded,
         accent: _OnboardingAccent.info,
-        chips: const ['No account', 'Local ledger', 'Manual control'],
+        chips: const ['Offline-first', 'On-device', 'You approve'],
         supporting: const [
-          _ExpandableFeatureTile(
+          _InlineInfoCard(
             icon: Icons.privacy_tip_outlined,
-            title: 'Privacy-first',
-            description: 'Your records stay on this device.',
-            expandedDescription:
-                'Your data stays on your device, no account is required, and there is no cloud sync in v1.',
+            title: 'One privacy promise',
+            description:
+                'Your finance data stays local. Detection only suggests pending items, and you choose what enters the ledger.',
           ),
           SizedBox(height: AppSpacing.xs),
           _ExpandableFeatureTile(
             icon: Icons.cloud_off_outlined,
             title: 'Offline-first',
-            description: 'Open, add and review records without cloud sync.',
+            description: 'Use the app without a network connection.',
             expandedDescription:
-                'The app is built around local storage. Notification detection is optional, and detected transactions require confirmation before entering your ledger.',
+                'Accounts, expenses, cards, splits and loans are stored locally. Backup and restore are manual Profile actions.',
           ),
           SizedBox(height: AppSpacing.xs),
           _ExpandableFeatureTile(
-            icon: Icons.credit_card_outlined,
-            title: 'Cards & bills',
-            description: 'Follow statements, dues and utilization.',
+            icon: Icons.pending_actions_outlined,
+            title: 'Review first',
+            description: 'Detected transactions wait for confirmation.',
             expandedDescription:
-                'Track card spending and bill due dates without storing CVV or card expiry details.',
-          ),
-          SizedBox(height: AppSpacing.xs),
-          _ExpandableFeatureTile(
-            icon: Icons.groups_2_outlined,
-            title: 'Split expenses',
-            description: 'Keep shared spends, dues and settlements clear.',
-            expandedDescription:
-                'Use groups to split costs and record settlements while keeping your personal ledger separate.',
-          ),
-          SizedBox(height: AppSpacing.xs),
-          _ExpandableFeatureTile(
-            icon: Icons.replay_circle_filled_outlined,
-            title: 'Recoverables',
-            description: 'Track money paid for others until it comes back.',
-            expandedDescription:
-                'Mark recoveries when friends, family or work reimburse you, while keeping original spends traceable.',
-          ),
-          SizedBox(height: AppSpacing.xs),
-          _ExpandableFeatureTile(
-            icon: Icons.account_balance_wallet_outlined,
-            title: 'Loans',
-            description: 'Follow outstanding balances and EMI payments.',
-            expandedDescription:
-                'Loans stay separate from daily expenses, with optional EMI details for local planning.',
+                'SMS and notification parsing are helpers. They create pending items, not final transactions.',
           ),
         ],
       ),
@@ -159,20 +139,19 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
         onAddCard: () => context.push('/cards/add'),
       ),
       _StepTemplate(
-        title: 'Optional detection setup',
-        subtitle: smsSetupAvailable
-            ? 'Enable notification or SMS detection now, or turn it on later from Profile. Detection is optional and local-only.'
-            : 'Enable notification detection now, or turn it on later from Profile. SMS ingestion is unavailable in this Play-safe build.',
+        title: 'Connect detection',
+        subtitle:
+            'Turn on SMS or notification detection now, or do it later from Profile.',
         icon: Icons.notifications_active_outlined,
         accent: _OnboardingAccent.warning,
-        chips: const ['Optional', 'Pending first', 'Profile controls'],
+        chips: const ['Optional', 'Local', 'Pending first'],
         supporting: [
           const _BulletPanel(
-            title: 'How it works',
+            title: 'You stay in control',
             bullets: [
-              'Notification detection is optional',
-              'Detected transactions go to Pending first',
-              'You can enable or disable this later from Profile',
+              'Enable only the sources you want',
+              'Review every detected item before saving',
+              'Change this later from Profile',
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -181,25 +160,13 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
             icon: Icons.notifications_outlined,
             label: 'Notification Setup',
           ),
-          if (!smsSetupAvailable)
-            const Padding(
-              padding: EdgeInsets.only(top: AppSpacing.xs),
-              child: _InlineInfoCard(
-                icon: Icons.sms_failed_outlined,
-                title: 'SMS setup unavailable in this build',
-                description:
-                    'Play-safe and release builds do not include SMS ingestion.',
-              ),
-            ),
         ],
         actions: [
-          if (smsSetupAvailable) ...[
-            FinarcSecondaryButton(
-              onPressed: () => context.push('/sms/setup'),
-              icon: Icons.sms_outlined,
-              label: 'SMS Setup',
-            ),
-          ],
+          FinarcSecondaryButton(
+            onPressed: () => context.push('/sms/setup'),
+            icon: Icons.sms_outlined,
+            label: 'SMS Setup',
+          ),
         ],
       ),
       _ProfileSetupStep(
@@ -207,16 +174,26 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
         salaryController: _salary,
         salaryDayController: _salaryDay,
         companyController: _company,
+        nameFocusNode: _nameFocus,
+        salaryFocusNode: _salaryFocus,
+        salaryDayFocusNode: _salaryDayFocus,
+        companyFocusNode: _companyFocus,
         onSkipName: _skipNameAndContinue,
       ),
       _StepTemplate(
-        title: 'You’re ready to track smarter',
-        subtitle:
-            'Your local finance workspace is ready. Add accounts anytime, confirm detected transactions before they enter your ledger, and keep your data on device.',
+        title: 'Ready',
+        subtitle: 'Start with manual entries, detected pending items, or both.',
         icon: Icons.check_circle_outline,
         accent: _OnboardingAccent.success,
-        chips: const ['Ready', 'Local', 'Review before save'],
+        chips: const ['Private', 'Flexible', 'Review-first'],
         supporting: const [
+          _InlineInfoCard(
+            icon: Icons.verified_user_outlined,
+            title: 'Privacy-first, everywhere',
+            description:
+                'Finarc keeps the same local-first model across expenses, cards, splits, loans and backups.',
+          ),
+          SizedBox(height: AppSpacing.xs),
           _ExpandableFeatureTile(
             icon: Icons.account_balance_outlined,
             title: 'Add accounts anytime',
@@ -244,17 +221,9 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
           _ExpandableFeatureTile(
             icon: Icons.backup_outlined,
             title: 'Backup & restore',
-            description: 'Use Profile tools when you want a local backup.',
+            description: 'Export when you want a copy.',
             expandedDescription:
                 'Exports and imports are available from Profile so you can protect or move your local records intentionally.',
-          ),
-          SizedBox(height: AppSpacing.xs),
-          _ExpandableFeatureTile(
-            icon: Icons.verified_user_outlined,
-            title: 'Your data stays local',
-            description: 'Finarc v1 keeps your finance data on this device.',
-            expandedDescription:
-                'Use Profile for backup and restore when you want to move or protect your records.',
           ),
         ],
       ),
@@ -496,52 +465,118 @@ class _SetupChoicesStep extends StatelessWidget {
             icon: Icons.add_card_outlined,
             title: 'Set up your first account',
             subtitle:
-                'Add a bank account, cash wallet or credit card now. You can also skip and add later.',
+                'Pick what you use. Each balance stays in your local ledger.',
             accent: AppColors.lightAccent,
-            chips: ['Optional', 'Add later', 'Local balances'],
+            chips: ['Optional', 'Local balances', 'Add later'],
           ),
           const SizedBox(height: AppSpacing.sm),
-          const _ExpandableFeatureTile(
+          _SetupOptionCard(
             icon: Icons.account_balance_outlined,
             title: 'Bank account',
             description: 'Track balances, transfers and salary deposits.',
-            expandedDescription:
-                'Use this for savings, salary and current accounts. Transfers and reconciliations stay in your local ledger.',
+            buttonLabel: 'Add Bank Account',
+            onPressed: onAddBank,
+            isPrimary: true,
           ),
           const SizedBox(height: AppSpacing.xs),
-          const _ExpandableFeatureTile(
+          _SetupOptionCard(
             icon: Icons.account_balance_wallet_outlined,
             title: 'Cash wallet',
             description: 'Track cash on hand and wallet-style balances.',
-            expandedDescription:
-                'Cash and wallet balances help you track offline spends without connecting an external service.',
+            buttonLabel: 'Add Cash Wallet',
+            onPressed: onAddCash,
           ),
           const SizedBox(height: AppSpacing.xs),
-          const _ExpandableFeatureTile(
+          _SetupOptionCard(
             icon: Icons.credit_card_outlined,
             title: 'Credit card',
             description: 'Track card spends, statements and bill dues.',
-            expandedDescription:
-                'Only masked card details are stored. CVV and expiry are never captured.',
+            buttonLabel: 'Add Credit Card',
+            onPressed: onAddCard,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SetupOptionCard extends StatelessWidget {
+  const _SetupOptionCard({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.buttonLabel,
+    required this.onPressed,
+    this.isPrimary = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+  final String buttonLabel;
+  final VoidCallback onPressed;
+  final bool isPrimary;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final button = isPrimary
+        ? FinarcPrimaryButton(
+            onPressed: onPressed,
+            icon: icon,
+            label: buttonLabel,
+          )
+        : FinarcSecondaryButton(
+            onPressed: onPressed,
+            icon: icon,
+            label: buttonLabel,
+          );
+
+    return FinarcCard(
+      backgroundColor: isDark
+          ? AppColors.darkSurfaceLow
+          : AppColors.lightSurfaceHigh,
+      borderColor: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+      useShadow: false,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? AppColors.darkPrimarySoft
+                      : AppColors.lightPrimarySoft,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Icon(
+                  icon,
+                  color: isDark ? AppColors.darkAccent : AppColors.lightAccent,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: Theme.of(context).textTheme.titleSmall),
+                    const SizedBox(height: 2),
+                    Text(
+                      description,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          FinarcPrimaryButton(
-            onPressed: onAddBank,
-            icon: Icons.account_balance_outlined,
-            label: 'Add Bank Account',
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          FinarcSecondaryButton(
-            onPressed: onAddCash,
-            icon: Icons.account_balance_wallet_outlined,
-            label: 'Add Cash Wallet',
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          FinarcSecondaryButton(
-            onPressed: onAddCard,
-            icon: Icons.credit_card_outlined,
-            label: 'Add Credit Card',
-          ),
+          button,
         ],
       ),
     );
@@ -554,6 +589,10 @@ class _ProfileSetupStep extends StatelessWidget {
     required this.salaryController,
     required this.salaryDayController,
     required this.companyController,
+    required this.nameFocusNode,
+    required this.salaryFocusNode,
+    required this.salaryDayFocusNode,
+    required this.companyFocusNode,
     required this.onSkipName,
   });
 
@@ -561,6 +600,10 @@ class _ProfileSetupStep extends StatelessWidget {
   final TextEditingController salaryController;
   final TextEditingController salaryDayController;
   final TextEditingController companyController;
+  final FocusNode nameFocusNode;
+  final FocusNode salaryFocusNode;
+  final FocusNode salaryDayFocusNode;
+  final FocusNode companyFocusNode;
   final VoidCallback onSkipName;
 
   @override
@@ -577,7 +620,7 @@ class _ProfileSetupStep extends StatelessWidget {
           icon: Icons.person_outline,
           title: 'Tell us about you',
           subtitle:
-              'Name and salary details are optional. Add them only if you want personalized local insights.',
+              'Optional details for local insights. Skip anything you do not need.',
           accent: AppColors.lightSuccess,
           chips: ['Optional profile', 'Local insights', 'Can skip'],
         ),
@@ -589,7 +632,12 @@ class _ProfileSetupStep extends StatelessWidget {
               'Salary details are optional and only used for on-device trends and reminders.',
         ),
         const SizedBox(height: AppSpacing.sm),
-        FinarcTextField(controller: nameController, label: 'Your name'),
+        FinarcTextField(
+          controller: nameController,
+          label: 'Your name',
+          focusNode: nameFocusNode,
+          nextFocusNode: salaryFocusNode,
+        ),
         const SizedBox(height: AppSpacing.xs),
         Align(
           alignment: Alignment.centerLeft,
@@ -602,6 +650,8 @@ class _ProfileSetupStep extends StatelessWidget {
         FinarcTextField(
           controller: salaryController,
           label: 'Monthly salary',
+          focusNode: salaryFocusNode,
+          nextFocusNode: salaryDayFocusNode,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           inputFormatters: [StripLeadingZeroFormatter()],
         ),
@@ -609,6 +659,8 @@ class _ProfileSetupStep extends StatelessWidget {
         FinarcTextField(
           controller: salaryDayController,
           label: 'Salary credit day',
+          focusNode: salaryDayFocusNode,
+          nextFocusNode: companyFocusNode,
           keyboardType: TextInputType.number,
           inputFormatters: [StripLeadingZeroFormatter(allowDecimal: false)],
         ),
@@ -616,6 +668,7 @@ class _ProfileSetupStep extends StatelessWidget {
         FinarcTextField(
           controller: companyController,
           label: 'Company name',
+          focusNode: companyFocusNode,
           textInputAction: TextInputAction.done,
         ),
       ],
