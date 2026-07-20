@@ -27,6 +27,7 @@ Finarc is an offline-first, local-first personal finance tracker. Financial data
 - Full backups and CSV exports are plaintext.
 - Backup/export files are not automatically transmitted to any server by Finarc.
 - Users should store exported backup files securely and delete them when no longer needed.
+- Developer Space missed-message exports are separate, user-triggered diagnostic files and may include raw financial message text.
 
 ## Notifications and Reminders
 - Local reminders and alerts are generated and shown on-device.
@@ -41,6 +42,7 @@ Finarc is an offline-first, local-first personal finance tracker. Financial data
 - If the user grants SMS permission, Finarc can read transaction-like SMS on-device to create pending transactions for review.
 - SMS contents are processed locally for app functionality and are not uploaded by Finarc in normal app usage.
 - The Play Store/release build may include the notification listener service for optional, user-enabled transaction-like notification detection.
+- Missed-message diagnostic samples remain on-device unless the user explicitly exports them from Developer Space.
 
 ## Personal/Debug Builds
 - Optional personal/debug builds may include additional local testing capabilities.

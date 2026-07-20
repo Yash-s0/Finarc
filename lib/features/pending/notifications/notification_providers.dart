@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/database/app_database.dart';
 import '../../../core/database/database_providers.dart';
 import '../../../core/logging/logging_providers.dart';
 import '../../../core/router/app_router.dart';
@@ -24,6 +25,7 @@ import 'notification_permission_service.dart';
 import 'notification_payload.dart';
 import 'notification_test_tools_service.dart';
 import 'notification_diagnostics_service.dart';
+import 'missed_message_sample_service.dart';
 import 'reminder_service.dart';
 import 'sms_fingerprint.dart';
 import 'sms_ingestion_service.dart';
@@ -260,6 +262,26 @@ final notificationDiagnosticsSnapshotProvider =
       return ref.read(notificationDiagnosticsServiceProvider).loadSnapshot();
     });
 
+final missedMessageSampleServiceProvider = Provider<MissedMessageSampleService>(
+  (ref) {
+    return MissedMessageSampleService(ref.read(appDatabaseProvider));
+  },
+);
+
+final missedMessageSamplesProvider =
+    FutureProvider.family<List<MissedMessageSample>, MissedMessageSampleFilter>(
+      (ref, filter) async {
+        return ref
+            .read(missedMessageSampleServiceProvider)
+            .listSamples(filter: filter);
+      },
+    );
+
+final missedMessageSampleCountsProvider =
+    FutureProvider<Map<MissedMessageSampleFilter, int>>((ref) async {
+      return ref.read(missedMessageSampleServiceProvider).countsByFilter();
+    });
+
 final notificationDebugLogProvider =
     StateNotifierProvider<
       NotificationDebugLogController,
@@ -374,6 +396,16 @@ final notificationIngestionServiceProvider =
         ref.read(ingestionDiagnosticsProvider.notifier).append(entry);
         unawaited(
           ref
+              .read(missedMessageSampleServiceProvider)
+              .recordFromDebugEntry(
+                entry,
+                createdPendingCount: entry.decision == 'pending-created'
+                    ? 1
+                    : 0,
+              ),
+        );
+        unawaited(
+          ref
               .read(appLogServiceProvider)
               .log(
                 category: 'notification_event',
@@ -404,6 +436,14 @@ final smsIngestionServiceProvider = Provider<SmsIngestionService>((ref) {
   void append(NotificationDebugEntry entry) {
     ref.read(notificationDebugLogProvider.notifier).append(entry);
     ref.read(ingestionDiagnosticsProvider.notifier).append(entry);
+    unawaited(
+      ref
+          .read(missedMessageSampleServiceProvider)
+          .recordFromDebugEntry(
+            entry,
+            createdPendingCount: entry.decision == 'pending-created' ? 1 : 0,
+          ),
+    );
     unawaited(
       ref
           .read(appLogServiceProvider)

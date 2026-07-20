@@ -1,133 +1,207 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/database/app_database.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
-import '../../pending/notifications/notification_diagnostics_service.dart';
-import '../../pending/notifications/notification_ingestion_service.dart';
+import '../../pending/notifications/missed_message_sample_service.dart';
 import '../../pending/notifications/notification_providers.dart';
 
-class DeveloperSpaceScreen extends ConsumerWidget {
+class DeveloperSpaceScreen extends ConsumerStatefulWidget {
   const DeveloperSpaceScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final memoryEntries = ref
-        .watch(notificationDebugLogProvider)
-        .where(_isDebuggableMiss)
-        .toList(growable: false);
-    final snapshot = ref.watch(notificationDiagnosticsSnapshotProvider);
-    final persistedEntries =
-        snapshot.valueOrNull?.events
-            .map(_entryFromEvent)
-            .where(_isDebuggableMiss)
-            .toList(growable: false) ??
-        const <NotificationDebugEntry>[];
-    final entries = _mergeEntries(persistedEntries, memoryEntries);
+  ConsumerState<DeveloperSpaceScreen> createState() =>
+      _DeveloperSpaceScreenState();
+}
+
+class _DeveloperSpaceScreenState extends ConsumerState<DeveloperSpaceScreen> {
+  MissedMessageSampleFilter _filter = MissedMessageSampleFilter.all;
+
+  @override
+  Widget build(BuildContext context) {
+    final samples = ref.watch(missedMessageSamplesProvider(_filter));
+    final counts = ref.watch(missedMessageSampleCountsProvider).valueOrNull;
 
     return FinarcScaffold(
       appBar: FinarcAppBar(
         title: 'Developer Space',
         actions: [
           IconButton(
+            tooltip: 'Export missed samples',
+            icon: const Icon(Icons.ios_share_outlined),
+            onPressed: () => _exportSamples(context),
+          ),
+          IconButton(
             tooltip: 'Clear debug messages',
             icon: const Icon(Icons.delete_sweep_outlined),
-            onPressed: () async {
-              ref.read(notificationDebugLogProvider.notifier).clear();
-              ref.read(ingestionDiagnosticsProvider.notifier).clear();
-              await ref.read(notificationDiagnosticsServiceProvider).clear();
-              ref.invalidate(notificationDiagnosticsSnapshotProvider);
-            },
+            onPressed: () => _clearSamples(context),
           ),
         ],
       ),
-      body: snapshot.isLoading && entries.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : entries.isEmpty
-          ? const Center(
-              child: Padding(
-                padding: EdgeInsets.all(AppSpacing.md),
-                child: FinarcEmptyState(
-                  title: 'No missed messages yet',
-                  subtitle:
-                      'Ignored, duplicate, failed-parse, and low-confidence notification decisions will appear here.',
-                ),
-              ),
-            )
-          : ListView.separated(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              itemCount: entries.length,
-              separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
-              itemBuilder: (context, index) {
-                return _DeveloperMessageCard(entry: entries[index]);
-              },
+      body: samples.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: FinarcEmptyState(
+              title: 'Unable to load samples',
+              subtitle: '$error',
             ),
+          ),
+        ),
+        data: (rows) => _SampleList(
+          rows: rows,
+          selectedFilter: _filter,
+          counts: counts ?? const <MissedMessageSampleFilter, int>{},
+          onFilterChanged: (filter) => setState(() => _filter = filter),
+        ),
+      ),
     );
   }
 
-  bool _isDebuggableMiss(NotificationDebugEntry entry) {
-    if (entry.sourceType == 'manualPaste') return true;
-    if (entry.decision == 'pending-created') return false;
-    if (entry.decision == 'ignored' || entry.decision == 'duplicate') {
-      return true;
-    }
-    return entry.reason == 'parser-no-candidate' ||
-        entry.reason == 'confidence-low' ||
-        entry.parseResult == 'parser-failed' ||
-        entry.parseResult == 'parsed-low-confidence';
+  Future<void> _clearSamples(BuildContext context) async {
+    ref.read(notificationDebugLogProvider.notifier).clear();
+    ref.read(ingestionDiagnosticsProvider.notifier).clear();
+    await ref.read(notificationDiagnosticsServiceProvider).clear();
+    await ref.read(missedMessageSampleServiceProvider).clearSamples();
+    ref.invalidate(notificationDiagnosticsSnapshotProvider);
+    ref.invalidate(missedMessageSamplesProvider);
+    ref.invalidate(missedMessageSampleCountsProvider);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Developer samples cleared.')));
   }
 
-  List<NotificationDebugEntry> _mergeEntries(
-    List<NotificationDebugEntry> persisted,
-    List<NotificationDebugEntry> memory,
-  ) {
-    final seen = <String>{};
-    final merged = <NotificationDebugEntry>[];
-    for (final entry in [...memory, ...persisted]) {
-      final key = [
-        entry.receivedAt.toIso8601String(),
-        entry.packageName,
-        entry.decision,
-        entry.reason,
-        entry.bodyPreview,
-      ].join('|');
-      if (seen.add(key)) merged.add(entry);
-    }
-    merged.sort((a, b) => b.receivedAt.compareTo(a.receivedAt));
-    return merged.take(100).toList(growable: false);
-  }
+  Future<void> _exportSamples(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Export missed samples?'),
+        content: const Text(
+          'This export can include raw financial message text. Keep the file private and delete it when you are done debugging.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Export'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
 
-  NotificationDebugEntry _entryFromEvent(NotificationDiagnosticsEvent event) {
-    return NotificationDebugEntry(
-      receivedAt: event.timestamp,
-      packageName: event.packageName,
-      title: event.title,
-      bodyPreview: event.bodyPreview,
-      decision: event.decision,
-      reason: event.reason,
-      parseResult: event.parseResult,
-      result: event.parseResult,
-      providerName: event.providerName,
-      confidenceScore: event.confidenceScore,
-      confidenceLevel: event.confidenceLevel,
-      localNotificationSent: event.localNotificationSent,
-      sender: event.sender,
-      senderFilterResult: event.senderFilterResult,
-      candidateCount: event.candidateCount,
-      duplicateDecision: event.duplicateDecision,
-      possibleDuplicateReason: event.possibleDuplicateReason,
-      amountCandidate: event.amountCandidate,
-      blockedContext: event.blockedContext,
-      receivedAtUsed: event.receivedAtUsed,
-      transactionDateChosen: event.transactionDateChosen,
+    try {
+      final file = await ref
+          .read(missedMessageSampleServiceProvider)
+          .exportSamplesJsonl();
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Missed samples exported to ${file.path}.')),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Missed sample export failed: $error')),
+      );
+    }
+  }
+}
+
+class _SampleList extends StatelessWidget {
+  const _SampleList({
+    required this.rows,
+    required this.selectedFilter,
+    required this.counts,
+    required this.onFilterChanged,
+  });
+
+  final List<MissedMessageSample> rows;
+  final MissedMessageSampleFilter selectedFilter;
+  final Map<MissedMessageSampleFilter, int> counts;
+  final ValueChanged<MissedMessageSampleFilter> onFilterChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      itemCount: rows.length + 1,
+      separatorBuilder: (_, index) => index == 0
+          ? const SizedBox(height: AppSpacing.md)
+          : const SizedBox(height: AppSpacing.sm),
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return _FilterHeader(
+            selectedFilter: selectedFilter,
+            counts: counts,
+            onFilterChanged: onFilterChanged,
+            isEmpty: rows.isEmpty,
+          );
+        }
+        return _DeveloperSampleCard(sample: rows[index - 1]);
+      },
     );
   }
 }
 
-class _DeveloperMessageCard extends StatelessWidget {
-  const _DeveloperMessageCard({required this.entry});
+class _FilterHeader extends StatelessWidget {
+  const _FilterHeader({
+    required this.selectedFilter,
+    required this.counts,
+    required this.onFilterChanged,
+    required this.isEmpty,
+  });
 
-  final NotificationDebugEntry entry;
+  final MissedMessageSampleFilter selectedFilter;
+  final Map<MissedMessageSampleFilter, int> counts;
+  final ValueChanged<MissedMessageSampleFilter> onFilterChanged;
+  final bool isEmpty;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: AppSpacing.xs,
+          runSpacing: AppSpacing.xs,
+          children: [
+            for (final filter in MissedMessageSampleFilter.values)
+              ChoiceChip(
+                label: Text('${filter.label} ${counts[filter] ?? 0}'),
+                selected: selectedFilter == filter,
+                onSelected: (_) => onFilterChanged(filter),
+              ),
+          ],
+        ),
+        if (isEmpty) ...[
+          const SizedBox(height: AppSpacing.xl),
+          FinarcEmptyState(
+            title: _emptyTitle,
+            subtitle:
+                'Missed, duplicate, ignored, low-confidence, and manual paste samples saved for this filter will appear here.',
+          ),
+        ],
+      ],
+    );
+  }
+
+  String get _emptyTitle {
+    return selectedFilter == MissedMessageSampleFilter.all
+        ? 'No missed samples yet'
+        : 'No ${selectedFilter.label.toLowerCase()} samples yet';
+  }
+}
+
+class _DeveloperSampleCard extends StatelessWidget {
+  const _DeveloperSampleCard({required this.sample});
+
+  final MissedMessageSample sample;
 
   @override
   Widget build(BuildContext context) {
@@ -145,12 +219,14 @@ class _DeveloperMessageCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      entry.title,
+                      sample.title?.trim().isNotEmpty == true
+                          ? sample.title!
+                          : sample.packageName,
                       style: Theme.of(context).textTheme.titleSmall,
                     ),
                     const SizedBox(height: AppSpacing.xxs),
                     Text(
-                      '${entry.packageName} • ${_formatTime(entry.receivedAt)}',
+                      '${sample.packageName} • ${_formatTime(sample.lastSeenAt)}',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
@@ -158,42 +234,47 @@ class _DeveloperMessageCard extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.xs),
               FinarcStatusBadge(
-                label: entry.decision.toUpperCase(),
+                label: _typeLabel.toUpperCase(),
                 tone: _tone,
                 compact: true,
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          if (entry.bodyPreview.trim().isNotEmpty) ...[
+          if (sample.sampleText.trim().isNotEmpty) ...[
             SelectableText(
-              entry.bodyPreview,
+              sample.sampleText,
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: AppSpacing.sm),
           ],
-          _MetaLine(label: 'Reason', value: entry.reason),
-          _MetaLine(label: 'Parse', value: entry.parseResult ?? entry.result),
-          if (entry.candidateCount != null)
-            _MetaLine(label: 'Candidates', value: '${entry.candidateCount}'),
-          if (entry.confidenceLevel != null)
+          _MetaLine(label: 'Reason', value: sample.reason),
+          _MetaLine(label: 'Parse', value: sample.parseResult),
+          _MetaLine(label: 'Decision', value: sample.decision),
+          if (sample.seenCount > 1)
+            _MetaLine(label: 'Seen', value: '${sample.seenCount} times'),
+          if (sample.candidateCount != null)
+            _MetaLine(label: 'Candidates', value: '${sample.candidateCount}'),
+          if (sample.confidenceLevel != null)
             _MetaLine(
               label: 'Confidence',
-              value: '${entry.confidenceLevel} $_confidenceScore',
+              value: '${sample.confidenceLevel} $_confidenceScore',
             ),
-          if (entry.senderFilterResult != null)
-            _MetaLine(label: 'Sender filter', value: entry.senderFilterResult!),
-          if (entry.duplicateDecision != null)
-            _MetaLine(label: 'Duplicate', value: entry.duplicateDecision!),
-          if (entry.possibleDuplicateReason != null)
+          if (sample.amountCandidate != null)
+            _MetaLine(label: 'Amount hint', value: sample.amountCandidate!),
+          if (sample.blockedContext != null)
+            _MetaLine(label: 'Blocked context', value: sample.blockedContext!),
+          if (sample.duplicateDecision != null)
+            _MetaLine(label: 'Duplicate', value: sample.duplicateDecision!),
+          if (sample.possibleDuplicateReason != null)
             _MetaLine(
               label: 'Possible duplicate',
-              value: entry.possibleDuplicateReason!,
+              value: sample.possibleDuplicateReason!,
             ),
-          if (entry.transactionDateChosen != null)
+          if (sample.transactionDateChosen != null)
             _MetaLine(
               label: 'Transaction date',
-              value: _formatTime(entry.transactionDateChosen!),
+              value: _formatTime(sample.transactionDateChosen!),
             ),
         ],
       ),
@@ -201,23 +282,37 @@ class _DeveloperMessageCard extends StatelessWidget {
   }
 
   IconData get _icon {
-    return switch (entry.decision) {
-      'ignored' => Icons.block_outlined,
-      'duplicate' => Icons.copy_all_outlined,
+    return switch (sample.sampleType) {
+      'bill_due' => Icons.receipt_long_outlined,
+      'card_payment' => Icons.credit_card_outlined,
+      'wallet_balance' => Icons.account_balance_wallet_outlined,
+      'manual_paste' => Icons.content_paste_search_outlined,
       _ => Icons.rule_folder_outlined,
     };
   }
 
+  String get _typeLabel {
+    return switch (sample.sampleType) {
+      'bill_due' => 'Bill due',
+      'card_payment' => 'Card payment',
+      'wallet_balance' => 'Wallet',
+      'manual_paste' => 'Manual paste',
+      _ => 'Parser failed',
+    };
+  }
+
   FinarcStatusTone get _tone {
-    return switch (entry.decision) {
-      'ignored' => FinarcStatusTone.warning,
-      'duplicate' => FinarcStatusTone.info,
+    return switch (sample.sampleType) {
+      'bill_due' => FinarcStatusTone.info,
+      'card_payment' => FinarcStatusTone.info,
+      'wallet_balance' => FinarcStatusTone.success,
+      'manual_paste' => FinarcStatusTone.warning,
       _ => FinarcStatusTone.neutral,
     };
   }
 
   String get _confidenceScore {
-    final score = entry.confidenceScore;
+    final score = sample.confidenceScore;
     if (score == null) return '';
     return '(${score.toStringAsFixed(2)})';
   }

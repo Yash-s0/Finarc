@@ -16,15 +16,16 @@ Track daily expenses, income, cards, accounts, splits, loans, bills, reminders, 
 - Loan and EMI tracking
 - Dashboard and analytics insights
 - Local reminders and alerts
+- Optional local SMS and notification detection for pending transaction review
 - Local backup/export/import tools
 
 ### Privacy-first by design
 - Data is stored locally on your device
 - No cloud sync in v1
 - No backend financial data upload in v1
+- Optional SMS and notification detection runs on-device
 - You control local backup/export files
 
 ### Important notes
 - Finarc is not a bank.
 - Finarc does not provide financial advice.
-

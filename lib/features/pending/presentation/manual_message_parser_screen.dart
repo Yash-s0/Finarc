@@ -215,6 +215,9 @@ class _ManualMessageParserScreenState
     );
     ref.read(notificationDebugLogProvider.notifier).append(entry);
     await ref
+        .read(missedMessageSampleServiceProvider)
+        .recordFromDebugEntry(entry, createdPendingCount: created.length);
+    await ref
         .read(appLogServiceProvider)
         .log(
           category: 'notification_event',

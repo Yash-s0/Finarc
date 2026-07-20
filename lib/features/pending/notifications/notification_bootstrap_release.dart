@@ -32,6 +32,16 @@ final _notificationIngestionServiceProvider =
         ref.read(ingestionDiagnosticsProvider.notifier).append(entry);
         unawaited(
           ref
+              .read(missedMessageSampleServiceProvider)
+              .recordFromDebugEntry(
+                entry,
+                createdPendingCount: entry.decision == 'pending-created'
+                    ? 1
+                    : 0,
+              ),
+        );
+        unawaited(
+          ref
               .read(appLogServiceProvider)
               .log(
                 category: 'notification_event',

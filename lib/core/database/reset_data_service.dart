@@ -52,6 +52,8 @@ class ResetDataService {
 
     await _db.transaction(() async {
       await _db.delete(_db.transactions).go();
+      await _db.delete(_db.transactionSourceEvents).go();
+      await _db.delete(_db.missedMessageSamples).go();
       await _db.delete(_db.pendingTransactions).go();
       await _db.delete(_db.cardBills).go();
       await _db.delete(_db.splitExpenseShares).go();

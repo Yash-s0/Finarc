@@ -105,6 +105,39 @@ class TransactionSourceEvents extends Table {
   ];
 }
 
+class MissedMessageSamples extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get fingerprint => text()();
+  TextColumn get sampleType => text()();
+  TextColumn get sourceType => text()();
+  TextColumn get packageName => text()();
+  TextColumn get sender => text().nullable()();
+  TextColumn get title => text().nullable()();
+  TextColumn get sampleText => text()();
+  TextColumn get decision => text()();
+  TextColumn get reason => text()();
+  TextColumn get parseResult => text()();
+  TextColumn get providerName => text().nullable()();
+  RealColumn get confidenceScore => real().nullable()();
+  TextColumn get confidenceLevel => text().nullable()();
+  IntColumn get candidateCount => integer().nullable()();
+  TextColumn get amountCandidate => text().nullable()();
+  TextColumn get blockedContext => text().nullable()();
+  TextColumn get duplicateDecision => text().nullable()();
+  TextColumn get possibleDuplicateReason => text().nullable()();
+  DateTimeColumn get transactionDateChosen => dateTime().nullable()();
+  IntColumn get createdPendingCount =>
+      integer().withDefault(const Constant(0))();
+  IntColumn get seenCount => integer().withDefault(const Constant(1))();
+  DateTimeColumn get lastSeenAt => dateTime()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  List<Set<Column<Object>>> get uniqueKeys => [
+    {fingerprint},
+  ];
+}
+
 class PendingTransactions extends Table {
   IntColumn get id => integer().autoIncrement()();
   RealColumn get amount => real()();
@@ -335,6 +368,7 @@ class AppSettings extends Table {
     CreditCards,
     Transactions,
     TransactionSourceEvents,
+    MissedMessageSamples,
     PendingTransactions,
     CardBills,
     SplitGroups,
@@ -352,7 +386,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 24;
+  int get schemaVersion => 25;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -577,6 +611,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 24) {
         await m.createTable(transactionSourceEvents);
+      }
+      if (from < 25) {
+        await m.createTable(missedMessageSamples);
       }
       await globalAppLogService.log(
         category: 'migration',

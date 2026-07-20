@@ -4498,6 +4498,1398 @@ class TransactionSourceEventsCompanion
   }
 }
 
+class $MissedMessageSamplesTable extends MissedMessageSamples
+    with TableInfo<$MissedMessageSamplesTable, MissedMessageSample> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $MissedMessageSamplesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _fingerprintMeta = const VerificationMeta(
+    'fingerprint',
+  );
+  @override
+  late final GeneratedColumn<String> fingerprint = GeneratedColumn<String>(
+    'fingerprint',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sampleTypeMeta = const VerificationMeta(
+    'sampleType',
+  );
+  @override
+  late final GeneratedColumn<String> sampleType = GeneratedColumn<String>(
+    'sample_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceTypeMeta = const VerificationMeta(
+    'sourceType',
+  );
+  @override
+  late final GeneratedColumn<String> sourceType = GeneratedColumn<String>(
+    'source_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _packageNameMeta = const VerificationMeta(
+    'packageName',
+  );
+  @override
+  late final GeneratedColumn<String> packageName = GeneratedColumn<String>(
+    'package_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _senderMeta = const VerificationMeta('sender');
+  @override
+  late final GeneratedColumn<String> sender = GeneratedColumn<String>(
+    'sender',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sampleTextMeta = const VerificationMeta(
+    'sampleText',
+  );
+  @override
+  late final GeneratedColumn<String> sampleText = GeneratedColumn<String>(
+    'sample_text',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _decisionMeta = const VerificationMeta(
+    'decision',
+  );
+  @override
+  late final GeneratedColumn<String> decision = GeneratedColumn<String>(
+    'decision',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _reasonMeta = const VerificationMeta('reason');
+  @override
+  late final GeneratedColumn<String> reason = GeneratedColumn<String>(
+    'reason',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _parseResultMeta = const VerificationMeta(
+    'parseResult',
+  );
+  @override
+  late final GeneratedColumn<String> parseResult = GeneratedColumn<String>(
+    'parse_result',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _providerNameMeta = const VerificationMeta(
+    'providerName',
+  );
+  @override
+  late final GeneratedColumn<String> providerName = GeneratedColumn<String>(
+    'provider_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _confidenceScoreMeta = const VerificationMeta(
+    'confidenceScore',
+  );
+  @override
+  late final GeneratedColumn<double> confidenceScore = GeneratedColumn<double>(
+    'confidence_score',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _confidenceLevelMeta = const VerificationMeta(
+    'confidenceLevel',
+  );
+  @override
+  late final GeneratedColumn<String> confidenceLevel = GeneratedColumn<String>(
+    'confidence_level',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _candidateCountMeta = const VerificationMeta(
+    'candidateCount',
+  );
+  @override
+  late final GeneratedColumn<int> candidateCount = GeneratedColumn<int>(
+    'candidate_count',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _amountCandidateMeta = const VerificationMeta(
+    'amountCandidate',
+  );
+  @override
+  late final GeneratedColumn<String> amountCandidate = GeneratedColumn<String>(
+    'amount_candidate',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _blockedContextMeta = const VerificationMeta(
+    'blockedContext',
+  );
+  @override
+  late final GeneratedColumn<String> blockedContext = GeneratedColumn<String>(
+    'blocked_context',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _duplicateDecisionMeta = const VerificationMeta(
+    'duplicateDecision',
+  );
+  @override
+  late final GeneratedColumn<String> duplicateDecision =
+      GeneratedColumn<String>(
+        'duplicate_decision',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _possibleDuplicateReasonMeta =
+      const VerificationMeta('possibleDuplicateReason');
+  @override
+  late final GeneratedColumn<String> possibleDuplicateReason =
+      GeneratedColumn<String>(
+        'possible_duplicate_reason',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _transactionDateChosenMeta =
+      const VerificationMeta('transactionDateChosen');
+  @override
+  late final GeneratedColumn<DateTime> transactionDateChosen =
+      GeneratedColumn<DateTime>(
+        'transaction_date_chosen',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _createdPendingCountMeta =
+      const VerificationMeta('createdPendingCount');
+  @override
+  late final GeneratedColumn<int> createdPendingCount = GeneratedColumn<int>(
+    'created_pending_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _seenCountMeta = const VerificationMeta(
+    'seenCount',
+  );
+  @override
+  late final GeneratedColumn<int> seenCount = GeneratedColumn<int>(
+    'seen_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _lastSeenAtMeta = const VerificationMeta(
+    'lastSeenAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastSeenAt = GeneratedColumn<DateTime>(
+    'last_seen_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    fingerprint,
+    sampleType,
+    sourceType,
+    packageName,
+    sender,
+    title,
+    sampleText,
+    decision,
+    reason,
+    parseResult,
+    providerName,
+    confidenceScore,
+    confidenceLevel,
+    candidateCount,
+    amountCandidate,
+    blockedContext,
+    duplicateDecision,
+    possibleDuplicateReason,
+    transactionDateChosen,
+    createdPendingCount,
+    seenCount,
+    lastSeenAt,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'missed_message_samples';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<MissedMessageSample> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('fingerprint')) {
+      context.handle(
+        _fingerprintMeta,
+        fingerprint.isAcceptableOrUnknown(
+          data['fingerprint']!,
+          _fingerprintMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_fingerprintMeta);
+    }
+    if (data.containsKey('sample_type')) {
+      context.handle(
+        _sampleTypeMeta,
+        sampleType.isAcceptableOrUnknown(data['sample_type']!, _sampleTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sampleTypeMeta);
+    }
+    if (data.containsKey('source_type')) {
+      context.handle(
+        _sourceTypeMeta,
+        sourceType.isAcceptableOrUnknown(data['source_type']!, _sourceTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceTypeMeta);
+    }
+    if (data.containsKey('package_name')) {
+      context.handle(
+        _packageNameMeta,
+        packageName.isAcceptableOrUnknown(
+          data['package_name']!,
+          _packageNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_packageNameMeta);
+    }
+    if (data.containsKey('sender')) {
+      context.handle(
+        _senderMeta,
+        sender.isAcceptableOrUnknown(data['sender']!, _senderMeta),
+      );
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    }
+    if (data.containsKey('sample_text')) {
+      context.handle(
+        _sampleTextMeta,
+        sampleText.isAcceptableOrUnknown(data['sample_text']!, _sampleTextMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sampleTextMeta);
+    }
+    if (data.containsKey('decision')) {
+      context.handle(
+        _decisionMeta,
+        decision.isAcceptableOrUnknown(data['decision']!, _decisionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_decisionMeta);
+    }
+    if (data.containsKey('reason')) {
+      context.handle(
+        _reasonMeta,
+        reason.isAcceptableOrUnknown(data['reason']!, _reasonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_reasonMeta);
+    }
+    if (data.containsKey('parse_result')) {
+      context.handle(
+        _parseResultMeta,
+        parseResult.isAcceptableOrUnknown(
+          data['parse_result']!,
+          _parseResultMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_parseResultMeta);
+    }
+    if (data.containsKey('provider_name')) {
+      context.handle(
+        _providerNameMeta,
+        providerName.isAcceptableOrUnknown(
+          data['provider_name']!,
+          _providerNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('confidence_score')) {
+      context.handle(
+        _confidenceScoreMeta,
+        confidenceScore.isAcceptableOrUnknown(
+          data['confidence_score']!,
+          _confidenceScoreMeta,
+        ),
+      );
+    }
+    if (data.containsKey('confidence_level')) {
+      context.handle(
+        _confidenceLevelMeta,
+        confidenceLevel.isAcceptableOrUnknown(
+          data['confidence_level']!,
+          _confidenceLevelMeta,
+        ),
+      );
+    }
+    if (data.containsKey('candidate_count')) {
+      context.handle(
+        _candidateCountMeta,
+        candidateCount.isAcceptableOrUnknown(
+          data['candidate_count']!,
+          _candidateCountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('amount_candidate')) {
+      context.handle(
+        _amountCandidateMeta,
+        amountCandidate.isAcceptableOrUnknown(
+          data['amount_candidate']!,
+          _amountCandidateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('blocked_context')) {
+      context.handle(
+        _blockedContextMeta,
+        blockedContext.isAcceptableOrUnknown(
+          data['blocked_context']!,
+          _blockedContextMeta,
+        ),
+      );
+    }
+    if (data.containsKey('duplicate_decision')) {
+      context.handle(
+        _duplicateDecisionMeta,
+        duplicateDecision.isAcceptableOrUnknown(
+          data['duplicate_decision']!,
+          _duplicateDecisionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('possible_duplicate_reason')) {
+      context.handle(
+        _possibleDuplicateReasonMeta,
+        possibleDuplicateReason.isAcceptableOrUnknown(
+          data['possible_duplicate_reason']!,
+          _possibleDuplicateReasonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('transaction_date_chosen')) {
+      context.handle(
+        _transactionDateChosenMeta,
+        transactionDateChosen.isAcceptableOrUnknown(
+          data['transaction_date_chosen']!,
+          _transactionDateChosenMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_pending_count')) {
+      context.handle(
+        _createdPendingCountMeta,
+        createdPendingCount.isAcceptableOrUnknown(
+          data['created_pending_count']!,
+          _createdPendingCountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('seen_count')) {
+      context.handle(
+        _seenCountMeta,
+        seenCount.isAcceptableOrUnknown(data['seen_count']!, _seenCountMeta),
+      );
+    }
+    if (data.containsKey('last_seen_at')) {
+      context.handle(
+        _lastSeenAtMeta,
+        lastSeenAt.isAcceptableOrUnknown(
+          data['last_seen_at']!,
+          _lastSeenAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_lastSeenAtMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {fingerprint},
+  ];
+  @override
+  MissedMessageSample map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return MissedMessageSample(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      fingerprint: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}fingerprint'],
+      )!,
+      sampleType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sample_type'],
+      )!,
+      sourceType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_type'],
+      )!,
+      packageName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}package_name'],
+      )!,
+      sender: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sender'],
+      ),
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      ),
+      sampleText: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sample_text'],
+      )!,
+      decision: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}decision'],
+      )!,
+      reason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reason'],
+      )!,
+      parseResult: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}parse_result'],
+      )!,
+      providerName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}provider_name'],
+      ),
+      confidenceScore: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}confidence_score'],
+      ),
+      confidenceLevel: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}confidence_level'],
+      ),
+      candidateCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}candidate_count'],
+      ),
+      amountCandidate: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}amount_candidate'],
+      ),
+      blockedContext: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}blocked_context'],
+      ),
+      duplicateDecision: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}duplicate_decision'],
+      ),
+      possibleDuplicateReason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}possible_duplicate_reason'],
+      ),
+      transactionDateChosen: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}transaction_date_chosen'],
+      ),
+      createdPendingCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_pending_count'],
+      )!,
+      seenCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}seen_count'],
+      )!,
+      lastSeenAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_seen_at'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $MissedMessageSamplesTable createAlias(String alias) {
+    return $MissedMessageSamplesTable(attachedDatabase, alias);
+  }
+}
+
+class MissedMessageSample extends DataClass
+    implements Insertable<MissedMessageSample> {
+  final int id;
+  final String fingerprint;
+  final String sampleType;
+  final String sourceType;
+  final String packageName;
+  final String? sender;
+  final String? title;
+  final String sampleText;
+  final String decision;
+  final String reason;
+  final String parseResult;
+  final String? providerName;
+  final double? confidenceScore;
+  final String? confidenceLevel;
+  final int? candidateCount;
+  final String? amountCandidate;
+  final String? blockedContext;
+  final String? duplicateDecision;
+  final String? possibleDuplicateReason;
+  final DateTime? transactionDateChosen;
+  final int createdPendingCount;
+  final int seenCount;
+  final DateTime lastSeenAt;
+  final DateTime createdAt;
+  const MissedMessageSample({
+    required this.id,
+    required this.fingerprint,
+    required this.sampleType,
+    required this.sourceType,
+    required this.packageName,
+    this.sender,
+    this.title,
+    required this.sampleText,
+    required this.decision,
+    required this.reason,
+    required this.parseResult,
+    this.providerName,
+    this.confidenceScore,
+    this.confidenceLevel,
+    this.candidateCount,
+    this.amountCandidate,
+    this.blockedContext,
+    this.duplicateDecision,
+    this.possibleDuplicateReason,
+    this.transactionDateChosen,
+    required this.createdPendingCount,
+    required this.seenCount,
+    required this.lastSeenAt,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['fingerprint'] = Variable<String>(fingerprint);
+    map['sample_type'] = Variable<String>(sampleType);
+    map['source_type'] = Variable<String>(sourceType);
+    map['package_name'] = Variable<String>(packageName);
+    if (!nullToAbsent || sender != null) {
+      map['sender'] = Variable<String>(sender);
+    }
+    if (!nullToAbsent || title != null) {
+      map['title'] = Variable<String>(title);
+    }
+    map['sample_text'] = Variable<String>(sampleText);
+    map['decision'] = Variable<String>(decision);
+    map['reason'] = Variable<String>(reason);
+    map['parse_result'] = Variable<String>(parseResult);
+    if (!nullToAbsent || providerName != null) {
+      map['provider_name'] = Variable<String>(providerName);
+    }
+    if (!nullToAbsent || confidenceScore != null) {
+      map['confidence_score'] = Variable<double>(confidenceScore);
+    }
+    if (!nullToAbsent || confidenceLevel != null) {
+      map['confidence_level'] = Variable<String>(confidenceLevel);
+    }
+    if (!nullToAbsent || candidateCount != null) {
+      map['candidate_count'] = Variable<int>(candidateCount);
+    }
+    if (!nullToAbsent || amountCandidate != null) {
+      map['amount_candidate'] = Variable<String>(amountCandidate);
+    }
+    if (!nullToAbsent || blockedContext != null) {
+      map['blocked_context'] = Variable<String>(blockedContext);
+    }
+    if (!nullToAbsent || duplicateDecision != null) {
+      map['duplicate_decision'] = Variable<String>(duplicateDecision);
+    }
+    if (!nullToAbsent || possibleDuplicateReason != null) {
+      map['possible_duplicate_reason'] = Variable<String>(
+        possibleDuplicateReason,
+      );
+    }
+    if (!nullToAbsent || transactionDateChosen != null) {
+      map['transaction_date_chosen'] = Variable<DateTime>(
+        transactionDateChosen,
+      );
+    }
+    map['created_pending_count'] = Variable<int>(createdPendingCount);
+    map['seen_count'] = Variable<int>(seenCount);
+    map['last_seen_at'] = Variable<DateTime>(lastSeenAt);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  MissedMessageSamplesCompanion toCompanion(bool nullToAbsent) {
+    return MissedMessageSamplesCompanion(
+      id: Value(id),
+      fingerprint: Value(fingerprint),
+      sampleType: Value(sampleType),
+      sourceType: Value(sourceType),
+      packageName: Value(packageName),
+      sender: sender == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sender),
+      title: title == null && nullToAbsent
+          ? const Value.absent()
+          : Value(title),
+      sampleText: Value(sampleText),
+      decision: Value(decision),
+      reason: Value(reason),
+      parseResult: Value(parseResult),
+      providerName: providerName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(providerName),
+      confidenceScore: confidenceScore == null && nullToAbsent
+          ? const Value.absent()
+          : Value(confidenceScore),
+      confidenceLevel: confidenceLevel == null && nullToAbsent
+          ? const Value.absent()
+          : Value(confidenceLevel),
+      candidateCount: candidateCount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(candidateCount),
+      amountCandidate: amountCandidate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(amountCandidate),
+      blockedContext: blockedContext == null && nullToAbsent
+          ? const Value.absent()
+          : Value(blockedContext),
+      duplicateDecision: duplicateDecision == null && nullToAbsent
+          ? const Value.absent()
+          : Value(duplicateDecision),
+      possibleDuplicateReason: possibleDuplicateReason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(possibleDuplicateReason),
+      transactionDateChosen: transactionDateChosen == null && nullToAbsent
+          ? const Value.absent()
+          : Value(transactionDateChosen),
+      createdPendingCount: Value(createdPendingCount),
+      seenCount: Value(seenCount),
+      lastSeenAt: Value(lastSeenAt),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory MissedMessageSample.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return MissedMessageSample(
+      id: serializer.fromJson<int>(json['id']),
+      fingerprint: serializer.fromJson<String>(json['fingerprint']),
+      sampleType: serializer.fromJson<String>(json['sampleType']),
+      sourceType: serializer.fromJson<String>(json['sourceType']),
+      packageName: serializer.fromJson<String>(json['packageName']),
+      sender: serializer.fromJson<String?>(json['sender']),
+      title: serializer.fromJson<String?>(json['title']),
+      sampleText: serializer.fromJson<String>(json['sampleText']),
+      decision: serializer.fromJson<String>(json['decision']),
+      reason: serializer.fromJson<String>(json['reason']),
+      parseResult: serializer.fromJson<String>(json['parseResult']),
+      providerName: serializer.fromJson<String?>(json['providerName']),
+      confidenceScore: serializer.fromJson<double?>(json['confidenceScore']),
+      confidenceLevel: serializer.fromJson<String?>(json['confidenceLevel']),
+      candidateCount: serializer.fromJson<int?>(json['candidateCount']),
+      amountCandidate: serializer.fromJson<String?>(json['amountCandidate']),
+      blockedContext: serializer.fromJson<String?>(json['blockedContext']),
+      duplicateDecision: serializer.fromJson<String?>(
+        json['duplicateDecision'],
+      ),
+      possibleDuplicateReason: serializer.fromJson<String?>(
+        json['possibleDuplicateReason'],
+      ),
+      transactionDateChosen: serializer.fromJson<DateTime?>(
+        json['transactionDateChosen'],
+      ),
+      createdPendingCount: serializer.fromJson<int>(
+        json['createdPendingCount'],
+      ),
+      seenCount: serializer.fromJson<int>(json['seenCount']),
+      lastSeenAt: serializer.fromJson<DateTime>(json['lastSeenAt']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'fingerprint': serializer.toJson<String>(fingerprint),
+      'sampleType': serializer.toJson<String>(sampleType),
+      'sourceType': serializer.toJson<String>(sourceType),
+      'packageName': serializer.toJson<String>(packageName),
+      'sender': serializer.toJson<String?>(sender),
+      'title': serializer.toJson<String?>(title),
+      'sampleText': serializer.toJson<String>(sampleText),
+      'decision': serializer.toJson<String>(decision),
+      'reason': serializer.toJson<String>(reason),
+      'parseResult': serializer.toJson<String>(parseResult),
+      'providerName': serializer.toJson<String?>(providerName),
+      'confidenceScore': serializer.toJson<double?>(confidenceScore),
+      'confidenceLevel': serializer.toJson<String?>(confidenceLevel),
+      'candidateCount': serializer.toJson<int?>(candidateCount),
+      'amountCandidate': serializer.toJson<String?>(amountCandidate),
+      'blockedContext': serializer.toJson<String?>(blockedContext),
+      'duplicateDecision': serializer.toJson<String?>(duplicateDecision),
+      'possibleDuplicateReason': serializer.toJson<String?>(
+        possibleDuplicateReason,
+      ),
+      'transactionDateChosen': serializer.toJson<DateTime?>(
+        transactionDateChosen,
+      ),
+      'createdPendingCount': serializer.toJson<int>(createdPendingCount),
+      'seenCount': serializer.toJson<int>(seenCount),
+      'lastSeenAt': serializer.toJson<DateTime>(lastSeenAt),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  MissedMessageSample copyWith({
+    int? id,
+    String? fingerprint,
+    String? sampleType,
+    String? sourceType,
+    String? packageName,
+    Value<String?> sender = const Value.absent(),
+    Value<String?> title = const Value.absent(),
+    String? sampleText,
+    String? decision,
+    String? reason,
+    String? parseResult,
+    Value<String?> providerName = const Value.absent(),
+    Value<double?> confidenceScore = const Value.absent(),
+    Value<String?> confidenceLevel = const Value.absent(),
+    Value<int?> candidateCount = const Value.absent(),
+    Value<String?> amountCandidate = const Value.absent(),
+    Value<String?> blockedContext = const Value.absent(),
+    Value<String?> duplicateDecision = const Value.absent(),
+    Value<String?> possibleDuplicateReason = const Value.absent(),
+    Value<DateTime?> transactionDateChosen = const Value.absent(),
+    int? createdPendingCount,
+    int? seenCount,
+    DateTime? lastSeenAt,
+    DateTime? createdAt,
+  }) => MissedMessageSample(
+    id: id ?? this.id,
+    fingerprint: fingerprint ?? this.fingerprint,
+    sampleType: sampleType ?? this.sampleType,
+    sourceType: sourceType ?? this.sourceType,
+    packageName: packageName ?? this.packageName,
+    sender: sender.present ? sender.value : this.sender,
+    title: title.present ? title.value : this.title,
+    sampleText: sampleText ?? this.sampleText,
+    decision: decision ?? this.decision,
+    reason: reason ?? this.reason,
+    parseResult: parseResult ?? this.parseResult,
+    providerName: providerName.present ? providerName.value : this.providerName,
+    confidenceScore: confidenceScore.present
+        ? confidenceScore.value
+        : this.confidenceScore,
+    confidenceLevel: confidenceLevel.present
+        ? confidenceLevel.value
+        : this.confidenceLevel,
+    candidateCount: candidateCount.present
+        ? candidateCount.value
+        : this.candidateCount,
+    amountCandidate: amountCandidate.present
+        ? amountCandidate.value
+        : this.amountCandidate,
+    blockedContext: blockedContext.present
+        ? blockedContext.value
+        : this.blockedContext,
+    duplicateDecision: duplicateDecision.present
+        ? duplicateDecision.value
+        : this.duplicateDecision,
+    possibleDuplicateReason: possibleDuplicateReason.present
+        ? possibleDuplicateReason.value
+        : this.possibleDuplicateReason,
+    transactionDateChosen: transactionDateChosen.present
+        ? transactionDateChosen.value
+        : this.transactionDateChosen,
+    createdPendingCount: createdPendingCount ?? this.createdPendingCount,
+    seenCount: seenCount ?? this.seenCount,
+    lastSeenAt: lastSeenAt ?? this.lastSeenAt,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  MissedMessageSample copyWithCompanion(MissedMessageSamplesCompanion data) {
+    return MissedMessageSample(
+      id: data.id.present ? data.id.value : this.id,
+      fingerprint: data.fingerprint.present
+          ? data.fingerprint.value
+          : this.fingerprint,
+      sampleType: data.sampleType.present
+          ? data.sampleType.value
+          : this.sampleType,
+      sourceType: data.sourceType.present
+          ? data.sourceType.value
+          : this.sourceType,
+      packageName: data.packageName.present
+          ? data.packageName.value
+          : this.packageName,
+      sender: data.sender.present ? data.sender.value : this.sender,
+      title: data.title.present ? data.title.value : this.title,
+      sampleText: data.sampleText.present
+          ? data.sampleText.value
+          : this.sampleText,
+      decision: data.decision.present ? data.decision.value : this.decision,
+      reason: data.reason.present ? data.reason.value : this.reason,
+      parseResult: data.parseResult.present
+          ? data.parseResult.value
+          : this.parseResult,
+      providerName: data.providerName.present
+          ? data.providerName.value
+          : this.providerName,
+      confidenceScore: data.confidenceScore.present
+          ? data.confidenceScore.value
+          : this.confidenceScore,
+      confidenceLevel: data.confidenceLevel.present
+          ? data.confidenceLevel.value
+          : this.confidenceLevel,
+      candidateCount: data.candidateCount.present
+          ? data.candidateCount.value
+          : this.candidateCount,
+      amountCandidate: data.amountCandidate.present
+          ? data.amountCandidate.value
+          : this.amountCandidate,
+      blockedContext: data.blockedContext.present
+          ? data.blockedContext.value
+          : this.blockedContext,
+      duplicateDecision: data.duplicateDecision.present
+          ? data.duplicateDecision.value
+          : this.duplicateDecision,
+      possibleDuplicateReason: data.possibleDuplicateReason.present
+          ? data.possibleDuplicateReason.value
+          : this.possibleDuplicateReason,
+      transactionDateChosen: data.transactionDateChosen.present
+          ? data.transactionDateChosen.value
+          : this.transactionDateChosen,
+      createdPendingCount: data.createdPendingCount.present
+          ? data.createdPendingCount.value
+          : this.createdPendingCount,
+      seenCount: data.seenCount.present ? data.seenCount.value : this.seenCount,
+      lastSeenAt: data.lastSeenAt.present
+          ? data.lastSeenAt.value
+          : this.lastSeenAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MissedMessageSample(')
+          ..write('id: $id, ')
+          ..write('fingerprint: $fingerprint, ')
+          ..write('sampleType: $sampleType, ')
+          ..write('sourceType: $sourceType, ')
+          ..write('packageName: $packageName, ')
+          ..write('sender: $sender, ')
+          ..write('title: $title, ')
+          ..write('sampleText: $sampleText, ')
+          ..write('decision: $decision, ')
+          ..write('reason: $reason, ')
+          ..write('parseResult: $parseResult, ')
+          ..write('providerName: $providerName, ')
+          ..write('confidenceScore: $confidenceScore, ')
+          ..write('confidenceLevel: $confidenceLevel, ')
+          ..write('candidateCount: $candidateCount, ')
+          ..write('amountCandidate: $amountCandidate, ')
+          ..write('blockedContext: $blockedContext, ')
+          ..write('duplicateDecision: $duplicateDecision, ')
+          ..write('possibleDuplicateReason: $possibleDuplicateReason, ')
+          ..write('transactionDateChosen: $transactionDateChosen, ')
+          ..write('createdPendingCount: $createdPendingCount, ')
+          ..write('seenCount: $seenCount, ')
+          ..write('lastSeenAt: $lastSeenAt, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hashAll([
+    id,
+    fingerprint,
+    sampleType,
+    sourceType,
+    packageName,
+    sender,
+    title,
+    sampleText,
+    decision,
+    reason,
+    parseResult,
+    providerName,
+    confidenceScore,
+    confidenceLevel,
+    candidateCount,
+    amountCandidate,
+    blockedContext,
+    duplicateDecision,
+    possibleDuplicateReason,
+    transactionDateChosen,
+    createdPendingCount,
+    seenCount,
+    lastSeenAt,
+    createdAt,
+  ]);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is MissedMessageSample &&
+          other.id == this.id &&
+          other.fingerprint == this.fingerprint &&
+          other.sampleType == this.sampleType &&
+          other.sourceType == this.sourceType &&
+          other.packageName == this.packageName &&
+          other.sender == this.sender &&
+          other.title == this.title &&
+          other.sampleText == this.sampleText &&
+          other.decision == this.decision &&
+          other.reason == this.reason &&
+          other.parseResult == this.parseResult &&
+          other.providerName == this.providerName &&
+          other.confidenceScore == this.confidenceScore &&
+          other.confidenceLevel == this.confidenceLevel &&
+          other.candidateCount == this.candidateCount &&
+          other.amountCandidate == this.amountCandidate &&
+          other.blockedContext == this.blockedContext &&
+          other.duplicateDecision == this.duplicateDecision &&
+          other.possibleDuplicateReason == this.possibleDuplicateReason &&
+          other.transactionDateChosen == this.transactionDateChosen &&
+          other.createdPendingCount == this.createdPendingCount &&
+          other.seenCount == this.seenCount &&
+          other.lastSeenAt == this.lastSeenAt &&
+          other.createdAt == this.createdAt);
+}
+
+class MissedMessageSamplesCompanion
+    extends UpdateCompanion<MissedMessageSample> {
+  final Value<int> id;
+  final Value<String> fingerprint;
+  final Value<String> sampleType;
+  final Value<String> sourceType;
+  final Value<String> packageName;
+  final Value<String?> sender;
+  final Value<String?> title;
+  final Value<String> sampleText;
+  final Value<String> decision;
+  final Value<String> reason;
+  final Value<String> parseResult;
+  final Value<String?> providerName;
+  final Value<double?> confidenceScore;
+  final Value<String?> confidenceLevel;
+  final Value<int?> candidateCount;
+  final Value<String?> amountCandidate;
+  final Value<String?> blockedContext;
+  final Value<String?> duplicateDecision;
+  final Value<String?> possibleDuplicateReason;
+  final Value<DateTime?> transactionDateChosen;
+  final Value<int> createdPendingCount;
+  final Value<int> seenCount;
+  final Value<DateTime> lastSeenAt;
+  final Value<DateTime> createdAt;
+  const MissedMessageSamplesCompanion({
+    this.id = const Value.absent(),
+    this.fingerprint = const Value.absent(),
+    this.sampleType = const Value.absent(),
+    this.sourceType = const Value.absent(),
+    this.packageName = const Value.absent(),
+    this.sender = const Value.absent(),
+    this.title = const Value.absent(),
+    this.sampleText = const Value.absent(),
+    this.decision = const Value.absent(),
+    this.reason = const Value.absent(),
+    this.parseResult = const Value.absent(),
+    this.providerName = const Value.absent(),
+    this.confidenceScore = const Value.absent(),
+    this.confidenceLevel = const Value.absent(),
+    this.candidateCount = const Value.absent(),
+    this.amountCandidate = const Value.absent(),
+    this.blockedContext = const Value.absent(),
+    this.duplicateDecision = const Value.absent(),
+    this.possibleDuplicateReason = const Value.absent(),
+    this.transactionDateChosen = const Value.absent(),
+    this.createdPendingCount = const Value.absent(),
+    this.seenCount = const Value.absent(),
+    this.lastSeenAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  MissedMessageSamplesCompanion.insert({
+    this.id = const Value.absent(),
+    required String fingerprint,
+    required String sampleType,
+    required String sourceType,
+    required String packageName,
+    this.sender = const Value.absent(),
+    this.title = const Value.absent(),
+    required String sampleText,
+    required String decision,
+    required String reason,
+    required String parseResult,
+    this.providerName = const Value.absent(),
+    this.confidenceScore = const Value.absent(),
+    this.confidenceLevel = const Value.absent(),
+    this.candidateCount = const Value.absent(),
+    this.amountCandidate = const Value.absent(),
+    this.blockedContext = const Value.absent(),
+    this.duplicateDecision = const Value.absent(),
+    this.possibleDuplicateReason = const Value.absent(),
+    this.transactionDateChosen = const Value.absent(),
+    this.createdPendingCount = const Value.absent(),
+    this.seenCount = const Value.absent(),
+    required DateTime lastSeenAt,
+    this.createdAt = const Value.absent(),
+  }) : fingerprint = Value(fingerprint),
+       sampleType = Value(sampleType),
+       sourceType = Value(sourceType),
+       packageName = Value(packageName),
+       sampleText = Value(sampleText),
+       decision = Value(decision),
+       reason = Value(reason),
+       parseResult = Value(parseResult),
+       lastSeenAt = Value(lastSeenAt);
+  static Insertable<MissedMessageSample> custom({
+    Expression<int>? id,
+    Expression<String>? fingerprint,
+    Expression<String>? sampleType,
+    Expression<String>? sourceType,
+    Expression<String>? packageName,
+    Expression<String>? sender,
+    Expression<String>? title,
+    Expression<String>? sampleText,
+    Expression<String>? decision,
+    Expression<String>? reason,
+    Expression<String>? parseResult,
+    Expression<String>? providerName,
+    Expression<double>? confidenceScore,
+    Expression<String>? confidenceLevel,
+    Expression<int>? candidateCount,
+    Expression<String>? amountCandidate,
+    Expression<String>? blockedContext,
+    Expression<String>? duplicateDecision,
+    Expression<String>? possibleDuplicateReason,
+    Expression<DateTime>? transactionDateChosen,
+    Expression<int>? createdPendingCount,
+    Expression<int>? seenCount,
+    Expression<DateTime>? lastSeenAt,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (fingerprint != null) 'fingerprint': fingerprint,
+      if (sampleType != null) 'sample_type': sampleType,
+      if (sourceType != null) 'source_type': sourceType,
+      if (packageName != null) 'package_name': packageName,
+      if (sender != null) 'sender': sender,
+      if (title != null) 'title': title,
+      if (sampleText != null) 'sample_text': sampleText,
+      if (decision != null) 'decision': decision,
+      if (reason != null) 'reason': reason,
+      if (parseResult != null) 'parse_result': parseResult,
+      if (providerName != null) 'provider_name': providerName,
+      if (confidenceScore != null) 'confidence_score': confidenceScore,
+      if (confidenceLevel != null) 'confidence_level': confidenceLevel,
+      if (candidateCount != null) 'candidate_count': candidateCount,
+      if (amountCandidate != null) 'amount_candidate': amountCandidate,
+      if (blockedContext != null) 'blocked_context': blockedContext,
+      if (duplicateDecision != null) 'duplicate_decision': duplicateDecision,
+      if (possibleDuplicateReason != null)
+        'possible_duplicate_reason': possibleDuplicateReason,
+      if (transactionDateChosen != null)
+        'transaction_date_chosen': transactionDateChosen,
+      if (createdPendingCount != null)
+        'created_pending_count': createdPendingCount,
+      if (seenCount != null) 'seen_count': seenCount,
+      if (lastSeenAt != null) 'last_seen_at': lastSeenAt,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  MissedMessageSamplesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? fingerprint,
+    Value<String>? sampleType,
+    Value<String>? sourceType,
+    Value<String>? packageName,
+    Value<String?>? sender,
+    Value<String?>? title,
+    Value<String>? sampleText,
+    Value<String>? decision,
+    Value<String>? reason,
+    Value<String>? parseResult,
+    Value<String?>? providerName,
+    Value<double?>? confidenceScore,
+    Value<String?>? confidenceLevel,
+    Value<int?>? candidateCount,
+    Value<String?>? amountCandidate,
+    Value<String?>? blockedContext,
+    Value<String?>? duplicateDecision,
+    Value<String?>? possibleDuplicateReason,
+    Value<DateTime?>? transactionDateChosen,
+    Value<int>? createdPendingCount,
+    Value<int>? seenCount,
+    Value<DateTime>? lastSeenAt,
+    Value<DateTime>? createdAt,
+  }) {
+    return MissedMessageSamplesCompanion(
+      id: id ?? this.id,
+      fingerprint: fingerprint ?? this.fingerprint,
+      sampleType: sampleType ?? this.sampleType,
+      sourceType: sourceType ?? this.sourceType,
+      packageName: packageName ?? this.packageName,
+      sender: sender ?? this.sender,
+      title: title ?? this.title,
+      sampleText: sampleText ?? this.sampleText,
+      decision: decision ?? this.decision,
+      reason: reason ?? this.reason,
+      parseResult: parseResult ?? this.parseResult,
+      providerName: providerName ?? this.providerName,
+      confidenceScore: confidenceScore ?? this.confidenceScore,
+      confidenceLevel: confidenceLevel ?? this.confidenceLevel,
+      candidateCount: candidateCount ?? this.candidateCount,
+      amountCandidate: amountCandidate ?? this.amountCandidate,
+      blockedContext: blockedContext ?? this.blockedContext,
+      duplicateDecision: duplicateDecision ?? this.duplicateDecision,
+      possibleDuplicateReason:
+          possibleDuplicateReason ?? this.possibleDuplicateReason,
+      transactionDateChosen:
+          transactionDateChosen ?? this.transactionDateChosen,
+      createdPendingCount: createdPendingCount ?? this.createdPendingCount,
+      seenCount: seenCount ?? this.seenCount,
+      lastSeenAt: lastSeenAt ?? this.lastSeenAt,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (fingerprint.present) {
+      map['fingerprint'] = Variable<String>(fingerprint.value);
+    }
+    if (sampleType.present) {
+      map['sample_type'] = Variable<String>(sampleType.value);
+    }
+    if (sourceType.present) {
+      map['source_type'] = Variable<String>(sourceType.value);
+    }
+    if (packageName.present) {
+      map['package_name'] = Variable<String>(packageName.value);
+    }
+    if (sender.present) {
+      map['sender'] = Variable<String>(sender.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (sampleText.present) {
+      map['sample_text'] = Variable<String>(sampleText.value);
+    }
+    if (decision.present) {
+      map['decision'] = Variable<String>(decision.value);
+    }
+    if (reason.present) {
+      map['reason'] = Variable<String>(reason.value);
+    }
+    if (parseResult.present) {
+      map['parse_result'] = Variable<String>(parseResult.value);
+    }
+    if (providerName.present) {
+      map['provider_name'] = Variable<String>(providerName.value);
+    }
+    if (confidenceScore.present) {
+      map['confidence_score'] = Variable<double>(confidenceScore.value);
+    }
+    if (confidenceLevel.present) {
+      map['confidence_level'] = Variable<String>(confidenceLevel.value);
+    }
+    if (candidateCount.present) {
+      map['candidate_count'] = Variable<int>(candidateCount.value);
+    }
+    if (amountCandidate.present) {
+      map['amount_candidate'] = Variable<String>(amountCandidate.value);
+    }
+    if (blockedContext.present) {
+      map['blocked_context'] = Variable<String>(blockedContext.value);
+    }
+    if (duplicateDecision.present) {
+      map['duplicate_decision'] = Variable<String>(duplicateDecision.value);
+    }
+    if (possibleDuplicateReason.present) {
+      map['possible_duplicate_reason'] = Variable<String>(
+        possibleDuplicateReason.value,
+      );
+    }
+    if (transactionDateChosen.present) {
+      map['transaction_date_chosen'] = Variable<DateTime>(
+        transactionDateChosen.value,
+      );
+    }
+    if (createdPendingCount.present) {
+      map['created_pending_count'] = Variable<int>(createdPendingCount.value);
+    }
+    if (seenCount.present) {
+      map['seen_count'] = Variable<int>(seenCount.value);
+    }
+    if (lastSeenAt.present) {
+      map['last_seen_at'] = Variable<DateTime>(lastSeenAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MissedMessageSamplesCompanion(')
+          ..write('id: $id, ')
+          ..write('fingerprint: $fingerprint, ')
+          ..write('sampleType: $sampleType, ')
+          ..write('sourceType: $sourceType, ')
+          ..write('packageName: $packageName, ')
+          ..write('sender: $sender, ')
+          ..write('title: $title, ')
+          ..write('sampleText: $sampleText, ')
+          ..write('decision: $decision, ')
+          ..write('reason: $reason, ')
+          ..write('parseResult: $parseResult, ')
+          ..write('providerName: $providerName, ')
+          ..write('confidenceScore: $confidenceScore, ')
+          ..write('confidenceLevel: $confidenceLevel, ')
+          ..write('candidateCount: $candidateCount, ')
+          ..write('amountCandidate: $amountCandidate, ')
+          ..write('blockedContext: $blockedContext, ')
+          ..write('duplicateDecision: $duplicateDecision, ')
+          ..write('possibleDuplicateReason: $possibleDuplicateReason, ')
+          ..write('transactionDateChosen: $transactionDateChosen, ')
+          ..write('createdPendingCount: $createdPendingCount, ')
+          ..write('seenCount: $seenCount, ')
+          ..write('lastSeenAt: $lastSeenAt, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $PendingTransactionsTable extends PendingTransactions
     with TableInfo<$PendingTransactionsTable, PendingTransaction> {
   @override
@@ -14165,6 +15557,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $TransactionsTable transactions = $TransactionsTable(this);
   late final $TransactionSourceEventsTable transactionSourceEvents =
       $TransactionSourceEventsTable(this);
+  late final $MissedMessageSamplesTable missedMessageSamples =
+      $MissedMessageSamplesTable(this);
   late final $PendingTransactionsTable pendingTransactions =
       $PendingTransactionsTable(this);
   late final $CardBillsTable cardBills = $CardBillsTable(this);
@@ -14190,6 +15584,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     creditCards,
     transactions,
     transactionSourceEvents,
+    missedMessageSamples,
     pendingTransactions,
     cardBills,
     splitGroups,
@@ -16225,6 +17620,611 @@ typedef $$TransactionSourceEventsTableProcessedTableManager =
         >,
       ),
       TransactionSourceEvent,
+      PrefetchHooks Function()
+    >;
+typedef $$MissedMessageSamplesTableCreateCompanionBuilder =
+    MissedMessageSamplesCompanion Function({
+      Value<int> id,
+      required String fingerprint,
+      required String sampleType,
+      required String sourceType,
+      required String packageName,
+      Value<String?> sender,
+      Value<String?> title,
+      required String sampleText,
+      required String decision,
+      required String reason,
+      required String parseResult,
+      Value<String?> providerName,
+      Value<double?> confidenceScore,
+      Value<String?> confidenceLevel,
+      Value<int?> candidateCount,
+      Value<String?> amountCandidate,
+      Value<String?> blockedContext,
+      Value<String?> duplicateDecision,
+      Value<String?> possibleDuplicateReason,
+      Value<DateTime?> transactionDateChosen,
+      Value<int> createdPendingCount,
+      Value<int> seenCount,
+      required DateTime lastSeenAt,
+      Value<DateTime> createdAt,
+    });
+typedef $$MissedMessageSamplesTableUpdateCompanionBuilder =
+    MissedMessageSamplesCompanion Function({
+      Value<int> id,
+      Value<String> fingerprint,
+      Value<String> sampleType,
+      Value<String> sourceType,
+      Value<String> packageName,
+      Value<String?> sender,
+      Value<String?> title,
+      Value<String> sampleText,
+      Value<String> decision,
+      Value<String> reason,
+      Value<String> parseResult,
+      Value<String?> providerName,
+      Value<double?> confidenceScore,
+      Value<String?> confidenceLevel,
+      Value<int?> candidateCount,
+      Value<String?> amountCandidate,
+      Value<String?> blockedContext,
+      Value<String?> duplicateDecision,
+      Value<String?> possibleDuplicateReason,
+      Value<DateTime?> transactionDateChosen,
+      Value<int> createdPendingCount,
+      Value<int> seenCount,
+      Value<DateTime> lastSeenAt,
+      Value<DateTime> createdAt,
+    });
+
+class $$MissedMessageSamplesTableFilterComposer
+    extends Composer<_$AppDatabase, $MissedMessageSamplesTable> {
+  $$MissedMessageSamplesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fingerprint => $composableBuilder(
+    column: $table.fingerprint,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sampleType => $composableBuilder(
+    column: $table.sampleType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceType => $composableBuilder(
+    column: $table.sourceType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get packageName => $composableBuilder(
+    column: $table.packageName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sender => $composableBuilder(
+    column: $table.sender,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sampleText => $composableBuilder(
+    column: $table.sampleText,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get decision => $composableBuilder(
+    column: $table.decision,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get parseResult => $composableBuilder(
+    column: $table.parseResult,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get providerName => $composableBuilder(
+    column: $table.providerName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get confidenceScore => $composableBuilder(
+    column: $table.confidenceScore,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get confidenceLevel => $composableBuilder(
+    column: $table.confidenceLevel,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get candidateCount => $composableBuilder(
+    column: $table.candidateCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get amountCandidate => $composableBuilder(
+    column: $table.amountCandidate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get blockedContext => $composableBuilder(
+    column: $table.blockedContext,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get duplicateDecision => $composableBuilder(
+    column: $table.duplicateDecision,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get possibleDuplicateReason => $composableBuilder(
+    column: $table.possibleDuplicateReason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get transactionDateChosen => $composableBuilder(
+    column: $table.transactionDateChosen,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdPendingCount => $composableBuilder(
+    column: $table.createdPendingCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get seenCount => $composableBuilder(
+    column: $table.seenCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastSeenAt => $composableBuilder(
+    column: $table.lastSeenAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$MissedMessageSamplesTableOrderingComposer
+    extends Composer<_$AppDatabase, $MissedMessageSamplesTable> {
+  $$MissedMessageSamplesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fingerprint => $composableBuilder(
+    column: $table.fingerprint,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sampleType => $composableBuilder(
+    column: $table.sampleType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceType => $composableBuilder(
+    column: $table.sourceType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get packageName => $composableBuilder(
+    column: $table.packageName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sender => $composableBuilder(
+    column: $table.sender,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sampleText => $composableBuilder(
+    column: $table.sampleText,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get decision => $composableBuilder(
+    column: $table.decision,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get parseResult => $composableBuilder(
+    column: $table.parseResult,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get providerName => $composableBuilder(
+    column: $table.providerName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get confidenceScore => $composableBuilder(
+    column: $table.confidenceScore,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get confidenceLevel => $composableBuilder(
+    column: $table.confidenceLevel,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get candidateCount => $composableBuilder(
+    column: $table.candidateCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get amountCandidate => $composableBuilder(
+    column: $table.amountCandidate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get blockedContext => $composableBuilder(
+    column: $table.blockedContext,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get duplicateDecision => $composableBuilder(
+    column: $table.duplicateDecision,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get possibleDuplicateReason => $composableBuilder(
+    column: $table.possibleDuplicateReason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get transactionDateChosen => $composableBuilder(
+    column: $table.transactionDateChosen,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdPendingCount => $composableBuilder(
+    column: $table.createdPendingCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get seenCount => $composableBuilder(
+    column: $table.seenCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastSeenAt => $composableBuilder(
+    column: $table.lastSeenAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$MissedMessageSamplesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $MissedMessageSamplesTable> {
+  $$MissedMessageSamplesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get fingerprint => $composableBuilder(
+    column: $table.fingerprint,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sampleType => $composableBuilder(
+    column: $table.sampleType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sourceType => $composableBuilder(
+    column: $table.sourceType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get packageName => $composableBuilder(
+    column: $table.packageName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sender =>
+      $composableBuilder(column: $table.sender, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get sampleText => $composableBuilder(
+    column: $table.sampleText,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get decision =>
+      $composableBuilder(column: $table.decision, builder: (column) => column);
+
+  GeneratedColumn<String> get reason =>
+      $composableBuilder(column: $table.reason, builder: (column) => column);
+
+  GeneratedColumn<String> get parseResult => $composableBuilder(
+    column: $table.parseResult,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get providerName => $composableBuilder(
+    column: $table.providerName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get confidenceScore => $composableBuilder(
+    column: $table.confidenceScore,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get confidenceLevel => $composableBuilder(
+    column: $table.confidenceLevel,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get candidateCount => $composableBuilder(
+    column: $table.candidateCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get amountCandidate => $composableBuilder(
+    column: $table.amountCandidate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get blockedContext => $composableBuilder(
+    column: $table.blockedContext,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get duplicateDecision => $composableBuilder(
+    column: $table.duplicateDecision,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get possibleDuplicateReason => $composableBuilder(
+    column: $table.possibleDuplicateReason,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get transactionDateChosen => $composableBuilder(
+    column: $table.transactionDateChosen,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get createdPendingCount => $composableBuilder(
+    column: $table.createdPendingCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get seenCount =>
+      $composableBuilder(column: $table.seenCount, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastSeenAt => $composableBuilder(
+    column: $table.lastSeenAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$MissedMessageSamplesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $MissedMessageSamplesTable,
+          MissedMessageSample,
+          $$MissedMessageSamplesTableFilterComposer,
+          $$MissedMessageSamplesTableOrderingComposer,
+          $$MissedMessageSamplesTableAnnotationComposer,
+          $$MissedMessageSamplesTableCreateCompanionBuilder,
+          $$MissedMessageSamplesTableUpdateCompanionBuilder,
+          (
+            MissedMessageSample,
+            BaseReferences<
+              _$AppDatabase,
+              $MissedMessageSamplesTable,
+              MissedMessageSample
+            >,
+          ),
+          MissedMessageSample,
+          PrefetchHooks Function()
+        > {
+  $$MissedMessageSamplesTableTableManager(
+    _$AppDatabase db,
+    $MissedMessageSamplesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$MissedMessageSamplesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$MissedMessageSamplesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$MissedMessageSamplesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> fingerprint = const Value.absent(),
+                Value<String> sampleType = const Value.absent(),
+                Value<String> sourceType = const Value.absent(),
+                Value<String> packageName = const Value.absent(),
+                Value<String?> sender = const Value.absent(),
+                Value<String?> title = const Value.absent(),
+                Value<String> sampleText = const Value.absent(),
+                Value<String> decision = const Value.absent(),
+                Value<String> reason = const Value.absent(),
+                Value<String> parseResult = const Value.absent(),
+                Value<String?> providerName = const Value.absent(),
+                Value<double?> confidenceScore = const Value.absent(),
+                Value<String?> confidenceLevel = const Value.absent(),
+                Value<int?> candidateCount = const Value.absent(),
+                Value<String?> amountCandidate = const Value.absent(),
+                Value<String?> blockedContext = const Value.absent(),
+                Value<String?> duplicateDecision = const Value.absent(),
+                Value<String?> possibleDuplicateReason = const Value.absent(),
+                Value<DateTime?> transactionDateChosen = const Value.absent(),
+                Value<int> createdPendingCount = const Value.absent(),
+                Value<int> seenCount = const Value.absent(),
+                Value<DateTime> lastSeenAt = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => MissedMessageSamplesCompanion(
+                id: id,
+                fingerprint: fingerprint,
+                sampleType: sampleType,
+                sourceType: sourceType,
+                packageName: packageName,
+                sender: sender,
+                title: title,
+                sampleText: sampleText,
+                decision: decision,
+                reason: reason,
+                parseResult: parseResult,
+                providerName: providerName,
+                confidenceScore: confidenceScore,
+                confidenceLevel: confidenceLevel,
+                candidateCount: candidateCount,
+                amountCandidate: amountCandidate,
+                blockedContext: blockedContext,
+                duplicateDecision: duplicateDecision,
+                possibleDuplicateReason: possibleDuplicateReason,
+                transactionDateChosen: transactionDateChosen,
+                createdPendingCount: createdPendingCount,
+                seenCount: seenCount,
+                lastSeenAt: lastSeenAt,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String fingerprint,
+                required String sampleType,
+                required String sourceType,
+                required String packageName,
+                Value<String?> sender = const Value.absent(),
+                Value<String?> title = const Value.absent(),
+                required String sampleText,
+                required String decision,
+                required String reason,
+                required String parseResult,
+                Value<String?> providerName = const Value.absent(),
+                Value<double?> confidenceScore = const Value.absent(),
+                Value<String?> confidenceLevel = const Value.absent(),
+                Value<int?> candidateCount = const Value.absent(),
+                Value<String?> amountCandidate = const Value.absent(),
+                Value<String?> blockedContext = const Value.absent(),
+                Value<String?> duplicateDecision = const Value.absent(),
+                Value<String?> possibleDuplicateReason = const Value.absent(),
+                Value<DateTime?> transactionDateChosen = const Value.absent(),
+                Value<int> createdPendingCount = const Value.absent(),
+                Value<int> seenCount = const Value.absent(),
+                required DateTime lastSeenAt,
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => MissedMessageSamplesCompanion.insert(
+                id: id,
+                fingerprint: fingerprint,
+                sampleType: sampleType,
+                sourceType: sourceType,
+                packageName: packageName,
+                sender: sender,
+                title: title,
+                sampleText: sampleText,
+                decision: decision,
+                reason: reason,
+                parseResult: parseResult,
+                providerName: providerName,
+                confidenceScore: confidenceScore,
+                confidenceLevel: confidenceLevel,
+                candidateCount: candidateCount,
+                amountCandidate: amountCandidate,
+                blockedContext: blockedContext,
+                duplicateDecision: duplicateDecision,
+                possibleDuplicateReason: possibleDuplicateReason,
+                transactionDateChosen: transactionDateChosen,
+                createdPendingCount: createdPendingCount,
+                seenCount: seenCount,
+                lastSeenAt: lastSeenAt,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$MissedMessageSamplesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $MissedMessageSamplesTable,
+      MissedMessageSample,
+      $$MissedMessageSamplesTableFilterComposer,
+      $$MissedMessageSamplesTableOrderingComposer,
+      $$MissedMessageSamplesTableAnnotationComposer,
+      $$MissedMessageSamplesTableCreateCompanionBuilder,
+      $$MissedMessageSamplesTableUpdateCompanionBuilder,
+      (
+        MissedMessageSample,
+        BaseReferences<
+          _$AppDatabase,
+          $MissedMessageSamplesTable,
+          MissedMessageSample
+        >,
+      ),
+      MissedMessageSample,
       PrefetchHooks Function()
     >;
 typedef $$PendingTransactionsTableCreateCompanionBuilder =
@@ -20564,6 +22564,8 @@ class $AppDatabaseManager {
         _db,
         _db.transactionSourceEvents,
       );
+  $$MissedMessageSamplesTableTableManager get missedMessageSamples =>
+      $$MissedMessageSamplesTableTableManager(_db, _db.missedMessageSamples);
   $$PendingTransactionsTableTableManager get pendingTransactions =>
       $$PendingTransactionsTableTableManager(_db, _db.pendingTransactions);
   $$CardBillsTableTableManager get cardBills =>
