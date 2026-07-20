@@ -170,21 +170,23 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('Android access required'), findsOneWidget);
     expect(
       find.text(
-        'Finarc only checks selected financial notifications and creates pending transactions for your confirmation. Chat and social apps are ignored.',
+        'Android keeps notification listener access inside system Settings. Finarc opens that page so you can allow local financial notification detection.',
       ),
       findsOneWidget,
     );
+    await tester.scrollUntilVisible(find.text('Open Android Settings'), 120);
+    final openSettingsButton = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Open Android Settings'),
+    );
+    expect(openSettingsButton.onPressed, isNotNull);
     await tester.scrollUntilVisible(
       find.text('UPI/payment app notifications'),
       300,
     );
     expect(find.text('UPI/payment app notifications'), findsOneWidget);
-    final openSettingsButton = tester.widget<FilledButton>(
-      find.widgetWithText(FilledButton, 'Open Android Notification Access'),
-    );
-    expect(openSettingsButton.onPressed, isNotNull);
   });
 
   testWidgets('release SMS setup shows SMS access controls', (tester) async {
@@ -223,6 +225,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('Android access required'), findsOneWidget);
     expect(find.text('Detection enabled'), findsOneWidget);
     expect(find.text('Show local detection notifications'), findsOneWidget);
     expect(find.text('UPI/payment app notifications'), findsOneWidget);
@@ -243,6 +246,9 @@ void main() {
   testWidgets('release-safe notification setup toggle updates setting', (
     tester,
   ) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -255,6 +261,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.ensureVisible(find.text('UPI/payment app notifications'));
     await tester.tap(find.text('UPI/payment app notifications'));
     await tester.pumpAndSettle();
 

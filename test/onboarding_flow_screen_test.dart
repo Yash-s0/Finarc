@@ -76,6 +76,11 @@ void main() {
           builder: (context, state) =>
               const Scaffold(body: Center(child: Text('Home'))),
         ),
+        GoRoute(
+          path: '/expenses/add',
+          builder: (context, state) =>
+              const Scaffold(body: Center(child: Text('Add Expense'))),
+        ),
       ],
     );
     addTearDown(router.dispose);
@@ -99,6 +104,14 @@ void main() {
   Future<void> tapNext(WidgetTester tester) async {
     await tester.tap(find.text('Next'));
     await tester.pumpAndSettle();
+    if (find.text('Skip detection setup?').evaluate().isNotEmpty) {
+      await tester.tap(find.text('Skip for now'));
+      await tester.pumpAndSettle();
+    }
+    if (find.text('Skip profile details?').evaluate().isNotEmpty) {
+      await tester.tap(find.text('Continue empty'));
+      await tester.pumpAndSettle();
+    }
   }
 
   Future<void> advanceToProfileStep(WidgetTester tester) async {
@@ -143,9 +156,39 @@ void main() {
     }
 
     expect(find.text('Connect detection'), findsOneWidget);
-    expect(find.text('Notifications'), findsOneWidget);
-    expect(find.text('SMS Setup'), findsOneWidget);
+    expect(find.text('App notifications'), findsOneWidget);
+    expect(find.text('Open Settings'), findsOneWidget);
+    expect(find.text('Open SMS Setup'), findsOneWidget);
+    expect(
+      find.text(
+        'Android opens Settings for this permission. Finarc only checks financial notifications locally.',
+      ),
+      findsOneWidget,
+    );
     expect(find.text('SMS setup unavailable in this build'), findsNothing);
+  });
+
+  testWidgets('optional detection skip explains it can be enabled later', (
+    tester,
+  ) async {
+    await pumpOnboarding(tester);
+
+    await tapNext(tester);
+    await tapNext(tester);
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Skip detection setup?'), findsOneWidget);
+    expect(
+      find.text(
+        'You can enable SMS or notification detection later from Profile. Manual entries still work.',
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('Go back'));
+    await tester.pumpAndSettle();
+    expect(find.text('Connect detection'), findsOneWidget);
   });
 
   testWidgets('privacy tour popup opens and closes from onboarding', (
@@ -195,6 +238,8 @@ void main() {
     await advanceToProfileStep(tester);
     await tapNext(tester);
     expect(find.text('Ready'), findsOneWidget);
+    expect(find.text('Go to Dashboard'), findsOneWidget);
+    expect(find.text('Add First Expense'), findsOneWidget);
 
     await tester.tap(find.text('Finish Setup'));
     await tester.pumpAndSettle();
@@ -309,6 +354,8 @@ void main() {
     }
 
     expect(find.text('Ready'), findsOneWidget);
+    expect(find.text('Go to Dashboard'), findsOneWidget);
+    expect(find.text('Add First Expense'), findsOneWidget);
     await tester.tap(find.text('Finish Setup'));
     await tester.pumpAndSettle();
 

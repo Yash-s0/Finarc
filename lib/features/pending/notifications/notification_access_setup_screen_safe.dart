@@ -55,23 +55,92 @@ class NotificationAccessSetupScreenSafe extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Detect transactions from app notifications',
+                  'Android access required',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
-                  'Finarc only checks selected financial notifications and creates pending transactions for your confirmation. Chat and social apps are ignored.',
+                  'Android keeps notification listener access inside system Settings. Finarc opens that page so you can choose whether to allow local financial notification detection.',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
-                const SizedBox(height: AppSpacing.xs),
-                const FinarcStatusBadge(
-                  label: 'SMS DETECTION IS AVAILABLE SEPARATELY',
-                  tone: FinarcStatusTone.info,
+                const SizedBox(height: AppSpacing.sm),
+                availableState.when(
+                  loading: () =>
+                      const Text('Checking listener availability...'),
+                  error: (e, _) => Text('Listener status error: $e'),
+                  data: (available) => FinarcStatusBadge(
+                    label: available
+                        ? 'NOTIFICATION LISTENER AVAILABLE'
+                        : 'NOTIFICATION LISTENER UNAVAILABLE',
+                    tone: available
+                        ? FinarcStatusTone.success
+                        : FinarcStatusTone.warning,
+                    compact: true,
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'Use SMS Access for local SMS parsing. On Android 13 and newer, allow Finarc app notifications too so local alerts can be shown.',
-                  style: Theme.of(context).textTheme.bodySmall,
+                accessState.when(
+                  loading: () => const Text('Checking access...'),
+                  error: (e, _) => Text('Access error: $e'),
+                  data: (enabled) => FinarcStatusBadge(
+                    label: enabled
+                        ? 'NOTIFICATION ACCESS ENABLED'
+                        : 'NOTIFICATION ACCESS DISABLED',
+                    tone: enabled
+                        ? FinarcStatusTone.success
+                        : FinarcStatusTone.warning,
+                    compact: true,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                postNotificationsState.when(
+                  loading: () => const Text(
+                    'Checking Finarc app notification permission...',
+                  ),
+                  error: (e, _) => Text('Permission error: $e'),
+                  data: (enabled) => FinarcStatusBadge(
+                    label: enabled
+                        ? 'FINARC APP NOTIFICATIONS ALLOWED'
+                        : 'FINARC APP NOTIFICATIONS BLOCKED',
+                    tone: enabled
+                        ? FinarcStatusTone.success
+                        : FinarcStatusTone.warning,
+                    compact: true,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                FinarcPrimaryButton(
+                  onPressed: () async {
+                    await ref
+                        .read(_notificationPermissionServiceProvider)
+                        .openAccessSettings();
+                    ref.invalidate(_notificationAccessStateProvider);
+                    ref.invalidate(_notificationListenerAvailableStateProvider);
+                    ref.invalidate(_postNotificationsPermissionStateProvider);
+                  },
+                  icon: Icons.settings_outlined,
+                  label: 'Open Android Settings',
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                FinarcSecondaryButton(
+                  onPressed: () async {
+                    await ref
+                        .read(_notificationPermissionServiceProvider)
+                        .requestPostNotificationsPermission();
+                    ref.invalidate(_postNotificationsPermissionStateProvider);
+                  },
+                  icon: Icons.notifications_active_outlined,
+                  label: 'Allow Finarc App Notifications',
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                FinarcSecondaryButton(
+                  onPressed: () {
+                    ref.invalidate(_notificationAccessStateProvider);
+                    ref.invalidate(_notificationListenerAvailableStateProvider);
+                    ref.invalidate(_postNotificationsPermissionStateProvider);
+                  },
+                  icon: Icons.refresh,
+                  label: 'Refresh Status',
                 ),
               ],
             ),
@@ -145,94 +214,6 @@ class NotificationAccessSetupScreenSafe extends ConsumerWidget {
                       ),
                     ],
                   ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          FinarcCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const FinarcSectionHeader(title: 'Status & Access'),
-                const SizedBox(height: AppSpacing.sm),
-                availableState.when(
-                  loading: () =>
-                      const Text('Checking listener availability...'),
-                  error: (e, _) => Text('Listener status error: $e'),
-                  data: (available) => FinarcStatusBadge(
-                    label: available
-                        ? 'NOTIFICATION LISTENER AVAILABLE'
-                        : 'NOTIFICATION LISTENER UNAVAILABLE',
-                    tone: available
-                        ? FinarcStatusTone.success
-                        : FinarcStatusTone.warning,
-                    compact: true,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                accessState.when(
-                  loading: () => const Text('Checking access...'),
-                  error: (e, _) => Text('Access error: $e'),
-                  data: (enabled) => FinarcStatusBadge(
-                    label: enabled
-                        ? 'NOTIFICATION ACCESS ENABLED'
-                        : 'NOTIFICATION ACCESS DISABLED',
-                    tone: enabled
-                        ? FinarcStatusTone.success
-                        : FinarcStatusTone.warning,
-                    compact: true,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                postNotificationsState.when(
-                  loading: () => const Text(
-                    'Checking Finarc app notification permission...',
-                  ),
-                  error: (e, _) => Text('Permission error: $e'),
-                  data: (enabled) => FinarcStatusBadge(
-                    label: enabled
-                        ? 'FINARC APP NOTIFICATIONS ALLOWED'
-                        : 'FINARC APP NOTIFICATIONS BLOCKED',
-                    tone: enabled
-                        ? FinarcStatusTone.success
-                        : FinarcStatusTone.warning,
-                    compact: true,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                FinarcPrimaryButton(
-                  onPressed: () async {
-                    await ref
-                        .read(_notificationPermissionServiceProvider)
-                        .openAccessSettings();
-                    ref.invalidate(_notificationAccessStateProvider);
-                    ref.invalidate(_notificationListenerAvailableStateProvider);
-                    ref.invalidate(_postNotificationsPermissionStateProvider);
-                  },
-                  icon: Icons.settings_outlined,
-                  label: 'Open Android Notification Access',
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                FinarcSecondaryButton(
-                  onPressed: () async {
-                    await ref
-                        .read(_notificationPermissionServiceProvider)
-                        .requestPostNotificationsPermission();
-                    ref.invalidate(_postNotificationsPermissionStateProvider);
-                  },
-                  icon: Icons.notifications_active_outlined,
-                  label: 'Allow Finarc App Notifications',
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                FinarcSecondaryButton(
-                  onPressed: () {
-                    ref.invalidate(_notificationAccessStateProvider);
-                    ref.invalidate(_notificationListenerAvailableStateProvider);
-                    ref.invalidate(_postNotificationsPermissionStateProvider);
-                  },
-                  icon: Icons.refresh,
-                  label: 'Refresh Status',
                 ),
               ],
             ),

@@ -9,6 +9,7 @@ import '../../../core/theme/app_shadows.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
 import '../../../core/utils/numeric_input_formatters.dart';
+import '../../pending/notifications/notification_providers.dart';
 import '../../pending/notifications/notification_permission_service.dart';
 import '../data/onboarding_providers.dart';
 
@@ -25,7 +26,8 @@ class OnboardingFlowScreen extends ConsumerStatefulWidget {
       _OnboardingFlowScreenState();
 }
 
-class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
+class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen>
+    with WidgetsBindingObserver {
   final _controller = PageController();
   final _name = TextEditingController();
   final _salary = TextEditingController();
@@ -38,10 +40,18 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
   int _index = 0;
   static const int _profileStepIndex = 3;
   bool _notificationPromptHandled = false;
+  bool _bankSetupOpened = false;
+  bool _cashSetupOpened = false;
+  bool _cardSetupOpened = false;
+  bool _notificationSetupOpened = false;
+  bool _smsSetupOpened = false;
+  bool _detectionSkipPromptShown = false;
+  bool _profileSkipPromptShown = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _maybePromptForAppNotifications();
     });
@@ -49,6 +59,7 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
     _name.dispose();
     _salary.dispose();
@@ -59,6 +70,14 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
     _salaryDayFocus.dispose();
     _companyFocus.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    ref.invalidate(notificationAccessStatusProvider);
+    ref.invalidate(postNotificationsPermissionProvider);
+    ref.invalidate(smsPermissionStatusProvider);
   }
 
   Future<void> _maybePromptForAppNotifications() async {
@@ -119,49 +138,28 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
         ],
       ),
       _SetupChoicesStep(
-        onAddBank: () => context.push('/accounts/add?type=bank'),
-        onAddCash: () => context.push('/accounts/add?type=cash'),
-        onAddCard: () => context.push('/cards/add'),
+        bankOpened: _bankSetupOpened,
+        cashOpened: _cashSetupOpened,
+        cardOpened: _cardSetupOpened,
+        onAddBank: () => _openSetup(
+          '/accounts/add?type=bank',
+          () => _bankSetupOpened = true,
+        ),
+        onAddCash: () => _openSetup(
+          '/accounts/add?type=cash',
+          () => _cashSetupOpened = true,
+        ),
+        onAddCard: () =>
+            _openSetup('/cards/add', () => _cardSetupOpened = true),
       ),
-      _StepTemplate(
-        stepLabel: 'Step 3 of 5',
-        title: 'Connect detection',
-        subtitle:
-            'Turn on SMS or notification detection now, or do it later from Profile.',
-        icon: Icons.notifications_active_outlined,
-        accent: _OnboardingAccent.warning,
-        chips: const ['Optional', 'Local', 'Pending first'],
-        showPreview: false,
-        supporting: [
-          Row(
-            children: [
-              Expanded(
-                child: FinarcSecondaryButton(
-                  onPressed: () => context.push('/notifications/setup'),
-                  icon: Icons.notifications_outlined,
-                  label: 'Notifications',
-                ),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              Expanded(
-                child: FinarcSecondaryButton(
-                  onPressed: () => context.push('/sms/setup'),
-                  icon: Icons.sms_outlined,
-                  label: 'SMS Setup',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          const _BulletPanel(
-            title: 'You stay in control',
-            bullets: [
-              'Enable only the sources you want',
-              'Review every detected item before saving',
-              'Change this later from Profile',
-            ],
-          ),
-        ],
+      _DetectionSetupStep(
+        notificationSetupOpened: _notificationSetupOpened,
+        smsSetupOpened: _smsSetupOpened,
+        onOpenNotifications: () => _openSetup(
+          '/notifications/setup',
+          () => _notificationSetupOpened = true,
+        ),
+        onOpenSms: () => _openSetup('/sms/setup', () => _smsSetupOpened = true),
       ),
       _ProfileSetupStep(
         nameController: _name,
@@ -174,54 +172,9 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
         companyFocusNode: _companyFocus,
         onSkipName: _skipNameAndContinue,
       ),
-      _StepTemplate(
-        stepLabel: 'Step 5 of 5',
-        title: 'Ready',
-        subtitle: 'Start with manual entries, detected pending items, or both.',
-        icon: Icons.check_circle_outline,
-        accent: _OnboardingAccent.success,
-        chips: const ['Private', 'Flexible', 'Review-first'],
-        showPreview: false,
-        supporting: const [
-          _InlineInfoCard(
-            icon: Icons.verified_user_outlined,
-            title: 'Privacy-first, everywhere',
-            description:
-                'Finarc keeps the same local-first model across expenses, cards, splits, loans and backups.',
-          ),
-          SizedBox(height: AppSpacing.xs),
-          _ExpandableFeatureTile(
-            icon: Icons.account_balance_outlined,
-            title: 'Add accounts anytime',
-            description: 'Bank accounts, wallets and cards can be added later.',
-            expandedDescription:
-                'You can start with an empty ledger and add accounts from the Accounts or Cards sections when ready.',
-          ),
-          SizedBox(height: AppSpacing.xs),
-          _ExpandableFeatureTile(
-            icon: Icons.pending_actions_outlined,
-            title: 'Confirm detected transactions',
-            description: 'Detected items stay pending until you review them.',
-            expandedDescription:
-                'Notification detection is designed as a helper, not an automatic writer. You stay in control.',
-          ),
-          SizedBox(height: AppSpacing.xs),
-          _ExpandableFeatureTile(
-            icon: Icons.notifications_active_outlined,
-            title: 'Notification detection',
-            description: 'Optional detection can be enabled later.',
-            expandedDescription:
-                'When supported, notification detection creates pending items for review instead of saving them automatically.',
-          ),
-          SizedBox(height: AppSpacing.xs),
-          _ExpandableFeatureTile(
-            icon: Icons.backup_outlined,
-            title: 'Backup & restore',
-            description: 'Export when you want a copy.',
-            expandedDescription:
-                'Exports and imports are available from Profile so you can protect or move your local records intentionally.',
-          ),
-        ],
+      _ReadyStep(
+        onDashboard: _finish,
+        onAddExpense: () => _finish(routeAfterComplete: '/expenses/add'),
       ),
     ];
 
@@ -302,10 +255,50 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
     if (_index == _profileStepIndex && !_validateProfileInputs()) {
       return;
     }
+    if (!await _confirmOptionalSkipIfNeeded()) return;
     await _controller.nextPage(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOut,
     );
+  }
+
+  Future<void> _openSetup(String route, VoidCallback markOpened) async {
+    setState(markOpened);
+    await context.push(route);
+    if (!mounted) return;
+    ref.invalidate(notificationAccessStatusProvider);
+    ref.invalidate(postNotificationsPermissionProvider);
+    ref.invalidate(smsPermissionStatusProvider);
+  }
+
+  Future<bool> _confirmOptionalSkipIfNeeded() async {
+    if (_index == 2 &&
+        !_detectionSkipPromptShown &&
+        !_notificationSetupOpened &&
+        !_smsSetupOpened) {
+      _detectionSkipPromptShown = true;
+      return _showSkipSheet(
+        title: 'Skip detection setup?',
+        description:
+            'You can enable SMS or notification detection later from Profile. Manual entries still work.',
+        continueLabel: 'Skip for now',
+      );
+    }
+    if (_index == _profileStepIndex &&
+        !_profileSkipPromptShown &&
+        _name.text.trim().isEmpty &&
+        _salary.text.trim().isEmpty &&
+        _salaryDay.text.trim().isEmpty &&
+        _company.text.trim().isEmpty) {
+      _profileSkipPromptShown = true;
+      return _showSkipSheet(
+        title: 'Skip profile details?',
+        description:
+            'Salary and company details only improve local insights. You can add them later from Profile.',
+        continueLabel: 'Continue empty',
+      );
+    }
+    return true;
   }
 
   bool _validateProfileInputs() {
@@ -337,13 +330,14 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
   Future<void> _skipNameAndContinue() async {
     _name.clear();
     FocusScope.of(context).unfocus();
+    _profileSkipPromptShown = true;
     await _controller.nextPage(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOut,
     );
   }
 
-  Future<void> _finish() async {
+  Future<void> _finish({String? routeAfterComplete}) async {
     if (!_validateProfileInputs()) return;
 
     final name = _name.text.trim();
@@ -362,7 +356,48 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
           companyName: company.isEmpty ? null : company,
         );
     if (!mounted) return;
-    context.go('/');
+    context.go(routeAfterComplete ?? '/');
+  }
+
+  Future<bool> _showSkipSheet({
+    required String title,
+    required String description,
+    required String continueLabel,
+  }) async {
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          0,
+          AppSpacing.md,
+          AppSpacing.lg,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: AppSpacing.xs),
+            Text(description, style: Theme.of(context).textTheme.bodyMedium),
+            const SizedBox(height: AppSpacing.md),
+            FinarcPrimaryButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              icon: Icons.arrow_forward_rounded,
+              label: continueLabel,
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            FinarcSecondaryButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              icon: Icons.keyboard_return_rounded,
+              label: 'Go back',
+            ),
+          ],
+        ),
+      ),
+    );
+    return result == true;
   }
 
   void _showPrivacyTour(BuildContext context) {
@@ -625,11 +660,17 @@ class _PermissionPromptPoint extends StatelessWidget {
 
 class _SetupChoicesStep extends StatelessWidget {
   const _SetupChoicesStep({
+    required this.bankOpened,
+    required this.cashOpened,
+    required this.cardOpened,
     required this.onAddBank,
     required this.onAddCash,
     required this.onAddCard,
   });
 
+  final bool bankOpened;
+  final bool cashOpened;
+  final bool cardOpened;
   final VoidCallback onAddBank;
   final VoidCallback onAddCash;
   final VoidCallback onAddCard;
@@ -659,28 +700,31 @@ class _SetupChoicesStep extends StatelessWidget {
             icon: Icons.account_balance_outlined,
             title: 'Bank account',
             description: 'Track balances, transfers and salary deposits.',
-            badge: 'Best start',
+            badge: bankOpened ? 'Opened' : 'Best start',
             buttonLabel: 'Add Bank Account',
             onPressed: onAddBank,
             isPrimary: true,
+            completed: bankOpened,
           ),
           const SizedBox(height: AppSpacing.xs),
           _SetupOptionCard(
             icon: Icons.account_balance_wallet_outlined,
             title: 'Cash wallet',
             description: 'Track cash on hand and wallet-style balances.',
-            badge: 'Quick',
+            badge: cashOpened ? 'Opened' : 'Quick',
             buttonLabel: 'Add Cash Wallet',
             onPressed: onAddCash,
+            completed: cashOpened,
           ),
           const SizedBox(height: AppSpacing.xs),
           _SetupOptionCard(
             icon: Icons.credit_card_outlined,
             title: 'Credit card',
             description: 'Track card spends, statements and bill dues.',
-            badge: 'Bills',
+            badge: cardOpened ? 'Opened' : 'Bills',
             buttonLabel: 'Add Credit Card',
             onPressed: onAddCard,
+            completed: cardOpened,
           ),
         ],
       ),
@@ -697,6 +741,7 @@ class _SetupOptionCard extends StatelessWidget {
     required this.buttonLabel,
     required this.onPressed,
     this.isPrimary = false,
+    this.completed = false,
   });
 
   final IconData icon;
@@ -706,6 +751,7 @@ class _SetupOptionCard extends StatelessWidget {
   final String buttonLabel;
   final VoidCallback onPressed;
   final bool isPrimary;
+  final bool completed;
 
   @override
   Widget build(BuildContext context) {
@@ -761,7 +807,11 @@ class _SetupOptionCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppSpacing.xs),
-              _OptionBadge(label: badge, active: isPrimary),
+              _OptionBadge(
+                label: badge,
+                active: isPrimary || completed,
+                icon: completed ? Icons.check_rounded : null,
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -773,10 +823,11 @@ class _SetupOptionCard extends StatelessWidget {
 }
 
 class _OptionBadge extends StatelessWidget {
-  const _OptionBadge({required this.label, required this.active});
+  const _OptionBadge({required this.label, required this.active, this.icon});
 
   final String label;
   final bool active;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -794,11 +845,232 @@ class _OptionBadge extends StatelessWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(color: color),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 12, color: color),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              label,
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(color: color),
+            ),
+          ],
         ),
       ),
+    );
+  }
+}
+
+class _DetectionSetupStep extends ConsumerWidget {
+  const _DetectionSetupStep({
+    required this.notificationSetupOpened,
+    required this.smsSetupOpened,
+    required this.onOpenNotifications,
+    required this.onOpenSms,
+  });
+
+  final bool notificationSetupOpened;
+  final bool smsSetupOpened;
+  final VoidCallback onOpenNotifications;
+  final VoidCallback onOpenSms;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notificationAccess = ref.watch(notificationAccessStatusProvider);
+    final appNotifications = ref.watch(postNotificationsPermissionProvider);
+    final smsAccess = ref.watch(smsPermissionStatusProvider);
+
+    return _StepTemplate(
+      stepLabel: 'Step 3 of 5',
+      title: 'Connect detection',
+      subtitle:
+          'Optional helpers. You review every detected item before saving.',
+      icon: Icons.notifications_active_outlined,
+      accent: _OnboardingAccent.warning,
+      chips: const ['Optional', 'Local', 'Pending first'],
+      showPreview: false,
+      supporting: [
+        _SetupStatusCard(
+          icon: Icons.notifications_outlined,
+          title: 'App notifications',
+          description:
+              'Android opens Settings for this permission. Finarc only checks financial notifications locally.',
+          status: _accessLabel(notificationAccess, notificationSetupOpened),
+          statusTone: _accessTone(notificationAccess, notificationSetupOpened),
+          buttonLabel: 'Open Settings',
+          onPressed: onOpenNotifications,
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        _SetupStatusCard(
+          icon: Icons.sms_outlined,
+          title: 'SMS detection',
+          description:
+              'Android asks for SMS access. Parsed messages become pending items, not saved transactions.',
+          status: _accessLabel(smsAccess, smsSetupOpened),
+          statusTone: _accessTone(smsAccess, smsSetupOpened),
+          buttonLabel: 'Open SMS Setup',
+          onPressed: onOpenSms,
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        _InlineInfoCard(
+          icon: Icons.notifications_active_outlined,
+          title: _appNotificationLabel(appNotifications),
+          description:
+              'Local app alerts help you notice pending reviews. Detection still works without alert permission.',
+        ),
+      ],
+    );
+  }
+
+  String _accessLabel(AsyncValue<bool> state, bool opened) {
+    return state.maybeWhen(
+      data: (enabled) {
+        if (enabled) return 'Enabled';
+        return opened ? 'Still off' : 'Not set up';
+      },
+      orElse: () => opened ? 'Checking' : 'Not set up',
+    );
+  }
+
+  FinarcStatusTone _accessTone(AsyncValue<bool> state, bool opened) {
+    return state.maybeWhen(
+      data: (enabled) {
+        if (enabled) return FinarcStatusTone.success;
+        return opened ? FinarcStatusTone.warning : FinarcStatusTone.neutral;
+      },
+      orElse: () => opened ? FinarcStatusTone.info : FinarcStatusTone.neutral,
+    );
+  }
+
+  String _appNotificationLabel(AsyncValue<bool> state) {
+    return state.maybeWhen(
+      data: (enabled) =>
+          enabled ? 'Finarc alerts are on' : 'Finarc alerts are optional',
+      orElse: () => 'Finarc alerts are optional',
+    );
+  }
+}
+
+class _SetupStatusCard extends StatelessWidget {
+  const _SetupStatusCard({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.status,
+    required this.statusTone,
+    required this.buttonLabel,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+  final String status;
+  final FinarcStatusTone statusTone;
+  final String buttonLabel;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return FinarcCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _SmallIconTile(icon: icon),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: Theme.of(context).textTheme.titleSmall),
+                    const SizedBox(height: 2),
+                    Text(
+                      description,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              FinarcStatusBadge(label: status, tone: statusTone, compact: true),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          FinarcSecondaryButton(
+            onPressed: onPressed,
+            icon: icon,
+            label: buttonLabel,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReadyStep extends StatelessWidget {
+  const _ReadyStep({required this.onDashboard, required this.onAddExpense});
+
+  final VoidCallback onDashboard;
+  final VoidCallback onAddExpense;
+
+  @override
+  Widget build(BuildContext context) {
+    return _StepTemplate(
+      stepLabel: 'Step 5 of 5',
+      title: 'Ready',
+      subtitle: 'Start tracking manually or review detected pending items.',
+      icon: Icons.check_circle_outline,
+      accent: _OnboardingAccent.success,
+      chips: const ['Private', 'Review-first'],
+      showPreview: false,
+      supporting: [
+        const _InlineInfoCard(
+          icon: Icons.verified_user_outlined,
+          title: 'Privacy-first, everywhere',
+          description: 'Your ledger stays local. You control what gets saved.',
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        FinarcPrimaryButton(
+          onPressed: onDashboard,
+          icon: Icons.dashboard_outlined,
+          label: 'Go to Dashboard',
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        FinarcSecondaryButton(
+          onPressed: onAddExpense,
+          icon: Icons.add_rounded,
+          label: 'Add First Expense',
+        ),
+      ],
+    );
+  }
+}
+
+class _SmallIconTile extends StatelessWidget {
+  const _SmallIconTile({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = isDark ? AppColors.darkAccent : AppColors.lightAccent;
+
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: Icon(icon, color: accent, size: 20),
     );
   }
 }
@@ -1373,57 +1645,6 @@ class _HeroChip extends StatelessWidget {
           vertical: 5,
         ),
         child: Text(label, style: Theme.of(context).textTheme.labelMedium),
-      ),
-    );
-  }
-}
-
-class _BulletPanel extends StatelessWidget {
-  const _BulletPanel({required this.title, required this.bullets});
-
-  final String title;
-  final List<String> bullets;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return FinarcCard(
-      backgroundColor: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-      borderColor: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: AppSpacing.xs),
-          ...bullets.map(
-            (bullet) => Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    margin: const EdgeInsets.only(top: 6),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? AppColors.darkAccent
-                          : AppColors.lightAccent,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.xs),
-                  Expanded(
-                    child: Text(
-                      bullet,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

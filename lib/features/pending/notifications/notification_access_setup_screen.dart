@@ -35,42 +35,14 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Detect transactions from app notifications',
+                    'Android access required',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
-                    'Finarc only checks selected financial notifications and creates pending transactions for your confirmation. Chat and social apps are ignored.',
+                    'Android keeps notification listener access inside system Settings. Finarc opens that page so you can allow local financial notification detection.',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
-                  const SizedBox(height: AppSpacing.xs),
-                  const FinarcStatusBadge(
-                    label: 'No cloud sync. Data stays on device.',
-                    tone: FinarcStatusTone.info,
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  const FinarcStatusBadge(
-                    label: 'BANK APPS ENABLED, CHAT/SOCIAL APPS BLOCKED',
-                    tone: FinarcStatusTone.success,
-                    compact: true,
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  if (!hasNotificationAccess)
-                    Text(
-                      notificationIngestionAvailable
-                          ? 'Notification access is currently disabled.'
-                          : 'Unavailable in this build (safe mode).',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            FinarcCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const FinarcSectionHeader(title: 'Status & Access'),
                   const SizedBox(height: AppSpacing.sm),
                   accessState.when(
                     loading: () => const Text('Checking access...'),
@@ -96,6 +68,15 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.xs),
+                  if (!hasNotificationAccess)
+                    Text(
+                      notificationIngestionAvailable
+                          ? 'Turn on Finarc in Android Notification Access, then come back and refresh status.'
+                          : 'Notification access needs Android listener support on this device.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  if (!hasNotificationAccess)
+                    const SizedBox(height: AppSpacing.xs),
                   listenerAvailable.when(
                     loading: () => const SizedBox.shrink(),
                     error: (e, _) => Text('Listener status error: $e'),
@@ -121,7 +102,7 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                             ref.invalidate(notificationAccessStatusProvider);
                           },
                     icon: Icons.settings_outlined,
-                    label: 'Open Android Notification Access',
+                    label: 'Open Android Settings',
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Align(
@@ -383,24 +364,27 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                       const Spacer(),
-                      FinarcSecondaryButton(
-                        onPressed: () async {
-                          final picked = await showTimePicker(
-                            context: context,
-                            initialTime: TimeOfDay(
-                              hour: settings.reminderHour,
-                              minute: settings.reminderMinute,
-                            ),
-                          );
-                          if (picked == null) return;
-                          await ref
-                              .read(detectionSettingsProvider.notifier)
-                              .applyChanges(
-                                reminderHour: picked.hour,
-                                reminderMinute: picked.minute,
-                              );
-                        },
-                        label: 'Set Time',
+                      SizedBox(
+                        width: 132,
+                        child: FinarcSecondaryButton(
+                          onPressed: () async {
+                            final picked = await showTimePicker(
+                              context: context,
+                              initialTime: TimeOfDay(
+                                hour: settings.reminderHour,
+                                minute: settings.reminderMinute,
+                              ),
+                            );
+                            if (picked == null) return;
+                            await ref
+                                .read(detectionSettingsProvider.notifier)
+                                .applyChanges(
+                                  reminderHour: picked.hour,
+                                  reminderMinute: picked.minute,
+                                );
+                          },
+                          label: 'Set Time',
+                        ),
                       ),
                     ],
                   ),
