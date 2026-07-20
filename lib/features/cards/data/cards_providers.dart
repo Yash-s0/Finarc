@@ -260,6 +260,63 @@ final addCardProvider = Provider((ref) {
   };
 });
 
+final cardEditorProvider = FutureProvider.family<CreditCard, int>((
+  ref,
+  cardId,
+) async {
+  await ref.watch(seedProvider.future);
+  final db = ref.read(appDatabaseProvider);
+  return (db.select(
+    db.creditCards,
+  )..where((card) => card.id.equals(cardId))).getSingle();
+});
+
+final updateCardProvider = Provider((ref) {
+  return (int cardId, AddCardPayload payload) async {
+    if (payload.last4.length != 4 || int.tryParse(payload.last4) == null) {
+      throw ArgumentError('Last 4 digits must be exactly 4 numeric digits');
+    }
+    if (!CardNetwork.values.contains(payload.network)) {
+      throw ArgumentError('Unsupported card network');
+    }
+    if (payload.billingDay < 1 || payload.billingDay > 31) {
+      throw ArgumentError('Billing day must be between 1 and 31');
+    }
+    if (payload.dueDay < 1 || payload.dueDay > 31) {
+      throw ArgumentError('Due day must be between 1 and 31');
+    }
+    if (payload.creditLimit <= 0) {
+      throw ArgumentError('Credit limit must be greater than 0');
+    }
+    if (payload.currentOutstanding < 0) {
+      throw ArgumentError('Current outstanding cannot be negative');
+    }
+    if (payload.currentOutstanding > payload.creditLimit) {
+      throw ArgumentError('Current outstanding cannot exceed credit limit');
+    }
+
+    final db = ref.read(appDatabaseProvider);
+    await (db.update(
+      db.creditCards,
+    )..where((card) => card.id.equals(cardId))).write(
+      CreditCardsCompanion(
+        bankName: Value(payload.bankName),
+        nickname: Value(payload.nickname),
+        last4: Value(payload.last4),
+        maskedNumber: Value('**** **** **** ${payload.last4}'),
+        network: Value(payload.network),
+        creditLimit: Value(payload.creditLimit),
+        billingDay: Value(payload.billingDay),
+        dueDay: Value(payload.dueDay),
+        currentOutstanding: Value(payload.currentOutstanding),
+      ),
+    );
+    ref.invalidate(cardsOverviewProvider);
+    ref.invalidate(cardDetailProvider(cardId));
+    ref.invalidate(cardEditorProvider(cardId));
+  };
+});
+
 class CardNetwork {
   const CardNetwork._();
 

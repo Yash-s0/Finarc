@@ -104,7 +104,13 @@ final appRouter = GoRouter(
         ),
       ],
     ),
-    GoRoute(path: '/cards/add', builder: (_, _) => const AddCardScreen()),
+    GoRoute(
+      path: '/cards/add',
+      builder: (_, state) {
+        final editId = int.tryParse(state.uri.queryParameters['editId'] ?? '');
+        return AddCardScreen(editId: editId);
+      },
+    ),
     GoRoute(
       path: AppRoutes.profileDataControls,
       builder: (_, _) => const ProfileDataControlsScreen(),

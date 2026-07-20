@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
-import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
 
 class PendingSuccessScreen extends StatelessWidget {
@@ -45,9 +44,8 @@ class PendingSuccessScreen extends StatelessWidget {
               children: [
                 const FinarcSectionHeader(title: 'Summary'),
                 const SizedBox(height: AppSpacing.sm),
-                _line(context, 'Amount', inr(0)),
-                _line(context, 'Undo countdown', '5s placeholder'),
-                _line(context, 'Status', 'Confirmed'),
+                _line(context, 'Status', 'Saved to Expenses'),
+                _line(context, 'Next', 'Review remaining pending items'),
               ],
             ),
           ),

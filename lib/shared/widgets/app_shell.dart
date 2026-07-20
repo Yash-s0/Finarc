@@ -25,45 +25,58 @@ class _AppShellState extends State<AppShell> {
   void _openQuickActions() {
     FinarcBottomSheet.show<void>(
       context,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.md,
-          AppSpacing.xs,
-          AppSpacing.md,
-          AppSpacing.lg,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _actionTile(Icons.remove_circle_outline, 'Add Expense', () {
-              Navigator.pop(context);
-              context.push('/expenses/add');
-            }),
-            _actionTile(Icons.add_circle_outline, 'Add Income', () {
-              Navigator.pop(context);
-              context.push('/income/add');
-            }),
-            _actionTile(Icons.fact_check_outlined, 'Pending Transactions', () {
-              Navigator.pop(context);
-              context.push('/pending');
-            }),
-            _actionTile(
-              Icons.text_snippet_outlined,
-              'Paste Missed Message',
-              () {
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            AppSpacing.xs,
+            AppSpacing.md,
+            AppSpacing.lg,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Quick actions',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: AppSpacing.xxs),
+              Text(
+                'Add a record, review detected items, or paste a missed message.',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              _actionTile(Icons.payments_outlined, 'Add Expense', () {
                 Navigator.pop(context);
-                context.push('/pending/paste');
-              },
-            ),
-            _actionTile(Icons.credit_card, 'Add Card', () {
-              Navigator.pop(context);
-              context.push('/cards/add');
-            }),
-            _actionTile(Icons.group_add_outlined, 'Split Bill', () {
-              Navigator.pop(context);
-              context.push('/split');
-            }),
-          ],
+                context.push('/expenses/add');
+              }),
+              _actionTile(Icons.savings_outlined, 'Add Income', () {
+                Navigator.pop(context);
+                context.push('/income/add');
+              }),
+              _actionTile(Icons.pending_actions_outlined, 'Review Pending', () {
+                Navigator.pop(context);
+                context.push('/pending');
+              }),
+              _actionTile(
+                Icons.content_paste_search_outlined,
+                'Paste Message',
+                () {
+                  Navigator.pop(context);
+                  context.push('/pending/paste');
+                },
+              ),
+              _actionTile(Icons.credit_card_outlined, 'Add Card', () {
+                Navigator.pop(context);
+                context.push('/cards/add');
+              }),
+              _actionTile(Icons.call_split_outlined, 'Split Bill', () {
+                Navigator.pop(context);
+                context.push('/split');
+              }),
+            ],
+          ),
         ),
       ),
     );

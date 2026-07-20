@@ -83,6 +83,13 @@ class CardDetailScreen extends ConsumerWidget {
           child: FinarcScaffold(
             appBar: FinarcAppBar(
               title: '${card.bankName} • ${card.nickname}',
+              actions: [
+                IconButton(
+                  tooltip: 'Edit card details',
+                  onPressed: () => context.push('/cards/add?editId=$cardId'),
+                  icon: const Icon(Icons.edit_outlined),
+                ),
+              ],
               bottom: PreferredSize(
                 preferredSize: const Size.fromHeight(52),
                 child: Padding(

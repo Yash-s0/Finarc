@@ -66,6 +66,15 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byIcon(Icons.add), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.add));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Quick actions'), findsOneWidget);
+    expect(find.text('Review Pending'), findsOneWidget);
+    expect(find.text('Paste Message'), findsOneWidget);
+
+    await tester.tapAt(const Offset(20, 20));
+    await tester.pumpAndSettle();
 
     router.go('/cards');
     await tester.pumpAndSettle();

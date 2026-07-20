@@ -49,9 +49,10 @@ class AccountDetailScreen extends ConsumerWidget {
         title: type == 'cash' ? 'Cash Wallet' : 'Bank Account',
         actions: [
           IconButton(
+            tooltip: 'Edit account details',
             onPressed: () =>
                 context.push('/accounts/add?editType=$type&editId=$id'),
-            icon: const Icon(Icons.edit),
+            icon: const Icon(Icons.edit_outlined),
           ),
         ],
       ),

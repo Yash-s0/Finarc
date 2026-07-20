@@ -187,8 +187,8 @@ class _PendingTransactionsScreenState
                         const SizedBox(height: AppSpacing.xs),
                         FinarcSecondaryButton(
                           onPressed: () => context.push('/pending/paste'),
-                          icon: Icons.text_snippet_outlined,
-                          label: 'Paste Missed Message',
+                          icon: Icons.content_paste_search_outlined,
+                          label: 'Paste Message',
                         ),
                       ],
                     ),
@@ -741,25 +741,28 @@ class _ConfirmTransactionSheet extends ConsumerWidget {
                 Expanded(
                   child: FinarcSecondaryButton(
                     onPressed: () => context.push('/pending/edit/${item.id}'),
-                    label: 'Edit',
+                    label: 'Edit Details',
+                    icon: Icons.edit_outlined,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: AppSpacing.xs),
+            Text('More actions', style: Theme.of(context).textTheme.labelSmall),
+            const SizedBox(height: AppSpacing.xxs),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
                 FinarcActionChip(
                   onTap: () => context.push('/pending/for-others/${item.id}'),
-                  label: 'For Others',
-                  icon: Icons.group_outlined,
+                  label: 'Paid for someone',
+                  icon: Icons.group_add_outlined,
                 ),
                 FinarcActionChip(
                   onTap: () => context.push('/pending/cashback/${item.id}'),
-                  label: 'Add Cashback',
-                  icon: Icons.local_offer_outlined,
+                  label: 'Add cashback',
+                  icon: Icons.savings_outlined,
                 ),
                 FinarcActionChip(
                   onTap: () async {
@@ -769,15 +772,15 @@ class _ConfirmTransactionSheet extends ConsumerWidget {
                       if (context.mounted) Navigator.pop(context);
                     }
                   },
-                  label: 'Mark Duplicate',
-                  icon: Icons.content_copy_outlined,
+                  label: 'Mark duplicate',
+                  icon: Icons.copy_all_outlined,
                 ),
                 FinarcActionChip(
                   onTap: () async {
                     await action.ignore(item.id);
                     if (context.mounted) Navigator.pop(context);
                   },
-                  label: 'Ignore',
+                  label: 'Ignore item',
                   icon: Icons.visibility_off_outlined,
                 ),
               ],

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
+import '../../../core/database/app_database.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
@@ -9,7 +9,9 @@ import '../data/card_network_detector.dart';
 import '../data/cards_providers.dart';
 
 class AddCardScreen extends ConsumerStatefulWidget {
-  const AddCardScreen({super.key});
+  const AddCardScreen({super.key, this.editId});
+
+  final int? editId;
 
   @override
   ConsumerState<AddCardScreen> createState() => _AddCardScreenState();
@@ -27,6 +29,7 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
   final _outstanding = TextEditingController(text: '0');
   String _network = CardNetwork.visa;
   bool _networkAutoDetected = false;
+  bool _didLoadEditValues = false;
   final _bankFocus = FocusNode();
   final _nickFocus = FocusNode();
   final _binFocus = FocusNode();
@@ -35,6 +38,8 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
   final _dueFocus = FocusNode();
   final _limitFocus = FocusNode();
   final _outstandingFocus = FocusNode();
+
+  bool get _isEditing => widget.editId != null && widget.editId! > 0;
 
   @override
   void dispose() {
@@ -70,25 +75,49 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
       return;
     }
 
-    await ref.read(addCardProvider)(
-      AddCardPayload(
-        bankName: _bank.text.trim(),
-        nickname: _nick.text.trim(),
-        last4: _last4.text.trim(),
-        network: _network,
-        billingDay: int.parse(_billing.text.trim()),
-        dueDay: int.parse(_due.text.trim()),
-        creditLimit: creditLimit,
-        currentOutstanding: outstanding,
-      ),
+    final payload = AddCardPayload(
+      bankName: _bank.text.trim(),
+      nickname: _nick.text.trim(),
+      last4: _last4.text.trim(),
+      network: _network,
+      billingDay: int.parse(_billing.text.trim()),
+      dueDay: int.parse(_due.text.trim()),
+      creditLimit: creditLimit,
+      currentOutstanding: outstanding,
     );
-    if (mounted) context.pop();
+    if (_isEditing) {
+      await ref.read(updateCardProvider)(widget.editId!, payload);
+    } else {
+      await ref.read(addCardProvider)(payload);
+    }
+    if (mounted) Navigator.of(context).maybePop();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isEditing) {
+      final editState = ref.watch(cardEditorProvider(widget.editId!));
+      return editState.when(
+        loading: () => const FinarcScaffold(
+          appBar: FinarcAppBar(title: 'Edit Card'),
+          body: Center(child: CircularProgressIndicator()),
+        ),
+        error: (error, _) => FinarcScaffold(
+          appBar: const FinarcAppBar(title: 'Edit Card'),
+          body: Center(child: Text('Error: $error')),
+        ),
+        data: (card) {
+          _hydrateFromCard(card);
+          return _buildScaffold(context);
+        },
+      );
+    }
+    return _buildScaffold(context);
+  }
+
+  Widget _buildScaffold(BuildContext context) {
     return FinarcScaffold(
-      appBar: const FinarcAppBar(title: 'Add Card'),
+      appBar: FinarcAppBar(title: _isEditing ? 'Edit Card' : 'Add Card'),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -284,13 +313,26 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
             const SizedBox(height: AppSpacing.md),
             FinarcPrimaryButton(
               onPressed: _save,
-              label: 'Save Card',
+              label: _isEditing ? 'Save Changes' : 'Save Card',
               icon: Icons.check_circle_outline,
             ),
           ],
         ),
       ),
     );
+  }
+
+  void _hydrateFromCard(CreditCard card) {
+    if (_didLoadEditValues) return;
+    _didLoadEditValues = true;
+    _bank.text = card.bankName;
+    _nick.text = card.nickname;
+    _last4.text = card.last4;
+    _billing.text = card.billingDay.toString();
+    _due.text = card.dueDay.toString();
+    _limit.text = card.creditLimit.toString();
+    _outstanding.text = card.currentOutstanding.toString();
+    _network = card.network;
   }
 
   void _onBinChanged(String value) {
