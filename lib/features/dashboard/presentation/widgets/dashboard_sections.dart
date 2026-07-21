@@ -208,8 +208,10 @@ class NetWorthHeroCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: AppSpacing.sm),
+            _MonthlySpendSummary(points: data.monthlySpendTrend),
+            const SizedBox(height: AppSpacing.sm),
             SizedBox(
-              height: 116,
+              height: 156,
               width: double.infinity,
               child: _MonthlySpendTrendChart(points: data.monthlySpendTrend),
             ),
@@ -230,6 +232,153 @@ class NetWorthHeroCard extends StatelessWidget {
     final percent = (delta / previous) * 100;
     final sign = delta >= 0 ? '+' : '-';
     return '$sign${percent.abs().toStringAsFixed(1)}% (${inr(delta.abs())}) this cycle';
+  }
+}
+
+class _MonthlySpendSummary extends StatelessWidget {
+  const _MonthlySpendSummary({required this.points});
+
+  final List<MonthlySpendPoint> points;
+
+  @override
+  Widget build(BuildContext context) {
+    if (points.isEmpty) return const SizedBox.shrink();
+    final current = points.last;
+    final saved = current.income - current.amount;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final spendColor = isDark ? AppColors.darkError : AppColors.lightError;
+    final incomeColor = isDark ? AppColors.darkSuccess : AppColors.lightSuccess;
+    final savedColor = saved >= 0
+        ? (isDark ? AppColors.darkAccent : AppColors.lightPrimary)
+        : spendColor;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 330;
+        final chips = [
+          _TrendPill(
+            label: 'Income',
+            value: inr(current.income),
+            color: incomeColor,
+            icon: Icons.south_west_rounded,
+          ),
+          _TrendPill(
+            label: 'Spent',
+            value: inr(current.amount),
+            color: spendColor,
+            icon: Icons.north_east_rounded,
+          ),
+          _TrendPill(
+            label: saved >= 0 ? 'Saved' : 'Gap',
+            value: inr(saved.abs()),
+            color: savedColor,
+            icon: saved >= 0
+                ? Icons.savings_outlined
+                : Icons.warning_amber_rounded,
+          ),
+        ];
+
+        if (compact) {
+          return Column(
+            children: [
+              for (var i = 0; i < chips.length; i++) ...[
+                chips[i],
+                if (i != chips.length - 1)
+                  const SizedBox(height: AppSpacing.xs),
+              ],
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            for (var i = 0; i < chips.length; i++) ...[
+              Expanded(child: chips[i]),
+              if (i != chips.length - 1) const SizedBox(width: AppSpacing.xs),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _TrendPill extends StatelessWidget {
+  const _TrendPill({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.icon,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark
+        ? Colors.white.withValues(alpha: 0.055)
+        : Colors.white.withValues(alpha: 0.7);
+    final border = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : AppColors.lightPrimary.withValues(alpha: 0.1);
+    final muted = isDark ? Colors.white70 : AppColors.lightTextMuted;
+
+    return Container(
+      constraints: const BoxConstraints(minHeight: 48),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xs,
+        vertical: AppSpacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        children: [
+          Container(
+            height: 28,
+            width: 28,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Icon(icon, color: color, size: 15),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: muted,
+                    letterSpacing: 0,
+                  ),
+                ),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: isDark ? Colors.white : AppColors.lightText,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -264,6 +413,7 @@ class _MonthlySpendTrendChart extends StatefulWidget {
 class _MonthlySpendTrendChartState extends State<_MonthlySpendTrendChart> {
   int? _selectedIndex;
   Timer? _tapHideTimer;
+  bool _showIncome = true;
 
   @override
   void dispose() {
@@ -282,6 +432,7 @@ class _MonthlySpendTrendChartState extends State<_MonthlySpendTrendChart> {
     final mutedColor = isDark
         ? AppColors.darkTextMuted.withValues(alpha: 0.72)
         : AppColors.lightTextMuted.withValues(alpha: 0.72);
+    final hasIncome = points.any((point) => point.income > 0);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -308,15 +459,58 @@ class _MonthlySpendTrendChartState extends State<_MonthlySpendTrendChart> {
             child: Stack(
               clipBehavior: Clip.hardEdge,
               children: [
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: Row(
+                    children: [
+                      _ChartLegendDot(
+                        label: 'Spend',
+                        color: isDark
+                            ? AppColors.darkError
+                            : AppColors.lightError,
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      if (hasIncome)
+                        GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () =>
+                              setState(() => _showIncome = !_showIncome),
+                          child: _ChartLegendDot(
+                            label: 'Income',
+                            color: isDark
+                                ? AppColors.darkSuccess
+                                : AppColors.lightSuccess,
+                            muted: !_showIncome,
+                          ),
+                        ),
+                      const Spacer(),
+                      Icon(
+                        Icons.touch_app_outlined,
+                        size: 13,
+                        color: mutedColor,
+                      ),
+                    ],
+                  ),
+                ),
                 Padding(
                   padding: EdgeInsets.only(
-                    top: _selectedIndex == null ? 8 : 56,
+                    top: _selectedIndex == null ? 28 : 64,
                   ),
-                  child: CustomPaint(
-                    painter: _MonthlySpendTrendPainter(
-                      points,
-                      isDark: isDark,
-                      selectedIndex: _selectedIndex,
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0, end: 1),
+                    duration: const Duration(milliseconds: 650),
+                    curve: Curves.easeOutCubic,
+                    builder: (context, progress, child) => CustomPaint(
+                      painter: _MonthlySpendTrendPainter(
+                        points,
+                        isDark: isDark,
+                        selectedIndex: _selectedIndex,
+                        showIncome: _showIncome && hasIncome,
+                        progress: progress,
+                      ),
+                      child: child,
                     ),
                     child: Align(
                       alignment: Alignment.bottomCenter,
@@ -518,23 +712,72 @@ class _TooltipAmountRow extends StatelessWidget {
   }
 }
 
+class _ChartLegendDot extends StatelessWidget {
+  const _ChartLegendDot({
+    required this.label,
+    required this.color,
+    this.muted = false,
+  });
+
+  final String label;
+  final Color color;
+  final bool muted;
+
+  @override
+  Widget build(BuildContext context) {
+    final textColor = Theme.of(context).brightness == Brightness.dark
+        ? Colors.white70
+        : AppColors.lightTextMuted;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: muted ? 0.25 : 1),
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: textColor.withValues(alpha: muted ? 0.48 : 1),
+            letterSpacing: 0,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _MonthlySpendTrendPainter extends CustomPainter {
   _MonthlySpendTrendPainter(
     this.points, {
     this.isDark = true,
     this.selectedIndex,
+    this.showIncome = true,
+    this.progress = 1,
   });
 
   final List<MonthlySpendPoint> points;
   final bool isDark;
   final int? selectedIndex;
+  final bool showIncome;
+  final double progress;
 
   @override
   void paint(Canvas canvas, Size size) {
     if (points.length < 2 || size.width <= 0 || size.height <= 0) return;
     final chartHeight = math.max(16.0, size.height - 20);
     final amounts = points.map((point) => point.amount).toList(growable: false);
-    final maxValue = math.max(amounts.reduce(math.max), 1) * 1.08;
+    final incomes = points.map((point) => point.income).toList(growable: false);
+    final maxSpend = amounts.reduce(math.max);
+    final maxIncome = showIncome ? incomes.reduce(math.max) : 0.0;
+    final maxValue = math.max(math.max(maxSpend, maxIncome), 1) * 1.12;
     final stepX = size.width / (points.length - 1);
 
     final path = Path();
@@ -558,35 +801,77 @@ class _MonthlySpendTrendPainter extends CustomPainter {
       ..lineTo(size.width, chartHeight)
       ..close();
 
+    final incomePath = Path();
+    final incomeOffsets = <Offset>[];
+    if (showIncome) {
+      for (var i = 0; i < points.length; i += 1) {
+        final normalized = (incomes[i] / maxValue).clamp(0.0, 1.0);
+        final x = i * stepX;
+        final y = chartHeight - (normalized * (chartHeight - 8)) + 4;
+        incomeOffsets.add(Offset(x, y));
+        if (i == 0) {
+          incomePath.moveTo(x, y);
+        } else {
+          incomePath.lineTo(x, y);
+        }
+      }
+    }
+
+    final progressRect = Rect.fromLTWH(
+      0,
+      0,
+      size.width * progress.clamp(0.0, 1.0),
+      size.height,
+    );
+    canvas.save();
+    canvas.clipRect(progressRect);
+
+    final spendColor = isDark ? AppColors.darkError : AppColors.lightError;
+    final incomeColor = isDark ? AppColors.darkSuccess : AppColors.lightSuccess;
     final accentColor = isDark ? AppColors.darkAccent : AppColors.lightPrimary;
-    final lineStartColor = isDark ? AppColors.darkBlue : AppColors.lightPrimary;
+    final gridColor = (isDark ? AppColors.darkBorder : AppColors.lightBorder)
+        .withValues(alpha: isDark ? 0.26 : 0.58);
     final baselinePaint = Paint()
       ..color = (isDark ? AppColors.darkBorder : AppColors.lightBorder)
           .withValues(alpha: 0.55)
       ..strokeWidth = 1;
+    final gridPaint = Paint()
+      ..color = gridColor
+      ..strokeWidth = 0.75;
     final areaPaint = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          accentColor.withValues(alpha: 0.15),
-          accentColor.withValues(alpha: 0.0),
+          spendColor.withValues(alpha: isDark ? 0.2 : 0.16),
+          spendColor.withValues(alpha: 0.01),
         ],
       ).createShader(Rect.fromLTWH(0, 0, size.width, chartHeight));
     final glowPaint = Paint()
-      ..color = accentColor.withValues(alpha: 0.14)
+      ..color = spendColor.withValues(alpha: 0.16)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 5
+      ..strokeWidth = 6
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
     final linePaint = Paint()
       ..shader = LinearGradient(
-        colors: [lineStartColor, accentColor],
+        colors: [spendColor, accentColor],
       ).createShader(Rect.fromLTWH(0, 0, size.width, chartHeight))
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.25
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
+    final incomePaint = Paint()
+      ..color = incomeColor.withValues(alpha: 0.86)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    for (var i = 1; i <= 3; i += 1) {
+      final y = chartHeight * i / 4;
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+    }
 
     canvas.drawLine(
       Offset(0, chartHeight),
@@ -594,17 +879,21 @@ class _MonthlySpendTrendPainter extends CustomPainter {
       baselinePaint,
     );
     canvas.drawPath(areaPath, areaPaint);
+    if (showIncome) {
+      canvas.drawPath(incomePath, incomePaint);
+    }
     canvas.drawPath(path, glowPaint);
     canvas.drawPath(path, linePaint);
+    canvas.restore();
 
     final selected = selectedIndex;
     if (selected != null && selected >= 0 && selected < offsets.length) {
       final point = offsets[selected];
-      final markerPaint = Paint()..color = accentColor;
+      final markerPaint = Paint()..color = spendColor;
       final centerPaint = Paint()
         ..color = isDark ? AppColors.darkSurfaceLow : AppColors.lightSurface;
       final ringPaint = Paint()
-        ..color = accentColor.withValues(alpha: 0.18)
+        ..color = spendColor.withValues(alpha: 0.2)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 5;
       final guidePaint = Paint()
@@ -618,17 +907,28 @@ class _MonthlySpendTrendPainter extends CustomPainter {
       canvas.drawCircle(point, 7, ringPaint);
       canvas.drawCircle(point, 4.5, markerPaint);
       canvas.drawCircle(point, 2, centerPaint);
+      if (showIncome && selected < incomeOffsets.length) {
+        final incomePoint = incomeOffsets[selected];
+        final incomeMarkerPaint = Paint()..color = incomeColor;
+        canvas.drawCircle(incomePoint, 4, incomeMarkerPaint);
+        canvas.drawCircle(incomePoint, 1.8, centerPaint);
+      }
     }
 
     final lastPoint = offsets.last;
-    canvas.drawCircle(lastPoint, 3.5, Paint()..color = accentColor);
+    canvas.drawCircle(lastPoint, 3.5, Paint()..color = spendColor);
+    if (showIncome && incomeOffsets.isNotEmpty) {
+      canvas.drawCircle(incomeOffsets.last, 3.2, Paint()..color = incomeColor);
+    }
   }
 
   @override
   bool shouldRepaint(covariant _MonthlySpendTrendPainter oldDelegate) {
     return oldDelegate.points != points ||
         oldDelegate.isDark != isDark ||
-        oldDelegate.selectedIndex != selectedIndex;
+        oldDelegate.selectedIndex != selectedIndex ||
+        oldDelegate.showIncome != showIncome ||
+        oldDelegate.progress != progress;
   }
 }
 
