@@ -353,4 +353,39 @@ void main() {
       throwsA(isA<ArgumentError>()),
     );
   });
+
+  test('loan payment cannot exceed outstanding or mutate balance', () async {
+    final loanId = await createLoan(outstanding: 5000);
+
+    await expectLater(
+      service.markEmiPaid(
+        loanId: loanId,
+        amount: 5001,
+        paymentSourceType: PaymentSourceType.bank,
+        paymentSourceId: bankId,
+      ),
+      throwsArgumentError,
+    );
+
+    final loan = await service.getLoanById(loanId);
+    final bank = await (db.select(
+      db.bankAccounts,
+    )..where((b) => b.id.equals(bankId))).getSingle();
+    expect(loan!.currentOutstanding, 5000);
+    expect(bank.currentBalance, 100000);
+    expect(await service.getLoanPaymentHistory(loanId), isEmpty);
+  });
+
+  test('loan calculations reject non-finite amounts', () async {
+    final loanId = await createLoan();
+    await expectLater(
+      service.markEmiPaid(
+        loanId: loanId,
+        amount: double.nan,
+        paymentSourceType: PaymentSourceType.bank,
+        paymentSourceId: bankId,
+      ),
+      throwsArgumentError,
+    );
+  });
 }

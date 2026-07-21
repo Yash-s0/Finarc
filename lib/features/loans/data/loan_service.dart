@@ -71,13 +71,16 @@ class LoanService {
     int? linkedAccountId,
     String? notes,
   }) {
-    if (principalAmount <= 0) {
+    if (!principalAmount.isFinite || principalAmount <= 0) {
       throw ArgumentError('Principal amount must be greater than 0');
     }
-    if (currentOutstanding < 0) {
+    if (!currentOutstanding.isFinite || currentOutstanding < 0) {
       throw ArgumentError('Current outstanding cannot be negative');
     }
-    if (emiAmount != null && emiAmount < 0) {
+    if (interestRate != null && (!interestRate.isFinite || interestRate < 0)) {
+      throw ArgumentError('Interest rate cannot be negative');
+    }
+    if (emiAmount != null && (!emiAmount.isFinite || emiAmount < 0)) {
       throw ArgumentError('EMI amount cannot be negative');
     }
     if (emiDay != null && (emiDay < 1 || emiDay > 31)) {
@@ -123,13 +126,18 @@ class LoanService {
     int? linkedAccountId,
     String? notes,
   }) {
-    if (principalAmount != null && principalAmount <= 0) {
+    if (principalAmount != null &&
+        (!principalAmount.isFinite || principalAmount <= 0)) {
       throw ArgumentError('Principal amount must be greater than 0');
     }
-    if (currentOutstanding != null && currentOutstanding < 0) {
+    if (currentOutstanding != null &&
+        (!currentOutstanding.isFinite || currentOutstanding < 0)) {
       throw ArgumentError('Current outstanding cannot be negative');
     }
-    if (emiAmount != null && emiAmount < 0) {
+    if (interestRate != null && (!interestRate.isFinite || interestRate < 0)) {
+      throw ArgumentError('Interest rate cannot be negative');
+    }
+    if (emiAmount != null && (!emiAmount.isFinite || emiAmount < 0)) {
       throw ArgumentError('EMI amount cannot be negative');
     }
     if (emiDay != null && (emiDay < 1 || emiDay > 31)) {
@@ -255,12 +263,20 @@ class LoanService {
     int? paymentSourceId,
     String? notes,
   }) async {
-    if (amount <= 0) throw ArgumentError('Amount must be greater than 0');
+    if (!amount.isFinite || amount <= 0) {
+      throw ArgumentError('Amount must be greater than 0');
+    }
 
     return _db.transaction(() async {
       final loan = await (_db.select(
         _db.loans,
       )..where((l) => l.id.equals(loanId))).getSingle();
+      if (loan.closedAt != null || loan.currentOutstanding <= 0) {
+        throw ArgumentError('Loan is already closed');
+      }
+      if (amount > loan.currentOutstanding + _amountTolerance) {
+        throw ArgumentError('Amount cannot exceed outstanding balance');
+      }
 
       final usesSalaryDeduction =
           paymentSourceType == PaymentSourceType.salaryDeduction;

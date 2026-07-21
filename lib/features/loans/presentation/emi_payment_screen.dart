@@ -176,7 +176,7 @@ class _EmiPaymentScreenState extends ConsumerState<EmiPaymentScreen> {
                         ),
                         validator: (v) {
                           final value = double.tryParse(v ?? '');
-                          if (value == null || value <= 0) {
+                          if (value == null || !value.isFinite || value <= 0) {
                             return 'Enter valid amount';
                           }
                           if (value > loanData.loan.currentOutstanding) {

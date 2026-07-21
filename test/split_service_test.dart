@@ -110,6 +110,31 @@ void main() {
     );
   });
 
+  test('negative and duplicate split shares are rejected', () {
+    expect(
+      () => service.validateSplitShares(
+        splitType: 'exact',
+        shares: [
+          SplitShareInput(memberId: youId, exactAmount: -100),
+          SplitShareInput(memberId: rahulId, exactAmount: 600),
+        ],
+        totalAmount: 500,
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => service.validateSplitShares(
+        splitType: 'exact',
+        shares: [
+          SplitShareInput(memberId: youId, exactAmount: 250),
+          SplitShareInput(memberId: youId, exactAmount: 250),
+        ],
+        totalAmount: 500,
+      ),
+      throwsArgumentError,
+    );
+  });
+
   test('current user paid more than share creates recoverable', () async {
     final shares = service.calculateExactSplit({youId: 300, rahulId: 700});
 

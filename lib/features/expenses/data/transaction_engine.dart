@@ -326,8 +326,17 @@ class TransactionEngine {
   }
 
   void _validate(AddTransactionInput input) {
-    if (input.amount <= 0) {
+    if (!input.amount.isFinite || input.amount <= 0) {
       throw ArgumentError('Amount must be greater than 0');
+    }
+    if (!input.cashbackAmount.isFinite) {
+      throw ArgumentError('Cashback must be a valid amount');
+    }
+    if (input.recoverableAmount != null && !input.recoverableAmount!.isFinite) {
+      throw ArgumentError('Recoverable amount must be valid');
+    }
+    if (input.recoveredAmount != null && !input.recoveredAmount!.isFinite) {
+      throw ArgumentError('Recovered amount must be valid');
     }
     if (input.paymentSourceId == null) {
       throw ArgumentError('Payment source is required');

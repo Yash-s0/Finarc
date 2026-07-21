@@ -177,6 +177,10 @@ class SplitService {
     required double totalAmount,
   }) {
     if (memberIds.isEmpty) throw ArgumentError('At least one member required');
+    if (memberIds.toSet().length != memberIds.length) {
+      throw ArgumentError('Each member can only appear once');
+    }
+    _validateTotalAmount(totalAmount);
     final each = double.parse(
       (totalAmount / memberIds.length).toStringAsFixed(2),
     );
@@ -196,6 +200,15 @@ class SplitService {
     required Map<int, double> percentagesByMember,
     required double totalAmount,
   }) {
+    if (percentagesByMember.isEmpty) {
+      throw ArgumentError('At least one member required');
+    }
+    _validateTotalAmount(totalAmount);
+    if (percentagesByMember.values.any(
+      (value) => !value.isFinite || value < 0 || value > 100,
+    )) {
+      throw ArgumentError('Percentages must be between 0 and 100');
+    }
     final totalPct = percentagesByMember.values.fold<double>(
       0,
       (a, b) => a + b,
@@ -239,16 +252,40 @@ class SplitService {
     required List<SplitShareInput> shares,
     required double totalAmount,
   }) {
+    _validateTotalAmount(totalAmount);
     if (shares.isEmpty) throw ArgumentError('Shares cannot be empty');
+    if (shares.map((share) => share.memberId).toSet().length != shares.length) {
+      throw ArgumentError('Each member can only appear once');
+    }
+    if (shares.any(
+      (share) => !share.exactAmount.isFinite || share.exactAmount < 0,
+    )) {
+      throw ArgumentError('Share amounts cannot be negative');
+    }
     final total = shares.fold<double>(0, (s, x) => s + x.exactAmount);
     if ((total - totalAmount).abs() > 0.01) {
       throw ArgumentError('Share amounts must equal total amount');
     }
     if (splitType == 'percentage') {
+      if (shares.any(
+        (share) =>
+            share.percentage == null ||
+            !share.percentage!.isFinite ||
+            share.percentage! < 0 ||
+            share.percentage! > 100,
+      )) {
+        throw ArgumentError('Percentages must be between 0 and 100');
+      }
       final pct = shares.fold<double>(0, (s, x) => s + (x.percentage ?? 0));
       if ((pct - 100).abs() > 0.001) {
         throw ArgumentError('Percentage split must total 100%');
       }
+    }
+  }
+
+  void _validateTotalAmount(double totalAmount) {
+    if (!totalAmount.isFinite || totalAmount <= 0) {
+      throw ArgumentError('Total amount must be greater than 0');
     }
   }
 
