@@ -27,11 +27,11 @@ class AppColors {
   static const lightOrange = lightWarning;
   static const lightPink = lightError;
 
-  static const lightBg = Color(0xFFF9FAFB);
+  static const lightBg = Color(0xFFF6F7FB);
   static const lightSurface = Color(0xFFFFFFFF);
-  static const lightSurfaceHigh = Color(0xFFF3F4F6);
+  static const lightSurfaceHigh = Color(0xFFF1F3F8);
   static const lightSurfaceLow = Color(0xFFF0F1F3);
-  static const lightBorder = Color(0xFFE5E7EB);
+  static const lightBorder = Color(0xFFDDE1EA);
   static const lightPrimary = Color(0xFF6366F1);
   static const lightPrimarySoft = Color(0xFFEEF2FF);
   static const lightAccent = Color(0xFF22D3EE);

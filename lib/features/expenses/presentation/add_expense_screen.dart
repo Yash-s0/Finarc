@@ -137,6 +137,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                 child: Form(
                   key: _formKey,
                   child: ListView(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
                     padding: const EdgeInsets.fromLTRB(
                       AppSpacing.md,
                       AppSpacing.md,
@@ -488,22 +490,29 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                   ),
                 ),
               ),
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  AppSpacing.md,
-                  AppSpacing.xs,
-                  AppSpacing.md,
-                  MediaQuery.of(context).viewInsets.bottom + AppSpacing.xs,
-                ),
-                child: FinarcPrimaryButton(
-                  onPressed: _submit,
-                  label: 'Save Expense',
-                  icon: Icons.check_circle_outline,
-                ),
-              ),
+              _bottomActionBar(context),
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _bottomActionBar(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.xs,
+        AppSpacing.md,
+        AppSpacing.xs,
+      ),
+      child: SafeArea(
+        top: false,
+        child: FinarcPrimaryButton(
+          onPressed: _submit,
+          label: 'Save Expense',
+          icon: Icons.check_circle_outline,
+        ),
       ),
     );
   }

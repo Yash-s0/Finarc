@@ -94,24 +94,34 @@ class DashboardGreetingHeader extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        GestureDetector(
-          onTap: onTap,
-          child: Container(
-            height: 34,
-            width: 34,
-            decoration: BoxDecoration(
-              color: isDark
-                  ? AppColors.darkSurfaceHigh
-                  : AppColors.lightSurface,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+        Semantics(
+          button: true,
+          label: 'Open alerts${badge == null ? '' : ', $badge unread'}',
+          child: Material(
+            type: MaterialType.transparency,
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                height: 44,
+                width: 44,
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? AppColors.darkSurfaceHigh
+                      : AppColors.lightSurface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: isDark
+                        ? AppColors.darkBorder
+                        : AppColors.lightBorder,
+                  ),
+                ),
+                child: Icon(
+                  icon,
+                  size: 20,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
               ),
-            ),
-            child: Icon(
-              icon,
-              size: 17,
-              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
         ),

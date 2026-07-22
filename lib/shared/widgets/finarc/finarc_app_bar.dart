@@ -19,5 +19,5 @@ class FinarcAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Size get preferredSize =>
-      Size.fromHeight(kToolbarHeight + (bottom?.preferredSize.height ?? 0));
+      Size.fromHeight(60 + (bottom?.preferredSize.height ?? 0));
 }

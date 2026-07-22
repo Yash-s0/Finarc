@@ -35,14 +35,21 @@ class FinarcBalanceCard extends StatelessWidget {
           ? LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                AppColors.darkPrimarySoft.withValues(alpha: 0.95),
-                AppColors.darkSurfaceHigh,
-              ],
+              colors: isDark
+                  ? [
+                      AppColors.darkHeroGradientStart.withValues(alpha: 0.95),
+                      AppColors.darkHeroGradientEnd,
+                    ]
+                  : [
+                      AppColors.lightHeroGradientStart,
+                      AppColors.lightHeroGradientEnd,
+                    ],
             )
           : null,
       borderColor: isHero
-          ? AppColors.darkAccent.withValues(alpha: 0.35)
+          ? (isDark
+                ? AppColors.darkAccent.withValues(alpha: 0.35)
+                : AppColors.lightPrimary.withValues(alpha: 0.22))
           : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -65,12 +72,17 @@ class FinarcBalanceCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          Text(
-            value,
-            style: AppTextStyles.amountStyle(
-              color: Theme.of(context).colorScheme.onSurface,
-              size: isHero ? 28 : 24,
-              weight: FontWeight.w800,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              maxLines: 1,
+              style: AppTextStyles.amountStyle(
+                color: Theme.of(context).colorScheme.onSurface,
+                size: isHero ? 30 : 24,
+                weight: FontWeight.w800,
+              ),
             ),
           ),
           if (subtitle != null) ...[

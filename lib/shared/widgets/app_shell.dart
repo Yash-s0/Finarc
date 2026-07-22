@@ -17,7 +17,7 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
-  static const double _bottomNavHeight = 60;
+  static const double _bottomNavHeight = 64;
   static const double _fabSize = 50;
   static const double _fabBottomPad = 12; // ~0.5cm-ish gap above nav
   static const double _homeBodyBottomInset = 0;
@@ -204,22 +204,27 @@ class _AppShellState extends State<AppShell> {
               destinations: const [
                 NavigationDestination(
                   icon: Icon(Icons.home_outlined),
+                  selectedIcon: Icon(Icons.home_rounded),
                   label: 'Home',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.receipt_long_outlined),
+                  selectedIcon: Icon(Icons.receipt_long_rounded),
                   label: 'Expenses',
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.credit_card),
+                  icon: Icon(Icons.credit_card_outlined),
+                  selectedIcon: Icon(Icons.credit_card_rounded),
                   label: 'Cards',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.call_split_outlined),
+                  selectedIcon: Icon(Icons.call_split_rounded),
                   label: 'Split',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.person_outline),
+                  selectedIcon: Icon(Icons.person_rounded),
                   label: 'Profile',
                 ),
               ],

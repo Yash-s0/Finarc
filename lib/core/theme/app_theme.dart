@@ -46,6 +46,8 @@ class AppTheme {
       textTheme: textTheme,
       fontFamily: AppTextStyles.fontFamily,
       scaffoldBackgroundColor: isDark ? AppColors.darkBg : AppColors.lightBg,
+      visualDensity: VisualDensity.standard,
+      materialTapTargetSize: MaterialTapTargetSize.padded,
       splashFactory: InkSparkle.splashFactory,
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
@@ -61,6 +63,9 @@ class AppTheme {
         foregroundColor: scheme.onSurface,
         centerTitle: false,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+        toolbarHeight: 60,
         titleTextStyle: textTheme.titleLarge,
       ),
       cardTheme: CardThemeData(
@@ -79,8 +84,8 @@ class AppTheme {
         filled: true,
         fillColor: isDark ? AppColors.darkSurface : AppColors.lightSurfaceHigh,
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm,
-          vertical: AppSpacing.xs,
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
@@ -141,7 +146,7 @@ class AppTheme {
         style: FilledButton.styleFrom(
           backgroundColor: scheme.primary,
           foregroundColor: scheme.onPrimary,
-          minimumSize: const Size.fromHeight(48),
+          minimumSize: const Size.fromHeight(52),
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md,
             vertical: AppSpacing.sm,
@@ -154,7 +159,7 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size.fromHeight(44),
+          minimumSize: const Size.fromHeight(48),
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md,
             vertical: AppSpacing.sm,
@@ -212,7 +217,7 @@ class AppTheme {
             ? AppColors.darkSurfaceLow
             : AppColors.lightSurface,
         elevation: 0,
-        height: 58,
+        height: 64,
         indicatorColor: isDark
             ? AppColors.darkPrimarySoft
             : AppColors.lightPrimarySoft,
@@ -236,6 +241,45 @@ class AppTheme {
         }),
       ),
       dividerColor: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+      dividerTheme: DividerThemeData(
+        color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+        thickness: 1,
+        space: AppSpacing.md,
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(
+          minimumSize: const Size.square(44),
+          tapTargetSize: MaterialTapTargetSize.padded,
+        ),
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: scheme.primary,
+        foregroundColor: scheme.onPrimary,
+        elevation: 0,
+        focusElevation: 0,
+        hoverElevation: 2,
+        highlightElevation: 1,
+        shape: const CircleBorder(),
+      ),
+      listTileTheme: ListTileThemeData(
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.xxs,
+        ),
+        minTileHeight: 52,
+        iconColor: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
+      ),
+      scrollbarTheme: ScrollbarThemeData(
+        thickness: const WidgetStatePropertyAll(4),
+        radius: const Radius.circular(AppRadius.pill),
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          final alpha = states.contains(WidgetState.dragged) ? 0.55 : 0.28;
+          return scheme.onSurface.withValues(alpha: alpha);
+        }),
+      ),
       progressIndicatorTheme: ProgressIndicatorThemeData(
         color: scheme.primary,
         linearTrackColor: isDark

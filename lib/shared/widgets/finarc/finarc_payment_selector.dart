@@ -4,6 +4,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import 'finarc_primary_button.dart';
 import 'finarc_section_header.dart';
+import 'finarc_source_dropdown.dart';
 
 class FinarcPaymentModeOption {
   const FinarcPaymentModeOption({
@@ -289,89 +290,22 @@ class FinarcPaymentSelector extends StatelessWidget {
   }
 
   Widget _buildSourcePickerCard(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    FinarcPaymentSourceOption? selectedSource;
-    for (final source in sources) {
-      if (source.id == selectedSourceId) {
-        selectedSource = source;
-        break;
-      }
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        InkWell(
-          onTap: enabled ? () => _showSourcePicker(context) : null,
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? AppColors.darkSurfaceLow
-                  : AppColors.lightSurfaceHigh,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-              ),
+    return FinarcSourceDropdown<int>(
+      key: ValueKey('source-picker-$selectedMode'),
+      label: sourceLabel,
+      placeholder: 'Select $sourceLabel',
+      value: selectedSourceId,
+      enabled: enabled,
+      options: sources
+          .map(
+            (source) => FinarcSourceDropdownOption<int>(
+              value: source.id,
+              label: source.label,
             ),
-            child: Row(
-              children: [
-                Icon(
-                  selectedSource == null
-                      ? Icons.touch_app_rounded
-                      : Icons.account_balance_wallet_rounded,
-                  size: 17,
-                  color: isDark ? AppColors.darkAccent : AppColors.lightAccent,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    selectedSource == null
-                        ? 'Select $sourceLabel'
-                        : selectedSource.label,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ),
-                const Icon(Icons.expand_more_rounded, size: 18),
-              ],
-            ),
-          ),
-        ),
-      ],
+          )
+          .toList(growable: false),
+      onChanged: onSourceChanged,
+      validator: sourceValidator,
     );
-  }
-
-  Future<void> _showSourcePicker(BuildContext context) async {
-    final selected = await showModalBottomSheet<int>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) {
-        return SafeArea(
-          child: ListView.separated(
-            shrinkWrap: true,
-            itemCount: sources.length,
-            separatorBuilder: (context, index) => const Divider(height: 1),
-            itemBuilder: (context, index) {
-              final source = sources[index];
-              final selected = source.id == selectedSourceId;
-              return ListTile(
-                title: Text(source.label),
-                trailing: selected
-                    ? Icon(
-                        Icons.check_rounded,
-                        color: Theme.of(context).colorScheme.primary,
-                      )
-                    : null,
-                onTap: () => Navigator.of(context).pop(source.id),
-              );
-            },
-          ),
-        );
-      },
-    );
-    if (selected != null) {
-      onSourceChanged(selected);
-    }
   }
 }

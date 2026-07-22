@@ -14,6 +14,7 @@ export 'finarc_primary_button.dart';
 export 'finarc_scaffold.dart';
 export 'finarc_secondary_button.dart';
 export 'finarc_section_header.dart';
+export 'finarc_source_dropdown.dart';
 export 'finarc_status_badge.dart';
 export 'finarc_text_field.dart';
 export 'finarc_transaction_tile.dart';

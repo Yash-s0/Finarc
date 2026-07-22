@@ -61,24 +61,39 @@ class _FinarcCardState extends State<FinarcCard>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final card = DecoratedBox(
-      decoration: BoxDecoration(
-        color: widget.backgroundColor ?? Theme.of(context).cardTheme.color,
-        gradient: widget.gradient,
-        borderRadius: BorderRadius.circular(widget.radius),
-        border: Border.all(
-          color:
-              widget.borderColor ??
-              (isDark
-                  ? AppColors.darkBorder.withValues(alpha: 0.8)
-                  : AppColors.lightBorder),
-          width: 0.9,
-        ),
-        boxShadow: widget.useShadow
-            ? (isDark ? AppShadows.card : AppShadows.cardLight)
-            : null,
+    final decoration = BoxDecoration(
+      color: widget.backgroundColor ?? Theme.of(context).cardTheme.color,
+      gradient: widget.gradient,
+      borderRadius: BorderRadius.circular(widget.radius),
+      border: Border.all(
+        color:
+            widget.borderColor ??
+            (isDark
+                ? AppColors.darkBorder.withValues(alpha: 0.8)
+                : AppColors.lightBorder),
+        width: 0.9,
       ),
-      child: Padding(padding: widget.padding, child: widget.child),
+      boxShadow: widget.useShadow
+          ? (isDark ? AppShadows.card : AppShadows.cardLight)
+          : null,
+    );
+    final card = DecoratedBox(
+      decoration: decoration,
+      child: Material(
+        type: MaterialType.transparency,
+        clipBehavior: Clip.antiAlias,
+        borderRadius: BorderRadius.circular(widget.radius),
+        child: widget.onTap == null
+            ? Padding(padding: widget.padding, child: widget.child)
+            : InkWell(
+                onTap: widget.onTap,
+                onTapDown: (_) => _pressCtrl.forward(),
+                onTapUp: (_) => _pressCtrl.reverse(),
+                onTapCancel: () => _pressCtrl.reverse(),
+                borderRadius: BorderRadius.circular(widget.radius),
+                child: Padding(padding: widget.padding, child: widget.child),
+              ),
+      ),
     );
     final content = Padding(
       padding: widget.margin ?? EdgeInsets.zero,
@@ -88,19 +103,6 @@ class _FinarcCardState extends State<FinarcCard>
     if (widget.onTap == null) return content;
 
     // Subtle scale press feedback for interactive cards
-    return ScaleTransition(
-      scale: _scale,
-      child: Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          onTap: widget.onTap,
-          onTapDown: (_) => _pressCtrl.forward(),
-          onTapUp: (_) => _pressCtrl.reverse(),
-          onTapCancel: () => _pressCtrl.reverse(),
-          borderRadius: BorderRadius.circular(widget.radius),
-          child: content,
-        ),
-      ),
-    );
+    return ScaleTransition(scale: _scale, child: content);
   }
 }

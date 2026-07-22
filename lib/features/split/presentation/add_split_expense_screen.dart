@@ -82,7 +82,6 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => Center(child: Text('Error: $e')),
             data: (sources) {
-              final selectedSourceLabel = _selectedSourceLabel(sources);
               final totalAmount = double.tryParse(_amount.text) ?? 0;
               final splitPreview = _previewSplit(group.members, totalAmount);
 
@@ -215,29 +214,36 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
                               },
                             ),
                             const SizedBox(height: AppSpacing.sm),
-                            InkWell(
-                              onTap: () async {
-                                final selected =
-                                    await FinarcBottomSheet.show<int>(
-                                      context,
-                                      child: _PaymentSourceSheet(
-                                        data: sources,
-                                        sourceType: _paymentSourceType,
-                                        selectedId: _paymentSourceId,
-                                      ),
-                                    );
-                                if (selected == null) return;
-                                setState(() => _paymentSourceId = selected);
-                              },
-                              child: InputDecorator(
-                                decoration: const InputDecoration(
-                                  labelText: 'Source',
-                                  suffixIcon: Icon(
-                                    Icons.keyboard_arrow_down_rounded,
+                            Builder(
+                              builder: (context) {
+                                final rows = _PaymentSourceSheet(
+                                  data: sources,
+                                  sourceType: _paymentSourceType,
+                                  selectedId: _paymentSourceId,
+                                )._buildRows();
+                                return FinarcSourceDropdown<int>(
+                                  key: ValueKey(
+                                    'split-source-$_paymentSourceType',
                                   ),
-                                ),
-                                child: Text(selectedSourceLabel),
-                              ),
+                                  label: 'Source',
+                                  placeholder:
+                                      'Select ${_paymentSourceClearLabel()}',
+                                  value: _paymentSourceId,
+                                  options: rows
+                                      .map(
+                                        (
+                                          row,
+                                        ) => FinarcSourceDropdownOption<int>(
+                                          value: row.id,
+                                          label: '${row.title} · ${row.amount}',
+                                        ),
+                                      )
+                                      .toList(growable: false),
+                                  onChanged: (selected) => setState(
+                                    () => _paymentSourceId = selected,
+                                  ),
+                                );
+                              },
                             ),
                           ],
                         ),
@@ -448,28 +454,14 @@ class _AddSplitExpenseScreenState extends ConsumerState<AddSplitExpenseScreen> {
         .toList(growable: false);
   }
 
-  String _selectedSourceLabel(PaymentSourcesData data) {
-    if (_paymentSourceId == null) return 'Select source';
-    if (_paymentSourceType == PaymentSourceType.cash) {
-      final match = data.cashWallets
-          .where((e) => e.id == _paymentSourceId)
-          .firstOrNull;
-      return match == null
-          ? 'Select source'
-          : '${match.walletName} • ${inr(match.currentBalance)}';
-    }
-    if (_paymentSourceType == PaymentSourceType.creditCard) {
-      final match = data.cards
-          .where((e) => e.id == _paymentSourceId)
-          .firstOrNull;
-      return match == null
-          ? 'Select source'
-          : '${match.bankName} • ${match.last4}';
-    }
-    final match = data.banks.where((e) => e.id == _paymentSourceId).firstOrNull;
-    return match == null
-        ? 'Select source'
-        : '${match.accountName} • ${inr(match.currentBalance)}';
+  String _paymentSourceClearLabel() {
+    return switch (_paymentSourceType) {
+      PaymentSourceType.bank => 'bank account',
+      PaymentSourceType.upi => 'UPI account',
+      PaymentSourceType.cash => 'cash wallet',
+      PaymentSourceType.creditCard => 'credit card',
+      _ => 'source',
+    };
   }
 
   Future<void> _submit(List<dynamic> members, int? currentUserId) async {
