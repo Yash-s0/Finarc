@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/database/app_database.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/formatters.dart';
@@ -100,6 +101,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                 return true;
               })
               .toList(growable: false);
+          final totals = _ExpenseTotals.fromTransactions(filtered);
 
           final grouped = <String, List<dynamic>>{};
           for (final txn in filtered) {
@@ -124,15 +126,12 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
               padding: const EdgeInsets.all(AppSpacing.md),
               children: [
                 Text(
-                  'Transaction command center',
-                  style: Theme.of(context).textTheme.headlineSmall,
+                  'Transactions',
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
-                const SizedBox(height: AppSpacing.xxs),
-                Text(
-                  'Track expenses, recoverables and detected spends.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: AppSpacing.md),
+                const SizedBox(height: AppSpacing.sm),
+                _summaryStrip(context, totals),
+                const SizedBox(height: AppSpacing.sm),
                 _filterPanel(
                   context,
                   txns: txns,
@@ -199,6 +198,15 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                                   paymentSourceType: t.paymentSourceType,
                                   title: t.title,
                                 );
+                            final badges = _badgesForTransaction(
+                              t,
+                              remaining: remaining,
+                              recovered: recovered,
+                            );
+                            final amountMeta = _amountMetaForTransaction(
+                              t,
+                              net: net,
+                            );
                             return Padding(
                               padding: const EdgeInsets.only(
                                 bottom: AppSpacing.xs,
@@ -208,16 +216,14 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                                   '/expenses/transaction/${t.id}',
                                 ),
                                 title: t.title,
-                                subtitle: t.category,
+                                subtitle:
+                                    '${t.category} · ${FinarcTransactionPresentation.sourceLabel(t.paymentSourceType)}',
                                 meta: FinarcTransactionPresentation.meta(
                                   date: t.transactionDate,
-                                  source:
-                                      FinarcTransactionPresentation.sourceLabel(
-                                        t.paymentSourceType,
-                                      ),
                                 ),
                                 amount:
                                     '${isPositive ? '+' : '-'}${inr(t.amount)}',
+                                amountMeta: amountMeta,
                                 amountColor: isPositive
                                     ? (isDark
                                           ? AppColors.darkSuccess
@@ -238,70 +244,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                                         : AppColors.lightAccent,
                                   ),
                                 ),
-                                badges: [
-                                  if (t.paymentSourceType == 'creditCard')
-                                    FinarcTransactionPresentation.billedBadge(
-                                      billed: t.cardBillId != null,
-                                    ),
-                                  if (t.cashbackAmount > 0)
-                                    FinarcTransactionPresentation.cashbackBadge,
-                                  if (t.detectedSourceType != null)
-                                    FinarcStatusBadge(
-                                      label:
-                                          'Detected ${_sourceLabel(t.detectedSourceType)}',
-                                      tone: FinarcStatusTone.info,
-                                      compact: true,
-                                    ),
-                                  if (t.isForOthers)
-                                    FinarcStatusBadge(
-                                      label:
-                                          t.recoverablePartyName ??
-                                          'For Others',
-                                      tone: FinarcStatusTone.info,
-                                      compact: true,
-                                    ),
-                                  if (t.isForOthers)
-                                    FinarcTransactionPresentation.recoverableStatusBadge(
-                                      t.recoverableStatus,
-                                    ),
-                                  if (t.isForOthers)
-                                    FinarcStatusBadge(
-                                      label: 'Remaining ${inr(remaining)}',
-                                      tone: remaining <= 0.009
-                                          ? FinarcStatusTone.success
-                                          : FinarcStatusTone.warning,
-                                      compact: true,
-                                    ),
-                                  if (t.isForOthers && recovered > 0)
-                                    FinarcStatusBadge(
-                                      label: 'Recovered ${inr(recovered)}',
-                                      tone: FinarcStatusTone.success,
-                                      compact: true,
-                                    ),
-                                  if (t.linkedSplitExpenseId != null ||
-                                      t.splitGroupId != null)
-                                    const FinarcStatusBadge(
-                                      label: 'Split',
-                                      tone: FinarcStatusTone.info,
-                                      compact: true,
-                                    ),
-                                  if (t.type == 'loanEmi')
-                                    FinarcTransactionPresentation.emiBadge,
-                                  if ((t.personalShareAmount ?? 0) > 0 &&
-                                      (t.personalShareAmount ?? 0) < t.amount)
-                                    FinarcStatusBadge(
-                                      label:
-                                          'My share ${inr(t.personalShareAmount ?? 0)}',
-                                      tone: FinarcStatusTone.neutral,
-                                      compact: true,
-                                    ),
-                                  if (t.cashbackAmount > 0)
-                                    FinarcStatusBadge(
-                                      label: 'Net ${inr(net)}',
-                                      tone: FinarcStatusTone.info,
-                                      compact: true,
-                                    ),
-                                ],
+                                badges: badges,
                               ),
                             );
                           }),
@@ -321,6 +264,49 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _summaryStrip(BuildContext context, _ExpenseTotals totals) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.sm),
+        child: Row(
+          children: [
+            Expanded(
+              child: _SummaryMetric(
+                label: 'Spent',
+                value: inr(totals.expense),
+                color: isDark ? AppColors.darkError : AppColors.lightError,
+              ),
+            ),
+            _SummaryDivider(isDark: isDark),
+            Expanded(
+              child: _SummaryMetric(
+                label: 'Income',
+                value: inr(totals.income),
+                color: isDark ? AppColors.darkSuccess : AppColors.lightSuccess,
+              ),
+            ),
+            _SummaryDivider(isDark: isDark),
+            Expanded(
+              child: _SummaryMetric(
+                label: 'Items',
+                value: totals.count.toString(),
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -585,6 +571,158 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     if (source == 'upi') return Icons.qr_code_2_rounded;
     if (source == 'bank') return Icons.account_balance;
     return Icons.payments_outlined;
+  }
+
+  List<Widget> _badgesForTransaction(
+    Transaction txn, {
+    required double remaining,
+    required double recovered,
+  }) {
+    final badges = <Widget>[];
+    if (txn.paymentSourceType == 'creditCard') {
+      badges.add(
+        FinarcTransactionPresentation.billedBadge(
+          billed: txn.cardBillId != null,
+        ),
+      );
+    }
+    if (txn.isForOthers) {
+      badges.add(
+        FinarcStatusBadge(
+          label: remaining <= 0.009 ? 'Recovered' : 'Owed ${inr(remaining)}',
+          tone: remaining <= 0.009
+              ? FinarcStatusTone.success
+              : FinarcStatusTone.warning,
+          compact: true,
+        ),
+      );
+    }
+    if (txn.linkedSplitExpenseId != null || txn.splitGroupId != null) {
+      badges.add(
+        const FinarcStatusBadge(
+          label: 'Split',
+          tone: FinarcStatusTone.info,
+          compact: true,
+        ),
+      );
+    }
+    if (txn.type == 'loanEmi') {
+      badges.add(FinarcTransactionPresentation.emiBadge);
+    }
+    if (txn.detectedSourceType != null && badges.length < 3) {
+      badges.add(
+        FinarcStatusBadge(
+          label: _sourceLabel(txn.detectedSourceType),
+          tone: FinarcStatusTone.info,
+          compact: true,
+        ),
+      );
+    }
+    if (txn.cashbackAmount > 0 && badges.length < 3) {
+      badges.add(FinarcTransactionPresentation.cashbackBadge);
+    }
+    if (recovered > 0 && remaining > 0.009 && badges.length < 3) {
+      badges.add(
+        FinarcStatusBadge(
+          label: 'Recovered ${inr(recovered)}',
+          tone: FinarcStatusTone.success,
+          compact: true,
+        ),
+      );
+    }
+    return badges.take(3).toList(growable: false);
+  }
+
+  String? _amountMetaForTransaction(Transaction txn, {required double net}) {
+    final parts = <String>[];
+    final share = txn.personalShareAmount;
+    if (share != null && share > 0 && share < txn.amount) {
+      parts.add('My share ${inr(share)}');
+    }
+    if (txn.cashbackAmount > 0) {
+      parts.add('Net ${inr(net)}');
+    }
+    if (txn.isForOthers &&
+        txn.recoverablePartyName?.trim().isNotEmpty == true) {
+      parts.add(txn.recoverablePartyName!.trim());
+    }
+    return parts.isEmpty ? null : parts.join(' · ');
+  }
+}
+
+class _ExpenseTotals {
+  const _ExpenseTotals({
+    required this.expense,
+    required this.income,
+    required this.count,
+  });
+
+  final double expense;
+  final double income;
+  final int count;
+
+  factory _ExpenseTotals.fromTransactions(List<Transaction> txns) {
+    var expense = 0.0;
+    var income = 0.0;
+    for (final txn in txns) {
+      if (txn.type == 'income' || txn.type == 'refund') {
+        income += txn.amount;
+      } else if (txn.type != 'transfer' && txn.type != 'cardPayment') {
+        expense += txn.amount;
+      }
+    }
+    return _ExpenseTotals(expense: expense, income: income, count: txns.length);
+  }
+}
+
+class _SummaryMetric extends StatelessWidget {
+  const _SummaryMetric({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: Theme.of(context).textTheme.labelSmall),
+        const SizedBox(height: 2),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            value,
+            maxLines: 1,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SummaryDivider extends StatelessWidget {
+  const _SummaryDivider({required this.isDark});
+
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: 34,
+      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+      color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+    );
   }
 }
 

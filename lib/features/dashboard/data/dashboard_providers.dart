@@ -302,7 +302,7 @@ DateTime _salaryCycleMonth(DateTime date, {required int? salaryCreditDay}) {
 DateTime _billingDateForTransaction(CreditCard card, DateTime txnDate) {
   final date = DateTime(txnDate.year, txnDate.month, txnDate.day);
   final thisMonthBilling = _safeDay(date.year, date.month, card.billingDay);
-  if (date.isBefore(thisMonthBilling)) return thisMonthBilling;
+  if (!date.isAfter(thisMonthBilling)) return thisMonthBilling;
   return _safeDay(date.year, date.month + 1, card.billingDay);
 }
 

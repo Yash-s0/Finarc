@@ -86,6 +86,35 @@ void main() {
     expect(dashboardOutstanding, 2600);
   });
 
+  test(
+    'billing day 20 covers transactions from 21 June through 20 July',
+    () async {
+      final cardId = await createCard(billingDay: 20, dueDay: 7);
+      await addCardTxn(cardId, DateTime(2026, 6, 20), 100);
+      await addCardTxn(cardId, DateTime(2026, 6, 21), 200);
+      await addCardTxn(cardId, DateTime(2026, 7, 20), 300);
+      await addCardTxn(cardId, DateTime(2026, 7, 21), 400);
+
+      final service = BillingService(db, now: () => DateTime(2026, 7, 20));
+      final bill = await service.generateBillForCard(cardId);
+      final snapshot = await service.getCardBillingSnapshotById(cardId);
+
+      expect(bill, isNotNull);
+      expect(bill!.cycleStartDate, DateTime(2026, 6, 21));
+      expect(bill.cycleEndDate, DateTime(2026, 7, 20));
+      expect(bill.billingDate, DateTime(2026, 7, 20));
+      expect(bill.billedAmount, closeTo(500, 0.01));
+      final julyBillTxns = await service.getBilledTransactions(cardId, bill.id);
+      expect(julyBillTxns.map((txn) => txn.transactionDate), [
+        DateTime(2026, 7, 20),
+        DateTime(2026, 6, 21),
+      ]);
+      expect(snapshot.unbilledTransactions.map((txn) => txn.transactionDate), [
+        DateTime(2026, 7, 21),
+      ]);
+    },
+  );
+
   test('due day before billing day rolls due date to next month', () async {
     final cardId = await createCard(billingDay: 31, dueDay: 5);
     await addCardTxn(cardId, DateTime(2026, 4, 30), 500);

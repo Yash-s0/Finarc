@@ -220,4 +220,41 @@ void main() {
       expect(snapshot.monthlySpendTrend.last.income, closeTo(1200, 0.01));
     },
   );
+
+  test(
+    'dashboard card spend bucket includes transactions on billing day',
+    () async {
+      final now = DateTime.now();
+      final billingDay = now.day;
+
+      await (db.update(db.creditCards)..where((c) => c.id.equals(cardId)))
+          .write(CreditCardsCompanion(billingDay: Value(billingDay)));
+
+      await db
+          .into(db.transactions)
+          .insert(
+            TransactionsCompanion.insert(
+              type: 'creditCard',
+              amount: 450,
+              title: 'Card billing day spend',
+              category: 'Food',
+              transactionDate: DateTime(now.year, now.month, billingDay),
+              paymentSourceType: 'creditCard',
+              paymentSourceId: cardId,
+            ),
+          );
+
+      final container = ProviderContainer(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+          seedProvider.overrideWith((ref) async {}),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final snapshot = await container.read(dashboardProvider.future);
+      expect(snapshot.monthlySpends, closeTo(450, 0.01));
+      expect(snapshot.monthlySpendTrend.last.amount, closeTo(450, 0.01));
+    },
+  );
 }
