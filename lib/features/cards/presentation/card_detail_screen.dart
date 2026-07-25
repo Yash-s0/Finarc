@@ -77,6 +77,12 @@ class CardDetailScreen extends ConsumerWidget {
         final remainingDue = vm.currentDueAmount;
         final hasActiveBill = vm.currentBill != null;
         final canRecordPayment = hasActiveBill && remainingDue > 0.009;
+        final statementPeriod = vm.currentBill == null
+            ? null
+            : _statementPeriodText(vm.currentBill!);
+        final unbilledPeriodStart = vm.currentBill?.cycleEndDate.add(
+          const Duration(days: 1),
+        );
 
         return DefaultTabController(
           length: 4,
@@ -222,7 +228,9 @@ class CardDetailScreen extends ConsumerWidget {
                               children: [
                                 Expanded(
                                   child: Text(
-                                    'Bill Date: ${vm.currentBill == null ? 'Not generated' : _dateText(vm.currentBill!.billingDate)}',
+                                    vm.currentBill == null
+                                        ? 'Statement not generated'
+                                        : 'Statement Date: ${_dateText(vm.currentBill!.billingDate)}',
                                     style: Theme.of(
                                       context,
                                     ).textTheme.labelMedium,
@@ -234,6 +242,20 @@ class CardDetailScreen extends ConsumerWidget {
                                 ),
                               ],
                             ),
+                            if (statementPeriod != null) ...[
+                              const SizedBox(height: AppSpacing.xxs),
+                              Text(
+                                'Statement Period: $statementPeriod',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ],
+                            if (unbilledPeriodStart != null) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                'Unbilled starts ${_dateText(unbilledPeriodStart)}',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ],
                             const SizedBox(height: AppSpacing.sm),
                             Row(
                               children: [
@@ -266,43 +288,40 @@ class CardDetailScreen extends ConsumerWidget {
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
                             const SizedBox(height: AppSpacing.sm),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    vm.currentBill == null
-                                        ? 'Next statement will be generated automatically.'
-                                        : paidAmount > 0
-                                        ? 'Paid ${inr(paidAmount)} • Remaining ${inr(remainingDue)}'
-                                        : 'Due on ${_dateText(vm.currentBill!.dueDate)}',
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.bodyMedium,
-                                  ),
-                                ),
-                                if (vm.currentBill != null)
-                                  canRecordPayment
-                                      ? FinarcPrimaryButton(
-                                          onPressed: () => context.push(
-                                            '/cards/$cardId/bills/${vm.currentBill!.id}',
-                                          ),
-                                          label: 'Record Payment',
-                                          icon: Icons.payments_outlined,
-                                          expand: false,
-                                        )
-                                      : FinarcSecondaryButton(
-                                          onPressed: () => context.push(
-                                            '/cards/$cardId/bills/${vm.currentBill!.id}',
-                                          ),
-                                          label: remainingDue <= 0.009
-                                              ? 'Paid'
-                                              : 'Bill Detail',
-                                          icon: remainingDue <= 0.009
-                                              ? Icons.check_circle_outline
-                                              : Icons.receipt_long_outlined,
-                                        ),
-                              ],
+                            Text(
+                              vm.currentBill == null
+                                  ? 'Next statement will be generated automatically.'
+                                  : paidAmount > 0
+                                  ? 'Paid ${inr(paidAmount)} • Remaining ${inr(remainingDue)}'
+                                  : 'Due on ${_dateText(vm.currentBill!.dueDate)}',
+                              style: Theme.of(context).textTheme.bodyMedium,
                             ),
+                            if (vm.currentBill != null) ...[
+                              const SizedBox(height: AppSpacing.sm),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: canRecordPayment
+                                    ? FinarcPrimaryButton(
+                                        onPressed: () => context.push(
+                                          '/cards/$cardId/bills/${vm.currentBill!.id}',
+                                        ),
+                                        label: 'Record Payment',
+                                        icon: Icons.payments_outlined,
+                                        expand: false,
+                                      )
+                                    : FinarcSecondaryButton(
+                                        onPressed: () => context.push(
+                                          '/cards/$cardId/bills/${vm.currentBill!.id}',
+                                        ),
+                                        label: remainingDue <= 0.009
+                                            ? 'Paid'
+                                            : 'Bill Detail',
+                                        icon: remainingDue <= 0.009
+                                            ? Icons.check_circle_outline
+                                            : Icons.receipt_long_outlined,
+                                      ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -541,5 +560,9 @@ class CardDetailScreen extends ConsumerWidget {
   static String _dateText(DateTime date) {
     final d = date.toLocal();
     return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+  }
+
+  static String _statementPeriodText(CardBill bill) {
+    return '${_dateText(bill.cycleStartDate)} - ${_dateText(bill.cycleEndDate)}';
   }
 }
