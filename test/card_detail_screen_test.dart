@@ -55,8 +55,9 @@ void main() {
     tester,
   ) async {
     final cardId = await createAmazonIciciCard();
-    await addCardTxn(cardId, DateTime(2026, 6, 21), 200);
-    await addCardTxn(cardId, DateTime(2026, 7, 20), 300);
+    await addCardTxn(cardId, DateTime(2026, 6, 20), 200);
+    await addCardTxn(cardId, DateTime(2026, 7, 19), 300);
+    await addCardTxn(cardId, DateTime(2026, 7, 20), 350);
     await addCardTxn(cardId, DateTime(2026, 7, 21), 400);
 
     await BillingService(
@@ -80,10 +81,10 @@ void main() {
 
     expect(find.text('Statement Date: 20/07/2026'), findsOneWidget);
     expect(
-      find.text('Statement Period: 21/06/2026 - 20/07/2026'),
+      find.text('Statement Period: 20/06/2026 - 19/07/2026'),
       findsOneWidget,
     );
-    expect(find.text('Unbilled starts 21/07/2026'), findsOneWidget);
+    expect(find.text('Unbilled starts 20/07/2026'), findsOneWidget);
     expect(find.text('Due on 07/08/2026'), findsOneWidget);
   });
 }

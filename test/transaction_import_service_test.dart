@@ -219,7 +219,7 @@ void main() {
     final jsonText = jsonEncode({
       'transactions': [
         {
-          'date': '2026-05-20T10:00:00',
+          'date': '2026-05-19T10:00:00',
           'amount': 100,
           'type': 'expense',
           'title': 'Older boundary',
@@ -227,7 +227,7 @@ void main() {
           'sourceName': 'ICICI Amazon',
         },
         {
-          'date': '2026-05-21T10:00:00',
+          'date': '2026-05-20T10:00:00',
           'amount': 200,
           'type': 'expense',
           'title': 'Cycle start',
@@ -235,7 +235,7 @@ void main() {
           'sourceName': 'ICICI Amazon',
         },
         {
-          'date': '2026-06-20T10:00:00',
+          'date': '2026-06-19T10:00:00',
           'amount': 300,
           'type': 'expense',
           'title': 'Cycle end',
@@ -243,7 +243,7 @@ void main() {
           'sourceName': 'ICICI Amazon',
         },
         {
-          'date': '2026-06-21T10:00:00',
+          'date': '2026-06-20T10:00:00',
           'amount': 400,
           'type': 'expense',
           'title': 'Open cycle',

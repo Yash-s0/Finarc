@@ -54,14 +54,13 @@ void main() {
     'dashboard uses billedDue for card dues and actionable recoverables for recoverable metric',
     () async {
       final now = DateTime.now();
-      final billedDate = DateTime(
+      final billingDate = DateTime(
         now.year,
         now.month,
         now.day > 1 ? now.day - 1 : 1,
       );
-      final unbilledDate = now.day > 1
-          ? DateTime(now.year, now.month, now.day)
-          : DateTime(now.year, now.month, 2);
+      final billedDate = billingDate.subtract(const Duration(days: 1));
+      final unbilledDate = billingDate;
 
       await engine.addTransaction(
         AddTransactionInput(
@@ -222,7 +221,7 @@ void main() {
   );
 
   test(
-    'dashboard card spend bucket includes transactions on billing day',
+    'dashboard card spend bucket moves billing-day transactions to next statement',
     () async {
       final now = DateTime.now();
       final billingDay = now.day;
@@ -253,8 +252,8 @@ void main() {
       addTearDown(container.dispose);
 
       final snapshot = await container.read(dashboardProvider.future);
-      expect(snapshot.monthlySpends, closeTo(450, 0.01));
-      expect(snapshot.monthlySpendTrend.last.amount, closeTo(450, 0.01));
+      expect(snapshot.monthlySpends, closeTo(0, 0.01));
+      expect(snapshot.monthlySpendTrend.last.amount, closeTo(0, 0.01));
     },
   );
 }

@@ -48,7 +48,7 @@ DateTime _creditCardCycleStartForBillingDate(
     billingDate.month - 1,
     card.billingDay,
   );
-  return previousBillingDate.add(const Duration(days: 1));
+  return previousBillingDate;
 }
 
 bool isInActiveCreditCardBillingWindow({
@@ -172,7 +172,7 @@ class BillingService {
   DateTime _billingDateForTransaction(CreditCard card, DateTime txnDate) {
     final date = _dateOnly(txnDate);
     final thisMonthBilling = _safeDay(date.year, date.month, card.billingDay);
-    if (!date.isAfter(thisMonthBilling)) {
+    if (date.isBefore(thisMonthBilling)) {
       return thisMonthBilling;
     }
     return _safeDay(date.year, date.month + 1, card.billingDay);
@@ -206,7 +206,7 @@ class BillingService {
 
     return BillingCycle(
       cycleStartDate: _cycleStartForBillingDate(card, billingDate),
-      cycleEndDate: billingDate,
+      cycleEndDate: billingDate.subtract(const Duration(days: 1)),
       billingDate: billingDate,
       dueDate: _dueDateForBillingDate(card, billingDate),
     );
@@ -815,6 +815,7 @@ class BillingService {
       if (existing != null) return existing;
 
       final cycleStart = _cycleStartForBillingDate(card, date);
+      final cycleEnd = date.subtract(const Duration(days: 1));
       final dueDate = _dueDateForBillingDate(card, date);
       final billId = await _db
           .into(_db.cardBills)
@@ -822,7 +823,7 @@ class BillingService {
             CardBillsCompanion.insert(
               cardId: card.id,
               cycleStartDate: Value(cycleStart),
-              cycleEndDate: Value(date),
+              cycleEndDate: Value(cycleEnd),
               billingDate: Value(date),
               dueDate: Value(dueDate),
               billedAmount: 0,

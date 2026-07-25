@@ -53,7 +53,7 @@ void main() {
     );
   }
 
-  test('19th billed, 20th billed, 21st unbilled', () async {
+  test('19th billed, 20th and 21st unbilled', () async {
     final cardId = await createCard(billingDay: 20, dueDay: 7);
     await addCardTxn(cardId, DateTime(2026, 5, 19), 1200);
     await addCardTxn(cardId, DateTime(2026, 5, 20), 800);
@@ -66,32 +66,34 @@ void main() {
 
     expect(bill, isNotNull);
     expect(bill!.billingDate, DateTime(2026, 5, 20));
-    expect(bill.cycleStartDate, DateTime(2026, 4, 21));
-    expect(bill.cycleEndDate, DateTime(2026, 5, 20));
+    expect(bill.cycleStartDate, DateTime(2026, 4, 20));
+    expect(bill.cycleEndDate, DateTime(2026, 5, 19));
     expect(bill.dueDate, DateTime(2026, 6, 7));
-    expect(bill.billedAmount, 2000);
+    expect(bill.billedAmount, 1200);
 
-    expect(unbilled, hasLength(1));
-    expect(unbilled.single.transactionDate, DateTime(2026, 5, 21));
-    expect(unbilled.single.amount, 600);
+    expect(unbilled.map((txn) => txn.transactionDate), [
+      DateTime(2026, 5, 21),
+      DateTime(2026, 5, 20),
+    ]);
 
-    expect(snapshot.billedDue, 2000);
-    expect(snapshot.unbilledSpends, 600);
+    expect(snapshot.billedDue, 1200);
+    expect(snapshot.unbilledSpends, 1400);
     expect(snapshot.totalOutstanding, 2600);
 
     // Dashboard card dues should read from billedDue only.
     final dashboardCardDues = snapshot.billedDue;
     final dashboardOutstanding = snapshot.totalOutstanding;
-    expect(dashboardCardDues, 2000);
+    expect(dashboardCardDues, 1200);
     expect(dashboardOutstanding, 2600);
   });
 
   test(
-    'billing day 20 covers transactions from 21 June through 20 July',
+    'billing day 20 covers transactions from 20 June through 19 July',
     () async {
       final cardId = await createCard(billingDay: 20, dueDay: 7);
       await addCardTxn(cardId, DateTime(2026, 6, 20), 100);
       await addCardTxn(cardId, DateTime(2026, 6, 21), 200);
+      await addCardTxn(cardId, DateTime(2026, 7, 19), 250);
       await addCardTxn(cardId, DateTime(2026, 7, 20), 300);
       await addCardTxn(cardId, DateTime(2026, 7, 21), 400);
 
@@ -100,31 +102,33 @@ void main() {
       final snapshot = await service.getCardBillingSnapshotById(cardId);
 
       expect(bill, isNotNull);
-      expect(bill!.cycleStartDate, DateTime(2026, 6, 21));
-      expect(bill.cycleEndDate, DateTime(2026, 7, 20));
+      expect(bill!.cycleStartDate, DateTime(2026, 6, 20));
+      expect(bill.cycleEndDate, DateTime(2026, 7, 19));
       expect(bill.billingDate, DateTime(2026, 7, 20));
-      expect(bill.billedAmount, closeTo(500, 0.01));
+      expect(bill.billedAmount, closeTo(550, 0.01));
       final julyBillTxns = await service.getBilledTransactions(cardId, bill.id);
       expect(julyBillTxns.map((txn) => txn.transactionDate), [
-        DateTime(2026, 7, 20),
+        DateTime(2026, 7, 19),
         DateTime(2026, 6, 21),
+        DateTime(2026, 6, 20),
       ]);
       expect(snapshot.unbilledTransactions.map((txn) => txn.transactionDate), [
         DateTime(2026, 7, 21),
+        DateTime(2026, 7, 20),
       ]);
     },
   );
 
   test('due day before billing day rolls due date to next month', () async {
     final cardId = await createCard(billingDay: 31, dueDay: 5);
-    await addCardTxn(cardId, DateTime(2026, 4, 30), 500);
+    await addCardTxn(cardId, DateTime(2026, 4, 29), 500);
 
     final service = BillingService(db, now: () => DateTime(2026, 5, 2));
     final bill = await service.generateBillForCard(cardId);
     expect(bill, isNotNull);
     expect(bill!.billingDate, DateTime(2026, 4, 30));
-    expect(bill.cycleStartDate, DateTime(2026, 4, 1));
-    expect(bill.cycleEndDate, DateTime(2026, 4, 30));
+    expect(bill.cycleStartDate, DateTime(2026, 3, 31));
+    expect(bill.cycleEndDate, DateTime(2026, 4, 29));
     expect(bill.dueDate, DateTime(2026, 5, 5));
   });
 
@@ -310,25 +314,25 @@ void main() {
 
       await insertImportedTxn(
         'Previous statement boundary',
-        DateTime(2026, 5, 20),
+        DateTime(2026, 5, 19),
         100,
         TransactionImpactType.historicalNoBalance,
       );
       await insertImportedTxn(
         'Latest statement start',
-        DateTime(2026, 5, 21),
+        DateTime(2026, 5, 20),
         200,
         TransactionImpactType.cardStatementBalanceNeutral,
       );
       await insertImportedTxn(
         'Latest statement end',
-        DateTime(2026, 6, 20),
+        DateTime(2026, 6, 19),
         300,
         TransactionImpactType.cardStatementBalanceNeutral,
       );
       await insertImportedTxn(
         'Current open cycle',
-        DateTime(2026, 6, 21),
+        DateTime(2026, 6, 20),
         400,
         TransactionImpactType.cardStatementBalanceNeutral,
       );
@@ -385,22 +389,22 @@ void main() {
 
       await insertHistoricalTxn(
         'Previous statement boundary',
-        DateTime(2026, 5, 20),
+        DateTime(2026, 5, 19),
         100,
       );
       await insertHistoricalTxn(
         'Latest statement start',
-        DateTime(2026, 5, 21),
+        DateTime(2026, 5, 20),
         200,
       );
       await insertHistoricalTxn(
         'Latest statement end',
-        DateTime(2026, 6, 20),
+        DateTime(2026, 6, 19),
         300,
       );
       await insertHistoricalTxn(
         'Current open cycle',
-        DateTime(2026, 6, 21),
+        DateTime(2026, 6, 20),
         400,
       );
 
@@ -565,7 +569,7 @@ void main() {
           amount: 1000,
           title: 'Card txn with cashback',
           category: 'Food',
-          transactionDate: DateTime(2026, 5, 20),
+          transactionDate: DateTime(2026, 5, 19),
           paymentSourceType: PaymentSourceType.creditCard,
           paymentSourceId: cardId,
           cashbackAmount: 250,
@@ -654,7 +658,13 @@ void main() {
             cycleStartDate: Value(
               DateTime(now.year, now.month - 1, billingDay),
             ),
-            cycleEndDate: Value(DateTime(now.year, now.month, billingDay)),
+            cycleEndDate: Value(
+              DateTime(
+                now.year,
+                now.month,
+                billingDay,
+              ).subtract(const Duration(days: 1)),
+            ),
             billingDate: Value(DateTime(now.year, now.month, billingDay)),
             dueDate: Value(DateTime(now.year, now.month, billingDay + 7)),
             billedAmount: 600,
@@ -673,7 +683,11 @@ void main() {
             amount: 1000,
             title: 'Original charge',
             category: 'Shopping',
-            transactionDate: DateTime(now.year, now.month, billingDay),
+            transactionDate: DateTime(
+              now.year,
+              now.month,
+              billingDay,
+            ).subtract(const Duration(days: 1)),
             paymentSourceType: PaymentSourceType.creditCard,
             paymentSourceId: cardId,
             cardBillId: Value(billId),
@@ -719,7 +733,15 @@ void main() {
       dueDay: 7,
       outstanding: 0,
     );
-    await addCardTxn(cardId, DateTime(now.year, now.month, billingDay), 1000);
+    await addCardTxn(
+      cardId,
+      DateTime(
+        now.year,
+        now.month,
+        billingDay,
+      ).subtract(const Duration(days: 1)),
+      1000,
+    );
 
     final service = BillingService(db, now: () => now);
     final bill = await service.generateBillForCard(cardId);
