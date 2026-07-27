@@ -1589,6 +1589,84 @@ void main() {
       },
     );
 
+    test(
+      'google messages Kotak CRED SMS with fraud URL creates card payment pending',
+      () async {
+        final bankId = await createBank(bankName: 'Kotak', last4: '0754');
+        final ids = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.google.android.apps.messaging',
+            appName: 'Messages',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 7, 27, 13, 3),
+            title: 'AX-KOTAKB-S',
+            body:
+                'Sent Rs.44870.75 from Kotak Bank AC X0754 to cred.club@axisb on 27-07-26.UPI Ref 657419516476. Not you, https://kotak.com/KBANKT/Fraud',
+          ),
+        );
+
+        expect(ids, hasLength(1));
+        final pending = await (db.select(
+          db.pendingTransactions,
+        )..where((p) => p.id.equals(ids.single))).getSingle();
+        expect(pending.sourceType, 'cardPaymentNotification');
+        expect(pending.amount, 44870.75);
+        expect(pending.paymentSourceTypeSuggestion, 'bank');
+        expect(pending.paymentSourceIdSuggestion, bankId);
+        expect(pending.merchant, 'Axis Card Payment');
+        expect(pending.rawText, contains('transactionRef=657419516476'));
+      },
+    );
+
+    test(
+      'apple autopay card sms debit sms and app alert collapse to one pending',
+      () async {
+        await createCard(bankName: 'YES Bank', last4: '8731');
+
+        final cardIds = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.google.android.apps.messaging',
+            appName: 'Messages',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 7, 27, 14, 19, 48),
+            title: 'AX-YESBNK-S',
+            body:
+                'INR 899.00 spent on YES BANK Card X8731 @UPA_APPLE INDIA PRIVAT 27-07-2026 02:19:48 pm. Avl Lmt INR 45,338.05. SMS BLKCC 8731 to 9840909000 if not you',
+          ),
+        );
+        final debitIds = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.google.android.apps.messaging',
+            appName: 'Messages',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 7, 27, 14, 19, 58),
+            title: 'JD-YESBAK-S',
+            body:
+                'Your RuPay Credit Card has been successfully debited with Rs.899.00 on 27/07/2026 towards Apple India Private Limited UPI AutoPay, 1acc1dde7ac648cabe4e3a029571c4e7@yescred.-Yes Bank Your RuPay Credit Card has been successfully debited with Rs.899.00 on 27/07/2026 towards Apple India Private Limited UPI AutoPay, 1acc1dde7ac648cabe4e3a029571c4e7@yescred.-Yes Bank',
+          ),
+        );
+        final appIds = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.phonepe.app',
+            appName: 'PhonePe',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 7, 27, 14, 19, 49),
+            title: 'Your',
+            body:
+                'update on your UPI autopay payment UPI autopay of ₹899 for Apple India Private Limited has been debited successfully. tap for more details. update on your UPI autopay payment UPI autopay of ₹899 for Apple India Private Limited has been debited successfully. tap for more details.',
+          ),
+        );
+
+        expect(cardIds, hasLength(1));
+        expect(debitIds, isEmpty);
+        expect(appIds, isEmpty);
+        final rows = await db.select(db.pendingTransactions).get();
+        expect(rows, hasLength(1));
+        expect(rows.single.amount, 899);
+        expect(rows.single.merchant.toLowerCase(), contains('apple'));
+      },
+    );
+
     test('multi-message card payment mapping keeps one logical pending', () async {
       final bankId = await createBank(bankName: 'Kotak');
       await createCard(bankName: 'Axis Bank', last4: '0374');

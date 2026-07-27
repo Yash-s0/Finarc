@@ -78,6 +78,7 @@ void main() {
     );
     final smsIngestionService = SmsIngestionService(
       database: db,
+      pendingService: pendingService,
       pendingIngestionService: pendingIngestion,
       keywordFilter: NotificationKeywordFilter(),
       fingerprint: SmsFingerprint(),

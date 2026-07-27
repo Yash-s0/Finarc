@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -118,6 +119,7 @@ void main() {
       notifier = _FakeNotifier();
       smsService = SmsIngestionService(
         database: db,
+        pendingService: pendingService,
         pendingIngestionService: pendingIngestion,
         keywordFilter: NotificationKeywordFilter(),
         fingerprint: SmsFingerprint(),
@@ -133,6 +135,24 @@ void main() {
     tearDown(() async {
       await db.close();
     });
+
+    Future<int> createBank({
+      required String bankName,
+      String? accountName,
+      String? last4,
+    }) {
+      return db
+          .into(db.bankAccounts)
+          .insert(
+            BankAccountsCompanion.insert(
+              bankName: bankName,
+              accountName: accountName ?? '$bankName Savings',
+              accountType: 'savings',
+              last4: drift.Value(last4),
+              currentBalance: const drift.Value(50000),
+            ),
+          );
+    }
 
     test('sms payload -> parser input conversion', () {
       final payload = NotificationPayload(
@@ -151,6 +171,7 @@ void main() {
     test('smsDetectionEnabled false prevents ingestion', () async {
       final disabledService = SmsIngestionService(
         database: db,
+        pendingService: pendingService,
         pendingIngestionService: pendingIngestion,
         keywordFilter: NotificationKeywordFilter(),
         fingerprint: SmsFingerprint(),
@@ -195,10 +216,89 @@ void main() {
       expect(notifier.showCount, 1);
     });
 
+    test(
+      'direct Kotak CRED card payment SMS creates settlement pending',
+      () async {
+        final bankId = await createBank(bankName: 'Kotak', last4: '0754');
+
+        final ids = await smsService.processSmsPayload(
+          NotificationPayload(
+            packageName: 'android.sms',
+            sourceType: 'sms',
+            receivedAt: DateTime(2026, 7, 27, 13, 3),
+            sender: 'AX-KOTAKB-S',
+            title: 'AX-KOTAKB-S',
+            body:
+                'Sent Rs.44870.75 from Kotak Bank AC X0754 to cred.club@axisb on 27-07-26.UPI Ref 657419516476. Not you, https://kotak.com/KBANKT/Fraud',
+          ),
+        );
+
+        expect(ids, hasLength(1));
+        final row = await (db.select(
+          db.pendingTransactions,
+        )..where((p) => p.id.equals(ids.single))).getSingle();
+        expect(row.sourceType, 'cardPaymentNotification');
+        expect(row.amount, 44870.75);
+        expect(row.merchant, 'Axis Card Payment');
+        expect(row.paymentSourceTypeSuggestion, 'bank');
+        expect(row.paymentSourceIdSuggestion, bankId);
+        expect(row.rawText, contains('transactionRef=657419516476'));
+        expect(notifier.showCount, 1);
+      },
+    );
+
+    test('direct apple card and autopay SMS collapse to one pending', () async {
+      await db
+          .into(db.creditCards)
+          .insert(
+            CreditCardsCompanion.insert(
+              bankName: 'YES Bank',
+              nickname: 'YES Rupay',
+              last4: '8731',
+              maskedNumber: 'XXXXXX8731',
+              creditLimit: 200000,
+              billingDay: 1,
+              dueDay: 7,
+              currentOutstanding: const drift.Value(0.0),
+            ),
+          );
+
+      final cardIds = await smsService.processSmsPayload(
+        NotificationPayload(
+          packageName: 'android.sms',
+          sourceType: 'sms',
+          receivedAt: DateTime(2026, 7, 27, 14, 19, 48),
+          sender: 'AX-YESBNK-S',
+          title: 'AX-YESBNK-S',
+          body:
+              'INR 899.00 spent on YES BANK Card X8731 @UPA_APPLE INDIA PRIVAT 27-07-2026 02:19:48 pm. Avl Lmt INR 45,338.05. SMS BLKCC 8731 to 9840909000 if not you',
+        ),
+      );
+      final debitIds = await smsService.processSmsPayload(
+        NotificationPayload(
+          packageName: 'android.sms',
+          sourceType: 'sms',
+          receivedAt: DateTime(2026, 7, 27, 14, 19, 58),
+          sender: 'JD-YESBAK-S',
+          title: 'JD-YESBAK-S',
+          body:
+              'Your RuPay Credit Card has been successfully debited with Rs.899.00 on 27/07/2026 towards Apple India Private Limited UPI AutoPay, 1acc1dde7ac648cabe4e3a029571c4e7@yescred.-Yes Bank Your RuPay Credit Card has been successfully debited with Rs.899.00 on 27/07/2026 towards Apple India Private Limited UPI AutoPay, 1acc1dde7ac648cabe4e3a029571c4e7@yescred.-Yes Bank',
+        ),
+      );
+
+      expect(cardIds, hasLength(1));
+      expect(debitIds, isEmpty);
+      final rows = await db.select(db.pendingTransactions).get();
+      expect(rows, hasLength(1));
+      expect(rows.single.amount, 899);
+      expect(rows.single.merchant.toLowerCase(), contains('apple'));
+    });
+
     test('rate limits a noisy SMS sender before parsing', () async {
       final debugEntries = <NotificationDebugEntry>[];
       final limitedService = SmsIngestionService(
         database: db,
+        pendingService: pendingService,
         pendingIngestionService: pendingIngestion,
         keywordFilter: NotificationKeywordFilter(),
         fingerprint: SmsFingerprint(),

@@ -1,9 +1,11 @@
 import 'package:drift/drift.dart';
 
 import '../../../core/database/app_database.dart';
+import '../data/pending_service.dart';
 import '../parsing/parser_models.dart';
 import '../parsing/pending_ingestion_service.dart';
 import 'card_bill_due_notification_service.dart';
+import 'card_payment_notification_service.dart';
 import 'notification_ingestion_service.dart';
 import 'notification_burst_limiter.dart';
 import 'notification_keyword_filter.dart';
@@ -24,7 +26,9 @@ class SmsIngestionService {
     required bool Function() shouldShowDetectionNotifications,
     required void Function(NotificationDebugEntry entry) appendDebug,
     required SmsSenderFilter senderFilter,
+    required PendingService pendingService,
     CardBillDueNotificationService? cardBillDueNotificationService,
+    CardPaymentNotificationService? cardPaymentNotificationService,
     NotificationBurstLimiter? burstLimiter,
   }) {
     return SmsIngestionService._(
@@ -41,6 +45,12 @@ class SmsIngestionService {
       cardBillDueNotificationService:
           cardBillDueNotificationService ??
           CardBillDueNotificationService(database: database),
+      cardPaymentNotificationService:
+          cardPaymentNotificationService ??
+          CardPaymentNotificationService(
+            database: database,
+            pendingService: pendingService,
+          ),
       burstLimiter: burstLimiter ?? NotificationBurstLimiter(),
     );
   }
@@ -57,6 +67,7 @@ class SmsIngestionService {
     required this._appendDebug,
     required this._senderFilter,
     required this._cardBillDueNotificationService,
+    required this._cardPaymentNotificationService,
     required this._burstLimiter,
   }) : _db = database;
 
@@ -71,6 +82,7 @@ class SmsIngestionService {
   final void Function(NotificationDebugEntry entry) _appendDebug;
   final SmsSenderFilter _senderFilter;
   final CardBillDueNotificationService _cardBillDueNotificationService;
+  final CardPaymentNotificationService _cardPaymentNotificationService;
   final NotificationBurstLimiter _burstLimiter;
 
   Future<List<int>> processSmsPayload(
@@ -114,6 +126,31 @@ class SmsIngestionService {
     if (billDueResult != null) {
       _log(payload, 'card-bill-due-${billDueResult.action}');
       return const [];
+    }
+
+    final cardPaymentResult = await _cardPaymentNotificationService
+        .handleIfCardPayment(payload);
+    if (cardPaymentResult != null) {
+      final pendingId =
+          cardPaymentResult.pendingId ?? cardPaymentResult.mergedIntoPendingId;
+      if (pendingId != null && _shouldShowDetectionNotifications()) {
+        await _localNotifier.showDetected(
+          title: 'Card payment detected',
+          body: 'Confirm this settlement in Finarc.',
+          route: '/pending',
+          pendingId: pendingId,
+          showActions: true,
+        );
+      }
+      _log(
+        payload,
+        cardPaymentResult.action == 'mergedIntoPending'
+            ? 'card-payment-mergedIntoPending'
+            : 'card-payment-pendingCreated',
+      );
+      return cardPaymentResult.pendingId == null
+          ? const []
+          : [cardPaymentResult.pendingId!];
     }
 
     final sender = payload.sender ?? payload.appName ?? 'SMS';
@@ -227,6 +264,8 @@ class SmsIngestionService {
     final decision = switch (result) {
       'duplicate-suppressed' => 'duplicate',
       'parsed-pending-created' => 'pending-created',
+      'card-payment-pendingCreated' => 'pending-created',
+      'card-payment-mergedIntoPending' => 'duplicate',
       'parser-failed' => 'parsed',
       'rate-limited-notification-burst' => 'ignored',
       _ => result.startsWith('blocked') ? 'ignored' : 'parsed',
@@ -245,7 +284,9 @@ class SmsIngestionService {
         sourceType: 'sms',
         result: result,
         parseResult: result,
-        localNotificationSent: result == 'parsed-pending-created',
+        localNotificationSent:
+            result == 'parsed-pending-created' ||
+            result == 'card-payment-pendingCreated',
       ),
     );
   }

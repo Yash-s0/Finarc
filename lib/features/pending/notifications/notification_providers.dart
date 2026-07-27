@@ -457,6 +457,7 @@ final smsIngestionServiceProvider = Provider<SmsIngestionService>((ref) {
 
   return SmsIngestionService(
     database: ref.read(appDatabaseProvider),
+    pendingService: ref.read(pendingServiceProvider),
     pendingIngestionService: ref.read(pendingIngestionServiceProvider),
     keywordFilter: NotificationKeywordFilter(),
     fingerprint: SmsFingerprint(),

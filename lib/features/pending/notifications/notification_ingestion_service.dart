@@ -584,6 +584,21 @@ class NotificationIngestionService {
           );
         }
 
+        if (_isMirroredFinancialAlertDuplicate(
+          candidate: candidate,
+          row: row,
+          candidateCounterparty: candidateCounterparty,
+          candidateDirection: candidateDirection,
+          candidateRef: candidateRef,
+          rowRef: rowRef,
+        )) {
+          return const _NearDuplicateDecision(
+            suppress: true,
+            possibleDuplicate: false,
+            reason: 'mirrored_financial_alert_duplicate_within_2m',
+          );
+        }
+
         if (_directionFromPending(row) != candidateDirection) continue;
         if (!CounterpartyNormalizer.isSameOrNearMatch(
           candidateCounterparty,
@@ -718,6 +733,83 @@ class NotificationIngestionService {
       return false;
     }
     return candidateDate.difference(rowDate).abs() <= _genericDuplicateWindow;
+  }
+
+  bool _isMirroredFinancialAlertDuplicate({
+    required DetectedTransactionCandidate candidate,
+    required PendingTransaction row,
+    required String candidateCounterparty,
+    required String candidateDirection,
+    required String? candidateRef,
+    required String? rowRef,
+  }) {
+    if (candidateDirection != 'expense' ||
+        _directionFromPending(row) != 'expense') {
+      return false;
+    }
+    if (candidate.transactionDate.difference(row.transactionDate).abs() >
+        _genericDuplicateWindow) {
+      return false;
+    }
+    if (candidateRef != null && rowRef != null && candidateRef != rowRef) {
+      return false;
+    }
+
+    final combinedLower =
+        '${candidate.rawText} ${candidate.merchant} ${row.rawText} ${row.merchant}'
+            .toLowerCase();
+    if (!combinedLower.contains('autopay')) return false;
+
+    final candidateTokens = _distinctiveDuplicateTokens(
+      '${candidate.merchant} $candidateCounterparty ${candidate.rawText}',
+    );
+    final rowTokens = _distinctiveDuplicateTokens(
+      '${row.merchant} ${row.rawText}',
+    );
+    if (candidateTokens.isEmpty || rowTokens.isEmpty) return false;
+
+    final overlap = candidateTokens.intersection(rowTokens);
+    if (overlap.length >= 2) return true;
+    return overlap.any((token) => token.length >= 7);
+  }
+
+  Set<String> _distinctiveDuplicateTokens(String text) {
+    final normalized = CounterpartyNormalizer.normalize(text);
+    if (normalized.isEmpty) return const {};
+    const ignored = {
+      'your',
+      'bank',
+      'card',
+      'credit',
+      'debit',
+      'rupay',
+      'visa',
+      'mastercard',
+      'inr',
+      'rs',
+      'sms',
+      'blkcc',
+      'lmt',
+      'limit',
+      'successfully',
+      'successful',
+      'towards',
+      'private',
+      'limited',
+      'pvt',
+      'privat',
+      'autopay',
+    };
+    return normalized
+        .split(' ')
+        .where(
+          (token) =>
+              token.length >= 3 &&
+              !ignored.contains(token) &&
+              !RegExp(r'^\d+$').hasMatch(token) &&
+              !RegExp(r'^x+\d*$').hasMatch(token),
+        )
+        .toSet();
   }
 
   bool _isWeakCounterparty(String value) {
