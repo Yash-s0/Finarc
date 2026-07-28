@@ -624,18 +624,199 @@ class AppDatabase extends _$AppDatabase {
     beforeOpen: (details) async {
       await _healAppSettingsRows();
       await _healCriticalNullRows();
+      await repairMirroredAutopayPendingDuplicates();
     },
   );
 
   Future<void> seedIfEmpty() async {
     await _healAppSettingsRows();
     await _healCriticalNullRows();
+    await repairMirroredAutopayPendingDuplicates();
     final settings = await (select(appSettings)..limit(1)).getSingleOrNull();
     if (settings == null) {
       await into(
         appSettings,
       ).insert(AppSettingsCompanion.insert(isDarkMode: const Value(true)));
     }
+  }
+
+  Future<int> repairMirroredAutopayPendingDuplicates() async {
+    final rows =
+        await (select(pendingTransactions)..where(
+              (p) => p.status.equals('pending') & p.amount.isBiggerThanValue(0),
+            ))
+            .get();
+    if (rows.length < 2) return 0;
+
+    final sorted = [...rows]
+      ..sort((a, b) {
+        final byAmount = a.amount.compareTo(b.amount);
+        if (byAmount != 0) return byAmount;
+        return a.transactionDate.compareTo(b.transactionDate);
+      });
+
+    final duplicateIdsBySurvivor = <int, List<int>>{};
+    final consumed = <int>{};
+    for (final row in sorted) {
+      if (consumed.contains(row.id)) continue;
+      final group = <PendingTransaction>[row];
+      for (final candidate in sorted) {
+        if (candidate.id == row.id || consumed.contains(candidate.id)) {
+          continue;
+        }
+        if (_isMirroredAutopayPendingDuplicate(row, candidate)) {
+          group.add(candidate);
+        }
+      }
+      if (group.length <= 1) continue;
+
+      final survivor = _chooseMirroredAutopaySurvivor(group);
+      consumed.addAll(group.map((item) => item.id));
+      duplicateIdsBySurvivor[survivor.id] = group
+          .where((item) => item.id != survivor.id)
+          .map((item) => item.id)
+          .toList(growable: false);
+    }
+
+    var repaired = 0;
+    for (final entry in duplicateIdsBySurvivor.entries) {
+      if (entry.value.isEmpty) continue;
+      repaired += entry.value.length;
+      await (update(
+        pendingTransactions,
+      )..where((p) => p.id.isIn(entry.value))).write(
+        PendingTransactionsCompanion(
+          status: const Value('duplicate'),
+          duplicateOfTransactionId: Value(entry.key),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+    }
+
+    if (repaired > 0) {
+      await globalAppLogService.log(
+        category: 'migration',
+        message: 'repaired-mirrored-autopay-pending-duplicates',
+        meta: <String, Object?>{'rows': repaired},
+      );
+    }
+    return repaired;
+  }
+
+  bool _isMirroredAutopayPendingDuplicate(
+    PendingTransaction left,
+    PendingTransaction right,
+  ) {
+    if ((left.amount - right.amount).abs() > 0.01) return false;
+    if (left.transactionDate.difference(right.transactionDate).abs() >
+        const Duration(minutes: 2)) {
+      return false;
+    }
+    final combinedLower =
+        '${left.rawText} ${left.merchant} ${right.rawText} ${right.merchant}'
+            .toLowerCase();
+    if (!combinedLower.contains('autopay')) return false;
+
+    final leftTokens = _distinctivePendingDuplicateTokens(
+      '${left.merchant} ${left.rawText}',
+    );
+    final rightTokens = _distinctivePendingDuplicateTokens(
+      '${right.merchant} ${right.rawText}',
+    );
+    if (leftTokens.isEmpty || rightTokens.isEmpty) return false;
+    final overlap = leftTokens.intersection(rightTokens);
+    if (overlap.length >= 2) return true;
+    return overlap.any((token) => token.length >= 7);
+  }
+
+  PendingTransaction _chooseMirroredAutopaySurvivor(
+    List<PendingTransaction> group,
+  ) {
+    final sorted = [...group]
+      ..sort((a, b) {
+        final byScore = _pendingSurvivorScore(
+          b,
+        ).compareTo(_pendingSurvivorScore(a));
+        if (byScore != 0) return byScore;
+        return a.transactionDate.compareTo(b.transactionDate);
+      });
+    return sorted.first;
+  }
+
+  double _pendingSurvivorScore(PendingTransaction row) {
+    final rawLower = row.rawText.toLowerCase();
+    final merchantTokens = _distinctivePendingDuplicateTokens(row.merchant);
+    var score = row.confidenceScore;
+    if (row.paymentSourceTypeSuggestion == 'creditCard') score += 4;
+    if (row.sourceType == 'sms') score += 1;
+    if (rawLower.contains(' spent ')) score += 2;
+    if (rawLower.contains(' card ')) score += 1;
+    if (merchantTokens.isNotEmpty) score += 1;
+    if (merchantTokens.contains('apple')) score += 1;
+    return score;
+  }
+
+  Set<String> _distinctivePendingDuplicateTokens(String text) {
+    var normalized = text.toLowerCase();
+    normalized = normalized.replaceAllMapped(
+      RegExp(r'([a-z0-9._-]{2,})@([a-z0-9._-]{2,})', caseSensitive: false),
+      (match) => '${match.group(1) ?? ''} ${match.group(2) ?? ''}',
+    );
+    normalized = normalized
+        .replaceAll(RegExp(r'[^a-z0-9 ]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    if (normalized.isEmpty) return const {};
+
+    const ignored = {
+      'your',
+      'bank',
+      'card',
+      'credit',
+      'debit',
+      'debited',
+      'rupay',
+      'visa',
+      'mastercard',
+      'inr',
+      'rs',
+      'sms',
+      'blkcc',
+      'lmt',
+      'limit',
+      'successfully',
+      'successful',
+      'towards',
+      'private',
+      'limited',
+      'pvt',
+      'privat',
+      'autopay',
+      'payment',
+      'upi',
+      'update',
+      'tap',
+      'details',
+      'spent',
+      'on',
+      'for',
+      'has',
+      'been',
+      'with',
+      'if',
+      'not',
+      'you',
+    };
+    return normalized
+        .split(' ')
+        .where(
+          (token) =>
+              token.length >= 3 &&
+              !ignored.contains(token) &&
+              !RegExp(r'^\d+$').hasMatch(token) &&
+              !RegExp(r'^x+\d*$').hasMatch(token),
+        )
+        .toSet();
   }
 
   Future<void> _healAppSettingsRows() async {

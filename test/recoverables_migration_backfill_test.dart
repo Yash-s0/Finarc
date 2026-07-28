@@ -115,4 +115,69 @@ void main() {
     expect(pending.recoveredAmount, closeTo(0, 0.01));
     expect(pending.recoverableAmount, closeTo(180, 0.01));
   });
+
+  test('repair marks legacy mirrored autopay pending rows as duplicates', () async {
+    final cardSpendId = await db
+        .into(db.pendingTransactions)
+        .insert(
+          PendingTransactionsCompanion.insert(
+            amount: 899,
+            merchant: 'Upa Apple India Privat',
+            categorySuggestion: 'Others',
+            paymentSourceTypeSuggestion: 'creditCard',
+            detectedAt: DateTime(2026, 7, 27, 14, 19, 48),
+            transactionDate: DateTime(2026, 7, 27, 14, 19, 48),
+            sourceType: 'sms',
+            rawText:
+                'INR 899.00 spent on YES BANK Card X8731 @UPA_APPLE INDIA PRIVAT 27-07-2026 02:19:48 pm. Avl Lmt INR 45,338.05. SMS BLKCC 8731 to 9840909000 if not you',
+            confidenceScore: 0.95,
+          ),
+        );
+    final debitSmsId = await db
+        .into(db.pendingTransactions)
+        .insert(
+          PendingTransactionsCompanion.insert(
+            amount: 899,
+            merchant: '27 07 2026 Towards Apple India Private Limited',
+            categorySuggestion: 'Transfer',
+            paymentSourceTypeSuggestion: 'bank',
+            detectedAt: DateTime(2026, 7, 27, 14, 19, 58),
+            transactionDate: DateTime(2026, 7, 27, 14, 19, 58),
+            sourceType: 'sms',
+            rawText:
+                'JD-YESBAK-S Your RuPay Credit Card has been successfully debited with Rs.899.00 on 27/07/2026 towards Apple India Private Limited UPI AutoPay, 1acc1dde7ac648cabe4e3a029571c4e7@yescred.-Yes Bank Your RuPay Credit Card has been successfully debited with Rs.899.00 on 27/07/2026 towards Apple India Private Limited UPI AutoPay, 1acc1dde7ac648cabe4e3a029571c4e7@yescred.-Yes Bank',
+            confidenceScore: 0.95,
+          ),
+        );
+    final appAlertId = await db
+        .into(db.pendingTransactions)
+        .insert(
+          PendingTransactionsCompanion.insert(
+            amount: 899,
+            merchant: 'Your',
+            categorySuggestion: 'Transfer',
+            paymentSourceTypeSuggestion: 'upi',
+            detectedAt: DateTime(2026, 7, 27, 14, 19, 49),
+            transactionDate: DateTime(2026, 7, 27, 14, 19, 49),
+            sourceType: 'appNotification',
+            rawText:
+                'update on your UPI autopay payment UPI autopay of ₹899 for Apple India Private Limited has been debited successfully. tap for more details. update on your UPI autopay payment UPI autopay of ₹899 for Apple India Private Limited has been debited successfully. tap for more details.',
+            confidenceScore: 0.77,
+          ),
+        );
+
+    final repaired = await db.repairMirroredAutopayPendingDuplicates();
+
+    expect(repaired, 2);
+    final rows = await db.select(db.pendingTransactions).get();
+    final byId = {for (final row in rows) row.id: row};
+    expect(byId[cardSpendId]!.status, 'pending');
+    expect(byId[debitSmsId]!.status, 'duplicate');
+    expect(byId[debitSmsId]!.duplicateOfTransactionId, cardSpendId);
+    expect(byId[appAlertId]!.status, 'duplicate');
+    expect(byId[appAlertId]!.duplicateOfTransactionId, cardSpendId);
+
+    final secondRun = await db.repairMirroredAutopayPendingDuplicates();
+    expect(secondRun, 0);
+  });
 }
