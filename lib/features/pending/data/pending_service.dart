@@ -137,6 +137,7 @@ class PendingService {
 
     try {
       final transactionImpactType =
+          _sweepTransferTransactionImpactType(pending) ??
           await _balanceSyncedWalletTransactionImpactType(
             pending: pending,
             resolvedData: resolvedData,
@@ -459,6 +460,9 @@ class PendingService {
     PendingTransaction pending,
     PendingEditData editedData,
   ) {
+    if (ParserTextUtils.looksLikeSweepTransferMessage(pending.rawText)) {
+      return TransactionType.transfer;
+    }
     final category = editedData.category.trim().toLowerCase();
     if (category == 'refund') return TransactionType.refund;
     if (category == 'income' ||
@@ -490,9 +494,19 @@ class PendingService {
     if (category.trim().toLowerCase() == 'refund') {
       return TransactionType.refund;
     }
+    if (detectedType == TransactionType.transfer) {
+      return TransactionType.transfer;
+    }
     return paymentSourceType == PaymentSourceType.creditCard
         ? TransactionType.creditCard
         : paymentSourceType;
+  }
+
+  String? _sweepTransferTransactionImpactType(PendingTransaction pending) {
+    if (!ParserTextUtils.looksLikeSweepTransferMessage(pending.rawText)) {
+      return null;
+    }
+    return TransactionImpactType.historicalNoBalance;
   }
 
   String _validationReasonFromEngineMessage(String message) {

@@ -151,6 +151,51 @@ void main() {
   });
 
   test(
+    'confirm ActivMoney sweep keeps bank balance unchanged and records label',
+    () async {
+      final pendingId = await service.createPendingTransaction(
+        amount: 15000,
+        merchant: 'ActivMoney',
+        categorySuggestion: 'Transfer',
+        paymentSourceTypeSuggestion: PaymentSourceType.bank,
+        paymentSourceIdSuggestion: 1,
+        transactionDate: DateTime(2026, 7, 31, 22, 34, 18),
+        sourceType: 'appNotification',
+        rawText:
+            'ActivMoney sweep out ₹15,000.00 credited to ActivMoney. Check out details. ₹15,000.00 credited to ActivMoney. Check out details.',
+        confidenceScore: 0.77,
+      );
+
+      await service.confirmPendingTransaction(
+        pendingId,
+        PendingEditData(
+          amount: 15000,
+          merchant: 'ActivMoney',
+          category: 'Transfer',
+          paymentSourceType: PaymentSourceType.bank,
+          paymentSourceId: 1,
+          transactionDate: DateTime(2026, 7, 31, 22, 34, 18),
+        ),
+      );
+
+      final txn = await (db.select(
+        db.transactions,
+      )..where((t) => t.title.equals('ActivMoney'))).getSingle();
+      final bank = await (db.select(
+        db.bankAccounts,
+      )..where((b) => b.id.equals(1))).getSingle();
+
+      expect(txn.type, TransactionType.transfer);
+      expect(txn.category, 'Transfer');
+      expect(
+        txn.transactionImpactType,
+        TransactionImpactType.historicalNoBalance,
+      );
+      expect(bank.currentBalance, closeTo(10000, 0.001));
+    },
+  );
+
+  test(
     'confirm pending auto-resolves missing bank source from single account',
     () async {
       final pendingId = await service.createPendingTransaction(

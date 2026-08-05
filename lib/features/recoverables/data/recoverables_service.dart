@@ -102,6 +102,9 @@ class RecoverablePartyGroup {
       items.fold<double>(0, (sum, item) => sum + item.recoveredAmount);
   double get remainingTotal =>
       items.fold<double>(0, (sum, item) => sum + item.openAmount);
+  double get actionableTotal => items
+      .where((item) => item.isActionable)
+      .fold<double>(0, (sum, item) => sum + item.openAmount);
   double get openTotal => remainingTotal;
   double get settledTotal => recoveredTotal;
   int get transactionCount => items.length;
@@ -328,6 +331,7 @@ class RecoverablesService {
     final candidates =
         data.items
             .where((item) => item.partyName == partyName && !item.isRecovered)
+            .where((item) => item.isActionable)
             .toList(growable: false)
           ..sort(_recoveryPriorityCompare);
     final openBefore = candidates.fold<double>(
@@ -456,7 +460,17 @@ class RecoverablesService {
     return _RecoverableData(items: normalItems, billById: billById);
   }
 
-  Future<void> markRecovered(int transactionId) {
+  Future<void> markRecovered(int transactionId) async {
+    final data = await _loadRecoverableData();
+    final item = data.items
+        .where((item) => item.id == transactionId)
+        .cast<RecoverableTransactionItem?>()
+        .firstWhere((item) => item != null, orElse: () => null);
+    if (item != null && !item.isActionable) {
+      throw StateError(
+        'This recoverable can be marked recovered after it becomes billable.',
+      );
+    }
     return _engine.markRecovered(transactionId);
   }
 
@@ -596,10 +610,6 @@ class RecoverablesService {
     if (item.billingState == RecoverableBillingState.billed ||
         item.billingState == RecoverableBillingState.needsReview) {
       return 0;
-    }
-    if (item.sourceFilter == RecoverableSourceFilter.card &&
-        item.billingState == RecoverableBillingState.unbilled) {
-      return 2;
     }
     return 1;
   }

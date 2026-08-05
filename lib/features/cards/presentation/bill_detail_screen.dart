@@ -114,6 +114,7 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
       ),
       data: (data) {
         final bill = data.bill;
+        final isOpeningBill = bill.status == 'opening';
         final dueDays = bill.dueDate.difference(DateTime.now()).inDays;
         final pendingAmount = (bill.billedAmount - bill.paidAmount)
             .clamp(0, bill.billedAmount)
@@ -218,9 +219,13 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
                       const SizedBox(height: AppSpacing.sm),
                       Text(
                         pendingAmount <= 0
-                            ? 'This statement is fully paid.'
+                            ? isOpeningBill
+                                  ? 'This opening balance is fully paid.'
+                                  : 'This statement is fully paid.'
                             : bill.paidAmount > 0
                             ? 'Paid ${inr(bill.paidAmount)} so far. Record another payment for the remaining due.'
+                            : isOpeningBill
+                            ? 'Record payment for the unmatched opening balance from your card outstanding.'
                             : 'Record a full or partial bill payment with source, date, and optional reference.',
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
@@ -260,6 +265,10 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),
+                if (isOpeningBill) ...[
+                  _OpeningBillExplanationCard(card: data.card, bill: bill),
+                  const SizedBox(height: AppSpacing.md),
+                ],
                 FinarcCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -274,9 +283,12 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
                         physics: const NeverScrollableScrollPhysics(),
                         showScrollbar: false,
                         emptyState: FinarcEmptyState(
-                          title: 'No transactions in this bill',
-                          subtitle:
-                              'Statement transactions will appear here after bill generation.',
+                          title: isOpeningBill
+                              ? 'Opening balance adjustment'
+                              : 'No transactions in this bill',
+                          subtitle: isOpeningBill
+                              ? 'This bill is the unmatched part of your card outstanding, so no transaction is attached to it.'
+                              : 'Statement transactions will appear here after bill generation.',
                           icon: Icons.receipt_long_outlined,
                         ),
                         itemBuilder: (context, index) {
@@ -324,6 +336,7 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
     BuildContext context, {
     required ({
       CardBill bill,
+      CreditCard card,
       List<Transaction> txns,
       List<BankAccount> accounts,
       List<CashWallet> wallets,
@@ -536,6 +549,7 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
   void _preparePaymentForm({
     required ({
       CardBill bill,
+      CreditCard card,
       List<Transaction> txns,
       List<BankAccount> accounts,
       List<CashWallet> wallets,
@@ -684,6 +698,55 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
   static String _dateText(DateTime date) {
     final d = date.toLocal();
     return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+  }
+}
+
+class _OpeningBillExplanationCard extends StatelessWidget {
+  const _OpeningBillExplanationCard({required this.card, required this.bill});
+
+  final CreditCard card;
+  final CardBill bill;
+
+  @override
+  Widget build(BuildContext context) {
+    final pendingAmount = (bill.billedAmount - bill.paidAmount)
+        .clamp(0, bill.billedAmount)
+        .toDouble();
+    final matchedOutstanding = (card.currentOutstanding - pendingAmount)
+        .clamp(0, card.currentOutstanding)
+        .toDouble();
+
+    return FinarcCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const FinarcSectionHeader(title: 'Opening Balance Calculation'),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'This is the unmatched portion of the card outstanding. It is not tied to a statement transaction.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _BillDetailScreenState._metricLine(
+            context,
+            'Card outstanding',
+            inr(card.currentOutstanding),
+            emphasize: true,
+          ),
+          _BillDetailScreenState._metricLine(
+            context,
+            'Matched billed/unbilled',
+            inr(matchedOutstanding),
+          ),
+          _BillDetailScreenState._metricLine(
+            context,
+            'Opening adjustment',
+            inr(pendingAmount),
+            valueColor: AppColors.darkWarning,
+          ),
+        ],
+      ),
+    );
   }
 }
 

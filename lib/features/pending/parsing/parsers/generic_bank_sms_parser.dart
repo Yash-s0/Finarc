@@ -61,8 +61,9 @@ class GenericBankSmsParser implements TransactionParser {
 
       final direction = _detectDirection(segment);
       final counterparty = _extractCounterparty(segment, direction);
+      final sweepLabel = ParserTextUtils.extractSweepTransferLabel(segment);
       final merchant = MerchantNormalizer.normalize(
-        counterparty ?? 'Unknown Merchant',
+        sweepLabel ?? counterparty ?? 'Unknown Merchant',
       );
 
       final hintLast4 = ParserTextUtils.extractLast4Hint(segment);
@@ -116,6 +117,9 @@ class GenericBankSmsParser implements TransactionParser {
             'sourceSuggestion': sourceSuggestion,
             'transactionRef': ref,
             'direction': direction.name,
+            'isSweepTransfer': ParserTextUtils.looksLikeSweepTransferMessage(
+              segment,
+            ),
             'hasParsedDate': parsedDateTime?.hasDate == true,
             'hasParsedTime': parsedDateTime?.hasTime == true,
           },
@@ -209,6 +213,9 @@ class GenericBankSmsParser implements TransactionParser {
   }
 
   _TxnDirection _detectDirection(String text) {
+    if (ParserTextUtils.looksLikeSweepTransferMessage(text)) {
+      return _TxnDirection.unknown;
+    }
     final direction = PendingDirectionClassifier.detect(text: text);
     switch (direction) {
       case PendingTransactionDirection.income:
@@ -301,10 +308,17 @@ class GenericBankSmsParser implements TransactionParser {
 
   List<String> _dedupeByReference(List<String> segments) {
     final seenReferences = <String>{};
+    final seenBodies = <String>{};
     final output = <String>[];
     for (final segment in segments) {
       final ref = ParserTextUtils.extractTransactionReference(segment);
       if (ref == null) {
+        final normalized = segment
+            .toLowerCase()
+            .replaceAll(RegExp(r'\s+'), ' ')
+            .trim();
+        if (seenBodies.contains(normalized)) continue;
+        seenBodies.add(normalized);
         output.add(segment);
         continue;
       }
@@ -322,6 +336,9 @@ class GenericBankSmsParser implements TransactionParser {
     required String? accountHint,
   }) {
     final lower = segment.toLowerCase();
+    if (ParserTextUtils.looksLikeSweepTransferMessage(segment)) {
+      return PaymentSourceType.bank;
+    }
     if (lower.contains('card')) return PaymentSourceType.creditCard;
     if (lower.contains('amazon pay') ||
         lower.contains('amazonpay') ||
@@ -355,6 +372,9 @@ class GenericBankSmsParser implements TransactionParser {
     required String merchant,
   }) {
     final lower = segment.toLowerCase();
+    if (ParserTextUtils.looksLikeSweepTransferMessage(segment)) {
+      return 'Transfer';
+    }
     if (direction == _TxnDirection.income) {
       if (lower.contains('salary') || lower.contains('payroll')) {
         return 'Income';

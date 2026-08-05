@@ -319,7 +319,57 @@ class ParserTextUtils {
   static bool looksLikeNonTransactionMessage(String text) {
     return looksLikeNonExpenseCardMessage(text) ||
         looksLikeAutopayMandateSetupMessage(text) ||
-        looksLikeCreditLimitOfferMessage(text);
+        looksLikeCreditLimitOfferMessage(text) ||
+        looksLikeInvestmentPromoMessage(text);
+  }
+
+  static bool looksLikeInvestmentPromoMessage(String text) {
+    final lower = text.toLowerCase();
+    final hasPromoSignal =
+        lower.contains('start your sip') ||
+        lower.contains('mutual fund') ||
+        lower.contains('invest now') ||
+        lower.contains('investment offer') ||
+        lower.contains('time to use it smartly') ||
+        lower.contains('t&c apply') ||
+        lower.contains('t and c apply');
+    if (!hasPromoSignal) return false;
+
+    final hasTransactionSignal = RegExp(
+      r'\b(?:debited|credited\s+(?:by|to\s+(?:a\/c|ac|account))|received\s+(?:in|from)|paid|spent|sent|deducted|charged|withdrawn|upi\s*ref|rrn|txn|transaction)\b',
+      caseSensitive: false,
+    ).hasMatch(text);
+    return !hasTransactionSignal;
+  }
+
+  static bool looksLikeSweepTransferMessage(String text) {
+    final lower = text.toLowerCase();
+    return lower.contains('sweep out') ||
+        lower.contains('sweep-in') ||
+        lower.contains('sweep in') ||
+        lower.contains('activmoney') ||
+        RegExp(
+          r'\bsweep\s+(?:transfer|deposit)\b',
+          caseSensitive: false,
+        ).hasMatch(text);
+  }
+
+  static String? extractSweepTransferLabel(String text) {
+    final match = RegExp(
+      r'\b([A-Za-z][A-Za-z0-9 _.-]{1,32})\s+sweep\s+(?:out|in)\b',
+      caseSensitive: false,
+    ).firstMatch(text);
+    final raw = match?.group(1)?.trim();
+    if (raw != null && raw.isNotEmpty) {
+      return compactSpaces(raw);
+    }
+    final creditedTo = RegExp(
+      r'\bcredited\s+to\s+([A-Za-z][A-Za-z0-9 _.-]{1,32})\b',
+      caseSensitive: false,
+    ).firstMatch(text);
+    final value = creditedTo?.group(1)?.trim();
+    if (value == null || value.isEmpty) return null;
+    return compactSpaces(value);
   }
 
   static bool looksLikeAutopayMandateSetupMessage(String text) {

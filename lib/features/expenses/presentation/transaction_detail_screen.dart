@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/database/app_database.dart' show CreditCard;
+import '../../../core/database/app_database.dart' show CreditCard, Transaction;
 import '../../../core/database/database_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -444,7 +444,8 @@ class _TransactionDetailScreenState
                           ),
                           if (editable &&
                               txn.isForOthers &&
-                              txn.recoverableStatus != 'recovered') ...[
+                              txn.recoverableStatus != 'recovered' &&
+                              _canMarkRecovered(txn)) ...[
                             const SizedBox(height: AppSpacing.sm),
                             FinarcPrimaryButton(
                               onPressed: () => _markRecovered(txn.id),
@@ -793,7 +794,7 @@ class _TransactionDetailScreenState
 
   Future<void> _markRecovered(int transactionId) async {
     try {
-      await ref.read(transactionEngineProvider).markRecovered(transactionId);
+      await ref.read(recoverablesServiceProvider).markRecovered(transactionId);
       _invalidateAll();
       if (!mounted) return;
       setState(() {});
@@ -803,6 +804,11 @@ class _TransactionDetailScreenState
         SnackBar(content: Text('Unable to mark as recovered: $e')),
       );
     }
+  }
+
+  bool _canMarkRecovered(Transaction txn) {
+    if (txn.paymentSourceType != PaymentSourceType.creditCard) return true;
+    return txn.cardBillId != null;
   }
 
   Future<void> _delete(int id) async {

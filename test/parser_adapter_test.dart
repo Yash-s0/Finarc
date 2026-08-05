@@ -131,6 +131,42 @@ void main() {
     expect(candidate.metadata?['direction'], 'income');
   });
 
+  test('ignores SIP promo with salary credited wording', () {
+    final result = registry.parseInput(
+      ParserInput(
+        rawText:
+            'Salary credited? 💸 Time to use it smartly! Start your SIP with Kotak811 App from just ₹500. T&C apply Salary credited? 💸 Time to use it smartly! Start your SIP with Kotak811 App from just ₹500. T&C apply',
+        sourceType: 'appNotification',
+        packageName: 'com.kotak811',
+        sender: 'Kotak811',
+        receivedAt: DateTime(2026, 8, 1, 11, 1, 32),
+      ),
+    );
+
+    expect(result.candidates, isEmpty);
+  });
+
+  test('parses ActivMoney sweep as balance-neutral transfer candidate', () {
+    final result = registry.parseInput(
+      ParserInput(
+        rawText:
+            'ActivMoney sweep out ₹15,000.00 credited to ActivMoney. Check out details. ActivMoney sweep out ₹15,000.00 credited to ActivMoney. Check out details.',
+        sourceType: 'appNotification',
+        packageName: 'com.kotak811',
+        sender: 'Kotak811',
+        receivedAt: DateTime(2026, 7, 31, 22, 34, 18),
+      ),
+    );
+
+    final candidate = result.candidates.single;
+    expect(candidate.amount, 15000);
+    expect(candidate.merchant, 'Activmoney');
+    expect(candidate.categorySuggestion, 'Transfer');
+    expect(candidate.paymentSourceTypeSuggestion, 'bank');
+    expect(candidate.metadata?['direction'], 'unknown');
+    expect(candidate.metadata?['isSweepTransfer'], isTrue);
+  });
+
   test('parses sent upi alert with account hint', () {
     final result = registry.parseInput(
       ParserInput(

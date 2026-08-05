@@ -37,7 +37,11 @@ void main() {
         );
   }
 
-  Future<int> createBill(int cardId, {double billedAmount = 1200}) {
+  Future<int> createBill(
+    int cardId, {
+    double billedAmount = 1200,
+    String status = 'billed',
+  }) {
     return db
         .into(db.cardBills)
         .insert(
@@ -49,7 +53,7 @@ void main() {
             dueDate: Value(DateTime(2026, 5, 20)),
             billedAmount: billedAmount,
             paidAmount: const Value(0),
-            status: const Value('billed'),
+            status: Value(status),
           ),
         );
   }
@@ -113,7 +117,7 @@ void main() {
   );
 
   testWidgets('bill detail shows bill mismatch review context', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(800, 1000));
+    await tester.binding.setSurfaceSize(const Size(800, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final cardId = await createCard();
     final billId = await createBill(cardId);
@@ -139,6 +143,32 @@ void main() {
     expect(find.text('Difference'), findsOneWidget);
     expect(find.text('₹1,250.00'), findsOneWidget);
     expect(find.text('₹50.00'), findsOneWidget);
+  });
+
+  testWidgets('opening bill explains unmatched outstanding calculation', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final cardId = await createCard(currentOutstanding: 19609);
+    final billId = await createBill(
+      cardId,
+      billedAmount: 1000,
+      status: 'opening',
+    );
+
+    await tester.pumpWidget(
+      wrap(BillDetailScreen(cardId: cardId, billId: billId)),
+    );
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView), const Offset(0, -600));
+    await tester.pumpAndSettle();
+
+    expect(find.text('OPENING BALANCE CALCULATION'), findsOneWidget);
+    expect(find.text('Card outstanding'), findsOneWidget);
+    expect(find.text('Matched billed/unbilled'), findsOneWidget);
+    expect(find.text('Opening adjustment'), findsOneWidget);
+    expect(find.text('Opening balance adjustment'), findsOneWidget);
   });
 
   testWidgets(

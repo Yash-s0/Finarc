@@ -76,7 +76,9 @@ class _RecoverablePersonDetailScreenState
                 const SizedBox(height: AppSpacing.sm),
                 FinarcPrimaryButton(
                   label: 'Record Recovery',
-                  onPressed: () => _openRecordRecoveryDialog(group),
+                  onPressed: group.actionableTotal > 0.009
+                      ? () => _openRecordRecoveryDialog(group)
+                      : null,
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 Wrap(
@@ -286,7 +288,7 @@ class _RecordRecoveryDialogState extends ConsumerState<_RecordRecoveryDialog> {
   void initState() {
     super.initState();
     _amountController = TextEditingController(
-      text: moneyInput(widget.group.remainingTotal),
+      text: moneyInput(widget.group.actionableTotal),
     );
   }
 
@@ -307,7 +309,7 @@ class _RecordRecoveryDialogState extends ConsumerState<_RecordRecoveryDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '${widget.group.partyName} • Remaining ${inr(widget.group.remainingTotal)}',
+              '${widget.group.partyName} • Actionable ${inr(widget.group.actionableTotal)}',
             ),
             const SizedBox(height: AppSpacing.sm),
             FinarcTextField(
@@ -330,7 +332,7 @@ class _RecordRecoveryDialogState extends ConsumerState<_RecordRecoveryDialog> {
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
-              'Recovery is applied billed-due first, then bank/UPI/cash by oldest date, then unbilled cards.',
+              'Recovery is applied to billed card, bank/UPI, and cash items. Unbilled card items unlock after statement generation.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],

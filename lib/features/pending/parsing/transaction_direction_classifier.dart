@@ -1,3 +1,5 @@
+import 'parser_text_utils.dart';
+
 enum PendingTransactionDirection { income, expense, unknown }
 
 class PendingDirectionClassifier {
@@ -49,6 +51,9 @@ class PendingDirectionClassifier {
     required String text,
     String? categoryHint,
   }) {
+    if (ParserTextUtils.looksLikeSweepTransferMessage(text)) {
+      return PendingTransactionDirection.unknown;
+    }
     final normalized = text.toLowerCase();
     final category = categoryHint?.trim().toLowerCase() ?? '';
     if (category == 'income' ||

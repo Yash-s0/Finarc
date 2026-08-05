@@ -237,14 +237,14 @@ void main() {
   });
 
   test(
-    'partial recovery applies billed then bank cash then unbilled',
+    'partial recovery applies billed then bank cash and leaves unbilled locked',
     () async {
       final now = DateTime.now();
       final billedDate = DateTime(
         now.year,
         now.month,
-        now.day > 1 ? now.day - 1 : 1,
-      );
+        now.day,
+      ).subtract(const Duration(days: 2));
       final bankDate = billedDate.subtract(const Duration(days: 4));
       final unbilledDate = now.day > 1
           ? DateTime(now.year, now.month, now.day)
@@ -294,6 +294,97 @@ void main() {
       expect(byTitle['Unbilled card']!.recoveredAmount, closeTo(0, 0.01));
     },
   );
+
+  test(
+    'person-level recovery cannot settle unbilled card recoverables',
+    () async {
+      final now = DateTime.now();
+      final billedDate = DateTime(
+        now.year,
+        now.month,
+        now.day,
+      ).subtract(const Duration(days: 2));
+      final unbilledDate = now.day > 1
+          ? DateTime(now.year, now.month, now.day)
+          : DateTime(now.year, now.month, 2);
+
+      await addRecoverable(
+        title: 'Billed card',
+        partyName: 'Rahul',
+        amount: 300,
+        date: billedDate,
+        paymentSourceType: PaymentSourceType.creditCard,
+        paymentSourceId: cardId,
+      );
+      await addRecoverable(
+        title: 'Bank item',
+        partyName: 'Rahul',
+        amount: 250,
+        date: billedDate.subtract(const Duration(days: 4)),
+        paymentSourceType: PaymentSourceType.bank,
+        paymentSourceId: bankId,
+      );
+      await addRecoverable(
+        title: 'Unbilled card',
+        partyName: 'Rahul',
+        amount: 400,
+        date: unbilledDate,
+        paymentSourceType: PaymentSourceType.creditCard,
+        paymentSourceId: cardId,
+      );
+
+      final service = serviceFor(now: () => now);
+      final before = await service.buildSnapshot();
+      final result = await service.recordRecovery(
+        partyName: 'Rahul',
+        amount: 1000,
+      );
+      final txns = await (db.select(
+        db.transactions,
+      )..orderBy([(t) => OrderingTerm.asc(t.id)])).get();
+      final byTitle = {for (final txn in txns) txn.title: txn};
+
+      expect(before.groups.single.remainingTotal, closeTo(950, 0.01));
+      expect(before.groups.single.actionableTotal, closeTo(550, 0.01));
+      expect(result.clamped, isTrue);
+      expect(result.openBefore, closeTo(550, 0.01));
+      expect(result.appliedAmount, closeTo(550, 0.01));
+      expect(result.remainingAfter, closeTo(0, 0.01));
+      expect(byTitle['Billed card']!.recoverableStatus, 'recovered');
+      expect(byTitle['Bank item']!.recoverableStatus, 'recovered');
+      expect(byTitle['Unbilled card']!.recoverableStatus, 'unpaid');
+      expect(byTitle['Unbilled card']!.recoveredAmount, closeTo(0, 0.01));
+    },
+  );
+
+  test('direct mark recovered rejects unbilled card recoverables', () async {
+    final now = DateTime.now();
+    final unbilledDate = now.day > 1
+        ? DateTime(now.year, now.month, now.day)
+        : DateTime(now.year, now.month, 2);
+
+    await addRecoverable(
+      title: 'Unbilled card',
+      partyName: 'Rahul',
+      amount: 400,
+      date: unbilledDate,
+      paymentSourceType: PaymentSourceType.creditCard,
+      paymentSourceId: cardId,
+    );
+
+    final service = serviceFor(now: () => now);
+    final txn = await (db.select(
+      db.transactions,
+    )..where((t) => t.title.equals('Unbilled card'))).getSingle();
+
+    await expectLater(service.markRecovered(txn.id), throwsStateError);
+
+    final unchanged = await (db.select(
+      db.transactions,
+    )..where((t) => t.id.equals(txn.id))).getSingle();
+    expect(unchanged.recoverableStatus, 'unpaid');
+    expect(unchanged.recoveredAmount, closeTo(0, 0.01));
+  });
 
   test('overpayment is clamped safely', () async {
     await addRecoverable(
@@ -345,8 +436,8 @@ void main() {
       final billedDate = DateTime(
         now.year,
         now.month,
-        now.day > 1 ? now.day - 1 : 1,
-      );
+        now.day,
+      ).subtract(const Duration(days: 2));
 
       await addRecoverable(
         title: 'Billed Card',

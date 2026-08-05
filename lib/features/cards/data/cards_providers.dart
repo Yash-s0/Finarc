@@ -157,12 +157,21 @@ final billDetailProvider = FutureProvider.family((ref, int billId) async {
   final bill = await (db.select(
     db.cardBills,
   )..where((b) => b.id.equals(billId))).getSingle();
+  final card = await (db.select(
+    db.creditCards,
+  )..where((c) => c.id.equals(bill.cardId))).getSingle();
   final txns = await ref
       .read(billingServiceProvider)
       .getBilledTransactions(bill.cardId, billId);
   final accounts = await db.select(db.bankAccounts).get();
   final wallets = await db.select(db.cashWallets).get();
-  return (bill: bill, txns: txns, accounts: accounts, wallets: wallets);
+  return (
+    bill: bill,
+    card: card,
+    txns: txns,
+    accounts: accounts,
+    wallets: wallets,
+  );
 });
 
 final markBillPaidProvider = Provider((ref) {

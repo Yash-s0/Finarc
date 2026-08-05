@@ -389,6 +389,23 @@ void main() {
       expect(rows, isEmpty);
     });
 
+    test('SIP promo with salary credited wording is ignored', () async {
+      final ids = await smsService.processSmsPayload(
+        NotificationPayload(
+          packageName: 'android.sms',
+          sourceType: 'sms',
+          receivedAt: DateTime(2026, 8, 1, 11, 1, 32),
+          sender: 'JD-KOTAKB-S',
+          body:
+              'Salary credited? 💸 Time to use it smartly! Start your SIP with Kotak811 App from just ₹500. T&C apply Salary credited? 💸 Time to use it smartly! Start your SIP with Kotak811 App from just ₹500. T&C apply',
+        ),
+      );
+
+      expect(ids, isEmpty);
+      final rows = await db.select(db.pendingTransactions).get();
+      expect(rows, isEmpty);
+    });
+
     test('duplicate SMS suppression and backfill-style repeat', () async {
       final payload = NotificationPayload(
         packageName: 'android.sms',
