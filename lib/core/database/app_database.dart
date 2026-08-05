@@ -5,6 +5,8 @@ import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../../features/expenses/models/transaction_types.dart';
+import '../../features/pending/parsing/parser_text_utils.dart';
 import '../logging/app_log_service.dart';
 
 part 'app_database.g.dart';
@@ -625,6 +627,9 @@ class AppDatabase extends _$AppDatabase {
       await _healAppSettingsRows();
       await _healCriticalNullRows();
       await repairMirroredAutopayPendingDuplicates();
+      await repairPromoAndSweepArtifacts();
+      await repairUnbilledCardRecoveries();
+      await repairStaleOpeningBills();
     },
   );
 
@@ -632,6 +637,10 @@ class AppDatabase extends _$AppDatabase {
     await _healAppSettingsRows();
     await _healCriticalNullRows();
     await repairMirroredAutopayPendingDuplicates();
+    await repairPromoAndSweepArtifacts();
+    await repairUnbilledCardRecoveries();
+    await repairStaleOpeningBills();
+    await normalizeRecoverableDataBackfill();
     final settings = await (select(appSettings)..limit(1)).getSingleOrNull();
     if (settings == null) {
       await into(
@@ -702,6 +711,348 @@ class AppDatabase extends _$AppDatabase {
     }
     return repaired;
   }
+
+  Future<int> repairPromoAndSweepArtifacts() async {
+    final pendingRows = await select(pendingTransactions).get();
+    var repaired = 0;
+
+    for (final pending in pendingRows) {
+      final isPromo = ParserTextUtils.looksLikeInvestmentPromoMessage(
+        pending.rawText,
+      );
+      final isSweep = ParserTextUtils.looksLikeSweepTransferMessage(
+        pending.rawText,
+      );
+      if (!isPromo && !isSweep) continue;
+
+      if (isPromo) {
+        final deleted = await _deleteConfirmedPromoTransactionForPending(
+          pending,
+        );
+        if (pending.status == 'pending' || pending.status == 'confirmed') {
+          await (update(
+            pendingTransactions,
+          )..where((p) => p.id.equals(pending.id))).write(
+            PendingTransactionsCompanion(
+              status: const Value('ignored'),
+              updatedAt: Value(DateTime.now()),
+            ),
+          );
+          repaired += 1;
+        }
+        repaired += deleted;
+        continue;
+      }
+
+      final label = ParserTextUtils.extractSweepTransferLabel(pending.rawText);
+      final nextMerchant = label == null || label.isEmpty
+          ? pending.merchant
+          : label;
+      if (pending.status == 'pending') {
+        await (update(
+          pendingTransactions,
+        )..where((p) => p.id.equals(pending.id))).write(
+          PendingTransactionsCompanion(
+            merchant: Value(nextMerchant),
+            categorySuggestion: const Value('Transfer'),
+            paymentSourceTypeSuggestion: const Value(PaymentSourceType.bank),
+            updatedAt: Value(DateTime.now()),
+          ),
+        );
+        repaired += 1;
+      }
+      repaired += await _neutralizeConfirmedSweepTransactionForPending(
+        pending,
+        nextMerchant,
+      );
+    }
+
+    if (repaired > 0) {
+      await globalAppLogService.log(
+        category: 'migration',
+        message: 'repaired-promo-and-sweep-artifacts',
+        meta: <String, Object?>{'rows': repaired},
+      );
+    }
+    return repaired;
+  }
+
+  Future<int> repairUnbilledCardRecoveries() async {
+    final rows =
+        await (select(transactions)..where(
+              (t) =>
+                  t.paymentSourceType.equals(PaymentSourceType.creditCard) &
+                  t.cardBillId.isNull() &
+                  t.isForOthers.equals(true) &
+                  (t.recoveredAmount.isBiggerThanValue(0) |
+                      t.recoverableStatus.equals('recovered') |
+                      t.recoverableStatus.equals('partial')),
+            ))
+            .get();
+    if (rows.isEmpty) return 0;
+
+    for (final txn in rows) {
+      final base =
+          txn.recoverableBaseAmount ??
+          (txn.amount - txn.cashbackAmount).clamp(0, txn.amount).toDouble();
+      await (update(transactions)..where((t) => t.id.equals(txn.id))).write(
+        TransactionsCompanion(
+          recoverableBaseAmount: Value(base),
+          recoverableAmount: Value(base),
+          recoveredAmount: const Value(0),
+          recoverableStatus: const Value('unpaid'),
+          recoveredAt: const Value(null),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+    }
+
+    await globalAppLogService.log(
+      category: 'migration',
+      message: 'repaired-unbilled-card-recoveries',
+      meta: <String, Object?>{'rows': rows.length},
+    );
+    return rows.length;
+  }
+
+  Future<int> repairStaleOpeningBills() async {
+    final cards = await select(creditCards).get();
+    var repaired = 0;
+    for (final card in cards) {
+      final opening =
+          await (select(cardBills)..where(
+                (b) => b.cardId.equals(card.id) & b.status.equals('opening'),
+              ))
+              .getSingleOrNull();
+      if (opening == null) continue;
+
+      final representedWithoutOpening =
+          await _representedCardOutstandingForRepair(
+            card.id,
+            includeOpening: false,
+          );
+      final nextOpeningAmount =
+          (card.currentOutstanding - representedWithoutOpening)
+              .clamp(0, double.infinity)
+              .toDouble();
+      if ((opening.billedAmount - nextOpeningAmount).abs() <= 0.009) {
+        continue;
+      }
+
+      final nextPaid = opening.paidAmount
+          .clamp(0, nextOpeningAmount)
+          .toDouble();
+      final nextPending = (nextOpeningAmount - nextPaid)
+          .clamp(0, nextOpeningAmount)
+          .toDouble();
+      await (update(cardBills)..where((b) => b.id.equals(opening.id))).write(
+        CardBillsCompanion(
+          billedAmount: Value(nextOpeningAmount),
+          paidAmount: Value(nextPaid),
+          status: Value(nextPending <= 0.009 ? 'paid' : 'opening'),
+          paidAt: Value(
+            nextPending <= 0.009 ? (opening.paidAt ?? DateTime.now()) : null,
+          ),
+        ),
+      );
+      repaired += 1;
+    }
+
+    if (repaired > 0) {
+      await globalAppLogService.log(
+        category: 'migration',
+        message: 'repaired-stale-opening-bills',
+        meta: <String, Object?>{'rows': repaired},
+      );
+    }
+    return repaired;
+  }
+
+  Future<double> _representedCardOutstandingForRepair(
+    int cardId, {
+    required bool includeOpening,
+  }) async {
+    final bills =
+        await (select(cardBills)..where(
+              (b) => b.cardId.equals(cardId) & b.status.isNotValue('paid'),
+            ))
+            .get();
+    final billedDue = bills
+        .where((bill) => includeOpening || bill.status != 'opening')
+        .fold<double>(
+          0,
+          (sum, bill) =>
+              sum +
+              (bill.billedAmount - bill.paidAmount).clamp(0, bill.billedAmount),
+        );
+
+    final unbilledTransactions =
+        await (select(transactions)..where(
+              (t) =>
+                  t.paymentSourceType.equals(PaymentSourceType.creditCard) &
+                  t.paymentSourceId.equals(cardId) &
+                  (t.type.equals(TransactionType.creditCard) |
+                      t.type.equals(TransactionType.refund)) &
+                  (t.transactionImpactType.isNull() |
+                      t.transactionImpactType.isNotValue(
+                        TransactionImpactType.historicalNoBalance,
+                      )) &
+                  t.cardBillId.isNull(),
+            ))
+            .get();
+    final unbilledSpends = unbilledTransactions.fold<double>(
+      0,
+      (sum, t) =>
+          sum + (t.type == TransactionType.refund ? -t.amount : t.amount),
+    );
+    return billedDue + unbilledSpends;
+  }
+
+  Future<int> _deleteConfirmedPromoTransactionForPending(
+    PendingTransaction pending,
+  ) async {
+    if (pending.status != 'confirmed') return 0;
+    final txn = await _findLikelyTransactionForPending(
+      pending,
+      allowedTypes: const {TransactionType.income},
+    );
+    if (txn == null) return 0;
+    await _reverseLiveBalanceEffectIfNeeded(txn);
+    await (delete(transactions)..where((t) => t.id.equals(txn.id))).go();
+    return 1;
+  }
+
+  Future<int> _neutralizeConfirmedSweepTransactionForPending(
+    PendingTransaction pending,
+    String label,
+  ) async {
+    if (pending.status != 'confirmed') return 0;
+    final txn = await _findLikelyTransactionForPending(
+      pending,
+      allowedTypes: const {
+        TransactionType.income,
+        TransactionType.bank,
+        TransactionType.upi,
+        TransactionType.transfer,
+      },
+    );
+    if (txn == null) return 0;
+    await _reverseLiveBalanceEffectIfNeeded(txn);
+    await (update(transactions)..where((t) => t.id.equals(txn.id))).write(
+      TransactionsCompanion(
+        type: const Value(TransactionType.transfer),
+        title: Value(label),
+        category: const Value('Transfer'),
+        transactionImpactType: const Value(
+          TransactionImpactType.historicalNoBalance,
+        ),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+    return 1;
+  }
+
+  Future<Transaction?> _findLikelyTransactionForPending(
+    PendingTransaction pending, {
+    required Set<String> allowedTypes,
+  }) async {
+    final start = pending.transactionDate.subtract(const Duration(minutes: 10));
+    final end = pending.transactionDate.add(const Duration(minutes: 10));
+    final rows =
+        await (select(transactions)..where(
+              (t) =>
+                  t.amount.equals(pending.amount) &
+                  t.transactionDate.isBiggerOrEqualValue(start) &
+                  t.transactionDate.isSmallerOrEqualValue(end),
+            ))
+            .get();
+    if (rows.isEmpty) return null;
+
+    final pendingMerchant = _normalizedRepairText(pending.merchant);
+    final rawLabel = ParserTextUtils.extractSweepTransferLabel(pending.rawText);
+    final sweepLabel = _normalizedRepairText(rawLabel ?? '');
+    final candidates = rows
+        .where((txn) {
+          if (!allowedTypes.contains(txn.type)) return false;
+          if (pending.paymentSourceIdSuggestion != null &&
+              txn.paymentSourceId != pending.paymentSourceIdSuggestion) {
+            return false;
+          }
+          final title = _normalizedRepairText(txn.title);
+          if (title == pendingMerchant || title == sweepLabel) return true;
+          if (ParserTextUtils.looksLikeInvestmentPromoMessage(
+            pending.rawText,
+          )) {
+            return txn.type == TransactionType.income &&
+                (txn.category.toLowerCase() == 'income' ||
+                    title == 'just' ||
+                    pendingMerchant == 'just');
+          }
+          return ParserTextUtils.looksLikeSweepTransferMessage(pending.rawText);
+        })
+        .toList(growable: false);
+    if (candidates.isEmpty) return null;
+    candidates.sort((a, b) {
+      final dateCompare = a.transactionDate
+          .difference(pending.transactionDate)
+          .abs()
+          .compareTo(
+            b.transactionDate.difference(pending.transactionDate).abs(),
+          );
+      if (dateCompare != 0) return dateCompare;
+      return a.id.compareTo(b.id);
+    });
+    return candidates.first;
+  }
+
+  Future<void> _reverseLiveBalanceEffectIfNeeded(Transaction txn) async {
+    if (txn.transactionImpactType ==
+            TransactionImpactType.historicalNoBalance ||
+        txn.transactionImpactType ==
+            TransactionImpactType.cardStatementBalanceNeutral) {
+      return;
+    }
+    final sourceType = txn.paymentSourceType;
+    if (sourceType != PaymentSourceType.bank &&
+        sourceType != PaymentSourceType.upi &&
+        sourceType != PaymentSourceType.cash) {
+      return;
+    }
+    final delta = txn.type == TransactionType.income ? -txn.amount : txn.amount;
+    if (sourceType == PaymentSourceType.cash) {
+      final wallet = await (select(
+        cashWallets,
+      )..where((w) => w.id.equals(txn.paymentSourceId))).getSingleOrNull();
+      if (wallet == null) return;
+      await (update(cashWallets)..where((w) => w.id.equals(wallet.id))).write(
+        CashWalletsCompanion(
+          currentBalance: Value(
+            _roundRepairMoney(wallet.currentBalance + delta),
+          ),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+      return;
+    }
+    final bank = await (select(
+      bankAccounts,
+    )..where((b) => b.id.equals(txn.paymentSourceId))).getSingleOrNull();
+    if (bank == null) return;
+    await (update(bankAccounts)..where((b) => b.id.equals(bank.id))).write(
+      BankAccountsCompanion(
+        currentBalance: Value(_roundRepairMoney(bank.currentBalance + delta)),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  String _normalizedRepairText(String value) => value
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+
+  double _roundRepairMoney(double value) => (value * 100).roundToDouble() / 100;
 
   bool _isMirroredAutopayPendingDuplicate(
     PendingTransaction left,

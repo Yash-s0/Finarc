@@ -180,4 +180,209 @@ void main() {
     final secondRun = await db.repairMirroredAutopayPendingDuplicates();
     expect(secondRun, 0);
   });
+
+  test(
+    'repair ignores promo pending and reverses confirmed promo income',
+    () async {
+      final bankId = await db
+          .into(db.bankAccounts)
+          .insert(
+            BankAccountsCompanion.insert(
+              bankName: 'Kotak',
+              accountName: 'Main',
+              accountType: 'savings',
+              currentBalance: const Value(10500),
+            ),
+          );
+      final raw =
+          'Salary credited? Time to use it smartly! Start your SIP with Kotak811 App from just ₹500. T&C apply';
+      final at = DateTime(2026, 8, 1, 11, 1, 32);
+      final pendingId = await db
+          .into(db.pendingTransactions)
+          .insert(
+            PendingTransactionsCompanion.insert(
+              amount: 500,
+              merchant: 'Just',
+              categorySuggestion: 'Income',
+              paymentSourceTypeSuggestion: 'bank',
+              paymentSourceIdSuggestion: Value(bankId),
+              detectedAt: at,
+              transactionDate: at,
+              sourceType: 'appNotification',
+              rawText: raw,
+              confidenceScore: 0.77,
+              status: const Value('confirmed'),
+            ),
+          );
+      await db
+          .into(db.transactions)
+          .insert(
+            TransactionsCompanion.insert(
+              type: 'income',
+              amount: 500,
+              title: 'Just',
+              category: 'Income',
+              transactionDate: at,
+              paymentSourceType: 'bank',
+              paymentSourceId: bankId,
+            ),
+          );
+
+      final repaired = await db.repairPromoAndSweepArtifacts();
+
+      expect(repaired, 2);
+      final pending = await (db.select(
+        db.pendingTransactions,
+      )..where((p) => p.id.equals(pendingId))).getSingle();
+      final txns = await db.select(db.transactions).get();
+      final bank = await (db.select(
+        db.bankAccounts,
+      )..where((b) => b.id.equals(bankId))).getSingle();
+      expect(pending.status, 'ignored');
+      expect(txns, isEmpty);
+      expect(bank.currentBalance, closeTo(10000, 0.01));
+    },
+  );
+
+  test('repair converts confirmed sweep to balance-neutral transfer', () async {
+    final bankId = await db
+        .into(db.bankAccounts)
+        .insert(
+          BankAccountsCompanion.insert(
+            bankName: 'Kotak',
+            accountName: 'Main',
+            accountType: 'savings',
+            currentBalance: const Value(25000),
+          ),
+        );
+    final raw =
+        'ActivMoney sweep out ₹15,000.00 credited to ActivMoney. Check out details.';
+    final at = DateTime(2026, 7, 31, 22, 34, 18);
+    await db
+        .into(db.pendingTransactions)
+        .insert(
+          PendingTransactionsCompanion.insert(
+            amount: 15000,
+            merchant: 'Activmoney',
+            categorySuggestion: 'Transfer',
+            paymentSourceTypeSuggestion: 'bank',
+            paymentSourceIdSuggestion: Value(bankId),
+            detectedAt: at,
+            transactionDate: at,
+            sourceType: 'appNotification',
+            rawText: raw,
+            confidenceScore: 0.77,
+            status: const Value('confirmed'),
+          ),
+        );
+    final txnId = await db
+        .into(db.transactions)
+        .insert(
+          TransactionsCompanion.insert(
+            type: 'income',
+            amount: 15000,
+            title: 'Activmoney',
+            category: 'Transfer',
+            transactionDate: at,
+            paymentSourceType: 'bank',
+            paymentSourceId: bankId,
+          ),
+        );
+
+    final repaired = await db.repairPromoAndSweepArtifacts();
+
+    expect(repaired, 1);
+    final txn = await (db.select(
+      db.transactions,
+    )..where((t) => t.id.equals(txnId))).getSingle();
+    final bank = await (db.select(
+      db.bankAccounts,
+    )..where((b) => b.id.equals(bankId))).getSingle();
+    expect(txn.type, 'transfer');
+    expect(txn.title, 'ActivMoney');
+    expect(txn.transactionImpactType, 'historicalNoBalance');
+    expect(bank.currentBalance, closeTo(10000, 0.01));
+  });
+
+  test('repair reopens recovered unbilled card recoverables', () async {
+    await db
+        .into(db.transactions)
+        .insert(
+          TransactionsCompanion.insert(
+            type: 'creditCard',
+            amount: 1500,
+            title: 'Amazon',
+            category: 'Groceries',
+            transactionDate: DateTime(2026, 7, 20),
+            paymentSourceType: 'creditCard',
+            paymentSourceId: 1,
+            cashbackAmount: const Value(275),
+            isForOthers: const Value(true),
+            recoverableBaseAmount: const Value(1225),
+            recoverableAmount: const Value(0),
+            recoveredAmount: const Value(1225),
+            recoverableStatus: const Value('recovered'),
+          ),
+        );
+
+    final repaired = await db.repairUnbilledCardRecoveries();
+
+    expect(repaired, 1);
+    final txn = await db.select(db.transactions).getSingle();
+    expect(txn.recoverableAmount, closeTo(1225, 0.01));
+    expect(txn.recoveredAmount, closeTo(0, 0.01));
+    expect(txn.recoverableStatus, 'unpaid');
+    expect(txn.recoveredAt, null);
+  });
+
+  test('repair recalculates stale opening bill due', () async {
+    final cardId = await db
+        .into(db.creditCards)
+        .insert(
+          CreditCardsCompanion.insert(
+            bankName: 'ICICI',
+            nickname: 'Amazon Pay',
+            last4: '9000',
+            maskedNumber: '**** **** **** 9000',
+            creditLimit: 60000,
+            billingDay: 20,
+            dueDay: 7,
+            currentOutstanding: const Value(19609),
+          ),
+        );
+    final openingId = await db
+        .into(db.cardBills)
+        .insert(
+          CardBillsCompanion.insert(
+            cardId: cardId,
+            cycleStartDate: Value(DateTime(2026, 8, 1)),
+            cycleEndDate: Value(DateTime(2026, 8, 1)),
+            billingDate: Value(DateTime(2026, 8, 1)),
+            dueDate: Value(DateTime(2026, 8, 7)),
+            billedAmount: 1000,
+            status: const Value('opening'),
+          ),
+        );
+    await db
+        .into(db.transactions)
+        .insert(
+          TransactionsCompanion.insert(
+            type: 'creditCard',
+            amount: 1500,
+            title: 'Amazon',
+            category: 'Groceries',
+            transactionDate: DateTime(2026, 7, 20),
+            paymentSourceType: 'creditCard',
+            paymentSourceId: cardId,
+          ),
+        );
+
+    final repaired = await db.repairStaleOpeningBills();
+
+    expect(repaired, 1);
+    final opening = await (db.select(
+      db.cardBills,
+    )..where((b) => b.id.equals(openingId))).getSingle();
+    expect(opening.billedAmount, closeTo(18109, 0.01));
+  });
 }
