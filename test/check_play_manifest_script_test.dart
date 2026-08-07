@@ -53,6 +53,19 @@ void main() {
     );
   });
 
+  test('fails when a fixed compatible-screens filter is present', () async {
+    final result = await runScriptWithFixture(
+      'play_release_invalid_compatible_screens.xml',
+    );
+    expect(result.exitCode, isNot(0));
+    expect(
+      result.stdout.toString(),
+      contains(
+        'FAIL: Found forbidden entry in release manifest: fixed compatible-screens device filter',
+      ),
+    );
+  });
+
   test('fails when SMS receiver declaration is missing', () async {
     final result = await runScriptWithFixture(
       'play_release_invalid_sms_receiver.xml',

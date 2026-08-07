@@ -68,6 +68,7 @@ check_required "android\.permission\.READ_SMS" "READ_SMS permission"
 check_required "android\.permission\.RECEIVE_SMS" "RECEIVE_SMS permission"
 check_required "FinarcSmsReceiver" "FinarcSmsReceiver declaration"
 check_required "SMS_RECEIVED" "SMS_RECEIVED intent filter"
+check_forbidden "<compatible-screens" "fixed compatible-screens device filter"
 
 if [[ "$fail" -ne 0 ]]; then
   echo
