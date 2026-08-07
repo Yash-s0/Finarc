@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:finarc/core/database/app_database.dart';
 import 'package:finarc/features/expenses/data/transaction_engine.dart';
+import 'package:finarc/features/expenses/models/transaction_types.dart';
 import 'package:finarc/features/pending/data/pending_service.dart';
 import 'package:finarc/features/pending/notifications/notification_keyword_filter.dart';
 import 'package:finarc/features/pending/notifications/notification_payload.dart';
@@ -97,6 +98,37 @@ void main() {
       expect(preview.status, SmsBackfillPreviewStatus.importable);
       expect(preview.amount, 33275.73);
       expect(preview.merchant, isNotNull);
+      expect(preview.reason, 'Ready to import');
+    });
+
+    test('classifies Amazon Pay balance payment SMS as importable', () async {
+      final walletId = await db
+          .into(db.cashWallets)
+          .insert(
+            CashWalletsCompanion.insert(
+              walletName: 'Amazon Pay',
+              walletType: const Value('amazonPay'),
+              currentBalance: const Value(6245),
+            ),
+          );
+
+      final preview = await recoveryService.classifyPayload(
+        NotificationPayload(
+          packageName: 'android.sms',
+          sourceType: 'sms',
+          receivedAt: DateTime(2026, 8, 6, 20, 3),
+          sender: 'VA-QCAMZN-S',
+          title: 'VA-QCAMZN-S',
+          body:
+              'Payment of Rs 935.00 using Apay balance is successful at A.in. Updated balance is Rs 5085.13. If not u? call 18001200163 - SMS via Pine Labs',
+        ),
+      );
+
+      expect(preview.status, SmsBackfillPreviewStatus.importable);
+      expect(preview.amount, 935);
+      expect(preview.merchant, 'Amazon');
+      expect(preview.paymentSourceType, PaymentSourceType.cash);
+      expect(preview.paymentSourceId, walletId);
       expect(preview.reason, 'Ready to import');
     });
 

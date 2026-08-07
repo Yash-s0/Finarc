@@ -63,7 +63,10 @@ class GenericBankSmsParser implements TransactionParser {
       final counterparty = _extractCounterparty(segment, direction);
       final sweepLabel = ParserTextUtils.extractSweepTransferLabel(segment);
       final merchant = MerchantNormalizer.normalize(
-        sweepLabel ?? counterparty ?? 'Unknown Merchant',
+        sweepLabel ??
+            _amazonMarketplaceMerchant(segment) ??
+            counterparty ??
+            'Unknown Merchant',
       );
 
       final hintLast4 = ParserTextUtils.extractLast4Hint(segment);
@@ -364,6 +367,14 @@ class GenericBankSmsParser implements TransactionParser {
       return 'amazonpay';
     }
     return null;
+  }
+
+  String? _amazonMarketplaceMerchant(String segment) {
+    final marketplace = RegExp(
+      r'\bat\s+(?:a|amazon)\s*\.\s*in\b',
+      caseSensitive: false,
+    ).hasMatch(segment);
+    return marketplace ? 'Amazon' : null;
   }
 
   String _categoryForSegment({

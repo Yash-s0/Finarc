@@ -193,6 +193,7 @@ class _TransactionDetailScreenState
               paymentSourceType: txn.paymentSourceType,
               title: txn.title,
             );
+            final direction = _transactionDirection(txn, isPositive);
 
             return Form(
               key: _formKey,
@@ -213,9 +214,12 @@ class _TransactionDetailScreenState
                       amountColor: isPositive
                           ? AppColors.darkSuccess
                           : AppColors.darkError,
+                      prefix: _TransactionDirectionIcon(direction: direction),
                       amountMeta: txn.cardBillId != null
                           ? 'Statement #${txn.cardBillId}'
                           : null,
+                      statusLabel: direction.label.toUpperCase(),
+                      statusTone: direction.tone,
                       badges: [
                         if (txn.paymentSourceType == 'creditCard')
                           FinarcTransactionPresentation.billedBadge(
@@ -284,9 +288,37 @@ class _TransactionDetailScreenState
                   ],
                   const SizedBox(height: AppSpacing.sm),
                   if (!editable)
-                    const FinarcCard(
-                      child: Text(
-                        'This transaction has linked/system effects, so only viewing is allowed.',
+                    FinarcCard(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            direction.explanationIcon,
+                            color: direction.color(context),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  direction.explanationTitle,
+                                  style: Theme.of(context).textTheme.titleSmall,
+                                ),
+                                const SizedBox(height: AppSpacing.xxs),
+                                Text(
+                                  direction.explanation,
+                                  style: Theme.of(context).textTheme.bodyMedium,
+                                ),
+                                const SizedBox(height: AppSpacing.xxs),
+                                Text(
+                                  'This linked system entry is view-only.',
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   if (!editable) const SizedBox(height: AppSpacing.sm),
@@ -859,6 +891,103 @@ class _TransactionDetailScreenState
         ),
         Text(value, style: Theme.of(context).textTheme.bodyMedium),
       ],
+    );
+  }
+}
+
+_TransactionDirection _transactionDirection(Transaction txn, bool isPositive) {
+  final source = FinarcTransactionPresentation.sourceLabel(
+    txn.paymentSourceType,
+  );
+  if (txn.type == TransactionType.income) {
+    return _TransactionDirection(
+      label: 'Income',
+      icon: Icons.south_west_rounded,
+      tone: FinarcStatusTone.success,
+      explanationTitle: 'Income received into $source',
+      explanation: 'This amount was added to the selected $source source.',
+    );
+  }
+  if (txn.type == TransactionType.refund) {
+    return _TransactionDirection(
+      label: 'Refund',
+      icon: Icons.replay_rounded,
+      tone: FinarcStatusTone.success,
+      explanationTitle: 'Refund received into $source',
+      explanation: 'This amount was returned to the selected $source source.',
+    );
+  }
+  if (txn.type == TransactionType.transfer ||
+      txn.type == TransactionType.cardPayment) {
+    return _TransactionDirection(
+      label: isPositive ? 'Transfer in' : 'Transfer out',
+      icon: isPositive ? Icons.call_received_rounded : Icons.call_made_rounded,
+      tone: isPositive ? FinarcStatusTone.info : FinarcStatusTone.warning,
+      explanationTitle: isPositive ? 'Applied to $source' : 'Paid from $source',
+      explanation: isPositive
+          ? 'This side records where the transfer was applied. The matching transfer-out entry records where the money came from.'
+          : 'This side records money leaving $source. The matching transfer-in entry records where it was applied.',
+    );
+  }
+  return _TransactionDirection(
+    label: 'Expense',
+    icon: Icons.north_east_rounded,
+    tone: FinarcStatusTone.error,
+    explanationTitle: 'Expense paid from $source',
+    explanation: 'This amount was deducted from the selected $source source.',
+  );
+}
+
+class _TransactionDirection {
+  const _TransactionDirection({
+    required this.label,
+    required this.icon,
+    required this.tone,
+    required this.explanationTitle,
+    required this.explanation,
+  });
+
+  final String label;
+  final IconData icon;
+  final FinarcStatusTone tone;
+  final String explanationTitle;
+  final String explanation;
+
+  IconData get explanationIcon => icon;
+
+  Color color(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    if (tone == FinarcStatusTone.warning) {
+      return dark ? AppColors.darkWarning : AppColors.lightWarning;
+    }
+    if (tone == FinarcStatusTone.error) {
+      return dark ? AppColors.darkError : AppColors.lightError;
+    }
+    if (tone == FinarcStatusTone.info) {
+      return dark ? AppColors.darkAccent : AppColors.lightAccent;
+    }
+    return dark ? AppColors.darkSuccess : AppColors.lightSuccess;
+  }
+}
+
+class _TransactionDirectionIcon extends StatelessWidget {
+  const _TransactionDirectionIcon({required this.direction});
+
+  final _TransactionDirection direction;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = direction.color(context);
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        shape: BoxShape.circle,
+        border: Border.all(color: color.withValues(alpha: 0.34)),
+      ),
+      alignment: Alignment.center,
+      child: Icon(direction.icon, color: color, size: 21),
     );
   }
 }

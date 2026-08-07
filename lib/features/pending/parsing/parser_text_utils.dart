@@ -60,7 +60,7 @@ class ParserTextUtils {
     if (amounts.length == 1) return amounts.single.value;
 
     final actions = RegExp(
-      r'\b(?:debited|credited|received|paid|spent|sent|deducted|charged|withdrawn|transferred|refund(?:ed)?|reversal|purchase(?:d)?|used)\b',
+      r'\b(?:debited|credited|received|paid|payment|spent|sent|deducted|charged|withdrawn|transferred|refund(?:ed)?|reversal|purchase(?:d)?|used)\b',
       caseSensitive: false,
     ).allMatches(text).toList(growable: false);
     if (actions.isEmpty) return amounts.first.value;
@@ -642,7 +642,7 @@ class ParserTextUtils {
   static bool _looksLikeNoiseAmount(String text, _AmountMatch amount) {
     final nearAction =
         RegExp(
-          r'\b(?:debited|credited|received|paid|spent|sent|deducted|charged|withdrawn|transferred|refund(?:ed)?|reversal|purchase(?:d)?|used)\b',
+          r'\b(?:debited|credited|received|paid|payment|spent|sent|deducted|charged|withdrawn|transferred|refund(?:ed)?|reversal|purchase(?:d)?|used)\b',
           caseSensitive: false,
         ).allMatches(text).any((action) {
           final distance = _distanceBetween(amount.start, amount.end, action);
