@@ -380,7 +380,9 @@ class _CardsOverviewScreenState extends ConsumerState<CardsOverviewScreen> {
                               const SizedBox(height: 2),
                               Text(
                                 vm.currentBill == null
-                                    ? 'No active billed statement'
+                                    ? vm.reconciliationAdjustment > 0.009
+                                          ? '${inr(vm.reconciliationAdjustment)} historical reconciliation • not due'
+                                          : 'No active billed statement'
                                     : vm.currentBill!.paidAmount > 0
                                     ? 'Paid ${inr(vm.currentBill!.paidAmount)} • Remaining ${inr(vm.currentDueAmount)}'
                                     : 'Due ${_dateText(vm.currentBill!.dueDate)}',

@@ -219,7 +219,7 @@ void main() {
   });
 
   test(
-    'synthetic opening bill preserves legacy outstanding in billed due',
+    'synthetic opening adjustment preserves outstanding without creating due',
     () async {
       final cardId = await createCard(
         billingDay: 20,
@@ -237,7 +237,8 @@ void main() {
               .get();
 
       expect(openingBills, hasLength(1));
-      expect(snapshot.billedDue, 30000);
+      expect(snapshot.billedDue, 0);
+      expect(snapshot.reconciliationAdjustment, 30000);
       expect(snapshot.unbilledSpends, 0);
       expect(snapshot.totalOutstanding, 30000);
       expect(snapshot.availableLimit, 70000);
@@ -275,7 +276,8 @@ void main() {
         db.transactions,
       )..where((t) => t.title.equals('Imported old card txn'))).getSingle();
 
-      expect(snapshot.billedDue, closeTo(1000, 0.01));
+      expect(snapshot.billedDue, closeTo(0, 0.01));
+      expect(snapshot.reconciliationAdjustment, closeTo(1000, 0.01));
       expect(snapshot.unbilledSpends, 0);
       expect(snapshot.totalOutstanding, closeTo(1000, 0.01));
       expect(snapshot.billedTransactions, isEmpty);
@@ -480,7 +482,8 @@ void main() {
               .getSingle();
 
       expect(opening.billedAmount, closeTo(300, 0.01));
-      expect(snapshot.billedDue, closeTo(1000, 0.01));
+      expect(snapshot.billedDue, closeTo(700, 0.01));
+      expect(snapshot.reconciliationAdjustment, closeTo(300, 0.01));
       expect(snapshot.billedTransactions.map((txn) => txn.title), [
         'Imported active statement txn',
       ]);
@@ -555,6 +558,80 @@ void main() {
       expect(snapshot.billedTransactions.map((txn) => txn.title), [
         'May billed',
         'April billed',
+      ]);
+    },
+  );
+
+  test(
+    'paid prior statement and partial SMS history do not fabricate a due',
+    () async {
+      final cardId = await createCard(
+        billingDay: 20,
+        dueDay: 7,
+        outstanding: 13137,
+      );
+      final paidBillId = await db
+          .into(db.cardBills)
+          .insert(
+            CardBillsCompanion.insert(
+              cardId: cardId,
+              cycleStartDate: Value(DateTime(2026, 6, 20)),
+              cycleEndDate: Value(DateTime(2026, 7, 19)),
+              billingDate: Value(DateTime(2026, 7, 20)),
+              dueDate: Value(DateTime(2026, 8, 7)),
+              billedAmount: 903,
+              paidAmount: const Value(903),
+              status: const Value('paid'),
+            ),
+          );
+      await db
+          .into(db.transactions)
+          .insert(
+            TransactionsCompanion.insert(
+              type: TransactionType.creditCard,
+              amount: 903,
+              title: 'Amazon 19 July',
+              category: 'Shopping',
+              transactionDate: DateTime(2026, 7, 19),
+              paymentSourceType: PaymentSourceType.creditCard,
+              paymentSourceId: cardId,
+              cardBillId: Value(paidBillId),
+              transactionImpactType: const Value(
+                TransactionImpactType.cardStatementBalanceNeutral,
+              ),
+              detectedSourceType: const Value('smsRecovery'),
+            ),
+          );
+      await db
+          .into(db.transactions)
+          .insert(
+            TransactionsCompanion.insert(
+              type: TransactionType.creditCard,
+              amount: 10352,
+              title: 'Current cycle SMS history',
+              category: 'Shopping',
+              transactionDate: DateTime(2026, 7, 20),
+              paymentSourceType: PaymentSourceType.creditCard,
+              paymentSourceId: cardId,
+              transactionImpactType: const Value(
+                TransactionImpactType.cardStatementBalanceNeutral,
+              ),
+              detectedSourceType: const Value('smsRecovery'),
+            ),
+          );
+
+      final snapshot = await BillingService(
+        db,
+        now: () => DateTime(2026, 8, 9),
+      ).getCardBillingSnapshotById(cardId);
+
+      expect(snapshot.billedDue, 0);
+      expect(snapshot.unbilledSpends, 10352);
+      expect(snapshot.reconciliationAdjustment, 2785);
+      expect(snapshot.totalOutstanding, 13137);
+      expect(snapshot.latestUnpaidBill, isNull);
+      expect(snapshot.billedTransactions.map((txn) => txn.title), [
+        'Amazon 19 July',
       ]);
     },
   );

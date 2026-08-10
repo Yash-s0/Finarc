@@ -164,12 +164,16 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
                         children: [
                           Expanded(
                             child: Text(
-                              'Statement',
+                              isOpeningBill
+                                  ? 'Historical reconciliation'
+                                  : 'Statement',
                               style: Theme.of(context).textTheme.titleSmall,
                             ),
                           ),
                           FinarcStatusBadge(
-                            label: bill.status.toUpperCase(),
+                            label: isOpeningBill
+                                ? 'NOT A BILL'
+                                : bill.status.toUpperCase(),
                             tone: tone,
                           ),
                         ],
@@ -177,94 +181,97 @@ class _BillDetailScreenState extends ConsumerState<BillDetailScreen> {
                       const SizedBox(height: AppSpacing.sm),
                       _metricLine(
                         context,
-                        'Bill amount',
+                        isOpeningBill ? 'Unmatched adjustment' : 'Bill amount',
                         inr(bill.billedAmount),
                         emphasize: true,
                       ),
-                      _metricLine(
-                        context,
-                        'Paid amount',
-                        inr(bill.paidAmount),
-                        valueColor: AppColors.darkSuccess,
-                      ),
-                      _metricLine(
-                        context,
-                        'Remaining due',
-                        inr(pendingAmount),
-                        valueColor: pendingAmount == 0
-                            ? AppColors.darkSuccess
-                            : AppColors.darkWarning,
-                      ),
-                      _metricLine(
-                        context,
-                        'Due date',
-                        _dateText(bill.dueDate),
-                        isAmount: false,
-                      ),
-                      _metricLine(
-                        context,
-                        'Countdown',
-                        _countdownText(dueDays),
-                        isAmount: false,
-                      ),
+                      if (!isOpeningBill) ...[
+                        _metricLine(
+                          context,
+                          'Paid amount',
+                          inr(bill.paidAmount),
+                          valueColor: AppColors.darkSuccess,
+                        ),
+                        _metricLine(
+                          context,
+                          'Remaining due',
+                          inr(pendingAmount),
+                          valueColor: pendingAmount == 0
+                              ? AppColors.darkSuccess
+                              : AppColors.darkWarning,
+                        ),
+                        _metricLine(
+                          context,
+                          'Due date',
+                          _dateText(bill.dueDate),
+                          isAmount: false,
+                        ),
+                        _metricLine(
+                          context,
+                          'Countdown',
+                          _countdownText(dueDays),
+                          isAmount: false,
+                        ),
+                      ],
                     ],
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                FinarcCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const FinarcSectionHeader(title: 'Payment'),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        pendingAmount <= 0
-                            ? isOpeningBill
-                                  ? 'This opening balance is fully paid.'
-                                  : 'This statement is fully paid.'
-                            : bill.paidAmount > 0
-                            ? 'Paid ${inr(bill.paidAmount)} so far. Record another payment for the remaining due.'
-                            : isOpeningBill
-                            ? 'Record payment for the unmatched opening balance from your card outstanding.'
-                            : 'Record a full or partial bill payment with source, date, and optional reference.',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                      if (!hasAnyPaymentSource)
-                        Padding(
-                          padding: const EdgeInsets.only(top: AppSpacing.xs),
-                          child: Text(
-                            'Add a bank account or cash wallet before recording a card payment.',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
+                if (!isOpeningBill)
+                  FinarcCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const FinarcSectionHeader(title: 'Payment'),
+                        const SizedBox(height: AppSpacing.sm),
+                        Text(
+                          pendingAmount <= 0
+                              ? isOpeningBill
+                                    ? 'This opening balance is fully paid.'
+                                    : 'This statement is fully paid.'
+                              : bill.paidAmount > 0
+                              ? 'Paid ${inr(bill.paidAmount)} so far. Record another payment for the remaining due.'
+                              : isOpeningBill
+                              ? 'Record payment for the unmatched opening balance from your card outstanding.'
+                              : 'Record a full or partial bill payment with source, date, and optional reference.',
+                          style: Theme.of(context).textTheme.bodyMedium,
                         ),
-                      const SizedBox(height: AppSpacing.sm),
-                      FinarcPrimaryButton(
-                        onPressed: pendingAmount <= 0 || !hasAnyPaymentSource
-                            ? null
-                            : () => _openPaymentSheet(
-                                context,
-                                data: data,
-                                bill: bill,
-                                remainingDue: pendingAmount,
-                              ),
-                        label: pendingAmount <= 0 ? 'Paid' : 'Record Payment',
-                        icon: pendingAmount <= 0
-                            ? Icons.check_circle_outline
-                            : Icons.payments_outlined,
-                      ),
-                      if (paymentSources.isEmpty && hasAnyPaymentSource)
-                        Padding(
-                          padding: const EdgeInsets.only(top: AppSpacing.xs),
-                          child: Text(
-                            'No ${_paymentSourceType == PaymentSourceType.cash ? 'cash wallet' : 'bank account'} available for the selected payment mode.',
-                            style: Theme.of(context).textTheme.labelMedium
-                                ?.copyWith(color: AppColors.darkWarning),
+                        if (!hasAnyPaymentSource)
+                          Padding(
+                            padding: const EdgeInsets.only(top: AppSpacing.xs),
+                            child: Text(
+                              'Add a bank account or cash wallet before recording a card payment.',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
                           ),
+                        const SizedBox(height: AppSpacing.sm),
+                        FinarcPrimaryButton(
+                          onPressed: pendingAmount <= 0 || !hasAnyPaymentSource
+                              ? null
+                              : () => _openPaymentSheet(
+                                  context,
+                                  data: data,
+                                  bill: bill,
+                                  remainingDue: pendingAmount,
+                                ),
+                          label: pendingAmount <= 0 ? 'Paid' : 'Record Payment',
+                          icon: pendingAmount <= 0
+                              ? Icons.check_circle_outline
+                              : Icons.payments_outlined,
                         ),
-                    ],
+                        if (paymentSources.isEmpty && hasAnyPaymentSource)
+                          Padding(
+                            padding: const EdgeInsets.only(top: AppSpacing.xs),
+                            child: Text(
+                              'No ${_paymentSourceType == PaymentSourceType.cash ? 'cash wallet' : 'bank account'} available for the selected payment mode.',
+                              style: Theme.of(context).textTheme.labelMedium
+                                  ?.copyWith(color: AppColors.darkWarning),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.md),
+                if (!isOpeningBill) const SizedBox(height: AppSpacing.md),
                 if (isOpeningBill) ...[
                   _OpeningBillExplanationCard(card: data.card, bill: bill),
                   const SizedBox(height: AppSpacing.md),
@@ -723,7 +730,7 @@ class _OpeningBillExplanationCard extends StatelessWidget {
           const FinarcSectionHeader(title: 'Opening Balance Calculation'),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            'This is the unmatched portion of the card outstanding. It is not tied to a statement transaction.',
+            'This is the unmatched historical portion of the card outstanding. Missing transaction history can explain it, but it is not evidence of an unpaid statement and no payment is due from this adjustment.',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: AppSpacing.sm),

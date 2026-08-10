@@ -28,6 +28,7 @@ void main() {
     required String nickname,
     required String last4,
     required int dueDay,
+    double currentOutstanding = 0,
   }) {
     return db
         .into(db.creditCards)
@@ -40,7 +41,7 @@ void main() {
             creditLimit: 10000,
             billingDay: 20,
             dueDay: dueDay,
-            currentOutstanding: const Value(0),
+            currentOutstanding: Value(currentOutstanding),
           ),
         );
   }
@@ -159,6 +160,39 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('Pay Now'), findsNothing);
+    expect(find.text('No Bill'), findsOneWidget);
+  });
+
+  testWidgets('opening reconciliation is visible but is not payable', (
+    tester,
+  ) async {
+    await createCard(
+      bankName: 'ICICI',
+      nickname: 'Amazon',
+      last4: '9000',
+      dueDay: 7,
+      currentOutstanding: 2785,
+    );
+
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+          seedProvider.overrideWith((ref) async {}),
+        ],
+        child: const MaterialApp(home: Scaffold(body: CardsOverviewScreen())),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('₹2,785.00 historical reconciliation • not due'),
+      findsOneWidget,
+    );
     expect(find.text('Pay Now'), findsNothing);
     expect(find.text('No Bill'), findsOneWidget);
   });

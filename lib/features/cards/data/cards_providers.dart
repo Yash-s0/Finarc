@@ -82,6 +82,7 @@ class CardDetailViewModel {
     required this.recentTransactions,
     required this.currentBill,
     required this.currentDueAmount,
+    required this.reconciliationAdjustment,
     required this.unbilledAmount,
     required this.unbilledTransactions,
     required this.billedTransactions,
@@ -96,6 +97,7 @@ class CardDetailViewModel {
   final List<Transaction> recentTransactions;
   final CardBill? currentBill;
   final double currentDueAmount;
+  final double reconciliationAdjustment;
   final double unbilledAmount;
   final List<Transaction> unbilledTransactions;
   final List<Transaction> billedTransactions;
@@ -120,6 +122,7 @@ final cardDetailProvider = FutureProvider.family<CardDetailViewModel, int>((
   final snapshot = await billing.getCardBillingSnapshot(card);
   final currentBill = snapshot.latestUnpaidBill;
   final currentDueAmount = snapshot.billedDue;
+  final reconciliationAdjustment = snapshot.reconciliationAdjustment;
   final unbilledTransactions = snapshot.unbilledTransactions;
   final unbilledAmount = snapshot.unbilledSpends;
   final billedTransactions = snapshot.billedTransactions;
@@ -138,6 +141,7 @@ final cardDetailProvider = FutureProvider.family<CardDetailViewModel, int>((
     recentTransactions: recentTransactions,
     currentBill: currentBill,
     currentDueAmount: currentDueAmount,
+    reconciliationAdjustment: reconciliationAdjustment,
     unbilledAmount: unbilledAmount,
     unbilledTransactions: unbilledTransactions,
     billedTransactions: billedTransactions,

@@ -169,6 +169,9 @@ void main() {
     expect(find.text('Matched billed/unbilled'), findsOneWidget);
     expect(find.text('Opening adjustment'), findsOneWidget);
     expect(find.text('Opening balance adjustment'), findsOneWidget);
+    expect(find.text('NOT A BILL'), findsOneWidget);
+    expect(find.text('Record Payment'), findsNothing);
+    expect(find.text('Remaining due'), findsNothing);
   });
 
   testWidgets(

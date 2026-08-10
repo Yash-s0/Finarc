@@ -95,6 +95,7 @@ class CardBillingSnapshot {
   const CardBillingSnapshot({
     required this.cardId,
     required this.billedDue,
+    required this.reconciliationAdjustment,
     required this.unbilledSpends,
     required this.totalOutstanding,
     required this.availableLimit,
@@ -109,6 +110,7 @@ class CardBillingSnapshot {
 
   final int cardId;
   final double billedDue;
+  final double reconciliationAdjustment;
   final double unbilledSpends;
   final double totalOutstanding;
   final double availableLimit;
@@ -267,7 +269,7 @@ class BillingService {
       _db.cardBills,
     )..where((b) => b.cardId.equals(cardId))).get();
     return bills
-        .where((bill) => bill.status != 'paid')
+        .where((bill) => bill.status != 'paid' && bill.status != 'opening')
         .fold<double>(
           0,
           (sum, bill) =>
@@ -294,9 +296,20 @@ class BillingService {
 
     final unpaidBills = bills
         .where(
-          (b) => b.status != 'paid' && (b.billedAmount - b.paidAmount) > 0.009,
+          (b) =>
+              b.status != 'paid' &&
+              b.status != 'opening' &&
+              (b.billedAmount - b.paidAmount) > 0.009,
         )
         .toList(growable: false);
+    final reconciliationAdjustment = bills
+        .where((bill) => bill.status == 'opening')
+        .fold<double>(
+          0,
+          (sum, bill) =>
+              sum +
+              (bill.billedAmount - bill.paidAmount).clamp(0, bill.billedAmount),
+        );
     final billedDue = unpaidBills.fold<double>(
       0,
       (sum, bill) =>
@@ -311,10 +324,7 @@ class BillingService {
     );
 
     final displayUnpaidBill = _latestDisplayUnpaidBill(unpaidBills);
-    final billedTransactions = await _getOpenBilledTransactions(
-      card.id,
-      unpaidBills,
-    );
+    final billedTransactions = await _getBilledTransactions(card.id);
 
     final recentTransactions =
         await (_db.select(_db.transactions)
@@ -326,9 +336,10 @@ class BillingService {
               ..orderBy([(t) => OrderingTerm.desc(t.transactionDate)]))
             .get();
 
-    final totalOutstanding = (billedDue + unbilledSpends)
-        .clamp(0, double.infinity)
-        .toDouble();
+    final totalOutstanding =
+        (billedDue + unbilledSpends + reconciliationAdjustment)
+            .clamp(0, double.infinity)
+            .toDouble();
     final nextStatementDate = _nextStatementDate(card, reference);
     final nextDueDate = _dueDateForBillingDate(card, nextStatementDate);
     final availableLimit = (card.creditLimit - totalOutstanding).clamp(
@@ -342,6 +353,7 @@ class BillingService {
     return CardBillingSnapshot(
       cardId: card.id,
       billedDue: billedDue,
+      reconciliationAdjustment: reconciliationAdjustment,
       unbilledSpends: unbilledSpends,
       totalOutstanding: totalOutstanding,
       availableLimit: availableLimit.toDouble(),
@@ -457,6 +469,11 @@ class BillingService {
     final bill = await (_db.select(
       _db.cardBills,
     )..where((b) => b.id.equals(billId))).getSingle();
+    if (bill.status == 'opening') {
+      throw StateError(
+        'Opening reconciliation adjustments are not payable bills.',
+      );
+    }
     final cardBeforePayment = await (_db.select(
       _db.creditCards,
     )..where((c) => c.id.equals(bill.cardId))).getSingleOrNull();
@@ -587,6 +604,7 @@ class BillingService {
               ..orderBy([(b) => OrderingTerm.asc(b.billingDate)]))
             .get();
     final unpaidBills = bills
+        .where((bill) => bill.status != 'opening')
         .where((bill) => !_isBillPaidLike(bill))
         .where((bill) => (bill.billedAmount - bill.paidAmount) > 0.009)
         .toList(growable: false);
@@ -763,31 +781,18 @@ class BillingService {
     return unpaidBills.isEmpty ? null : unpaidBills.first;
   }
 
-  Future<List<Transaction>> _getOpenBilledTransactions(
-    int cardId,
-    List<CardBill> unpaidBills,
-  ) async {
-    final openBillIds = unpaidBills
-        .where((bill) => bill.status != 'opening')
-        .map((bill) => bill.id)
-        .toSet();
-    if (openBillIds.isEmpty) return const <Transaction>[];
-
-    final candidates =
-        await (_db.select(_db.transactions)
-              ..where(
-                (t) =>
-                    t.paymentSourceType.equals('creditCard') &
-                    t.paymentSourceId.equals(cardId) &
-                    (t.type.equals('creditCard') | t.type.equals('refund')) &
-                    _billingRelevantExpression(t) &
-                    t.cardBillId.isNotNull(),
-              )
-              ..orderBy([(t) => OrderingTerm.desc(t.transactionDate)]))
-            .get();
-    return candidates
-        .where((txn) => openBillIds.contains(txn.cardBillId))
-        .toList(growable: false);
+  Future<List<Transaction>> _getBilledTransactions(int cardId) {
+    return (_db.select(_db.transactions)
+          ..where(
+            (t) =>
+                t.paymentSourceType.equals('creditCard') &
+                t.paymentSourceId.equals(cardId) &
+                (t.type.equals('creditCard') | t.type.equals('refund')) &
+                _billingRelevantExpression(t) &
+                t.cardBillId.isNotNull(),
+          )
+          ..orderBy([(t) => OrderingTerm.desc(t.transactionDate)]))
+        .get();
   }
 
   Future<void> _reconcileCardBillingAssignments(

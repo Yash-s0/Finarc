@@ -216,7 +216,7 @@ class CardBillDueNotificationService {
     final unpaidBill = _findBestBillForCycle(
       bills,
       parsed,
-      predicate: (bill) => !_isBillPaidLike(bill),
+      predicate: (bill) => bill.status != 'opening' && !_isBillPaidLike(bill),
     );
     if (unpaidBill != null) {
       final action = await _handleAgainstUnpaidBill(
