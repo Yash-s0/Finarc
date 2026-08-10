@@ -567,6 +567,23 @@ class NotificationIngestionService {
           row.rawText,
         )?.toLowerCase();
 
+        if (_isCrossSourceMerchantDuplicate(
+          candidate: candidate,
+          row: row,
+          candidateCounterparty: candidateCounterparty,
+          candidateDirection: candidateDirection,
+          candidateSourceHint: candidateSourceHint,
+          rowSourceHint: rowSourceHint,
+          candidateRef: candidateRef,
+          rowRef: rowRef,
+        )) {
+          return const _NearDuplicateDecision(
+            suppress: true,
+            possibleDuplicate: false,
+            reason: 'cross_source_same_transaction_within_2m',
+          );
+        }
+
         if (_isGenericCrossSourceDuplicate(
           candidateCounterparty: candidateCounterparty,
           rowCounterparty: row.merchant,
@@ -733,6 +750,42 @@ class NotificationIngestionService {
       return false;
     }
     return candidateDate.difference(rowDate).abs() <= _genericDuplicateWindow;
+  }
+
+  bool _isCrossSourceMerchantDuplicate({
+    required DetectedTransactionCandidate candidate,
+    required PendingTransaction row,
+    required String candidateCounterparty,
+    required String candidateDirection,
+    required String? candidateSourceHint,
+    required String? rowSourceHint,
+    required String? candidateRef,
+    required String? rowRef,
+  }) {
+    if (candidate.sourceType == row.sourceType) return false;
+    if (candidate.transactionDate.difference(row.transactionDate).abs() >
+        _genericDuplicateWindow) {
+      return false;
+    }
+
+    final rowDirection = _directionFromPending(row);
+    if (candidateDirection != 'unknown' &&
+        rowDirection != 'unknown' &&
+        candidateDirection != rowDirection) {
+      return false;
+    }
+    if (candidateRef != null && rowRef != null && candidateRef != rowRef) {
+      return false;
+    }
+    if (candidateSourceHint != null &&
+        rowSourceHint != null &&
+        candidateSourceHint != rowSourceHint) {
+      return false;
+    }
+    return CounterpartyNormalizer.isSameOrNearMatch(
+      candidateCounterparty,
+      row.merchant,
+    );
   }
 
   bool _isMirroredFinancialAlertDuplicate({

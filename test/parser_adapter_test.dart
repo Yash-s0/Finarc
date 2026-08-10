@@ -441,6 +441,16 @@ void main() {
     );
   });
 
+  test('counterparty normalization ignores notification account suffixes', () {
+    expect(
+      CounterpartyNormalizer.isSameOrNearMatch(
+        'Devender Nursery',
+        'Devender Nursery Amount From Xx0754',
+      ),
+      isTrue,
+    );
+  });
+
   test('category suggestion returns mapped categories', () {
     expect(CategorySuggester.suggest('Swiggy'), 'Food');
     expect(CategorySuggester.suggest('Amazon Marketplace'), 'Shopping');

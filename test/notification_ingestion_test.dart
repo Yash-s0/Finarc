@@ -2163,6 +2163,40 @@ void main() {
       },
     );
 
+    test(
+      'dedupes UPI app notification against bank SMS with account suffix',
+      () async {
+        final sms = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.google.android.apps.messaging',
+            sourceType: 'sms',
+            receivedAt: DateTime(2026, 8, 9, 18, 17, 51),
+            title: 'VM-KOTAKB-S',
+            body: 'Sent Rs.750.00 from XXXXX0754 to Devender Nursery via UPI.',
+          ),
+        );
+        final appNotification = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.phonepe.app',
+            appName: 'PhonePe',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 8, 9, 18, 17, 54),
+            title: 'Paid ₹750.00',
+            body: 'to Devender Nursery Amount From Xx0754 via UPI',
+          ),
+        );
+
+        expect(sms, hasLength(1));
+        expect(appNotification, isEmpty);
+        expect(debugEntries.last.decision, 'duplicate');
+        expect(
+          debugEntries.last.reason,
+          'cross_source_same_transaction_within_2m',
+        );
+        expect(await db.select(db.pendingTransactions).get(), hasLength(1));
+      },
+    );
+
     test('blocks OTP-style messages app notifications', () async {
       final ids = await service.processPayload(
         NotificationPayload(

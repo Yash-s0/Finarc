@@ -32,6 +32,7 @@ class CounterpartyNormalizer {
     'available',
     'info',
     'payment',
+    'amount',
     'that',
     'fast',
     'check',
@@ -64,7 +65,12 @@ class CounterpartyNormalizer {
 
     final filtered = text
         .split(' ')
-        .where((token) => token.isNotEmpty && !_noiseWords.contains(token))
+        .where(
+          (token) =>
+              token.isNotEmpty &&
+              !_noiseWords.contains(token) &&
+              !RegExp(r'^x+\d{3,4}$').hasMatch(token),
+        )
         .toList(growable: false);
     return filtered.join(' ');
   }
