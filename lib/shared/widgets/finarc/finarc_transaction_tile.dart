@@ -54,9 +54,9 @@ class FinarcTransactionTile extends StatelessWidget {
             ? null
             : transactionMetaLabel(date!, sourceLabel: source));
     final content = Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: 10,
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? AppSpacing.sm : AppSpacing.md,
+        vertical: compact ? 8 : 10,
       ),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh,
@@ -73,10 +73,17 @@ class FinarcTransactionTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: titleStyle),
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: titleStyle,
+                ),
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: Theme.of(
                     context,
                   ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
@@ -85,6 +92,8 @@ class FinarcTransactionTile extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     resolvedMeta,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
@@ -97,31 +106,47 @@ class FinarcTransactionTile extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.xs),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                amount,
-                textAlign: TextAlign.end,
-                style: AppTextStyles.amountStyle(
-                  color: amountColor ?? Theme.of(context).colorScheme.onSurface,
-                  size: compact ? 13.5 : 14.5,
-                  weight: FontWeight.w700,
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: compact ? 96 : 118),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    amount,
+                    textAlign: TextAlign.end,
+                    maxLines: 1,
+                    style: AppTextStyles.amountStyle(
+                      color:
+                          amountColor ??
+                          Theme.of(context).colorScheme.onSurface,
+                      size: compact ? 13.5 : 14.5,
+                      weight: FontWeight.w800,
+                    ),
+                  ),
                 ),
-              ),
-              if (amountMeta != null) ...[
-                const SizedBox(height: 2),
-                Text(amountMeta!, style: Theme.of(context).textTheme.bodySmall),
+                if (amountMeta != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    amountMeta!,
+                    textAlign: TextAlign.end,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+                if (statusLabel != null) ...[
+                  const SizedBox(height: 4),
+                  FinarcStatusBadge(
+                    label: statusLabel!,
+                    tone: statusTone,
+                    compact: true,
+                  ),
+                ],
               ],
-              if (statusLabel != null) ...[
-                const SizedBox(height: 4),
-                FinarcStatusBadge(
-                  label: statusLabel!,
-                  tone: statusTone,
-                  compact: true,
-                ),
-              ],
-            ],
+            ),
           ),
           if (onTap != null) ...[
             const SizedBox(width: AppSpacing.xs),
