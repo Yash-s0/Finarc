@@ -15,9 +15,10 @@ class FinarcSectionHeader extends StatelessWidget {
       children: [
         Expanded(
           child: Text(
-            title.toUpperCase(),
+            title,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              letterSpacing: 1.35,
+              letterSpacing: 0.25,
+              fontWeight: FontWeight.w700,
               color: isDark
                   ? AppColors.darkTextMuted.withValues(alpha: 0.88)
                   : AppColors.lightTextMuted.withValues(alpha: 0.90),

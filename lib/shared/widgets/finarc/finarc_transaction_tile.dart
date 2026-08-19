@@ -55,109 +55,119 @@ class FinarcTransactionTile extends StatelessWidget {
             : transactionMetaLabel(date!, sourceLabel: source));
     final content = Container(
       padding: EdgeInsets.symmetric(
-        horizontal: compact ? AppSpacing.sm : AppSpacing.md,
-        vertical: compact ? 8 : 10,
+        horizontal: compact ? 10 : AppSpacing.md,
+        vertical: compact ? 7 : 10,
       ),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
+        borderRadius: BorderRadius.circular(
+          compact ? AppRadius.md : AppRadius.lg,
+        ),
         border: Border.all(
           color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
         ),
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (prefix != null) ...[prefix!, SizedBox(width: iconGap)],
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: titleStyle,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                if (resolvedMeta != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    resolvedMeta,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-                if (badges.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: AppSpacing.xxs),
-                    child: Wrap(spacing: 6, runSpacing: 6, children: badges),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(width: AppSpacing.xs),
-          ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: compact ? 96 : 118),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerRight,
-                  child: Text(
-                    amount,
-                    textAlign: TextAlign.end,
-                    maxLines: 1,
-                    style: AppTextStyles.amountStyle(
-                      color:
-                          amountColor ??
-                          Theme.of(context).colorScheme.onSurface,
-                      size: compact ? 13.5 : 14.5,
-                      weight: FontWeight.w800,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (prefix != null) ...[prefix!, SizedBox(width: iconGap)],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: titleStyle,
                     ),
-                  ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (resolvedMeta != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        resolvedMeta,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ],
                 ),
-                if (amountMeta != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    amountMeta!,
-                    textAlign: TextAlign.end,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-                if (statusLabel != null) ...[
-                  const SizedBox(height: 4),
-                  FinarcStatusBadge(
-                    label: statusLabel!,
-                    tone: statusTone,
-                    compact: true,
-                  ),
-                ],
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: compact ? 112 : 124),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        amount,
+                        textAlign: TextAlign.end,
+                        maxLines: 1,
+                        style: AppTextStyles.amountStyle(
+                          color:
+                              amountColor ??
+                              Theme.of(context).colorScheme.onSurface,
+                          size: compact ? 13.5 : 14.5,
+                          weight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    if (amountMeta != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        amountMeta!,
+                        textAlign: TextAlign.end,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                    if (statusLabel != null) ...[
+                      const SizedBox(height: 4),
+                      FinarcStatusBadge(
+                        label: statusLabel!,
+                        tone: statusTone,
+                        compact: true,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (onTap != null) ...[
+                const SizedBox(width: AppSpacing.xs),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 16,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.5),
+                ),
               ],
-            ),
+            ],
           ),
-          if (onTap != null) ...[
-            const SizedBox(width: AppSpacing.xs),
-            Icon(
-              Icons.chevron_right_rounded,
-              size: 16,
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurface.withValues(alpha: 0.5),
+          if (badges.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.only(
+                top: 3,
+                left: prefix == null ? 0 : (compact ? 36 : 42),
+              ),
+              child: Wrap(spacing: 5, runSpacing: 4, children: badges),
             ),
-          ],
         ],
       ),
     );

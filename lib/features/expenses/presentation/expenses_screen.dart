@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/formatters.dart';
@@ -141,7 +142,9 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                 return true;
               })
               .toList(growable: false);
-          final totals = _ExpenseTotals.fromTransactions(filtered);
+          final period = _ExpensePeriod.resolve(filtered, selected: _dateRange);
+          final periodTransactions = period.transactionsInPeriod(filtered);
+          final totals = _ExpenseTotals.fromTransactions(periodTransactions);
 
           final grouped = <String, List<dynamic>>{};
           for (final txn in filtered) {
@@ -169,15 +172,15 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(AppSpacing.md),
               children: [
-                _summaryStrip(context, totals),
-                const SizedBox(height: AppSpacing.sm),
+                _summaryStrip(context, totals, period),
+                const SizedBox(height: AppSpacing.xs),
                 _filterPanel(
                   context,
                   txns: txns,
                   hasActiveFilters: hasActiveFilters,
                   activeFilterCount: activeFilterCount,
                 ),
-                const SizedBox(height: AppSpacing.md),
+                const SizedBox(height: 8),
                 if (filtered.isEmpty)
                   FinarcEmptyState(
                     icon: Icons.receipt_long_rounded,
@@ -196,7 +199,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                 else
                   ...grouped.entries.map((entry) {
                     return Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                      padding: const EdgeInsets.only(bottom: 8),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -204,7 +207,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                             title:
                                 '${_prettyDay(entry.key)} · ${_transactionCountLabel(entry.value.length)}',
                           ),
-                          const SizedBox(height: AppSpacing.xs),
+                          const SizedBox(height: 4),
                           ...entry.value.map((t) {
                             final net = ref
                                 .read(transactionEngineProvider)
@@ -238,9 +241,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                               net: net,
                             );
                             return Padding(
-                              padding: const EdgeInsets.only(
-                                bottom: AppSpacing.xs,
-                              ),
+                              padding: const EdgeInsets.only(bottom: 6),
                               child: _transactionActionWrapper(
                                 context,
                                 txn: t,
@@ -262,7 +263,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                                             ? AppColors.darkError
                                             : AppColors.lightError),
                                   prefix: CircleAvatar(
-                                    radius: 16,
+                                    radius: 15,
                                     backgroundColor:
                                         _iconBackgroundForTransaction(
                                           context,
@@ -295,7 +296,11 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     );
   }
 
-  Widget _summaryStrip(BuildContext context, _ExpenseTotals totals) {
+  Widget _summaryStrip(
+    BuildContext context,
+    _ExpenseTotals totals,
+    _ExpensePeriod period,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -306,31 +311,60 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.sm),
-        child: Row(
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 9),
+        child: Column(
           children: [
-            Expanded(
-              child: _SummaryMetric(
-                label: 'Spent',
-                value: inr(totals.expense),
-                color: isDark ? AppColors.darkError : AppColors.lightError,
-              ),
+            Row(
+              children: [
+                Flexible(child: _PeriodSelectorChip(label: period.label)),
+                const SizedBox(width: AppSpacing.xs),
+                Flexible(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      period.rangeLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.66),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            _SummaryDivider(isDark: isDark),
-            Expanded(
-              child: _SummaryMetric(
-                label: 'Income',
-                value: inr(totals.income),
-                color: isDark ? AppColors.darkSuccess : AppColors.lightSuccess,
-              ),
-            ),
-            _SummaryDivider(isDark: isDark),
-            Expanded(
-              child: _SummaryMetric(
-                label: 'Items',
-                value: totals.count.toString(),
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _SummaryMetric(
+                    label: 'Spent',
+                    value: inr(totals.expense),
+                    color: isDark ? AppColors.darkError : AppColors.lightError,
+                  ),
+                ),
+                _SummaryDivider(isDark: isDark),
+                Expanded(
+                  child: _SummaryMetric(
+                    label: 'Income',
+                    value: inr(totals.income),
+                    color: isDark
+                        ? AppColors.darkSuccess
+                        : AppColors.lightSuccess,
+                  ),
+                ),
+                _SummaryDivider(isDark: isDark),
+                Expanded(
+                  child: _SummaryMetric(
+                    label: 'Transactions',
+                    value: totals.count.toString(),
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -371,7 +405,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          height: 44,
+          height: 40,
           child: TextField(
             focusNode: _searchFocus,
             controller: _search,
@@ -384,8 +418,8 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
               ),
               prefixIcon: const Icon(Icons.search_rounded, size: 20),
               prefixIconConstraints: const BoxConstraints(
-                minWidth: 40,
-                minHeight: 40,
+                minWidth: 38,
+                minHeight: 38,
               ),
               suffixIcon: _search.text.trim().isEmpty
                   ? null
@@ -397,14 +431,14 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                       },
                     ),
               suffixIconConstraints: const BoxConstraints(
-                minWidth: 40,
-                minHeight: 40,
+                minWidth: 38,
+                minHeight: 38,
               ),
             ),
             onChanged: (_) => setState(() {}),
           ),
         ),
-        const SizedBox(height: AppSpacing.xs),
+        const SizedBox(height: 6),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
@@ -441,11 +475,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                 ),
               ),
               const SizedBox(width: AppSpacing.xs),
-              _FilterAction(
-                icon: Icons.sort_rounded,
-                label: 'Sort: Date',
-                onTap: () {},
-              ),
+              _FilterAction(icon: Icons.sort_rounded, onTap: () {}),
               if (hasActiveFilters) ...[
                 const SizedBox(width: AppSpacing.xs),
                 _ResetFiltersButton(
@@ -456,18 +486,24 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
             ],
           ),
         ),
-        const SizedBox(height: AppSpacing.xs),
-        Wrap(
-          spacing: AppSpacing.xs,
-          runSpacing: AppSpacing.xs,
-          children: [
-            _quickChip('All', 'all'),
-            _quickChip('Unbilled', 'unbilled'),
-            _quickChip('Owed', 'owed'),
-            _quickChip('Cash', 'cash'),
-            _quickChip('Card', 'creditCard'),
-            _quickChip('UPI', 'upi'),
-          ],
+        const SizedBox(height: 6),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _quickChip('All', 'all'),
+              const SizedBox(width: AppSpacing.xs),
+              _quickChip('Unbilled', 'unbilled'),
+              const SizedBox(width: AppSpacing.xs),
+              _quickChip('Owed', 'owed'),
+              const SizedBox(width: AppSpacing.xs),
+              _quickChip('Cash', 'cash'),
+              const SizedBox(width: AppSpacing.xs),
+              _quickChip('Card', 'creditCard'),
+              const SizedBox(width: AppSpacing.xs),
+              _quickChip('UPI', 'upi'),
+            ],
+          ),
         ),
       ],
     );
@@ -944,8 +980,8 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete transaction?'),
-        content: const Text('This will reverse its balance effect.'),
+        title: const Text('Delete this transaction?'),
+        content: const Text('This action cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -1039,10 +1075,6 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     if (txn.cashbackAmount > 0) {
       parts.add('Net ${inr(net)}');
     }
-    if (txn.isForOthers &&
-        txn.recoverablePartyName?.trim().isNotEmpty == true) {
-      parts.add(txn.recoverablePartyName!.trim());
-    }
     return parts.isEmpty ? null : parts.join(' · ');
   }
 }
@@ -1069,6 +1101,93 @@ class _ExpenseTotals {
       }
     }
     return _ExpenseTotals(expense: expense, income: income, count: txns.length);
+  }
+}
+
+class _ExpensePeriod {
+  const _ExpensePeriod({
+    required this.label,
+    required this.start,
+    required this.end,
+  });
+
+  final String label;
+  final DateTime start;
+  final DateTime end;
+
+  String get rangeLabel => '${_shortDate(start)} – ${_shortDate(end)}';
+
+  List<Transaction> transactionsInPeriod(List<Transaction> txns) {
+    return txns
+        .where((txn) {
+          final day = DateUtils.dateOnly(txn.transactionDate);
+          return !day.isBefore(start) && !day.isAfter(end);
+        })
+        .toList(growable: false);
+  }
+
+  static _ExpensePeriod resolve(
+    List<Transaction> txns, {
+    DateTimeRange? selected,
+  }) {
+    if (selected != null) {
+      return _ExpensePeriod(
+        label: 'Selected range',
+        start: DateUtils.dateOnly(selected.start),
+        end: DateUtils.dateOnly(selected.end),
+      );
+    }
+
+    final anchor = txns.isEmpty
+        ? DateTime.now()
+        : txns
+              .map((txn) => txn.transactionDate)
+              .reduce((a, b) => a.isAfter(b) ? a : b);
+    final start = DateTime(anchor.year, anchor.month);
+    final end = DateTime(anchor.year, anchor.month + 1, 0);
+    final now = DateTime.now();
+    final isCurrentMonth = anchor.year == now.year && anchor.month == now.month;
+    return _ExpensePeriod(
+      label: isCurrentMonth ? 'This month' : _monthLabel(anchor),
+      start: start,
+      end: end,
+    );
+  }
+
+  static String _monthLabel(DateTime date) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${months[date.month - 1]} ${date.year}';
+  }
+
+  static String _shortDate(DateTime date) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${date.day} ${months[date.month - 1]}';
   }
 }
 
@@ -1103,6 +1222,46 @@ class _SummaryMetric extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _PeriodSelectorChip extends StatelessWidget {
+  const _PeriodSelectorChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.calendar_month_outlined, size: 14),
+          const SizedBox(width: 5),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(
+                context,
+              ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+          ),
+          const SizedBox(width: 2),
+          const Icon(Icons.keyboard_arrow_down_rounded, size: 14),
+        ],
+      ),
     );
   }
 }
@@ -1478,13 +1637,13 @@ class _CalendarMonthGrid extends StatelessWidget {
 class _FilterAction extends StatelessWidget {
   const _FilterAction({
     required this.icon,
-    required this.label,
     required this.onTap,
+    this.label,
     this.selected = false,
   });
 
   final IconData icon;
-  final String label;
+  final String? label;
   final VoidCallback onTap;
   final bool selected;
 
@@ -1514,10 +1673,7 @@ class _FilterAction extends StatelessWidget {
             ),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.sm,
-              vertical: 9,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -1526,17 +1682,19 @@ class _FilterAction extends StatelessWidget {
                   size: 18,
                   color: isDark ? AppColors.darkAccent : AppColors.lightAccent,
                 ),
-                const SizedBox(width: AppSpacing.xs),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: isDark
-                        ? AppColors.darkAccent
-                        : AppColors.lightAccent,
+                if (label != null) ...[
+                  const SizedBox(width: AppSpacing.xs),
+                  Text(
+                    label!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: isDark
+                          ? AppColors.darkAccent
+                          : AppColors.lightAccent,
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),

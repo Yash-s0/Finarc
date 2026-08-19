@@ -62,8 +62,8 @@ class FinarcStatusBadge extends StatelessWidget {
 
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: compact ? 8 : 10,
-        vertical: compact ? 3 : 4,
+        horizontal: compact ? 7 : 10,
+        vertical: compact ? 2 : 4,
       ),
       decoration: BoxDecoration(
         color: bg,
@@ -72,11 +72,15 @@ class FinarcStatusBadge extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: fg,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.3,
-        ),
+        style:
+            (compact
+                    ? Theme.of(context).textTheme.labelSmall
+                    : Theme.of(context).textTheme.labelMedium)
+                ?.copyWith(
+                  color: fg,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0,
+                ),
       ),
     );
   }

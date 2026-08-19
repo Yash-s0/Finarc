@@ -63,7 +63,9 @@ class FinarcActionChip extends StatelessWidget {
       ),
       elevation: 0,
       pressElevation: 0,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: VisualDensity.compact,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.pill),
       ),
