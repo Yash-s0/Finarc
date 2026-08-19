@@ -1052,7 +1052,8 @@ class BillingService {
         .toDouble();
 
     if (opening != null) {
-      if ((opening.billedAmount - delta).abs() <= 0.009 &&
+      final nextOpeningAmount = delta.clamp(0, opening.billedAmount).toDouble();
+      if ((opening.billedAmount - nextOpeningAmount).abs() <= 0.009 &&
           opening.paidAmount <= 0.009) {
         return;
       }
@@ -1060,7 +1061,7 @@ class BillingService {
         _db.cardBills,
       )..where((b) => b.id.equals(opening.id))).write(
         CardBillsCompanion(
-          billedAmount: Value(delta),
+          billedAmount: Value(nextOpeningAmount),
           paidAmount: const Value(0),
           dueDate: Value(_dueDateForBillingDate(card, _dateOnly(_now()))),
         ),

@@ -2008,6 +2008,30 @@ void main() {
       },
     );
 
+    test('generic ICICI refund notification matches card last4 source', () async {
+      final cardId = await createCard(bankName: 'ICICI Bank', last4: '9000');
+      final ids = await service.processPayload(
+        NotificationPayload(
+          packageName: 'android.sms',
+          sourceType: 'sms',
+          sender: 'JD-ICICIT-S',
+          receivedAt: DateTime(2026, 8, 19, 6, 4),
+          title: 'Your Icici Bank Credit',
+          body:
+              'AMAZON PAY IN GROCERY refund of Rs 1,319.00 credited to your ICICI Bank Credit Card XX9000 on 18-AUG-26.',
+        ),
+      );
+
+      expect(ids, hasLength(1));
+      final pending = await (db.select(
+        db.pendingTransactions,
+      )..where((p) => p.id.equals(ids.first))).getSingle();
+      expect(pending.amount, 1319);
+      expect(pending.categorySuggestion, 'Refund');
+      expect(pending.paymentSourceTypeSuggestion, 'creditCard');
+      expect(pending.paymentSourceIdSuggestion, cardId);
+    });
+
     test('real UPI sent notification still creates pending', () async {
       final ids = await service.processPayload(
         NotificationPayload(

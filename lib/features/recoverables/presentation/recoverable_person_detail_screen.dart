@@ -126,8 +126,6 @@ class _RecoverablePersonDetailScreenState
                         itemCount: filteredItems.length,
                         itemExtentEstimate: _embeddedTransactionEstimate,
                         maxHeight: _embeddedTransactionHeight,
-                        physics: const NeverScrollableScrollPhysics(),
-                        showScrollbar: false,
                         emptyState: FinarcEmptyState(
                           title: 'No items for this filter',
                           subtitle: 'Try another source tab.',

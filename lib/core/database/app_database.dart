@@ -629,6 +629,7 @@ class AppDatabase extends _$AppDatabase {
       await repairMirroredAutopayPendingDuplicates();
       await repairPromoAndSweepArtifacts();
       await repairUnbilledCardRecoveries();
+      await repairRefundRecoverables();
       await repairStaleOpeningBills();
     },
   );
@@ -639,6 +640,7 @@ class AppDatabase extends _$AppDatabase {
     await repairMirroredAutopayPendingDuplicates();
     await repairPromoAndSweepArtifacts();
     await repairUnbilledCardRecoveries();
+    await repairRefundRecoverables();
     await repairStaleOpeningBills();
     await normalizeRecoverableDataBackfill();
     final settings = await (select(appSettings)..limit(1)).getSingleOrNull();
@@ -831,10 +833,13 @@ class AppDatabase extends _$AppDatabase {
             card.id,
             includeOpening: false,
           );
-      final nextOpeningAmount =
+      final recalculatedOpeningAmount =
           (card.currentOutstanding - representedWithoutOpening)
               .clamp(0, double.infinity)
               .toDouble();
+      final nextOpeningAmount = recalculatedOpeningAmount
+          .clamp(0, opening.billedAmount)
+          .toDouble();
       if ((opening.billedAmount - nextOpeningAmount).abs() <= 0.009) {
         continue;
       }
@@ -862,6 +867,108 @@ class AppDatabase extends _$AppDatabase {
       await globalAppLogService.log(
         category: 'migration',
         message: 'repaired-stale-opening-bills',
+        meta: <String, Object?>{'rows': repaired},
+      );
+    }
+    return repaired;
+  }
+
+  Future<int> repairRefundRecoverables() async {
+    final refundRows =
+        await (select(transactions)..where(
+              (t) =>
+                  t.type.equals(TransactionType.refund) &
+                  t.isForOthers.equals(true) &
+                  ((t.recoverableBaseAmount.isBiggerThanValue(0)) |
+                      (t.recoverableAmount.isBiggerThanValue(0))),
+            ))
+            .get();
+    if (refundRows.isEmpty) return 0;
+
+    var repaired = 0;
+    for (final refund in refundRows) {
+      final party = refund.recoverablePartyName?.trim();
+      final refundCredit =
+          (refund.recoverableBaseAmount ?? refund.recoverableAmount ?? 0)
+              .clamp(0, refund.amount)
+              .toDouble();
+      var remainingCredit = refundCredit;
+
+      if (party != null && party.isNotEmpty && remainingCredit > 0.009) {
+        final candidates =
+            await (select(transactions)
+                  ..where(
+                    (t) =>
+                        t.id.isNotValue(refund.id) &
+                        t.type.isNotValue(TransactionType.refund) &
+                        t.isForOthers.equals(true) &
+                        t.recoverablePartyName.equals(party) &
+                        ((t.recoverableBaseAmount.isBiggerThanValue(0)) |
+                            (t.recoverableAmount.isBiggerThanValue(0))),
+                  )
+                  ..orderBy([(t) => OrderingTerm.asc(t.transactionDate)]))
+                .get();
+
+        for (final txn in candidates) {
+          if (remainingCredit <= 0.009) break;
+          final base =
+              txn.recoverableBaseAmount ??
+              (txn.amount - txn.cashbackAmount).clamp(0, txn.amount).toDouble();
+          final alreadyRecovered = txn.recoveredAmount
+              .clamp(0, base)
+              .toDouble();
+          final open = (base - alreadyRecovered).clamp(0, base).toDouble();
+          if (open <= 0.009) continue;
+
+          final applied = remainingCredit.clamp(0, open).toDouble();
+          final nextRecovered = (alreadyRecovered + applied)
+              .clamp(0, base)
+              .toDouble();
+          final nextRemaining = (base - nextRecovered)
+              .clamp(0, base)
+              .toDouble();
+          final nextStatus = nextRemaining <= 0.009
+              ? 'recovered'
+              : nextRecovered <= 0.009
+              ? 'unpaid'
+              : 'partial';
+
+          await (update(transactions)..where((t) => t.id.equals(txn.id))).write(
+            TransactionsCompanion(
+              recoverableBaseAmount: Value(base),
+              recoverableAmount: Value(nextRemaining),
+              recoveredAmount: Value(nextRecovered),
+              recoverableStatus: Value(nextStatus),
+              recoveredAt: Value(
+                nextRemaining <= 0.009
+                    ? (txn.recoveredAt ?? refund.transactionDate)
+                    : txn.recoveredAt,
+              ),
+              updatedAt: Value(DateTime.now()),
+            ),
+          );
+          remainingCredit -= applied;
+        }
+      }
+
+      await (update(transactions)..where((t) => t.id.equals(refund.id))).write(
+        TransactionsCompanion(
+          isForOthers: const Value(false),
+          recoverableBaseAmount: const Value(0),
+          recoverableAmount: const Value(null),
+          recoveredAmount: const Value(0),
+          recoverableStatus: const Value('recovered'),
+          recoveredAt: Value(refund.recoveredAt ?? refund.transactionDate),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+      repaired += 1;
+    }
+
+    if (repaired > 0) {
+      await globalAppLogService.log(
+        category: 'migration',
+        message: 'repaired-refund-recoverables',
         meta: <String, Object?>{'rows': repaired},
       );
     }

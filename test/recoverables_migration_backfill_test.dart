@@ -3,6 +3,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:finarc/core/database/app_database.dart';
+import 'package:finarc/features/expenses/models/transaction_types.dart';
 
 void main() {
   late AppDatabase db;
@@ -335,54 +336,130 @@ void main() {
     expect(txn.recoveredAt, null);
   });
 
-  test('repair recalculates stale opening bill due', () async {
-    final cardId = await db
-        .into(db.creditCards)
-        .insert(
-          CreditCardsCompanion.insert(
-            bankName: 'ICICI',
-            nickname: 'Amazon Pay',
-            last4: '9000',
-            maskedNumber: '**** **** **** 9000',
-            creditLimit: 60000,
-            billingDay: 20,
-            dueDay: 7,
-            currentOutstanding: const Value(19609),
-          ),
-        );
-    final openingId = await db
-        .into(db.cardBills)
-        .insert(
-          CardBillsCompanion.insert(
-            cardId: cardId,
-            cycleStartDate: Value(DateTime(2026, 8, 1)),
-            cycleEndDate: Value(DateTime(2026, 8, 1)),
-            billingDate: Value(DateTime(2026, 8, 1)),
-            dueDate: Value(DateTime(2026, 8, 7)),
-            billedAmount: 1000,
-            status: const Value('opening'),
-          ),
-        );
-    await db
-        .into(db.transactions)
-        .insert(
-          TransactionsCompanion.insert(
-            type: 'creditCard',
-            amount: 1500,
-            title: 'Amazon',
-            category: 'Groceries',
-            transactionDate: DateTime(2026, 7, 20),
-            paymentSourceType: 'creditCard',
-            paymentSourceId: cardId,
-          ),
-        );
+  test(
+    'repair recalculates stale opening bill down but does not grow it',
+    () async {
+      final cardId = await db
+          .into(db.creditCards)
+          .insert(
+            CreditCardsCompanion.insert(
+              bankName: 'ICICI',
+              nickname: 'Amazon Pay',
+              last4: '9000',
+              maskedNumber: '**** **** **** 9000',
+              creditLimit: 60000,
+              billingDay: 20,
+              dueDay: 7,
+              currentOutstanding: const Value(1900),
+            ),
+          );
+      final openingId = await db
+          .into(db.cardBills)
+          .insert(
+            CardBillsCompanion.insert(
+              cardId: cardId,
+              cycleStartDate: Value(DateTime(2026, 8, 1)),
+              cycleEndDate: Value(DateTime(2026, 8, 1)),
+              billingDate: Value(DateTime(2026, 8, 1)),
+              dueDate: Value(DateTime(2026, 8, 7)),
+              billedAmount: 1000,
+              status: const Value('opening'),
+            ),
+          );
+      await db
+          .into(db.transactions)
+          .insert(
+            TransactionsCompanion.insert(
+              type: 'creditCard',
+              amount: 1500,
+              title: 'Amazon',
+              category: 'Groceries',
+              transactionDate: DateTime(2026, 7, 20),
+              paymentSourceType: 'creditCard',
+              paymentSourceId: cardId,
+            ),
+          );
 
-    final repaired = await db.repairStaleOpeningBills();
+      final repaired = await db.repairStaleOpeningBills();
 
-    expect(repaired, 1);
-    final opening = await (db.select(
-      db.cardBills,
-    )..where((b) => b.id.equals(openingId))).getSingle();
-    expect(opening.billedAmount, closeTo(18109, 0.01));
-  });
+      expect(repaired, 1);
+      final opening = await (db.select(
+        db.cardBills,
+      )..where((b) => b.id.equals(openingId))).getSingle();
+      expect(opening.billedAmount, closeTo(400, 0.01));
+    },
+  );
+
+  test(
+    'repair applies standalone refund recoverable to same party open items',
+    () async {
+      final cardId = await db
+          .into(db.creditCards)
+          .insert(
+            CreditCardsCompanion.insert(
+              bankName: 'ICICI',
+              nickname: 'Amazon Pay',
+              last4: '9000',
+              maskedNumber: '**** **** **** 9000',
+              creditLimit: 60000,
+              billingDay: 20,
+              dueDay: 7,
+            ),
+          );
+      final originalId = await db
+          .into(db.transactions)
+          .insert(
+            TransactionsCompanion.insert(
+              type: TransactionType.creditCard,
+              amount: 2000,
+              title: 'Shared order',
+              category: 'Shopping',
+              transactionDate: DateTime(2026, 8, 1),
+              paymentSourceType: PaymentSourceType.creditCard,
+              paymentSourceId: cardId,
+              isForOthers: const Value(true),
+              recoverablePartyName: const Value('Papa'),
+              recoverableBaseAmount: const Value(2000),
+              recoverableAmount: const Value(2000),
+              recoveredAmount: const Value(0),
+              recoverableStatus: const Value('unpaid'),
+            ),
+          );
+      final refundId = await db
+          .into(db.transactions)
+          .insert(
+            TransactionsCompanion.insert(
+              type: TransactionType.refund,
+              amount: 1300,
+              title: 'Amazon refund',
+              category: 'Refund',
+              transactionDate: DateTime(2026, 8, 2),
+              paymentSourceType: PaymentSourceType.creditCard,
+              paymentSourceId: cardId,
+              isForOthers: const Value(true),
+              recoverablePartyName: const Value('Papa'),
+              recoverableBaseAmount: const Value(1300),
+              recoverableAmount: const Value(1300),
+              recoveredAmount: const Value(0),
+              recoverableStatus: const Value('unpaid'),
+            ),
+          );
+
+      final repaired = await db.repairRefundRecoverables();
+
+      expect(repaired, 1);
+      final original = await (db.select(
+        db.transactions,
+      )..where((t) => t.id.equals(originalId))).getSingle();
+      final refund = await (db.select(
+        db.transactions,
+      )..where((t) => t.id.equals(refundId))).getSingle();
+      expect(original.recoverableAmount, closeTo(700, 0.01));
+      expect(original.recoveredAmount, closeTo(1300, 0.01));
+      expect(original.recoverableStatus, 'partial');
+      expect(refund.isForOthers, isFalse);
+      expect(refund.recoverableAmount, null);
+      expect(refund.recoverableBaseAmount, closeTo(0, 0.01));
+    },
+  );
 }

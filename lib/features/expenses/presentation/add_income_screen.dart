@@ -397,7 +397,6 @@ class _AddIncomeScreenState extends ConsumerState<AddIncomeScreen> {
               transactionImpactType: transactionImpactType,
               applyCardRefundToOutstanding: isCardRefund,
             ),
-            reconcileCardBilling: !isCardRefund,
           );
 
       final db = ref.read(appDatabaseProvider);

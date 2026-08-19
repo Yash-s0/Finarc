@@ -72,21 +72,22 @@ class GenericBankSmsParser implements TransactionParser {
       final hintLast4 = ParserTextUtils.extractLast4Hint(segment);
       final accountHint = ParserTextUtils.extractAccountHint(segment);
       final amazonPayHint = _amazonPayHint(segment);
-      final paymentSourceHint =
-          amazonPayHint ??
-          accountHint ??
-          (hintLast4 == null ? null : 'ending $hintLast4');
+      final sourceSuggestion = _sourceSuggestionForSegment(
+        segment: segment,
+        direction: direction,
+        accountHint: accountHint,
+      );
+      final paymentSourceHint = sourceSuggestion == PaymentSourceType.creditCard
+          ? (hintLast4 == null ? null : 'ending $hintLast4')
+          : amazonPayHint ??
+                accountHint ??
+                (hintLast4 == null ? null : 'ending $hintLast4');
       final ref = ParserTextUtils.extractTransactionReference(segment);
       final parsedDateTime = ParserTextUtils.extractDateTime(
         segment,
         input.captureTime,
       );
       final date = parsedDateTime?.value ?? input.captureTime;
-      final sourceSuggestion = _sourceSuggestionForSegment(
-        segment: segment,
-        direction: direction,
-        accountHint: accountHint,
-      );
 
       final confidence = ParserConfidenceScorer.assess(
         hasAmount: true,

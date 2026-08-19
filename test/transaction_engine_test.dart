@@ -160,6 +160,26 @@ void main() {
     expect(card.currentOutstanding, 6500);
   });
 
+  test('credit card refund reduces outstanding', () async {
+    await engine.addTransaction(
+      AddTransactionInput(
+        type: TransactionType.refund,
+        amount: 1200,
+        title: 'Amazon refund',
+        category: 'Refund',
+        transactionDate: DateTime(2026, 5, 24),
+        paymentSourceType: PaymentSourceType.creditCard,
+        paymentSourceId: cardId,
+        applyCardRefundToOutstanding: true,
+      ),
+      reconcileCardBilling: false,
+    );
+    final card = await (db.select(
+      db.creditCards,
+    )..where((c) => c.id.equals(cardId))).getSingle();
+    expect(card.currentOutstanding, 3800);
+  });
+
   test('cashback calculates net spend correctly', () async {
     await engine.addTransaction(
       AddTransactionInput(
@@ -217,7 +237,11 @@ void main() {
     final wallet = await (db.select(
       db.cashWallets,
     )..where((w) => w.id.equals(amazonPayId))).getSingle();
+    final card = await (db.select(
+      db.creditCards,
+    )..where((c) => c.id.equals(cardId))).getSingle();
     expect(wallet.currentBalance, 1600);
+    expect(card.currentOutstanding, 6000);
   });
 
   test('negative cashback deducts from Amazon Pay destination', () async {

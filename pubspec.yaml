@@ -3,7 +3,7 @@ description: "Finarc is a personal finance tracker app that helps you track your
 
 publish_to: 'none'
 
-version: 1.1.47+67
+version: 1.1.48+68
  
 environment:
   sdk: ^3.12.0

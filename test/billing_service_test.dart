@@ -718,6 +718,76 @@ void main() {
     },
   );
 
+  test(
+    'card refund lowers unbilled without growing opening reconciliation',
+    () async {
+      final now = DateTime(2026, 8, 9);
+      final cardId = await createCard(
+        billingDay: 20,
+        dueDay: 7,
+        outstanding: 70855,
+      );
+      await db
+          .into(db.cardBills)
+          .insert(
+            CardBillsCompanion.insert(
+              cardId: cardId,
+              cycleStartDate: Value(now),
+              cycleEndDate: Value(now),
+              billingDate: Value(now),
+              dueDate: Value(DateTime(2026, 9, 7)),
+              billedAmount: 21432,
+              status: const Value('opening'),
+            ),
+          );
+      await db
+          .into(db.transactions)
+          .insert(
+            TransactionsCompanion.insert(
+              type: TransactionType.creditCard,
+              amount: 49423,
+              title: 'Current cycle spends',
+              category: 'Shopping',
+              transactionDate: DateTime(2026, 7, 20),
+              paymentSourceType: PaymentSourceType.creditCard,
+              paymentSourceId: cardId,
+            ),
+          );
+
+      await TransactionEngine(db).addTransaction(
+        AddTransactionInput(
+          type: TransactionType.refund,
+          amount: 1319,
+          title: 'Amazon refund',
+          category: 'Refund',
+          transactionDate: now,
+          paymentSourceType: PaymentSourceType.creditCard,
+          paymentSourceId: cardId,
+          applyCardRefundToOutstanding: true,
+        ),
+      );
+
+      final snapshot = await BillingService(
+        db,
+        now: () => now,
+      ).getCardBillingSnapshotById(cardId);
+      final opening =
+          await (db.select(db.cardBills)..where(
+                (b) => b.cardId.equals(cardId) & b.status.equals('opening'),
+              ))
+              .getSingle();
+      final card = await (db.select(
+        db.creditCards,
+      )..where((c) => c.id.equals(cardId))).getSingle();
+
+      expect(snapshot.unbilledSpends, closeTo(48104, 0.01));
+      expect(snapshot.reconciliationAdjustment, closeTo(21432, 0.01));
+      expect(snapshot.totalOutstanding, closeTo(69536, 0.01));
+      expect(opening.billedAmount, closeTo(21432, 0.01));
+      expect(card.currentOutstanding, closeTo(69536, 0.01));
+    },
+  );
+
   test('card refund reduces billed due when linked bill is unpaid', () async {
     final now = DateTime.now();
     final billingDay = now.day > 1 ? now.day - 1 : 1;
