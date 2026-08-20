@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:finarc/core/database/app_database.dart';
 import 'package:finarc/features/expenses/data/transaction_engine.dart';
+import 'package:finarc/features/expenses/models/transaction_types.dart';
 import 'package:finarc/features/pending/data/pending_service.dart';
 import 'package:finarc/features/pending/notifications/notification_burst_limiter.dart';
 import 'package:finarc/features/pending/notifications/notification_fingerprint.dart';
@@ -818,6 +819,42 @@ void main() {
       expect(alerts.first.title.toLowerCase(), contains('verified'));
       expect(debugEntries.last.reason, 'card-bill-due-verified');
     });
+
+    test(
+      'ICICI bill due notification creates cycle bill and claims card transactions',
+      () async {
+        final cardId = await createCard(bankName: 'ICICI Bank', last4: '9000');
+        await db
+            .into(db.transactions)
+            .insert(
+              TransactionsCompanion.insert(
+                type: 'creditCard',
+                amount: 17027.10,
+                title: 'Amazon statement spend',
+                category: 'Shopping',
+                transactionDate: DateTime(2026, 5, 20),
+                paymentSourceType: 'creditCard',
+                paymentSourceId: cardId,
+              ),
+            );
+
+        final ids = await service.processPayload(iciciBillPayload());
+
+        expect(ids, isEmpty);
+        final bills = await db.select(db.cardBills).get();
+        expect(bills, hasLength(1));
+        expect(bills.single.billingDate, DateTime(2026, 6, 1));
+        expect(bills.single.dueDate, DateTime(2026, 6, 7));
+        expect(bills.single.billedAmount, closeTo(17027.10, 0.01));
+        final txn = await (db.select(
+          db.transactions,
+        )..where((t) => t.title.equals('Amazon statement spend'))).getSingle();
+        expect(txn.cardBillId, bills.single.id);
+        final alerts = await db.select(db.alerts).get();
+        expect(alerts.single.payload, contains('"createdExternalBill"'));
+        expect(debugEntries.last.reason, 'card-bill-due-createdExternalBill');
+      },
+    );
 
     test('ordinal Jan due date received in Dec resolves to next year', () async {
       final cardId = await createCard(bankName: 'YES Bank', last4: '8731');
@@ -2613,6 +2650,43 @@ void main() {
       )..where((p) => p.id.equals(ids.first))).getSingle();
       expect(pending.paymentSourceIdSuggestion, matchedBankId);
       expect(pending.rawText, contains('X0754'));
+    });
+
+    test('debit card last4 maps SMS to owning bank account', () async {
+      final matchedBankId = await createBank(
+        bankName: 'Kotak',
+        accountName: 'Primary',
+      );
+      await createBank(bankName: 'Kotak', accountName: 'Secondary');
+      await db
+          .into(db.debitCards)
+          .insert(
+            DebitCardsCompanion.insert(
+              bankAccountId: matchedBankId,
+              last4: '8775',
+            ),
+          );
+
+      final ids = await service.processPayload(
+        NotificationPayload(
+          packageName: 'com.google.android.apps.messaging',
+          appName: 'Messages',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 8, 19, 18, 45),
+          title: 'AD-KOTAKB-T',
+          body:
+              'Rs.10000.00 withdrawn via Kotak Debit Card XX8775 on 19/08/2026 at YND9091. Avl Bal Rs.15462.38 Not you?Tap https://kotak.com/KBANKT/Fraud',
+        ),
+      );
+
+      expect(ids, hasLength(1));
+      final pending = await (db.select(
+        db.pendingTransactions,
+      )..where((p) => p.id.equals(ids.first))).getSingle();
+      expect(pending.paymentSourceTypeSuggestion, PaymentSourceType.bank);
+      expect(pending.paymentSourceIdSuggestion, matchedBankId);
+      expect(pending.amount, 10000);
+      expect(pending.rawText, contains('XX8775'));
     });
 
     test('same amount and merchant hours apart are not duplicates', () async {

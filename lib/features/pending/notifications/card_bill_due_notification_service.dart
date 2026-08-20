@@ -475,9 +475,9 @@ class CardBillDueNotificationService {
     required String dedupeKey,
   }) async {
     final dueDate = _dateOnly(parsed.dueDate);
-    final billingDate = dueDate.subtract(const Duration(days: 1));
+    final billingDate = _billingDateForDueDate(card, dueDate);
     final cycleEndDate = billingDate.subtract(const Duration(days: 1));
-    final cycleStartDate = cycleEndDate.subtract(const Duration(days: 29));
+    final cycleStartDate = _cycleStartForBillingDate(card, billingDate);
     final status = _billingService.getDueStatusFromDate(
       isPaid: false,
       dueDate: dueDate,
@@ -548,6 +548,7 @@ class CardBillDueNotificationService {
         'dedupeKey': dedupeKey,
       },
     );
+    await _billingService.reconcileCardById(card.id);
     return 'createdExternalBill';
   }
 
@@ -1085,6 +1086,54 @@ class CardBillDueNotificationService {
 
   DateTime _dateOnly(DateTime value) =>
       DateTime(value.year, value.month, value.day);
+
+  DateTime _billingDateForDueDate(CreditCard card, DateTime dueDate) {
+    final targetDueDate = _dateOnly(dueDate);
+    final candidates = <DateTime>[
+      for (var monthOffset = -2; monthOffset <= 1; monthOffset++)
+        _safeDay(
+          targetDueDate.year,
+          targetDueDate.month + monthOffset,
+          card.billingDay,
+        ),
+    ];
+    for (final candidate in candidates) {
+      if (_dueDateForBillingDate(card, candidate) == targetDueDate) {
+        return candidate;
+      }
+    }
+    final pastCandidates =
+        candidates
+            .where((date) => !date.isAfter(targetDueDate))
+            .toList(growable: false)
+          ..sort();
+    return pastCandidates.isEmpty ? targetDueDate : pastCandidates.last;
+  }
+
+  DateTime _cycleStartForBillingDate(CreditCard card, DateTime billingDate) {
+    return _safeDay(billingDate.year, billingDate.month - 1, card.billingDay);
+  }
+
+  DateTime _dueDateForBillingDate(CreditCard card, DateTime billingDate) {
+    final dueThisMonth = _safeDay(
+      billingDate.year,
+      billingDate.month,
+      card.dueDay,
+    );
+    return dueThisMonth.isAfter(billingDate)
+        ? dueThisMonth
+        : _safeDay(billingDate.year, billingDate.month + 1, card.dueDay);
+  }
+
+  DateTime _safeDay(int year, int month, int desiredDay) {
+    final normalized = DateTime(year, month);
+    final lastDay = DateTime(normalized.year, normalized.month + 1, 0).day;
+    return DateTime(
+      normalized.year,
+      normalized.month,
+      desiredDay.clamp(1, lastDay),
+    );
+  }
 }
 
 class _BillCycleMatch {

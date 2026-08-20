@@ -159,6 +159,7 @@ class TransactionEngine {
           relatedTransactionId: input.relatedTransactionId,
           refundAmount: input.amount,
         );
+        await _db.repairRefundRecoverables();
       }
     });
 
@@ -262,6 +263,14 @@ class TransactionEngine {
           updatedAt: Value(DateTime.now()),
         ),
       );
+      if (input.type == TransactionType.refund) {
+        await _adjustLinkedRecoverableAfterRefund(
+          refundTransactionId: transactionId,
+          relatedTransactionId: input.relatedTransactionId,
+          refundAmount: input.amount,
+        );
+        await _db.repairRefundRecoverables();
+      }
     });
 
     final updated = await (_db.select(

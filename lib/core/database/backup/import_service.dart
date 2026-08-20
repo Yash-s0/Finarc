@@ -68,6 +68,7 @@ class ImportService {
     final requiredCollections = [
       'settings',
       'bankAccounts',
+      'debitCards',
       'cashWallets',
       'creditCards',
       'transactions',
@@ -123,6 +124,7 @@ class ImportService {
       counts: {
         'settings': _list(data, 'settings').length,
         'bankAccounts': _list(data, 'bankAccounts').length,
+        'debitCards': _list(data, 'debitCards').length,
         'cashWallets': _list(data, 'cashWallets').length,
         'creditCards': _list(data, 'creditCards').length,
         'transactions': _list(data, 'transactions').length,
@@ -164,6 +166,7 @@ class ImportService {
       await _db.delete(_db.splitMembers).go();
       await _db.delete(_db.splitGroups).go();
       await _db.delete(_db.creditCards).go();
+      await _db.delete(_db.debitCards).go();
       await _db.delete(_db.bankAccounts).go();
       await _db.delete(_db.cashWallets).go();
       await _db.delete(_db.loanPayments).go();
@@ -295,6 +298,22 @@ class ImportService {
                 last4: Value(_stringOrNull(row['last4'])),
                 currentBalance: Value(_double(row['currentBalance']) ?? 0),
                 colorOrIcon: Value(_stringOrNull(row['colorOrIcon'])),
+                createdAt: Value(_date(row['createdAt']) ?? DateTime.now()),
+                updatedAt: Value(_date(row['updatedAt']) ?? DateTime.now()),
+              ),
+            );
+      }
+
+      for (final raw in _list(data, 'debitCards')) {
+        final row = _asMap(raw);
+        await _db
+            .into(_db.debitCards)
+            .insert(
+              DebitCardsCompanion(
+                id: Value(_int(row['id']) ?? 0),
+                bankAccountId: Value(_int(row['bankAccountId']) ?? 0),
+                last4: Value(_string(row['last4'])),
+                label: Value(_stringOrNull(row['label'])),
                 createdAt: Value(_date(row['createdAt']) ?? DateTime.now()),
                 updatedAt: Value(_date(row['updatedAt']) ?? DateTime.now()),
               ),

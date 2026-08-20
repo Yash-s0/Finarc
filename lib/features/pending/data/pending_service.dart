@@ -292,6 +292,16 @@ class PendingService {
     if (banks.isEmpty) return null;
 
     final sourceHint = ParserTextUtils.extractAccountHint(rawText);
+    final hintedLast4 = BankAccountMatcher.extractLast4(sourceHint);
+    if (hintedLast4 != null) {
+      final debitCardMatches = await (_db.select(
+        _db.debitCards,
+      )..where((card) => card.last4.equals(hintedLast4))).get();
+      final accountIds = debitCardMatches
+          .map((card) => card.bankAccountId)
+          .toSet();
+      if (accountIds.length == 1) return accountIds.single;
+    }
     final match = BankAccountMatcher.match(
       accounts: banks,
       sourceHint: sourceHint,

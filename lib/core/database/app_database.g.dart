@@ -571,6 +571,408 @@ class BankAccountsCompanion extends UpdateCompanion<BankAccount> {
   }
 }
 
+class $DebitCardsTable extends DebitCards
+    with TableInfo<$DebitCardsTable, DebitCard> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DebitCardsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _bankAccountIdMeta = const VerificationMeta(
+    'bankAccountId',
+  );
+  @override
+  late final GeneratedColumn<int> bankAccountId = GeneratedColumn<int>(
+    'bank_account_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _last4Meta = const VerificationMeta('last4');
+  @override
+  late final GeneratedColumn<String> last4 = GeneratedColumn<String>(
+    'last4',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 4,
+      maxTextLength: 4,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _labelMeta = const VerificationMeta('label');
+  @override
+  late final GeneratedColumn<String> label = GeneratedColumn<String>(
+    'label',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    bankAccountId,
+    last4,
+    label,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'debit_cards';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DebitCard> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('bank_account_id')) {
+      context.handle(
+        _bankAccountIdMeta,
+        bankAccountId.isAcceptableOrUnknown(
+          data['bank_account_id']!,
+          _bankAccountIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_bankAccountIdMeta);
+    }
+    if (data.containsKey('last4')) {
+      context.handle(
+        _last4Meta,
+        last4.isAcceptableOrUnknown(data['last4']!, _last4Meta),
+      );
+    } else if (isInserting) {
+      context.missing(_last4Meta);
+    }
+    if (data.containsKey('label')) {
+      context.handle(
+        _labelMeta,
+        label.isAcceptableOrUnknown(data['label']!, _labelMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DebitCard map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DebitCard(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      bankAccountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}bank_account_id'],
+      )!,
+      last4: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last4'],
+      )!,
+      label: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}label'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DebitCardsTable createAlias(String alias) {
+    return $DebitCardsTable(attachedDatabase, alias);
+  }
+}
+
+class DebitCard extends DataClass implements Insertable<DebitCard> {
+  final int id;
+  final int bankAccountId;
+  final String last4;
+  final String? label;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const DebitCard({
+    required this.id,
+    required this.bankAccountId,
+    required this.last4,
+    this.label,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['bank_account_id'] = Variable<int>(bankAccountId);
+    map['last4'] = Variable<String>(last4);
+    if (!nullToAbsent || label != null) {
+      map['label'] = Variable<String>(label);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  DebitCardsCompanion toCompanion(bool nullToAbsent) {
+    return DebitCardsCompanion(
+      id: Value(id),
+      bankAccountId: Value(bankAccountId),
+      last4: Value(last4),
+      label: label == null && nullToAbsent
+          ? const Value.absent()
+          : Value(label),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory DebitCard.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DebitCard(
+      id: serializer.fromJson<int>(json['id']),
+      bankAccountId: serializer.fromJson<int>(json['bankAccountId']),
+      last4: serializer.fromJson<String>(json['last4']),
+      label: serializer.fromJson<String?>(json['label']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'bankAccountId': serializer.toJson<int>(bankAccountId),
+      'last4': serializer.toJson<String>(last4),
+      'label': serializer.toJson<String?>(label),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  DebitCard copyWith({
+    int? id,
+    int? bankAccountId,
+    String? last4,
+    Value<String?> label = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => DebitCard(
+    id: id ?? this.id,
+    bankAccountId: bankAccountId ?? this.bankAccountId,
+    last4: last4 ?? this.last4,
+    label: label.present ? label.value : this.label,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  DebitCard copyWithCompanion(DebitCardsCompanion data) {
+    return DebitCard(
+      id: data.id.present ? data.id.value : this.id,
+      bankAccountId: data.bankAccountId.present
+          ? data.bankAccountId.value
+          : this.bankAccountId,
+      last4: data.last4.present ? data.last4.value : this.last4,
+      label: data.label.present ? data.label.value : this.label,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DebitCard(')
+          ..write('id: $id, ')
+          ..write('bankAccountId: $bankAccountId, ')
+          ..write('last4: $last4, ')
+          ..write('label: $label, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, bankAccountId, last4, label, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DebitCard &&
+          other.id == this.id &&
+          other.bankAccountId == this.bankAccountId &&
+          other.last4 == this.last4 &&
+          other.label == this.label &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class DebitCardsCompanion extends UpdateCompanion<DebitCard> {
+  final Value<int> id;
+  final Value<int> bankAccountId;
+  final Value<String> last4;
+  final Value<String?> label;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const DebitCardsCompanion({
+    this.id = const Value.absent(),
+    this.bankAccountId = const Value.absent(),
+    this.last4 = const Value.absent(),
+    this.label = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  DebitCardsCompanion.insert({
+    this.id = const Value.absent(),
+    required int bankAccountId,
+    required String last4,
+    this.label = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  }) : bankAccountId = Value(bankAccountId),
+       last4 = Value(last4);
+  static Insertable<DebitCard> custom({
+    Expression<int>? id,
+    Expression<int>? bankAccountId,
+    Expression<String>? last4,
+    Expression<String>? label,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (bankAccountId != null) 'bank_account_id': bankAccountId,
+      if (last4 != null) 'last4': last4,
+      if (label != null) 'label': label,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  DebitCardsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? bankAccountId,
+    Value<String>? last4,
+    Value<String?>? label,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+  }) {
+    return DebitCardsCompanion(
+      id: id ?? this.id,
+      bankAccountId: bankAccountId ?? this.bankAccountId,
+      last4: last4 ?? this.last4,
+      label: label ?? this.label,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (bankAccountId.present) {
+      map['bank_account_id'] = Variable<int>(bankAccountId.value);
+    }
+    if (last4.present) {
+      map['last4'] = Variable<String>(last4.value);
+    }
+    if (label.present) {
+      map['label'] = Variable<String>(label.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DebitCardsCompanion(')
+          ..write('id: $id, ')
+          ..write('bankAccountId: $bankAccountId, ')
+          ..write('last4: $last4, ')
+          ..write('label: $label, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $CashWalletsTable extends CashWallets
     with TableInfo<$CashWalletsTable, CashWallet> {
   @override
@@ -15552,6 +15954,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $BankAccountsTable bankAccounts = $BankAccountsTable(this);
+  late final $DebitCardsTable debitCards = $DebitCardsTable(this);
   late final $CashWalletsTable cashWallets = $CashWalletsTable(this);
   late final $CreditCardsTable creditCards = $CreditCardsTable(this);
   late final $TransactionsTable transactions = $TransactionsTable(this);
@@ -15580,6 +15983,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     bankAccounts,
+    debitCards,
     cashWallets,
     creditCards,
     transactions,
@@ -15875,6 +16279,218 @@ typedef $$BankAccountsTableProcessedTableManager =
         BaseReferences<_$AppDatabase, $BankAccountsTable, BankAccount>,
       ),
       BankAccount,
+      PrefetchHooks Function()
+    >;
+typedef $$DebitCardsTableCreateCompanionBuilder =
+    DebitCardsCompanion Function({
+      Value<int> id,
+      required int bankAccountId,
+      required String last4,
+      Value<String?> label,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+typedef $$DebitCardsTableUpdateCompanionBuilder =
+    DebitCardsCompanion Function({
+      Value<int> id,
+      Value<int> bankAccountId,
+      Value<String> last4,
+      Value<String?> label,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+
+class $$DebitCardsTableFilterComposer
+    extends Composer<_$AppDatabase, $DebitCardsTable> {
+  $$DebitCardsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get bankAccountId => $composableBuilder(
+    column: $table.bankAccountId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get last4 => $composableBuilder(
+    column: $table.last4,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DebitCardsTableOrderingComposer
+    extends Composer<_$AppDatabase, $DebitCardsTable> {
+  $$DebitCardsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get bankAccountId => $composableBuilder(
+    column: $table.bankAccountId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get last4 => $composableBuilder(
+    column: $table.last4,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DebitCardsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DebitCardsTable> {
+  $$DebitCardsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get bankAccountId => $composableBuilder(
+    column: $table.bankAccountId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get last4 =>
+      $composableBuilder(column: $table.last4, builder: (column) => column);
+
+  GeneratedColumn<String> get label =>
+      $composableBuilder(column: $table.label, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$DebitCardsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DebitCardsTable,
+          DebitCard,
+          $$DebitCardsTableFilterComposer,
+          $$DebitCardsTableOrderingComposer,
+          $$DebitCardsTableAnnotationComposer,
+          $$DebitCardsTableCreateCompanionBuilder,
+          $$DebitCardsTableUpdateCompanionBuilder,
+          (
+            DebitCard,
+            BaseReferences<_$AppDatabase, $DebitCardsTable, DebitCard>,
+          ),
+          DebitCard,
+          PrefetchHooks Function()
+        > {
+  $$DebitCardsTableTableManager(_$AppDatabase db, $DebitCardsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DebitCardsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DebitCardsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DebitCardsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> bankAccountId = const Value.absent(),
+                Value<String> last4 = const Value.absent(),
+                Value<String?> label = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => DebitCardsCompanion(
+                id: id,
+                bankAccountId: bankAccountId,
+                last4: last4,
+                label: label,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int bankAccountId,
+                required String last4,
+                Value<String?> label = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => DebitCardsCompanion.insert(
+                id: id,
+                bankAccountId: bankAccountId,
+                last4: last4,
+                label: label,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DebitCardsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DebitCardsTable,
+      DebitCard,
+      $$DebitCardsTableFilterComposer,
+      $$DebitCardsTableOrderingComposer,
+      $$DebitCardsTableAnnotationComposer,
+      $$DebitCardsTableCreateCompanionBuilder,
+      $$DebitCardsTableUpdateCompanionBuilder,
+      (DebitCard, BaseReferences<_$AppDatabase, $DebitCardsTable, DebitCard>),
+      DebitCard,
       PrefetchHooks Function()
     >;
 typedef $$CashWalletsTableCreateCompanionBuilder =
@@ -22553,6 +23169,8 @@ class $AppDatabaseManager {
   $AppDatabaseManager(this._db);
   $$BankAccountsTableTableManager get bankAccounts =>
       $$BankAccountsTableTableManager(_db, _db.bankAccounts);
+  $$DebitCardsTableTableManager get debitCards =>
+      $$DebitCardsTableTableManager(_db, _db.debitCards);
   $$CashWalletsTableTableManager get cashWallets =>
       $$CashWalletsTableTableManager(_db, _db.cashWallets);
   $$CreditCardsTableTableManager get creditCards =>

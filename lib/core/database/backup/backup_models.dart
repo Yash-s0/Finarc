@@ -31,6 +31,7 @@ class BackupData {
   const BackupData({
     required this.settings,
     required this.bankAccounts,
+    required this.debitCards,
     required this.cashWallets,
     required this.creditCards,
     required this.transactions,
@@ -49,6 +50,7 @@ class BackupData {
 
   final List<Map<String, dynamic>> settings;
   final List<Map<String, dynamic>> bankAccounts;
+  final List<Map<String, dynamic>> debitCards;
   final List<Map<String, dynamic>> cashWallets;
   final List<Map<String, dynamic>> creditCards;
   final List<Map<String, dynamic>> transactions;
@@ -68,6 +70,7 @@ class BackupData {
     return {
       'settings': settings,
       'bankAccounts': bankAccounts,
+      'debitCards': debitCards,
       'cashWallets': cashWallets,
       'creditCards': creditCards,
       'transactions': transactions,

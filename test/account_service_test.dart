@@ -162,6 +162,30 @@ void main() {
     expect(account.last4, '4455');
   });
 
+  test('bank account debit card mappings are replaced on update', () async {
+    final createdId = await service.createBankAccount(
+      bankName: 'Kotak',
+      accountName: 'Salary',
+      accountType: 'savings',
+      currentBalance: 12000,
+      debitCardLast4s: const ['8775', '1234', '8775'],
+    );
+
+    var cards =
+        await (db.select(db.debitCards)
+              ..where((card) => card.bankAccountId.equals(createdId))
+              ..orderBy([(card) => OrderingTerm.asc(card.last4)]))
+            .get();
+    expect(cards.map((card) => card.last4), ['1234', '8775']);
+
+    await service.updateBankAccount(createdId, debitCardLast4s: const ['9001']);
+
+    cards = await (db.select(
+      db.debitCards,
+    )..where((card) => card.bankAccountId.equals(createdId))).get();
+    expect(cards.map((card) => card.last4), ['9001']);
+  });
+
   test(
     'bank account edit updates name, can clear last4, and keeps txn links',
     () async {

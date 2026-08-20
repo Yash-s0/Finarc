@@ -343,6 +343,9 @@ class GenericBankSmsParser implements TransactionParser {
     if (ParserTextUtils.looksLikeSweepTransferMessage(segment)) {
       return PaymentSourceType.bank;
     }
+    if (RegExp(r'\bdebit\s+card\b', caseSensitive: false).hasMatch(segment)) {
+      return PaymentSourceType.bank;
+    }
     if (lower.contains('card')) return PaymentSourceType.creditCard;
     if (lower.contains('amazon pay') ||
         lower.contains('amazonpay') ||

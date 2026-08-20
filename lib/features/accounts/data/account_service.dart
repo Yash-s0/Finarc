@@ -26,20 +26,25 @@ class AccountService {
     required String accountType,
     required double currentBalance,
     String? last4,
+    List<String> debitCardLast4s = const [],
     String? colorOrIcon,
-  }) {
-    return _db
-        .into(_db.bankAccounts)
-        .insert(
-          BankAccountsCompanion.insert(
-            bankName: bankName,
-            accountName: accountName,
-            accountType: accountType,
-            last4: Value(last4),
-            currentBalance: Value(currentBalance),
-            colorOrIcon: Value(colorOrIcon),
-          ),
-        );
+  }) async {
+    return _db.transaction(() async {
+      final accountId = await _db
+          .into(_db.bankAccounts)
+          .insert(
+            BankAccountsCompanion.insert(
+              bankName: bankName,
+              accountName: accountName,
+              accountType: accountType,
+              last4: Value(last4),
+              currentBalance: Value(currentBalance),
+              colorOrIcon: Value(colorOrIcon),
+            ),
+          );
+      await _replaceDebitCards(accountId, debitCardLast4s);
+      return accountId;
+    });
   }
 
   Future<void> updateBankAccount(
@@ -49,34 +54,73 @@ class AccountService {
     String? accountType,
     String? last4,
     bool clearLast4 = false,
+    List<String>? debitCardLast4s,
     double? currentBalance,
     String? colorOrIcon,
   }) {
-    return (_db.update(_db.bankAccounts)..where((b) => b.id.equals(id))).write(
-      BankAccountsCompanion(
-        bankName: bankName == null ? const Value.absent() : Value(bankName),
-        accountName: accountName == null
-            ? const Value.absent()
-            : Value(accountName),
-        accountType: accountType == null
-            ? const Value.absent()
-            : Value(accountType),
-        last4: clearLast4
-            ? const Value(null)
-            : (last4 == null ? const Value.absent() : Value(last4)),
-        currentBalance: currentBalance == null
-            ? const Value.absent()
-            : Value(currentBalance),
-        colorOrIcon: colorOrIcon == null
-            ? const Value.absent()
-            : Value(colorOrIcon),
-        updatedAt: Value(DateTime.now()),
-      ),
-    );
+    return _db.transaction(() async {
+      await (_db.update(_db.bankAccounts)..where((b) => b.id.equals(id))).write(
+        BankAccountsCompanion(
+          bankName: bankName == null ? const Value.absent() : Value(bankName),
+          accountName: accountName == null
+              ? const Value.absent()
+              : Value(accountName),
+          accountType: accountType == null
+              ? const Value.absent()
+              : Value(accountType),
+          last4: clearLast4
+              ? const Value(null)
+              : (last4 == null ? const Value.absent() : Value(last4)),
+          currentBalance: currentBalance == null
+              ? const Value.absent()
+              : Value(currentBalance),
+          colorOrIcon: colorOrIcon == null
+              ? const Value.absent()
+              : Value(colorOrIcon),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+      if (debitCardLast4s != null) {
+        await _replaceDebitCards(id, debitCardLast4s);
+      }
+    });
   }
 
   Future<void> deleteBankAccount(int id) {
-    return (_db.delete(_db.bankAccounts)..where((b) => b.id.equals(id))).go();
+    return _db.transaction(() async {
+      await (_db.delete(
+        _db.debitCards,
+      )..where((c) => c.bankAccountId.equals(id))).go();
+      await (_db.delete(_db.bankAccounts)..where((b) => b.id.equals(id))).go();
+    });
+  }
+
+  Future<void> _replaceDebitCards(
+    int bankAccountId,
+    List<String> rawLast4s,
+  ) async {
+    final normalized = <String>{
+      for (final raw in rawLast4s)
+        if (_normalizeLast4(raw) != null) _normalizeLast4(raw)!,
+    };
+    await (_db.delete(
+      _db.debitCards,
+    )..where((c) => c.bankAccountId.equals(bankAccountId))).go();
+    for (final last4 in normalized) {
+      await _db
+          .into(_db.debitCards)
+          .insert(
+            DebitCardsCompanion.insert(
+              bankAccountId: bankAccountId,
+              last4: last4,
+            ),
+          );
+    }
+  }
+
+  String? _normalizeLast4(String value) {
+    final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
+    return RegExp(r'^\d{4}$').hasMatch(digits) ? digits : null;
   }
 
   Future<int> createCashWallet({

@@ -615,6 +615,54 @@ void main() {
     },
   );
 
+  test(
+    'standalone refund for same party reduces open recoverable total',
+    () async {
+      await engine.addTransaction(
+        AddTransactionInput(
+          type: TransactionType.creditCard,
+          amount: 2000,
+          title: 'Shared order',
+          category: 'Shopping',
+          transactionDate: DateTime(2026, 8, 17),
+          paymentSourceType: PaymentSourceType.creditCard,
+          paymentSourceId: cardId,
+          isForOthers: true,
+          recoverablePartyName: 'papa',
+        ),
+      );
+
+      await engine.addTransaction(
+        AddTransactionInput(
+          type: TransactionType.refund,
+          amount: 1319,
+          title: 'Refund',
+          category: 'Refund',
+          transactionDate: DateTime(2026, 8, 18),
+          paymentSourceType: PaymentSourceType.creditCard,
+          paymentSourceId: cardId,
+          isForOthers: true,
+          recoverablePartyName: 'papa',
+        ),
+      );
+
+      final original = await (db.select(
+        db.transactions,
+      )..where((t) => t.title.equals('Shared order'))).getSingle();
+      final refund = await (db.select(
+        db.transactions,
+      )..where((t) => t.title.equals('Refund'))).getSingle();
+
+      expect(original.recoverableBaseAmount, closeTo(2000, 0.01));
+      expect(original.recoveredAmount, closeTo(1319, 0.01));
+      expect(original.recoverableAmount, closeTo(681, 0.01));
+      expect(original.recoverableStatus, 'partial');
+      expect(refund.isForOthers, isFalse);
+      expect(refund.recoverableBaseAmount, closeTo(0, 0.01));
+      expect(refund.recoverableAmount, null);
+    },
+  );
+
   test('split-linked transaction is not editable', () async {
     final groupId = await splitService.createGroup('Trip');
     final youId = await splitService.addMember(

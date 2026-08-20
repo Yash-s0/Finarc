@@ -99,12 +99,18 @@ final accountEditorProvider = FutureProvider.family((
       last4: null,
       colorOrIcon: null,
       walletType: wallet.walletType,
+      debitCardLast4s: const <String>[],
     );
   }
 
   final bank = await (db.select(
     db.bankAccounts,
   )..where((b) => b.id.equals(id))).getSingle();
+  final debitCards =
+      await (db.select(db.debitCards)
+            ..where((card) => card.bankAccountId.equals(id))
+            ..orderBy([(card) => OrderingTerm.asc(card.last4)]))
+          .get();
   return (
     type: 'bank',
     bankName: bank.bankName,
@@ -114,5 +120,8 @@ final accountEditorProvider = FutureProvider.family((
     last4: bank.last4,
     colorOrIcon: bank.colorOrIcon,
     walletType: null,
+    debitCardLast4s: debitCards
+        .map((card) => card.last4)
+        .toList(growable: false),
   );
 });

@@ -598,6 +598,16 @@ class PendingIngestionService {
     final hint = sourceHint.trim().toLowerCase();
     final banks = await _db.select(_db.bankAccounts).get();
     if (banks.isEmpty) return null;
+    final hintDigits = BankAccountMatcher.extractLast4(hint);
+    if (hintDigits != null) {
+      final debitCardMatches = await (_db.select(
+        _db.debitCards,
+      )..where((card) => card.last4.equals(hintDigits))).get();
+      final accountIds = debitCardMatches
+          .map((card) => card.bankAccountId)
+          .toSet();
+      if (accountIds.length == 1) return accountIds.single;
+    }
     final match = BankAccountMatcher.match(accounts: banks, sourceHint: hint);
     return match.accountId;
   }

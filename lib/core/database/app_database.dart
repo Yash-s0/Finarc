@@ -23,6 +23,15 @@ class BankAccounts extends Table {
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }
 
+class DebitCards extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get bankAccountId => integer()();
+  TextColumn get last4 => text().withLength(min: 4, max: 4)();
+  TextColumn get label => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+}
+
 class CashWallets extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get walletName => text()();
@@ -366,6 +375,7 @@ class AppSettings extends Table {
 @DriftDatabase(
   tables: [
     BankAccounts,
+    DebitCards,
     CashWallets,
     CreditCards,
     Transactions,
@@ -388,7 +398,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 25;
+  int get schemaVersion => 26;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -616,6 +626,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 25) {
         await m.createTable(missedMessageSamples);
+      }
+      if (from < 26) {
+        await m.createTable(debitCards);
       }
       await globalAppLogService.log(
         category: 'migration',

@@ -30,6 +30,7 @@ class _AddEditAccountScreenState extends ConsumerState<AddEditAccountScreen> {
   final _name = TextEditingController();
   final _balance = TextEditingController(text: '0');
   final _last4 = TextEditingController();
+  final _debitCards = TextEditingController();
   final _color = TextEditingController();
   bool _isCash = false;
   bool _didLoadEditValues = false;
@@ -59,6 +60,7 @@ class _AddEditAccountScreenState extends ConsumerState<AddEditAccountScreen> {
     _name.dispose();
     _balance.dispose();
     _last4.dispose();
+    _debitCards.dispose();
     _color.dispose();
     super.dispose();
   }
@@ -181,6 +183,27 @@ class _AddEditAccountScreenState extends ConsumerState<AddEditAccountScreen> {
                       },
                     ),
                     const SizedBox(height: AppSpacing.sm),
+                    FinarcTextField(
+                      controller: _debitCards,
+                      label: 'Debit card last 4 digits (optional)',
+                      hint: 'Example: 8775, 1234',
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[0-9,\s]')),
+                      ],
+                      validator: (v) {
+                        final value = (v ?? '').trim();
+                        if (value.isEmpty) return null;
+                        final invalid = _parseDebitCardLast4s(
+                          value,
+                        ).invalidEntries;
+                        if (invalid.isNotEmpty) {
+                          return 'Each debit card must be exactly 4 digits';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
                   ],
                   FinarcTextField(
                     controller: _name,
@@ -260,6 +283,7 @@ class _AddEditAccountScreenState extends ConsumerState<AddEditAccountScreen> {
       String? last4,
       String? colorOrIcon,
       String? walletType,
+      List<String> debitCardLast4s,
     })
     data,
   ) {
@@ -271,6 +295,7 @@ class _AddEditAccountScreenState extends ConsumerState<AddEditAccountScreen> {
     _accountType = data.accountType ?? _accountType;
     _balance.text = data.balance.toString();
     _last4.text = data.last4 ?? '';
+    _debitCards.text = data.debitCardLast4s.join(', ');
     _color.text = data.colorOrIcon ?? '';
     _walletType = data.walletType ?? _walletType;
   }
@@ -281,6 +306,7 @@ class _AddEditAccountScreenState extends ConsumerState<AddEditAccountScreen> {
     final service = ref.read(accountServiceProvider);
     final balance = double.tryParse(_balance.text) ?? 0;
     final trimmedLast4 = _last4.text.trim();
+    final debitCardLast4s = _parseDebitCardLast4s(_debitCards.text).last4s;
     if (_isCash) {
       if (_isEditing) {
         await service.updateCashWallet(
@@ -308,6 +334,7 @@ class _AddEditAccountScreenState extends ConsumerState<AddEditAccountScreen> {
           accountType: _accountType,
           last4: trimmedLast4.isEmpty ? null : trimmedLast4,
           clearLast4: trimmedLast4.isEmpty,
+          debitCardLast4s: debitCardLast4s,
           currentBalance: balance,
           colorOrIcon: colorOrIcon,
         );
@@ -318,6 +345,7 @@ class _AddEditAccountScreenState extends ConsumerState<AddEditAccountScreen> {
           accountType: _accountType,
           currentBalance: balance,
           last4: trimmedLast4.isEmpty ? null : trimmedLast4,
+          debitCardLast4s: debitCardLast4s,
           colorOrIcon: colorOrIcon,
         );
       }
@@ -330,5 +358,25 @@ class _AddEditAccountScreenState extends ConsumerState<AddEditAccountScreen> {
     }
     if (!mounted) return;
     Navigator.of(context).pop();
+  }
+
+  ({List<String> last4s, List<String> invalidEntries}) _parseDebitCardLast4s(
+    String raw,
+  ) {
+    final entries = raw
+        .split(RegExp(r'[\s,]+'))
+        .map((entry) => entry.trim())
+        .where((entry) => entry.isNotEmpty);
+    final last4s = <String>[];
+    final invalid = <String>[];
+    for (final entry in entries) {
+      final digits = entry.replaceAll(RegExp(r'[^0-9]'), '');
+      if (RegExp(r'^\d{4}$').hasMatch(digits)) {
+        if (!last4s.contains(digits)) last4s.add(digits);
+      } else {
+        invalid.add(entry);
+      }
+    }
+    return (last4s: last4s, invalidEntries: invalid);
   }
 }

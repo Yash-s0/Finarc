@@ -15,6 +15,7 @@ class BackupService {
   Future<String> createBackupJson({String? deviceNote}) async {
     final settings = await _db.select(_db.appSettings).get();
     final bankAccounts = await _db.select(_db.bankAccounts).get();
+    final debitCards = await _db.select(_db.debitCards).get();
     final cashWallets = await _db.select(_db.cashWallets).get();
     final creditCards = await _db.select(_db.creditCards).get();
     final transactions = await _db.select(_db.transactions).get();
@@ -41,6 +42,7 @@ class BackupService {
       data: BackupData(
         settings: settings.map(_mapAppSetting).toList(growable: false),
         bankAccounts: bankAccounts.map(_mapBankAccount).toList(growable: false),
+        debitCards: debitCards.map(_mapDebitCard).toList(growable: false),
         cashWallets: cashWallets.map(_mapCashWallet).toList(growable: false),
         creditCards: creditCards.map(_mapCreditCard).toList(growable: false),
         transactions: transactions.map(_mapTransaction).toList(growable: false),
@@ -399,6 +401,15 @@ class BackupService {
     'last4': row.last4,
     'currentBalance': row.currentBalance,
     'colorOrIcon': row.colorOrIcon,
+    'createdAt': _iso(row.createdAt),
+    'updatedAt': _iso(row.updatedAt),
+  };
+
+  static Map<String, dynamic> _mapDebitCard(DebitCard row) => {
+    'id': row.id,
+    'bankAccountId': row.bankAccountId,
+    'last4': row.last4,
+    'label': row.label,
     'createdAt': _iso(row.createdAt),
     'updatedAt': _iso(row.updatedAt),
   };

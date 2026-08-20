@@ -62,6 +62,7 @@ class ResetDataService {
       await _db.delete(_db.splitMembers).go();
       await _db.delete(_db.splitGroups).go();
       await _db.delete(_db.creditCards).go();
+      await _db.delete(_db.debitCards).go();
       await _db.delete(_db.bankAccounts).go();
       await _db.delete(_db.cashWallets).go();
       await _db.delete(_db.loanPayments).go();
@@ -95,6 +96,7 @@ class ResetDataService {
 
   Future<ResetVerification> verifyFreshStartState() async {
     final bankAccounts = await _db.select(_db.bankAccounts).get();
+    final debitCards = await _db.select(_db.debitCards).get();
     final wallets = await _db.select(_db.cashWallets).get();
     final cards = await _db.select(_db.creditCards).get();
     final txns = await _db.select(_db.transactions).get();
@@ -112,7 +114,7 @@ class ResetDataService {
     )..limit(1)).getSingleOrNull();
 
     return ResetVerification(
-      accountsCount: bankAccounts.length + wallets.length,
+      accountsCount: bankAccounts.length + debitCards.length + wallets.length,
       cardsCount: cards.length,
       transactionsCount: txns.length,
       pendingCount: pending.length,

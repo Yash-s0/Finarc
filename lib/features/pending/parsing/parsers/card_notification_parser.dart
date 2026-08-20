@@ -58,9 +58,13 @@ class CardNotificationParser implements TransactionParser {
           transactionDate:
               extraction.parsedDateTime?.value ?? input.captureTime,
           sourceType: input.sourceType,
-          paymentSourceTypeSuggestion: PaymentSourceType.creditCard,
+          paymentSourceTypeSuggestion: extraction.isDebitCard
+              ? PaymentSourceType.bank
+              : PaymentSourceType.creditCard,
           paymentSourceHint: extraction.cardLast4 == null
               ? null
+              : extraction.isDebitCard
+              ? 'debit-card-ending-${extraction.cardLast4}'
               : 'card-ending-${extraction.cardLast4}',
           categorySuggestion: CategorySuggester.suggest(extraction.merchant),
           rawText: input.rawText,
@@ -71,6 +75,7 @@ class CardNotificationParser implements TransactionParser {
             'merchantExtractionStrategy': extraction.merchantExtractionStrategy,
             'amountExtractionStrategy': extraction.amountExtractionStrategy,
             'cardLast4': extraction.cardLast4,
+            'cardKind': extraction.isDebitCard ? 'debit' : 'credit',
             'hasParsedDate': extraction.parsedDateTime?.hasDate == true,
             'hasParsedTime': extraction.parsedDateTime?.hasTime == true,
           },
@@ -104,8 +109,13 @@ class CardNotificationParser implements TransactionParser {
           merchantCandidate?.strategy ?? 'fallback-card-spend',
       usedFallbackMerchant: merchantCandidate == null,
       cardLast4: cardLast4,
+      isDebitCard: _isDebitCardSpend(text),
       parsedDateTime: parsedDateTime,
     );
+  }
+
+  bool _isDebitCardSpend(String text) {
+    return RegExp(r'\bdebit\s+card\b', caseSensitive: false).hasMatch(text);
   }
 
   String _textForParsing(ParserInput input) {
@@ -443,7 +453,7 @@ class CardNotificationParser implements TransactionParser {
   );
 
   static final RegExp _actionPattern = RegExp(
-    r'\b(?:spent|used|purchase(?:d)?|charged|transaction|txn|debit(?:ed)?|paid)\b',
+    r'\b(?:spent|used|purchase(?:d)?|charged|transaction|txn|debit(?:ed)?|paid|withdrawn|withdrawal)\b',
     caseSensitive: false,
   );
 
@@ -502,6 +512,7 @@ class _CardSpendExtraction {
     required this.merchantExtractionStrategy,
     required this.usedFallbackMerchant,
     required this.cardLast4,
+    required this.isDebitCard,
     required this.parsedDateTime,
   });
 
@@ -511,6 +522,7 @@ class _CardSpendExtraction {
   final String merchantExtractionStrategy;
   final bool usedFallbackMerchant;
   final String? cardLast4;
+  final bool isDebitCard;
   final ParsedDateTime? parsedDateTime;
 }
 

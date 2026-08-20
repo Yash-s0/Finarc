@@ -6,7 +6,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:finarc/core/database/app_database.dart';
 import 'package:finarc/core/database/database_providers.dart';
-import 'package:finarc/features/cards/data/billing_service.dart';
 import 'package:finarc/features/cards/data/cards_providers.dart';
 import 'package:finarc/features/cards/presentation/cards_overview_screen.dart';
 import 'package:finarc/features/expenses/data/transaction_engine.dart';
@@ -104,10 +103,12 @@ void main() {
 
     await addCardTxn(primaryCardId, DateTime(2026, 5, 19), 1000);
     await addCardTxn(primaryCardId, DateTime(2026, 5, 21), 600);
-    await BillingService(
-      db,
-      now: () => DateTime(2026, 6, 5),
-    ).generateBillForCard(primaryCardId);
+    await createLegacyBill(
+      primaryCardId,
+      billingDate: DateTime(2026, 5, 20),
+      dueDate: DateTime(2026, 6, 7),
+      billedAmount: 1000,
+    );
 
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));

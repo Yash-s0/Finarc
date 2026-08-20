@@ -240,8 +240,8 @@ void main() {
       expect(snapshot.billedDue, 0);
       expect(snapshot.reconciliationAdjustment, 30000);
       expect(snapshot.unbilledSpends, 0);
-      expect(snapshot.totalOutstanding, 30000);
-      expect(snapshot.availableLimit, 70000);
+      expect(snapshot.totalOutstanding, 0);
+      expect(snapshot.availableLimit, 100000);
     },
   );
 
@@ -279,7 +279,7 @@ void main() {
       expect(snapshot.billedDue, closeTo(0, 0.01));
       expect(snapshot.reconciliationAdjustment, closeTo(1000, 0.01));
       expect(snapshot.unbilledSpends, 0);
-      expect(snapshot.totalOutstanding, closeTo(1000, 0.01));
+      expect(snapshot.totalOutstanding, closeTo(0, 0.01));
       expect(snapshot.billedTransactions, isEmpty);
       expect(snapshot.unbilledTransactions, isEmpty);
       expect(snapshot.recentTransactions, hasLength(1));
@@ -348,14 +348,13 @@ void main() {
                 ..where((t) => t.title.equals('Previous statement boundary')))
               .getSingle();
 
-      expect(snapshot.billedDue, closeTo(500, 0.01));
-      expect(snapshot.unbilledSpends, closeTo(400, 0.01));
-      expect(snapshot.billedTransactions.map((txn) => txn.title), [
-        'Latest statement end',
-        'Latest statement start',
-      ]);
+      expect(snapshot.billedDue, closeTo(0, 0.01));
+      expect(snapshot.unbilledSpends, closeTo(900, 0.01));
+      expect(snapshot.billedTransactions, isEmpty);
       expect(snapshot.unbilledTransactions.map((txn) => txn.title), [
         'Current open cycle',
+        'Latest statement end',
+        'Latest statement start',
       ]);
       expect(previousBoundary.cardBillId, isNull);
     },
@@ -418,14 +417,13 @@ void main() {
         db.transactions,
       )..orderBy([(t) => OrderingTerm.asc(t.transactionDate)])).get();
 
-      expect(snapshot.billedDue, closeTo(500, 0.01));
-      expect(snapshot.unbilledSpends, closeTo(400, 0.01));
-      expect(snapshot.billedTransactions.map((txn) => txn.title), [
-        'Latest statement end',
-        'Latest statement start',
-      ]);
+      expect(snapshot.billedDue, closeTo(0, 0.01));
+      expect(snapshot.unbilledSpends, closeTo(900, 0.01));
+      expect(snapshot.billedTransactions, isEmpty);
       expect(snapshot.unbilledTransactions.map((txn) => txn.title), [
         'Current open cycle',
+        'Latest statement end',
+        'Latest statement start',
       ]);
       expect(
         txns.first.transactionImpactType,
@@ -482,9 +480,10 @@ void main() {
               .getSingle();
 
       expect(opening.billedAmount, closeTo(300, 0.01));
-      expect(snapshot.billedDue, closeTo(700, 0.01));
+      expect(snapshot.billedDue, closeTo(0, 0.01));
+      expect(snapshot.unbilledSpends, closeTo(700, 0.01));
       expect(snapshot.reconciliationAdjustment, closeTo(300, 0.01));
-      expect(snapshot.billedTransactions.map((txn) => txn.title), [
+      expect(snapshot.unbilledTransactions.map((txn) => txn.title), [
         'Imported active statement txn',
       ]);
     },
@@ -628,7 +627,7 @@ void main() {
       expect(snapshot.billedDue, 0);
       expect(snapshot.unbilledSpends, 10352);
       expect(snapshot.reconciliationAdjustment, 2785);
-      expect(snapshot.totalOutstanding, 13137);
+      expect(snapshot.totalOutstanding, 10352);
       expect(snapshot.latestUnpaidBill, isNull);
       expect(snapshot.billedTransactions.map((txn) => txn.title), [
         'Amazon 19 July',
@@ -658,8 +657,8 @@ void main() {
       );
 
       final service = BillingService(db, now: () => DateTime(2026, 5, 25));
-      final snapshot = await service.getCardBillingSnapshotById(cardId);
       final bill = await service.generateBillForCard(cardId);
+      final snapshot = await service.getCardBillingSnapshotById(cardId);
       expect(bill, isNotNull);
       expect(snapshot.billedDue, 1000);
       expect(snapshot.unbilledSpends, 0);
@@ -715,6 +714,54 @@ void main() {
       expect(snapshot.billedDue, 0);
       expect(snapshot.unbilledSpends, closeTo(600, 0.01));
       expect(snapshot.totalOutstanding, closeTo(600, 0.01));
+    },
+  );
+
+  test(
+    'snapshot repairs old unconfirmed generated bill back to unbilled',
+    () async {
+      final cardId = await createCard(billingDay: 20, dueDay: 7);
+      final billId = await db
+          .into(db.cardBills)
+          .insert(
+            CardBillsCompanion.insert(
+              cardId: cardId,
+              cycleStartDate: Value(DateTime(2026, 7, 20)),
+              cycleEndDate: Value(DateTime(2026, 8, 19)),
+              billingDate: Value(DateTime(2026, 8, 20)),
+              dueDate: Value(DateTime(2026, 9, 7)),
+              billedAmount: 49423,
+              status: const Value('billed'),
+            ),
+          );
+      await db
+          .into(db.transactions)
+          .insert(
+            TransactionsCompanion.insert(
+              type: TransactionType.creditCard,
+              amount: 49423,
+              title: 'Old auto-billed cycle',
+              category: 'Shopping',
+              transactionDate: DateTime(2026, 8, 1),
+              paymentSourceType: PaymentSourceType.creditCard,
+              paymentSourceId: cardId,
+              cardBillId: Value(billId),
+            ),
+          );
+
+      final snapshot = await BillingService(
+        db,
+        now: () => DateTime(2026, 8, 21),
+      ).getCardBillingSnapshotById(cardId);
+      final bills = await (db.select(
+        db.cardBills,
+      )..where((b) => b.id.equals(billId))).get();
+
+      expect(bills, isEmpty);
+      expect(snapshot.billedDue, closeTo(0, 0.01));
+      expect(snapshot.unbilledSpends, closeTo(49423, 0.01));
+      expect(snapshot.totalOutstanding, closeTo(49423, 0.01));
+      expect(snapshot.latestUnpaidBill, isNull);
     },
   );
 
@@ -782,7 +829,7 @@ void main() {
 
       expect(snapshot.unbilledSpends, closeTo(48104, 0.01));
       expect(snapshot.reconciliationAdjustment, closeTo(21432, 0.01));
-      expect(snapshot.totalOutstanding, closeTo(69536, 0.01));
+      expect(snapshot.totalOutstanding, closeTo(48104, 0.01));
       expect(opening.billedAmount, closeTo(21432, 0.01));
       expect(card.currentOutstanding, closeTo(69536, 0.01));
     },

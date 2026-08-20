@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 
 import '../../../core/database/app_database.dart';
@@ -161,6 +163,7 @@ class BillingService {
 
   final AppDatabase _db;
   final DateTime Function() _now;
+  final Set<int> _locallyGeneratedBillIds = <int>{};
 
   DateTime _dateOnly(DateTime value) =>
       DateTime(value.year, value.month, value.day);
@@ -250,6 +253,7 @@ class BillingService {
     await _db.transaction(() async {
       await _promoteActiveHistoricalNoBalanceTransactions(card, now: now);
       await _ensureSyntheticOpeningBill(card);
+      await _repairUnconfirmedGeneratedBillsForCard(card);
       await _reconcileCardBillingAssignments(card, referenceNow: now);
       await _syncLegacyOutstanding(card.id);
     });
@@ -263,6 +267,7 @@ class BillingService {
     await _db.transaction(() async {
       await _promoteActiveHistoricalNoBalanceTransactions(card);
       await _ensureSyntheticOpeningBill(card);
+      await _repairUnconfirmedGeneratedBillsForCard(card);
       await _reconcileCardBillingAssignments(card);
     });
     final bills = await (_db.select(
@@ -286,6 +291,7 @@ class BillingService {
     await _db.transaction(() async {
       await _promoteActiveHistoricalNoBalanceTransactions(card, now: reference);
       await _ensureSyntheticOpeningBill(card);
+      await _repairUnconfirmedGeneratedBillsForCard(card);
       await _reconcileCardBillingAssignments(card, referenceNow: reference);
     });
 
@@ -336,10 +342,9 @@ class BillingService {
               ..orderBy([(t) => OrderingTerm.desc(t.transactionDate)]))
             .get();
 
-    final totalOutstanding =
-        (billedDue + unbilledSpends + reconciliationAdjustment)
-            .clamp(0, double.infinity)
-            .toDouble();
+    final totalOutstanding = (billedDue + unbilledSpends)
+        .clamp(0, double.infinity)
+        .toDouble();
     final nextStatementDate = _nextStatementDate(card, reference);
     final nextDueDate = _dueDateForBillingDate(card, nextStatementDate);
     final availableLimit = (card.creditLimit - totalOutstanding).clamp(
@@ -436,6 +441,10 @@ class BillingService {
     await _db.transaction(() async {
       await _promoteActiveHistoricalNoBalanceTransactions(card);
       await _ensureSyntheticOpeningBill(card);
+      final generatedBillId = await _ensureStatementBillForCurrentCycle(card);
+      if (generatedBillId != null) {
+        _locallyGeneratedBillIds.add(generatedBillId);
+      }
       await _reconcileCardBillingAssignments(card);
     });
 
@@ -810,40 +819,9 @@ class BillingService {
     final billById = <int, CardBill>{for (final bill in bills) bill.id: bill};
     final billByDateKey = <String, CardBill>{
       for (final bill in bills)
-        _dateOnly(bill.billingDate).toIso8601String(): bill,
+        if (bill.status != 'opening')
+          _dateOnly(bill.billingDate).toIso8601String(): bill,
     };
-
-    Future<CardBill> ensureBill(DateTime statementDate) async {
-      final date = _dateOnly(statementDate);
-      final key = date.toIso8601String();
-      final existing = billByDateKey[key];
-      if (existing != null) return existing;
-
-      final cycleStart = _cycleStartForBillingDate(card, date);
-      final cycleEnd = date.subtract(const Duration(days: 1));
-      final dueDate = _dueDateForBillingDate(card, date);
-      final billId = await _db
-          .into(_db.cardBills)
-          .insert(
-            CardBillsCompanion.insert(
-              cardId: card.id,
-              cycleStartDate: Value(cycleStart),
-              cycleEndDate: Value(cycleEnd),
-              billingDate: Value(date),
-              dueDate: Value(dueDate),
-              billedAmount: 0,
-              status: Value(
-                getDueStatusFromDate(isPaid: false, dueDate: dueDate, now: now),
-              ),
-            ),
-          );
-      final created = await (_db.select(
-        _db.cardBills,
-      )..where((b) => b.id.equals(billId))).getSingle();
-      billById[billId] = created;
-      billByDateKey[key] = created;
-      return created;
-    }
 
     final cardTransactions =
         await (_db.select(_db.transactions)
@@ -908,7 +886,19 @@ class BillingService {
 
       final targetBill = txn.type == 'refund' && linkedOriginalBill != null
           ? linkedOriginalBill
-          : await ensureBill(expectedStatement);
+          : billByDateKey[_dateOnly(expectedStatement).toIso8601String()];
+      if (targetBill == null) {
+        if (txn.cardBillId != null) {
+          final oldBill = billById[txn.cardBillId!];
+          if (oldBill != null) {
+            await _flagPaidBillNeedsReview(oldBill.id);
+          }
+          await (_db.update(_db.transactions)
+                ..where((t) => t.id.equals(txn.id)))
+              .write(const TransactionsCompanion(cardBillId: Value(null)));
+        }
+        continue;
+      }
       if (txn.cardBillId == targetBill.id) continue;
 
       if (_isBillPaidLike(targetBill)) {
@@ -984,6 +974,86 @@ class BillingService {
     return bill.paidAmount >= bill.billedAmount;
   }
 
+  Future<void> _repairUnconfirmedGeneratedBillsForCard(CreditCard card) async {
+    final bills =
+        await (_db.select(_db.cardBills)
+              ..where(
+                (b) =>
+                    b.cardId.equals(card.id) &
+                    b.status.isNotValue('opening') &
+                    b.status.isNotValue('paid') &
+                    b.status.isNotValue('needsReview') &
+                    b.paidAmount.isSmallerOrEqualValue(0.009),
+              )
+              ..orderBy([(b) => OrderingTerm.asc(b.billingDate)]))
+            .get();
+
+    for (final bill in bills) {
+      if (await _hasNotificationEvidenceForBill(bill.id)) continue;
+      if (_locallyGeneratedBillIds.contains(bill.id)) continue;
+      if (!_looksLikeLocalGeneratedCycleBill(card, bill)) continue;
+
+      final billedTxns =
+          await (_db.select(_db.transactions)..where(
+                (t) =>
+                    t.paymentSourceType.equals('creditCard') &
+                    t.paymentSourceId.equals(card.id) &
+                    (t.type.equals('creditCard') | t.type.equals('refund')) &
+                    _billingRelevantExpression(t) &
+                    t.cardBillId.equals(bill.id),
+              ))
+              .get();
+      final linkedAmount = billedTxns
+          .fold<double>(0, (sum, txn) => sum + _billingImpact(txn))
+          .clamp(0, double.infinity)
+          .toDouble();
+      if ((linkedAmount - bill.billedAmount).abs() > 1) continue;
+
+      await (_db.update(_db.transactions)
+            ..where((t) => t.cardBillId.equals(bill.id)))
+          .write(const TransactionsCompanion(cardBillId: Value(null)));
+      await (_db.delete(
+        _db.cardBills,
+      )..where((b) => b.id.equals(bill.id))).go();
+    }
+  }
+
+  bool _looksLikeLocalGeneratedCycleBill(CreditCard card, CardBill bill) {
+    final billingDate = _dateOnly(bill.billingDate);
+    final expectedCycleStart = _cycleStartForBillingDate(card, billingDate);
+    final expectedCycleEnd = billingDate.subtract(const Duration(days: 1));
+    final expectedDueDate = _dueDateForBillingDate(card, billingDate);
+    return _dateOnly(bill.cycleStartDate) == expectedCycleStart &&
+        _dateOnly(bill.cycleEndDate) == expectedCycleEnd &&
+        _dateOnly(bill.dueDate) == expectedDueDate;
+  }
+
+  Future<bool> _hasNotificationEvidenceForBill(int billId) async {
+    final alerts =
+        await (_db.select(_db.alerts)..where(
+              (a) =>
+                  a.payload.isNotNull() &
+                  a.payload.contains('"kind":"cardBillDueNotification"') &
+                  a.payload.contains('"billId":$billId'),
+            ))
+            .get();
+    for (final alert in alerts) {
+      final rawPayload = alert.payload;
+      if (rawPayload == null) continue;
+      try {
+        final payload = jsonDecode(rawPayload);
+        if (payload is Map<String, dynamic> &&
+            payload['kind'] == 'cardBillDueNotification' &&
+            payload['billId'] == billId) {
+          return true;
+        }
+      } catch (_) {
+        continue;
+      }
+    }
+    return false;
+  }
+
   Future<void> _flagPaidBillNeedsReview(int billId) async {
     final bill = await (_db.select(
       _db.cardBills,
@@ -1033,6 +1103,40 @@ class BillingService {
         ),
       );
     }
+  }
+
+  Future<int?> _ensureStatementBillForCurrentCycle(CreditCard card) async {
+    final currentCycle = getCurrentCycle(card, _now());
+    final billingDate = _dateOnly(currentCycle.billingDate);
+    final existing =
+        await (_db.select(_db.cardBills)..where(
+              (b) =>
+                  b.cardId.equals(card.id) &
+                  b.billingDate.equals(billingDate) &
+                  b.status.isNotValue('opening'),
+            ))
+            .getSingleOrNull();
+    if (existing != null) return existing.id;
+
+    return _db
+        .into(_db.cardBills)
+        .insert(
+          CardBillsCompanion.insert(
+            cardId: card.id,
+            cycleStartDate: Value(currentCycle.cycleStartDate),
+            cycleEndDate: Value(currentCycle.cycleEndDate),
+            billingDate: Value(billingDate),
+            dueDate: Value(currentCycle.dueDate),
+            billedAmount: 0,
+            status: Value(
+              getDueStatusFromDate(
+                isPaid: false,
+                dueDate: currentCycle.dueDate,
+                now: _now(),
+              ),
+            ),
+          ),
+        );
   }
 
   Future<void> _ensureSyntheticOpeningBill(CreditCard card) async {
