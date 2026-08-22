@@ -1616,6 +1616,28 @@ void main() {
     });
 
     test(
+      'payment receipt uses the final four digits of a masked card number',
+      () async {
+        await createCard(bankName: 'ICICI Bank', last4: '9000');
+        final parsed = await service.cardPaymentNotificationService.parse(
+          NotificationPayload(
+            packageName: 'com.google.android.gm',
+            appName: 'Gmail',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 8, 22, 22, 38),
+            title: 'credit_cards',
+            body:
+                'Payment received on your ICICI Bank Credit Card account 4315 XXXX XXXX 9000 on 22-Aug-2026. We have received payment of INR 39,556.00.',
+          ),
+        );
+
+        expect(parsed, isNotNull);
+        expect(parsed!.cardLast4, '9000');
+        expect(parsed.destinationCardId, isNotNull);
+      },
+    );
+
+    test(
       'cred processed credit card payment does not become expense merchant',
       () async {
         await createCard(bankName: 'Axis Bank', last4: '0374');

@@ -330,7 +330,7 @@ class _RecordRecoveryDialogState extends ConsumerState<_RecordRecoveryDialog> {
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
-              'Recovery is applied to billed card, bank/UPI, and cash items. Unbilled card items unlock after statement generation.',
+              'Recovery can be recorded for billed or unbilled card items, bank/UPI, and cash items.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],

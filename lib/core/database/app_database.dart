@@ -641,7 +641,6 @@ class AppDatabase extends _$AppDatabase {
       await _healCriticalNullRows();
       await repairMirroredAutopayPendingDuplicates();
       await repairPromoAndSweepArtifacts();
-      await repairUnbilledCardRecoveries();
       await repairRefundRecoverables();
       await repairStaleOpeningBills();
     },
@@ -652,7 +651,6 @@ class AppDatabase extends _$AppDatabase {
     await _healCriticalNullRows();
     await repairMirroredAutopayPendingDuplicates();
     await repairPromoAndSweepArtifacts();
-    await repairUnbilledCardRecoveries();
     await repairRefundRecoverables();
     await repairStaleOpeningBills();
     await normalizeRecoverableDataBackfill();

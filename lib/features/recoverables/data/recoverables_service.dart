@@ -582,6 +582,7 @@ class RecoverablesService {
 
   bool _isActionableBucket(String bucket) =>
       bucket == RecoverableBuckets.cardBilled ||
+      bucket == RecoverableBuckets.cardUnbilled ||
       bucket == RecoverableBuckets.bankUpi ||
       bucket == RecoverableBuckets.cash;
 

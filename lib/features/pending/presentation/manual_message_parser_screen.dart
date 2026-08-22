@@ -6,9 +6,11 @@ import '../../../core/logging/logging_providers.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
+import '../../cards/data/cards_providers.dart';
 import '../data/pending_providers.dart';
 import '../notifications/notification_ingestion_service.dart';
 import '../notifications/notification_log_sanitizer.dart';
+import '../notifications/notification_payload.dart';
 import '../notifications/notification_providers.dart';
 import '../parsing/parser_models.dart';
 
@@ -85,6 +87,12 @@ class _ManualMessageParserScreenState
             onPressed: _isParsing ? null : _parsePastedMessage,
             label: _isParsing ? 'Parsing...' : 'Parse & Add',
             icon: Icons.playlist_add_check_circle_outlined,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          FinarcSecondaryButton(
+            onPressed: _isParsing ? null : _parsePastedBillMessage,
+            label: 'Add generated card bill',
+            icon: Icons.receipt_long_outlined,
           ),
           if (_analysisTitle != null && _analysisBody != null) ...[
             const SizedBox(height: AppSpacing.md),
@@ -183,6 +191,64 @@ class _ManualMessageParserScreenState
         _analysisTitle = 'Parse failed';
         _analysisBody =
             'The pasted message could not be processed. This sample was not added.';
+        _isParsing = false;
+      });
+    }
+  }
+
+  Future<void> _parsePastedBillMessage() async {
+    final raw = _rawText.text.trim();
+    if (raw.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Paste the bill email or message.')),
+      );
+      return;
+    }
+    setState(() => _isParsing = true);
+    try {
+      final result = await ref
+          .read(notificationIngestionServiceProvider)
+          .cardBillDueNotificationService
+          .handleIfBillDue(
+            NotificationPayload(
+              packageName: 'manual-paste',
+              appName: 'Manual paste',
+              sourceType: 'manualPaste',
+              receivedAt: DateTime.now(),
+              title: _sender.text.trim().isEmpty
+                  ? 'Pasted bill'
+                  : _sender.text.trim(),
+              body: raw,
+            ),
+          );
+      if (!mounted) return;
+      if (result == null) {
+        setState(() {
+          _analysisTitle = 'Bill details not found';
+          _analysisBody =
+              'Include the card last four digits, total amount due, and due date.';
+          _isParsing = false;
+        });
+        return;
+      }
+      ref.invalidate(cardsOverviewProvider);
+      ref.invalidate(cardDetailProvider);
+      setState(() {
+        _analysisTitle = result.action == 'createdExternalBill'
+            ? 'Generated bill added'
+            : 'Bill message processed';
+        _analysisBody =
+            '${inr(result.parsed.totalAmountDue)} due ${result.parsed.dueDate.day}/${result.parsed.dueDate.month}/${result.parsed.dueDate.year} for card XX${result.parsed.cardLast4}.';
+        _isParsing = false;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_analysisTitle!)));
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _analysisTitle = 'Could not add bill';
+        _analysisBody = 'Check the pasted bill details and try again.';
         _isParsing = false;
       });
     }

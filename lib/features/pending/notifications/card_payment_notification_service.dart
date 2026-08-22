@@ -383,6 +383,16 @@ class CardPaymentNotificationService {
   }
 
   String? _extractCardLast4(String text) {
+    // Some issuer emails show the first four digits followed by masked groups
+    // and the actual last four, e.g. "4315 XXXX XXXX 9000". The generic
+    // fallback below used to pick 4315, which is not the card identifier.
+    final maskedFullNumber = RegExp(
+      r'(?:credit\s*card|card|account)[^0-9]{0,40}\d{4}[\s-]+[xX*]{4}[\s-]+[xX*]{4}[\s-]+(\d{4})',
+      caseSensitive: false,
+    ).firstMatch(text);
+    final maskedValue = maskedFullNumber?.group(1)?.trim();
+    if (maskedValue != null && maskedValue.isNotEmpty) return maskedValue;
+
     final direct = RegExp(
       r'credit\s*card[^0-9]{0,20}(?:xx|x{2,}|[*-]{2,})[- ]?(\d{4})',
       caseSensitive: false,
