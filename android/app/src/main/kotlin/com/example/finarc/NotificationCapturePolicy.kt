@@ -2,17 +2,12 @@ package com.yashsharma.finarc
 
 object NotificationCapturePolicy {
     private val blockedPackages = setOf(
-        "com.whatsapp",
-        "com.whatsapp.w4b",
         "com.snapchat.android",
         "org.telegram.messenger",
         "org.thunderdog.challegram",
         "com.instagram.android",
         "com.facebook.katana",
         "com.facebook.orca",
-        "com.google.android.gm",
-        "com.microsoft.office.outlook",
-        "com.samsung.android.email.provider",
     )
 
     private val financialKeywords = listOf(
@@ -33,8 +28,10 @@ object NotificationCapturePolicy {
         "salary",
         "payroll",
         "bill due",
+        "bill amount",
         "amount due",
         "statement",
+        "bill has been generated",
         "card payment",
         "settlement",
         "account",

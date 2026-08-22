@@ -77,6 +77,10 @@ class CardBillDueNotificationService {
     r'(?:credit\s*card\s*)?bill\s+of\s*(?:inr|rs\.?|₹)\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)',
     caseSensitive: false,
   );
+  static final RegExp _billAmountPattern = RegExp(
+    r'bill\s+amount\s*[:\-]?\s*(?:inr|rs\.?|₹)\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)',
+    caseSensitive: false,
+  );
   static final RegExp _last4Pattern = RegExp(
     r'(?:credit\s*card|card)[^0-9]{0,24}(?:ending\s*|xx|x{2,}|\*{2,})?(\d{4})',
     caseSensitive: false,
@@ -104,7 +108,8 @@ class CardBillDueNotificationService {
     final totalAmountDue =
         _extractAmount(text, _totalDuePattern) ??
         _extractGenericAmountDue(text) ??
-        _extractAmount(text, _billOfAmountPattern);
+        _extractAmount(text, _billOfAmountPattern) ??
+        _extractAmount(text, _billAmountPattern);
     final minimumAmountDue = _extractAmount(text, _minimumDuePattern);
     final dueDate = _extractDueDate(text, payload.captureTime);
     final cardLast4 = _extractCardLast4(text);
@@ -858,6 +863,20 @@ class CardBillDueNotificationService {
   }
 
   DateTime? _extractDueDate(String text, DateTime fallback) {
+    final monthFirstMatch = RegExp(
+      r'(?:due\s+date\s*[:\-]?|due\s+by|due\s+on|\bby)\s*([A-Za-z]{3,9})\s+(\d{1,2})(?:st|nd|rd|th)?[,]?\s*(\d{2,4})?',
+      caseSensitive: false,
+    ).firstMatch(text);
+    if (monthFirstMatch != null) {
+      final parsed = _parseOrdinalDateToken(
+        dayText: monthFirstMatch.group(2),
+        monthText: monthFirstMatch.group(1),
+        yearText: monthFirstMatch.group(3),
+        fallback: fallback,
+      );
+      if (parsed != null) return parsed;
+    }
+
     final byOrDueMatch = RegExp(
       r'(?:due\s+date\s*[:\-]?|due\s+by|\bby)\s*(\d{1,2}[-/](?:[A-Za-z]{3}|\d{1,2})[-/](?:\d{2,4}))',
       caseSensitive: false,

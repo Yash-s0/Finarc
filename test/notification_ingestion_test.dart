@@ -79,7 +79,23 @@ void main() {
 
       final result = filter.evaluate(payload);
       expect(result.accepted, isFalse);
-      expect(result.reason, 'ignored-package-not-allowlisted');
+      expect(result.reason, 'ignored-non-financial-relay-notification');
+    });
+
+    test('accepts a financial bill in a Gmail notification relay', () {
+      final filter = NotificationKeywordFilter();
+      final payload = NotificationPayload(
+        packageName: 'com.google.android.gm',
+        sourceType: 'appNotification',
+        receivedAt: DateTime(2026, 8, 21, 8, 37),
+        title: 'CRED',
+        body:
+            'New bill for your ICICI Bank card XXXX-9000 is here. Total amount due: ₹49,423.00. Payment due by September 7, 2026.',
+      );
+
+      final result = filter.evaluate(payload);
+      expect(result.accepted, isTrue);
+      expect(result.reason, 'accepted-financial-relay-notification');
     });
 
     test(
@@ -852,6 +868,37 @@ void main() {
         expect(txn.cardBillId, bills.single.id);
         final alerts = await db.select(db.alerts).get();
         expect(alerts.single.payload, contains('"createdExternalBill"'));
+        expect(debugEntries.last.reason, 'card-bill-due-createdExternalBill');
+      },
+    );
+
+    test(
+      'CRED Gmail bill generated notification creates the current bill',
+      () async {
+        final cardId = await createCard(bankName: 'ICICI Bank', last4: '9000');
+        final payload = NotificationPayload(
+          packageName: 'com.google.android.gm',
+          appName: 'Gmail',
+          sourceType: 'appNotification',
+          receivedAt: DateTime(2026, 8, 21, 8, 37),
+          title: 'CRED',
+          body:
+              'Important: New bill for your ICICI Bank card XXXX-9000 is here. Your credit card bill for August has been generated. ICICI Bank XXXX 9000 bill summary total amount due ₹49,423.00. Payment due by September 07, 2026.',
+        );
+
+        final parsed = service.cardBillDueNotificationService.parse(payload);
+        expect(parsed, isNotNull);
+        expect(parsed!.totalAmountDue, 49423);
+        expect(parsed.dueDate, DateTime(2026, 9, 7));
+        expect(parsed.cardLast4, '9000');
+
+        final ids = await service.processPayload(payload);
+        expect(ids, isEmpty);
+        final bill = await (db.select(
+          db.cardBills,
+        )..where((b) => b.cardId.equals(cardId))).getSingle();
+        expect(bill.billedAmount, 49423);
+        expect(bill.dueDate, DateTime(2026, 9, 7));
         expect(debugEntries.last.reason, 'card-bill-due-createdExternalBill');
       },
     );

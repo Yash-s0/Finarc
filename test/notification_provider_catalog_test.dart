@@ -79,48 +79,57 @@ void main() {
     );
   });
 
-  test('blocked chat and social packages are hard blocked', () {
-    expect(
-      NotificationProviderCatalog.isBlockedPackage('com.whatsapp'),
-      isTrue,
-    );
-    expect(
-      NotificationProviderCatalog.isBlockedPackage('com.snapchat.android'),
-      isTrue,
-    );
-    expect(
-      NotificationProviderCatalog.isBlockedPackage('org.telegram.messenger'),
-      isTrue,
-    );
-    expect(
-      NotificationProviderCatalog.isBlockedPackage('com.instagram.android'),
-      isTrue,
-    );
-    expect(
-      NotificationProviderCatalog.isBlockedPackage('com.facebook.katana'),
-      isTrue,
-    );
-    expect(
-      NotificationProviderCatalog.isBlockedPackage('com.facebook.orca'),
-      isTrue,
-    );
-    expect(
-      NotificationProviderCatalog.isBlockedPackage('com.google.android.gm'),
-      isTrue,
-    );
-    expect(
-      NotificationProviderCatalog.isBlockedPackage(
-        'com.microsoft.office.outlook',
-      ),
-      isTrue,
-    );
-    expect(
-      NotificationProviderCatalog.isBlockedPackage(
-        'com.samsung.android.email.provider',
-      ),
-      isTrue,
-    );
-  });
+  test(
+    'social packages are blocked, while email and WhatsApp are financial relays',
+    () {
+      expect(
+        NotificationProviderCatalog.isBlockedPackage('com.whatsapp'),
+        isFalse,
+      );
+      expect(
+        NotificationProviderCatalog.isBlockedPackage('com.snapchat.android'),
+        isTrue,
+      );
+      expect(
+        NotificationProviderCatalog.isBlockedPackage('org.telegram.messenger'),
+        isTrue,
+      );
+      expect(
+        NotificationProviderCatalog.isBlockedPackage('com.instagram.android'),
+        isTrue,
+      );
+      expect(
+        NotificationProviderCatalog.isBlockedPackage('com.facebook.katana'),
+        isTrue,
+      );
+      expect(
+        NotificationProviderCatalog.isBlockedPackage('com.facebook.orca'),
+        isTrue,
+      );
+      expect(
+        NotificationProviderCatalog.isBlockedPackage('com.google.android.gm'),
+        isFalse,
+      );
+      expect(
+        NotificationProviderCatalog.isBlockedPackage(
+          'com.microsoft.office.outlook',
+        ),
+        isFalse,
+      );
+      expect(
+        NotificationProviderCatalog.isBlockedPackage(
+          'com.samsung.android.email.provider',
+        ),
+        isFalse,
+      );
+      expect(
+        NotificationProviderCatalog.isFinancialNotificationRelayPackage(
+          'com.google.android.gm',
+        ),
+        isTrue,
+      );
+    },
+  );
 
   test('payment and wallet providers are optional sources', () {
     expect(

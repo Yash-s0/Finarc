@@ -6,20 +6,20 @@ import org.junit.Test
 
 class NotificationCapturePolicyTest {
     @Test
-    fun `blocked social and email packages are ignored`() {
-        assertTrue(NotificationCapturePolicy.shouldIgnorePackage("com.whatsapp"))
+    fun `blocked social packages are ignored while financial relays are allowed`() {
+        assertFalse(NotificationCapturePolicy.shouldIgnorePackage("com.whatsapp"))
         assertTrue(NotificationCapturePolicy.shouldIgnorePackage("com.snapchat.android"))
         assertTrue(NotificationCapturePolicy.shouldIgnorePackage("org.telegram.messenger"))
         assertTrue(NotificationCapturePolicy.shouldIgnorePackage("com.instagram.android"))
         assertTrue(NotificationCapturePolicy.shouldIgnorePackage("com.facebook.katana"))
         assertTrue(NotificationCapturePolicy.shouldIgnorePackage("com.facebook.orca"))
-        assertTrue(NotificationCapturePolicy.shouldIgnorePackage("com.google.android.gm"))
-        assertTrue(NotificationCapturePolicy.shouldIgnorePackage("com.microsoft.office.outlook"))
+        assertFalse(NotificationCapturePolicy.shouldIgnorePackage("com.google.android.gm"))
+        assertFalse(NotificationCapturePolicy.shouldIgnorePackage("com.microsoft.office.outlook"))
     }
 
     @Test
-    fun `social message with money text is not treated as capturable by package policy`() {
-        assertTrue(NotificationCapturePolicy.shouldIgnorePackage("com.whatsapp"))
+    fun `financial relay package is not rejected by package policy`() {
+        assertFalse(NotificationCapturePolicy.shouldIgnorePackage("com.whatsapp"))
     }
 
     @Test

@@ -6,6 +6,7 @@ import '../../../core/router/app_router_release.dart';
 import '../../../core/database/database_providers.dart';
 import '../../../core/logging/logging_providers.dart';
 import '../../alerts/data/alerts_providers.dart';
+import '../../cards/data/cards_providers.dart';
 import '../data/pending_providers.dart';
 import 'notification_bridge.dart';
 import 'notification_fingerprint.dart';
@@ -190,6 +191,8 @@ final notificationListenerBootstrapProvider = Provider<void>((ref) {
         }
         ref.invalidate(pendingTransactionsProvider);
         ref.invalidate(pendingCountProvider);
+        ref.invalidate(cardsOverviewProvider);
+        ref.invalidate(cardDetailProvider);
         ref.invalidate(notificationDiagnosticsSnapshotProvider);
       },
       onRoute: handleRoute,

@@ -61,18 +61,23 @@ class NotificationProviderCatalog {
   };
 
   static const Set<String> _blockedPackages = {
-    'com.whatsapp',
-    'com.whatsapp.w4b',
     'com.snapchat.android',
     'org.telegram.messenger',
     'org.thunderdog.challegram',
     'com.instagram.android',
     'com.facebook.katana',
     'com.facebook.orca',
+    ..._messagingPackages,
+  };
+
+  // These apps relay notification previews. Their contents are considered only
+  // if they match strict financial text rules; no mailbox or chat history is read.
+  static const Set<String> _financialNotificationRelayPackages = {
     'com.google.android.gm',
     'com.microsoft.office.outlook',
     'com.samsung.android.email.provider',
-    ..._messagingPackages,
+    'com.whatsapp',
+    'com.whatsapp.w4b',
   };
 
   static const Map<String, NotificationProviderInfo> _packageMap = {
@@ -162,6 +167,12 @@ class NotificationProviderCatalog {
 
   static bool isMessagingPackage(String packageName) {
     return _messagingPackages.contains(packageName.toLowerCase().trim());
+  }
+
+  static bool isFinancialNotificationRelayPackage(String packageName) {
+    return _financialNotificationRelayPackages.contains(
+      packageName.toLowerCase().trim(),
+    );
   }
 
   static bool isLikelyBankingApp({

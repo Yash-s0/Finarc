@@ -159,6 +159,15 @@ class NotificationIngestionService {
 
     final filterResult = keywordFilter.evaluate(payload);
     if (!filterResult.accepted) {
+      // Keep unrelated email/chat notification previews entirely out of app
+      // diagnostics. Only financial relay notifications that passed the strict
+      // filter are retained or parsed.
+      if (payload.sourceType != 'sms' &&
+          NotificationProviderCatalog.isFinancialNotificationRelayPackage(
+            payload.packageName,
+          )) {
+        return const [];
+      }
       _log(
         payload,
         decision: 'ignored',

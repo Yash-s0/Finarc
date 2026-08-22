@@ -934,9 +934,13 @@ class BillingService {
               .get();
       final isFutureEmptyBill =
           billedTxns.isEmpty && _dateOnly(bill.billingDate).isAfter(now);
+      final hasNotificationBackedAmount =
+          billedTxns.isEmpty &&
+          bill.billedAmount > 0.009 &&
+          await _hasNotificationEvidenceForBill(bill.id);
       final hasLegacyUnmappedBillData =
           billedTxns.isEmpty && bill.billedAmount > 0.009 && !isFutureEmptyBill;
-      if (hasLegacyUnmappedBillData) {
+      if (hasNotificationBackedAmount || hasLegacyUnmappedBillData) {
         continue;
       }
       final nextAmount = billedTxns

@@ -9,6 +9,7 @@ import '../../../core/logging/logging_providers.dart';
 import '../../../core/router/app_router.dart';
 import '../../accounts/data/accounts_providers.dart';
 import '../../alerts/data/alerts_providers.dart';
+import '../../cards/data/cards_providers.dart';
 import '../../dashboard/data/dashboard_providers.dart';
 import '../../expenses/data/expenses_providers.dart';
 import '../data/pending_providers.dart';
@@ -681,6 +682,8 @@ final notificationListenerBootstrapProvider = Provider<void>((ref) {
           }
           ref.invalidate(pendingTransactionsProvider);
           ref.invalidate(pendingCountProvider);
+          ref.invalidate(cardsOverviewProvider);
+          ref.invalidate(cardDetailProvider);
           ref.invalidate(accountsOverviewProvider);
           ref.invalidate(dashboardProvider);
         },

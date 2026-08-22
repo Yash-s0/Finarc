@@ -1,5 +1,6 @@
 import 'notification_payload.dart';
 import 'notification_provider_catalog.dart';
+import '../parsing/parser_text_utils.dart';
 import 'sms_sender_filter.dart';
 
 class NotificationFilterResult {
@@ -118,6 +119,21 @@ class NotificationKeywordFilter {
     'refund credited',
   ];
 
+  static const List<String> _financialRelaySourceHints = [
+    'cred',
+    'icici',
+    'hdfc',
+    'kotak',
+    'axis',
+    'sbi',
+    'indusind',
+    'yes bank',
+    'federal bank',
+    'idfc',
+    'hsbc',
+    'citibank',
+  ];
+
   NotificationFilterResult evaluate(NotificationPayload payload) {
     if (payload.packageName == 'com.yashsharma.finarc') {
       return const NotificationFilterResult(
@@ -143,6 +159,12 @@ class NotificationKeywordFilter {
     if (payload.sourceType != 'sms') {
       if (NotificationProviderCatalog.isMessagingPackage(payload.packageName)) {
         return _evaluateMessagingNotification(payload);
+      }
+
+      if (NotificationProviderCatalog.isFinancialNotificationRelayPackage(
+        payload.packageName,
+      )) {
+        return _evaluateFinancialRelayNotification(payload);
       }
 
       final isLikelyBankingApp = NotificationProviderCatalog.isLikelyBankingApp(
@@ -247,6 +269,44 @@ class NotificationKeywordFilter {
       accepted: true,
       reason: 'accepted-keyword-match',
       senderFilterResult: 'not-applicable',
+    );
+  }
+
+  NotificationFilterResult _evaluateFinancialRelayNotification(
+    NotificationPayload payload,
+  ) {
+    final text = payload.combinedText;
+    final lower = text.toLowerCase();
+    final hasAmount = _extractAmountCandidate(text) != null;
+    final hasTrustedSource = _financialRelaySourceHints.any(lower.contains);
+    final hasFinancialKeyword =
+        _transactionKeywords.any(lower.contains) ||
+        ParserTextUtils.looksLikeCardBillDueMessage(text);
+    if (!hasTrustedSource || !hasFinancialKeyword || !hasAmount) {
+      return const NotificationFilterResult(
+        accepted: false,
+        reason: 'ignored-non-financial-relay-notification',
+      );
+    }
+    if (_otpHints.any(lower.contains)) {
+      return const NotificationFilterResult(
+        accepted: false,
+        reason: 'ignored-otp-message',
+      );
+    }
+    final promoSignal = _promotionalSignal(text);
+    if (promoSignal.blocked) {
+      return NotificationFilterResult(
+        accepted: false,
+        reason: 'promotional_offer_detected',
+        amountCandidate: promoSignal.amountCandidate,
+        blockedContext: promoSignal.blockedContext,
+      );
+    }
+    return NotificationFilterResult(
+      accepted: true,
+      reason: 'accepted-financial-relay-notification',
+      amountCandidate: _extractAmountCandidate(text),
     );
   }
 
