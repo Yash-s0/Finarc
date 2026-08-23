@@ -6,6 +6,7 @@ import '../../../core/database/database_providers.dart';
 import '../../alerts/data/alerts_providers.dart';
 import '../../expenses/data/expenses_providers.dart';
 import '../models/pending_models.dart';
+import '../notifications/card_payment_notification_service.dart';
 import '../parsing/parsing.dart';
 import 'pending_service.dart';
 
@@ -47,6 +48,10 @@ final pendingTransactionsProvider = FutureProvider<List<PendingTransaction>>((
   await ref.watch(seedProvider.future);
   final filter = ref.watch(pendingFilterProvider);
   final db = ref.read(appDatabaseProvider);
+  await CardPaymentNotificationService(
+    database: db,
+    pendingService: ref.read(pendingServiceProvider),
+  ).repairLegacyPendingPayments();
 
   final base = db.select(db.pendingTransactions)
     ..where((p) => p.status.equals('pending'))

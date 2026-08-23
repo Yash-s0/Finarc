@@ -8,6 +8,9 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/utils/numeric_input_formatters.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
 import '../../dashboard/data/dashboard_providers.dart';
+import '../../expenses/data/expenses_providers.dart';
+import '../../expenses/models/transaction_types.dart';
+import '../../expenses/presentation/payment_source_selector_support.dart';
 import '../data/recoverables_service.dart';
 
 class RecoverablePersonDetailScreen extends ConsumerStatefulWidget {
@@ -278,8 +281,28 @@ class _RecordRecoveryDialog extends ConsumerStatefulWidget {
 }
 
 class _RecordRecoveryDialogState extends ConsumerState<_RecordRecoveryDialog> {
+  static const _destinationModes = [
+    FinarcPaymentModeOption(
+      value: PaymentSourceType.creditCard,
+      label: 'Card',
+      icon: Icons.credit_card_rounded,
+    ),
+    FinarcPaymentModeOption(
+      value: PaymentSourceType.bank,
+      label: 'Bank',
+      icon: Icons.account_balance_rounded,
+    ),
+    FinarcPaymentModeOption(
+      value: PaymentSourceType.cash,
+      label: 'Cash',
+      icon: Icons.payments_rounded,
+    ),
+  ];
+
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _amountController;
+  String _destinationType = PaymentSourceType.creditCard;
+  int? _destinationId;
   bool _saving = false;
 
   @override
@@ -298,42 +321,99 @@ class _RecordRecoveryDialogState extends ConsumerState<_RecordRecoveryDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final sourcesState = ref.watch(paymentSourcesProvider);
     return AlertDialog(
       title: const Text('Record Recovery'),
-      content: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '${widget.group.partyName} • Actionable ${inr(widget.group.actionableTotal)}',
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            FinarcTextField(
-              controller: _amountController,
-              label: 'Amount received',
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}$')),
-                StripLeadingZeroFormatter(),
+      content: SizedBox(
+        width: 440,
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${widget.group.partyName} • Actionable ${inr(widget.group.actionableTotal)}',
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                FinarcTextField(
+                  controller: _amountController,
+                  label: 'Amount received',
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(
+                      RegExp(r'^\d*\.?\d{0,2}$'),
+                    ),
+                    StripLeadingZeroFormatter(),
+                  ],
+                  validator: (value) {
+                    final parsed = double.tryParse(value ?? '');
+                    if (parsed == null || parsed <= 0) {
+                      return 'Enter an amount greater than 0';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  'Where did the recovered amount go?',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                sourcesState.when(
+                  loading: () => const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(AppSpacing.sm),
+                      child: CircularProgressIndicator(),
+                    ),
+                  ),
+                  error: (error, _) => Text('Unable to load accounts: $error'),
+                  data: (sources) {
+                    final config = sourceConfigForMode(
+                      sources,
+                      _destinationType,
+                      destination: true,
+                    );
+                    _syncDestination(config.options);
+                    return FinarcPaymentSelector(
+                      title: 'Recovery destination',
+                      selectedMode: _destinationType,
+                      modes: _destinationModes,
+                      onModeChanged: (value) => setState(() {
+                        _destinationType = value;
+                        _destinationId = null;
+                      }),
+                      sources: config.options,
+                      selectedSourceId: _destinationId,
+                      onSourceChanged: (value) =>
+                          setState(() => _destinationId = value),
+                      sourceLabel: config.fieldLabel,
+                      singleSourcePrefix: config.singlePrefix,
+                      emptyState: config.options.isEmpty
+                          ? FinarcPaymentSourceEmptyState(
+                              message: config.emptyMessage!,
+                              ctaLabel: config.emptyCtaLabel!,
+                              onTap: () => context.push(config.emptyCtaRoute!),
+                            )
+                          : null,
+                      sourceValidator: (value) => value == null
+                          ? 'Choose where the recovered amount went'
+                          : null,
+                      compactModeTiles: true,
+                    );
+                  },
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'This records an incoming recovery and settles billed or unbilled card, bank/UPI, and cash recoverables.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
               ],
-              validator: (value) {
-                final parsed = double.tryParse(value ?? '');
-                if (parsed == null || parsed <= 0) {
-                  return 'Enter an amount greater than 0';
-                }
-                return null;
-              },
             ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              'Recovery can be recorded for billed or unbilled card items, bank/UPI, and cash items.',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
+          ),
         ),
       ),
       actions: [
@@ -355,9 +435,19 @@ class _RecordRecoveryDialogState extends ConsumerState<_RecordRecoveryDialog> {
 
     setState(() => _saving = true);
     try {
+      final destinationId = _destinationId;
+      if (destinationId == null) {
+        setState(() => _saving = false);
+        return;
+      }
       final result = await ref
           .read(recoverablesServiceProvider)
-          .recordRecovery(partyName: widget.group.partyName, amount: amount);
+          .recordRecovery(
+            partyName: widget.group.partyName,
+            amount: amount,
+            destinationSourceType: _destinationType,
+            destinationSourceId: destinationId,
+          );
       if (!mounted) return;
       Navigator.of(context).pop(result);
     } catch (e) {
@@ -367,5 +457,14 @@ class _RecordRecoveryDialogState extends ConsumerState<_RecordRecoveryDialog> {
         context,
       ).showSnackBar(SnackBar(content: Text('Unable to record recovery: $e')));
     }
+  }
+
+  void _syncDestination(List<FinarcPaymentSourceOption> options) {
+    final next = resolveAutoSelectedSourceId(_destinationId, options);
+    if (next == _destinationId) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _destinationId = next);
+    });
   }
 }

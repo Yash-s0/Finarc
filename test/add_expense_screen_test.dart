@@ -348,7 +348,7 @@ void main() {
     await tester.pumpWidget(wrap(db, const AddIncomeScreen()));
     await tester.pumpAndSettle();
 
-    expect(find.text('RECEIVE INTO'), findsOneWidget);
+    expect(find.text('Receive into'), findsOneWidget);
     expect(find.byKey(const Key('income-mode-cash')), findsOneWidget);
     expect(find.byKey(const Key('income-mode-upi')), findsOneWidget);
     expect(find.byKey(const Key('income-mode-bank')), findsOneWidget);

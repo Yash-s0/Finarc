@@ -100,6 +100,62 @@ class CardPaymentNotificationService {
   final PendingService _pendingService;
   static const Duration _mergeWindow = Duration(minutes: 20);
 
+  /// Repairs pending rows created before card-payment settlement detection was
+  /// added. Without this, an issuer phrase such as "payment received" can keep
+  /// an old row classified as income even though newer parsing is correct.
+  Future<int> repairLegacyPendingPayments() async {
+    final rows =
+        await (_db.select(_db.pendingTransactions)..where(
+              (p) =>
+                  p.status.equals('pending') &
+                  p.sourceType.isNotValue('cardPaymentNotification'),
+            ))
+            .get();
+    var repaired = 0;
+    for (final row in rows) {
+      if (CardPaymentPendingCodec.tryDecode(row.rawText) != null ||
+          !ParserTextUtils.looksLikeCardPaymentSettlementMessage(row.rawText)) {
+        continue;
+      }
+      final parsed = await parse(
+        NotificationPayload(
+          packageName: 'legacy-pending',
+          sourceType: row.sourceType,
+          receivedAt: row.detectedAt,
+          title: row.merchant,
+          body: row.rawText,
+        ),
+      );
+      if (parsed == null) continue;
+
+      await (_db.update(
+        _db.pendingTransactions,
+      )..where((p) => p.id.equals(row.id))).write(
+        PendingTransactionsCompanion(
+          amount: Value(parsed.amount),
+          merchant: Value(parsed.merchantLabel),
+          categorySuggestion: const Value('Transfer'),
+          paymentSourceTypeSuggestion: Value(
+            parsed.sourceTypeSuggestion ?? PaymentSourceType.bank,
+          ),
+          paymentSourceIdSuggestion: Value(parsed.sourceAccountId),
+          transactionDate: Value(parsed.transactionDate),
+          sourceType: const Value('cardPaymentNotification'),
+          rawText: Value(
+            CardPaymentPendingCodec.wrap(
+              rawText: parsed.rawText,
+              data: parsed.toPendingData(),
+            ),
+          ),
+          confidenceScore: const Value(0.98),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+      repaired += 1;
+    }
+    return repaired;
+  }
+
   Future<CardPaymentHandlingResult?> handleIfCardPayment(
     NotificationPayload payload,
   ) async {

@@ -291,7 +291,10 @@ class RecoverablesService {
       (sum, item) => sum + item.openAmount,
     );
     final actionableRecoverables =
-        cardBilledRecoverables + bankUpiRecoverables + cashRecoverables;
+        cardBilledRecoverables +
+        cardUnbilledRecoverables +
+        bankUpiRecoverables +
+        cashRecoverables;
     final splitReceivables = await _splitService.getCurrentUserReceivables();
 
     return RecoverablesSnapshot(
@@ -325,8 +328,15 @@ class RecoverablesService {
   Future<RecordRecoveryResult> recordRecovery({
     required String partyName,
     required double amount,
+    required String destinationSourceType,
+    required int destinationSourceId,
     DateTime? recoveryDate,
   }) async {
+    if (destinationSourceType != PaymentSourceType.creditCard &&
+        destinationSourceType != PaymentSourceType.bank &&
+        destinationSourceType != PaymentSourceType.cash) {
+      throw ArgumentError('Recovery destination must be a card, bank, or cash');
+    }
     final data = await _loadRecoverableData();
     final candidates =
         data.items
@@ -347,6 +357,23 @@ class RecoverablesService {
 
     if (appliedAmount > 0.009) {
       await _db.transaction(() async {
+        await _engine.addTransaction(
+          AddTransactionInput(
+            type: destinationSourceType == PaymentSourceType.creditCard
+                ? TransactionType.refund
+                : TransactionType.income,
+            amount: appliedAmount,
+            title: 'Recovery from $partyName',
+            category: 'Recovery',
+            transactionDate: now,
+            paymentSourceType: destinationSourceType,
+            paymentSourceId: destinationSourceId,
+            notes: 'Recorded against open recoverables from $partyName',
+            detectedSourceType: 'manualRecovery',
+            applyCardRefundToOutstanding:
+                destinationSourceType == PaymentSourceType.creditCard,
+          ),
+        );
         for (final item in candidates) {
           if (remainingToApply <= 0.009) break;
           final apply = remainingToApply.clamp(0, item.openAmount).toDouble();

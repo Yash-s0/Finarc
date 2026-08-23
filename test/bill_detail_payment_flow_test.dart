@@ -164,7 +164,7 @@ void main() {
     await tester.drag(find.byType(ListView), const Offset(0, -600));
     await tester.pumpAndSettle();
 
-    expect(find.text('OPENING BALANCE CALCULATION'), findsOneWidget);
+    expect(find.text('Opening Balance Calculation'), findsOneWidget);
     expect(find.text('Card outstanding'), findsOneWidget);
     expect(find.text('Matched billed/unbilled'), findsOneWidget);
     expect(find.text('Opening adjustment'), findsOneWidget);

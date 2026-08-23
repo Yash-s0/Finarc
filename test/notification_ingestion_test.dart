@@ -3,9 +3,11 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:finarc/core/database/app_database.dart';
+import 'package:finarc/features/cards/data/billing_service.dart';
 import 'package:finarc/features/expenses/data/transaction_engine.dart';
 import 'package:finarc/features/expenses/models/transaction_types.dart';
 import 'package:finarc/features/pending/data/pending_service.dart';
+import 'package:finarc/features/pending/notifications/card_payment_pending_codec.dart';
 import 'package:finarc/features/pending/notifications/notification_burst_limiter.dart';
 import 'package:finarc/features/pending/notifications/notification_fingerprint.dart';
 import 'package:finarc/features/pending/notifications/notification_ingestion_service.dart';
@@ -1077,7 +1079,6 @@ void main() {
           dueDate: DateTime(2026, 6, 8),
           status: 'billed',
         );
-
         final ids = await service.processPayload(iciciBillPayload());
         expect(ids, isEmpty);
         expect(await db.select(db.pendingTransactions).get(), isEmpty);
@@ -1121,6 +1122,79 @@ void main() {
           '/cards/$cardId/bills/$billId?review=billMismatch&appAmount=16000.00&notificationAmount=17027.10',
         );
         expect(debugEntries.last.reason, 'card-bill-due-mismatchAlert');
+      },
+    );
+
+    test(
+      'manual bill retry overrides a mismatch even after the notification was logged',
+      () async {
+        final cardId = await createCard(bankName: 'ICICI Bank', last4: '9000');
+        final billId = await createBill(
+          cardId: cardId,
+          billedAmount: 49423,
+          dueDate: DateTime(2026, 9, 7),
+          status: 'billed',
+        );
+        await db
+            .into(db.transactions)
+            .insert(
+              TransactionsCompanion.insert(
+                type: TransactionType.creditCard,
+                amount: 49423,
+                title: 'Imported card activity',
+                category: 'General',
+                transactionDate: DateTime(2026, 8, 10),
+                paymentSourceType: PaymentSourceType.creditCard,
+                paymentSourceId: cardId,
+                cardBillId: drift.Value(billId),
+              ),
+            );
+        const body =
+            '''CRED: Your ICICI Bank credit card bill has been generated.
+Card: ICICI Bank Credit Card 9000
+Statement period: 21 July 2026 to 20 August 2026
+Total Amount Due: ₹60,000.00
+Minimum Amount Due: ₹2,480.00
+Payment due by September 07, 2026.''';
+
+        final automaticResult = await service.cardBillDueNotificationService
+            .handleIfBillDue(
+              NotificationPayload(
+                packageName: 'com.google.android.gm',
+                sourceType: 'appNotification',
+                receivedAt: DateTime(2026, 8, 23, 9),
+                title: 'CRED',
+                body: body,
+              ),
+            );
+        expect(automaticResult?.action, 'mismatchAlert');
+
+        final manualResult = await service.cardBillDueNotificationService
+            .handleIfBillDue(
+              NotificationPayload(
+                packageName: 'manual-paste',
+                sourceType: 'manualPaste',
+                receivedAt: DateTime(2026, 8, 23, 9, 5),
+                title: 'Pasted bill',
+                body: body,
+              ),
+            );
+
+        expect(manualResult?.action, 'manualAmountOverride');
+        final bill = await (db.select(
+          db.cardBills,
+        )..where((b) => b.id.equals(billId))).getSingle();
+        expect(bill.billedAmount, 60000);
+        expect(bill.dueDate, DateTime(2026, 9, 7));
+
+        await BillingService(
+          db,
+          now: () => DateTime(2026, 8, 23),
+        ).getCardBillingSnapshotById(cardId);
+        final persistedBill = await (db.select(
+          db.cardBills,
+        )..where((b) => b.id.equals(billId))).getSingle();
+        expect(persistedBill.billedAmount, 60000);
       },
     );
 
@@ -1634,6 +1708,40 @@ void main() {
         expect(parsed, isNotNull);
         expect(parsed!.cardLast4, '9000');
         expect(parsed.destinationCardId, isNotNull);
+      },
+    );
+
+    test(
+      'legacy income pending is repaired in place as a card payment',
+      () async {
+        final cardId = await createCard(bankName: 'ICICI Bank', last4: '9000');
+        const raw =
+            'Payment received on your ICICI Bank Credit Card account 4315 XXXX XXXX 9000 on 22-Aug-2026. We have received payment of INR 39,556.00.';
+        final pendingId = await service.pendingService.createPendingTransaction(
+          amount: 39556,
+          merchant: 'Icici Bank',
+          categorySuggestion: 'Transfer',
+          paymentSourceTypeSuggestion: PaymentSourceType.creditCard,
+          transactionDate: DateTime(2026, 8, 22, 22, 42),
+          sourceType: 'sms',
+          rawText: raw,
+          confidenceScore: 0.95,
+        );
+
+        final repaired = await service.cardPaymentNotificationService
+            .repairLegacyPendingPayments();
+        final pending = await (db.select(
+          db.pendingTransactions,
+        )..where((p) => p.id.equals(pendingId))).getSingle();
+        final metadata = CardPaymentPendingCodec.tryDecode(pending.rawText);
+
+        expect(repaired, 1);
+        expect(pending.id, pendingId);
+        expect(pending.sourceType, 'cardPaymentNotification');
+        expect(pending.merchant, 'ICICI Card XX9000');
+        expect(pending.paymentSourceTypeSuggestion, PaymentSourceType.bank);
+        expect(metadata?.cardLast4, '9000');
+        expect(metadata?.destinationCardId, cardId);
       },
     );
 

@@ -480,8 +480,8 @@ class _TransactionDetailScreenState
                               _canMarkRecovered(txn)) ...[
                             const SizedBox(height: AppSpacing.sm),
                             FinarcPrimaryButton(
-                              onPressed: () => _markRecovered(txn.id),
-                              label: 'Mark as Recovered',
+                              onPressed: () => _recordRecovery(txn),
+                              label: 'Record Recovery',
                               icon: Icons.verified_outlined,
                             ),
                           ],
@@ -824,24 +824,15 @@ class _TransactionDetailScreenState
     return _cashbackDestinationId;
   }
 
-  Future<void> _markRecovered(int transactionId) async {
-    try {
-      await ref.read(recoverablesServiceProvider).markRecovered(transactionId);
-      _invalidateAll();
-      if (!mounted) return;
-      setState(() {});
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to mark as recovered: $e')),
-      );
-    }
+  void _recordRecovery(Transaction transaction) {
+    final partyName = transaction.recoverablePartyName?.trim();
+    if (partyName == null || partyName.isEmpty) return;
+    context.push(
+      '/recoverables/person?name=${Uri.encodeQueryComponent(partyName)}',
+    );
   }
 
-  bool _canMarkRecovered(Transaction txn) {
-    if (txn.paymentSourceType != PaymentSourceType.creditCard) return true;
-    return txn.cardBillId != null;
-  }
+  bool _canMarkRecovered(Transaction txn) => true;
 
   Future<void> _delete(int id) async {
     final confirmed = await showDialog<bool>(

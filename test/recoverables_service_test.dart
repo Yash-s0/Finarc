@@ -21,7 +21,7 @@ void main() {
   late RecoverablesService Function({required DateTime Function() now})
   serviceFor;
 
-  Future<void> addRecoverable({
+  Future<int> addRecoverable({
     required String title,
     required String partyName,
     required double amount,
@@ -142,7 +142,7 @@ void main() {
     final olderCycle = DateTime(now.year, now.month - 1, 2);
     final newerCycle = DateTime(now.year, now.month, 1);
 
-    await addRecoverable(
+    final olderId = await addRecoverable(
       title: 'Older statement',
       partyName: 'Rahul',
       amount: 300,
@@ -150,7 +150,7 @@ void main() {
       paymentSourceType: PaymentSourceType.creditCard,
       paymentSourceId: cardId,
     );
-    await addRecoverable(
+    final newerId = await addRecoverable(
       title: 'Newer statement',
       partyName: 'Rahul',
       amount: 450,
@@ -158,6 +158,22 @@ void main() {
       paymentSourceType: PaymentSourceType.creditCard,
       paymentSourceId: cardId,
     );
+    final billId = await db
+        .into(db.cardBills)
+        .insert(
+          CardBillsCompanion.insert(
+            cardId: cardId,
+            cycleStartDate: Value(DateTime(now.year, now.month - 1, 1)),
+            cycleEndDate: Value(DateTime(now.year, now.month, 21)),
+            billingDate: Value(DateTime(now.year, now.month, 22)),
+            dueDate: Value(DateTime(now.year, now.month + 1, 7)),
+            billedAmount: 750,
+            status: const Value('billed'),
+          ),
+        );
+    await (db.update(db.transactions)
+          ..where((t) => t.id.equals(olderId) | t.id.equals(newerId)))
+        .write(TransactionsCompanion(cardBillId: Value(billId)));
 
     final snapshot = await serviceFor(now: () => now).buildSnapshot();
     final rahul = snapshot.groups.firstWhere((g) => g.partyName == 'Rahul');
@@ -226,6 +242,8 @@ void main() {
     final result = await service.recordRecovery(
       partyName: 'Rahul',
       amount: 1400,
+      destinationSourceType: PaymentSourceType.bank,
+      destinationSourceId: bankId,
     );
     final snapshot = await service.buildSnapshot();
 
@@ -250,7 +268,7 @@ void main() {
           ? DateTime(now.year, now.month, now.day)
           : DateTime(now.year, now.month, 2);
 
-      await addRecoverable(
+      final billedTransactionId = await addRecoverable(
         title: 'Billed card',
         partyName: 'Rahul',
         amount: 300,
@@ -274,11 +292,31 @@ void main() {
         paymentSourceType: PaymentSourceType.creditCard,
         paymentSourceId: cardId,
       );
+      final billId = await db
+          .into(db.cardBills)
+          .insert(
+            CardBillsCompanion.insert(
+              cardId: cardId,
+              // An externally confirmed statement can have a cycle boundary
+              // that differs from the card's locally estimated billing day.
+              cycleStartDate: Value(DateTime(now.year, now.month - 1, 21)),
+              cycleEndDate: Value(DateTime(now.year, now.month, 21)),
+              billingDate: Value(DateTime(now.year, now.month, 22)),
+              dueDate: Value(DateTime(now.year, now.month + 1, 7)),
+              billedAmount: 300,
+              status: const Value('billed'),
+            ),
+          );
+      await (db.update(db.transactions)
+            ..where((t) => t.id.equals(billedTransactionId)))
+          .write(TransactionsCompanion(cardBillId: Value(billId)));
 
       final service = serviceFor(now: () => now);
       final result = await service.recordRecovery(
         partyName: 'Rahul',
         amount: 450,
+        destinationSourceType: PaymentSourceType.bank,
+        destinationSourceId: bankId,
       );
       final txns = await (db.select(
         db.transactions,
@@ -336,6 +374,8 @@ void main() {
     final result = await service.recordRecovery(
       partyName: 'Rahul',
       amount: 1000,
+      destinationSourceType: PaymentSourceType.bank,
+      destinationSourceId: bankId,
     );
     final txns = await (db.select(
       db.transactions,
@@ -353,6 +393,43 @@ void main() {
     expect(byTitle['Unbilled card']!.recoverableStatus, 'recovered');
     expect(byTitle['Unbilled card']!.recoveredAmount, closeTo(400, 0.01));
   });
+
+  test(
+    'card recovery destination records refund and reduces outstanding',
+    () async {
+      final now = DateTime.now();
+      await addRecoverable(
+        title: 'Shared card purchase',
+        partyName: 'Rahul',
+        amount: 1000,
+        date: now,
+        paymentSourceType: PaymentSourceType.creditCard,
+        paymentSourceId: cardId,
+      );
+
+      final result = await serviceFor(now: () => now).recordRecovery(
+        partyName: 'Rahul',
+        amount: 400,
+        destinationSourceType: PaymentSourceType.creditCard,
+        destinationSourceId: cardId,
+      );
+      final card = await (db.select(
+        db.creditCards,
+      )..where((c) => c.id.equals(cardId))).getSingle();
+      final recovery =
+          await (db.select(db.transactions)..where(
+                (t) =>
+                    t.title.equals('Recovery from Rahul') &
+                    t.detectedSourceType.equals('manualRecovery'),
+              ))
+              .getSingle();
+
+      expect(result.appliedAmount, closeTo(400, 0.01));
+      expect(card.currentOutstanding, closeTo(600, 0.01));
+      expect(recovery.type, TransactionType.refund);
+      expect(recovery.paymentSourceType, PaymentSourceType.creditCard);
+    },
+  );
 
   test('direct mark recovered accepts unbilled card recoverables', () async {
     final now = DateTime.now();
@@ -393,9 +470,13 @@ void main() {
       paymentSourceId: bankId,
     );
 
-    final result = await serviceFor(
-      now: () => DateTime(2026, 5, 25),
-    ).recordRecovery(partyName: 'Rahul', amount: 700);
+    final result = await serviceFor(now: () => DateTime(2026, 5, 25))
+        .recordRecovery(
+          partyName: 'Rahul',
+          amount: 700,
+          destinationSourceType: PaymentSourceType.bank,
+          destinationSourceId: bankId,
+        );
 
     expect(result.clamped, isTrue);
     expect(result.appliedAmount, closeTo(500, 0.01));

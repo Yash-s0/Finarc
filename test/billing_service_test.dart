@@ -718,7 +718,7 @@ void main() {
   );
 
   test(
-    'snapshot repairs old unconfirmed generated bill back to unbilled',
+    'snapshot preserves a persisted generated bill across service instances',
     () async {
       final cardId = await createCard(billingDay: 20, dueDay: 7);
       final billId = await db
@@ -757,11 +757,11 @@ void main() {
         db.cardBills,
       )..where((b) => b.id.equals(billId))).get();
 
-      expect(bills, isEmpty);
-      expect(snapshot.billedDue, closeTo(0, 0.01));
-      expect(snapshot.unbilledSpends, closeTo(49423, 0.01));
+      expect(bills, hasLength(1));
+      expect(snapshot.billedDue, closeTo(49423, 0.01));
+      expect(snapshot.unbilledSpends, closeTo(0, 0.01));
       expect(snapshot.totalOutstanding, closeTo(49423, 0.01));
-      expect(snapshot.latestUnpaidBill, isNull);
+      expect(snapshot.latestUnpaidBill?.id, billId);
     },
   );
 

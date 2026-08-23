@@ -284,14 +284,13 @@ void main() {
     expect(execution.importedCount, 4);
     expect(execution.failedCount, 0);
     expect(card.currentOutstanding, closeTo(900, 0.01));
-    expect(snapshot.billedDue, closeTo(500, 0.01));
-    expect(snapshot.unbilledSpends, closeTo(400, 0.01));
-    expect(snapshot.billedTransactions.map((txn) => txn.title), [
-      'Cycle end',
-      'Cycle start',
-    ]);
+    expect(snapshot.billedDue, closeTo(0, 0.01));
+    expect(snapshot.unbilledSpends, closeTo(900, 0.01));
+    expect(snapshot.billedTransactions, isEmpty);
     expect(snapshot.unbilledTransactions.map((txn) => txn.title), [
       'Open cycle',
+      'Cycle end',
+      'Cycle start',
     ]);
   });
 

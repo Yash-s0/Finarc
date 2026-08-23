@@ -163,7 +163,6 @@ class BillingService {
 
   final AppDatabase _db;
   final DateTime Function() _now;
-  final Set<int> _locallyGeneratedBillIds = <int>{};
 
   DateTime _dateOnly(DateTime value) =>
       DateTime(value.year, value.month, value.day);
@@ -253,7 +252,6 @@ class BillingService {
     await _db.transaction(() async {
       await _promoteActiveHistoricalNoBalanceTransactions(card, now: now);
       await _ensureSyntheticOpeningBill(card);
-      await _repairUnconfirmedGeneratedBillsForCard(card);
       await _reconcileCardBillingAssignments(card, referenceNow: now);
       await _syncLegacyOutstanding(card.id);
     });
@@ -267,7 +265,6 @@ class BillingService {
     await _db.transaction(() async {
       await _promoteActiveHistoricalNoBalanceTransactions(card);
       await _ensureSyntheticOpeningBill(card);
-      await _repairUnconfirmedGeneratedBillsForCard(card);
       await _reconcileCardBillingAssignments(card);
     });
     final bills = await (_db.select(
@@ -291,7 +288,6 @@ class BillingService {
     await _db.transaction(() async {
       await _promoteActiveHistoricalNoBalanceTransactions(card, now: reference);
       await _ensureSyntheticOpeningBill(card);
-      await _repairUnconfirmedGeneratedBillsForCard(card);
       await _reconcileCardBillingAssignments(card, referenceNow: reference);
     });
 
@@ -441,10 +437,7 @@ class BillingService {
     await _db.transaction(() async {
       await _promoteActiveHistoricalNoBalanceTransactions(card);
       await _ensureSyntheticOpeningBill(card);
-      final generatedBillId = await _ensureStatementBillForCurrentCycle(card);
-      if (generatedBillId != null) {
-        _locallyGeneratedBillIds.add(generatedBillId);
-      }
+      await _ensureStatementBillForCurrentCycle(card);
       await _reconcileCardBillingAssignments(card);
     });
 
@@ -935,7 +928,6 @@ class BillingService {
       final isFutureEmptyBill =
           billedTxns.isEmpty && _dateOnly(bill.billingDate).isAfter(now);
       final hasNotificationBackedAmount =
-          billedTxns.isEmpty &&
           bill.billedAmount > 0.009 &&
           await _hasNotificationEvidenceForBill(bill.id);
       final hasLegacyUnmappedBillData =
@@ -976,60 +968,6 @@ class BillingService {
     if (bill.status == 'paid' || bill.status == 'needsReview') return true;
     if (bill.billedAmount <= 0.009) return false;
     return bill.paidAmount >= bill.billedAmount;
-  }
-
-  Future<void> _repairUnconfirmedGeneratedBillsForCard(CreditCard card) async {
-    final bills =
-        await (_db.select(_db.cardBills)
-              ..where(
-                (b) =>
-                    b.cardId.equals(card.id) &
-                    b.status.isNotValue('opening') &
-                    b.status.isNotValue('paid') &
-                    b.status.isNotValue('needsReview') &
-                    b.paidAmount.isSmallerOrEqualValue(0.009),
-              )
-              ..orderBy([(b) => OrderingTerm.asc(b.billingDate)]))
-            .get();
-
-    for (final bill in bills) {
-      if (await _hasNotificationEvidenceForBill(bill.id)) continue;
-      if (_locallyGeneratedBillIds.contains(bill.id)) continue;
-      if (!_looksLikeLocalGeneratedCycleBill(card, bill)) continue;
-
-      final billedTxns =
-          await (_db.select(_db.transactions)..where(
-                (t) =>
-                    t.paymentSourceType.equals('creditCard') &
-                    t.paymentSourceId.equals(card.id) &
-                    (t.type.equals('creditCard') | t.type.equals('refund')) &
-                    _billingRelevantExpression(t) &
-                    t.cardBillId.equals(bill.id),
-              ))
-              .get();
-      final linkedAmount = billedTxns
-          .fold<double>(0, (sum, txn) => sum + _billingImpact(txn))
-          .clamp(0, double.infinity)
-          .toDouble();
-      if ((linkedAmount - bill.billedAmount).abs() > 1) continue;
-
-      await (_db.update(_db.transactions)
-            ..where((t) => t.cardBillId.equals(bill.id)))
-          .write(const TransactionsCompanion(cardBillId: Value(null)));
-      await (_db.delete(
-        _db.cardBills,
-      )..where((b) => b.id.equals(bill.id))).go();
-    }
-  }
-
-  bool _looksLikeLocalGeneratedCycleBill(CreditCard card, CardBill bill) {
-    final billingDate = _dateOnly(bill.billingDate);
-    final expectedCycleStart = _cycleStartForBillingDate(card, billingDate);
-    final expectedCycleEnd = billingDate.subtract(const Duration(days: 1));
-    final expectedDueDate = _dueDateForBillingDate(card, billingDate);
-    return _dateOnly(bill.cycleStartDate) == expectedCycleStart &&
-        _dateOnly(bill.cycleEndDate) == expectedCycleEnd &&
-        _dateOnly(bill.dueDate) == expectedDueDate;
   }
 
   Future<bool> _hasNotificationEvidenceForBill(int billId) async {

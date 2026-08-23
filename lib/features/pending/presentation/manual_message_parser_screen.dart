@@ -8,6 +8,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
 import '../../cards/data/cards_providers.dart';
 import '../data/pending_providers.dart';
+import '../notifications/card_bill_due_notification_service.dart';
 import '../notifications/notification_ingestion_service.dart';
 import '../notifications/notification_log_sanitizer.dart';
 import '../notifications/notification_payload.dart';
@@ -169,14 +170,10 @@ class _ManualMessageParserScreenState
       if (!mounted) return;
       ref.invalidate(cardsOverviewProvider);
       ref.invalidate(cardDetailProvider);
+      final feedback = _billResultFeedback(billResult);
       setState(() {
-        _analysisTitle = billResult.action == 'createdExternalBill'
-            ? 'Generated bill added'
-            : billResult.action == 'manualAmountOverride'
-            ? 'Generated bill updated'
-            : 'Bill message processed';
-        _analysisBody =
-            '${inr(billResult.parsed.totalAmountDue)} due ${billResult.parsed.dueDate.day}/${billResult.parsed.dueDate.month}/${billResult.parsed.dueDate.year} for card XX${billResult.parsed.cardLast4}.';
+        _analysisTitle = feedback.title;
+        _analysisBody = feedback.body;
         _isParsing = false;
       });
       ScaffoldMessenger.of(
@@ -271,12 +268,10 @@ class _ManualMessageParserScreenState
       }
       ref.invalidate(cardsOverviewProvider);
       ref.invalidate(cardDetailProvider);
+      final feedback = _billResultFeedback(result);
       setState(() {
-        _analysisTitle = result.action == 'createdExternalBill'
-            ? 'Generated bill added'
-            : 'Bill message processed';
-        _analysisBody =
-            '${inr(result.parsed.totalAmountDue)} due ${result.parsed.dueDate.day}/${result.parsed.dueDate.month}/${result.parsed.dueDate.year} for card XX${result.parsed.cardLast4}.';
+        _analysisTitle = feedback.title;
+        _analysisBody = feedback.body;
         _isParsing = false;
       });
       ScaffoldMessenger.of(
@@ -289,6 +284,82 @@ class _ManualMessageParserScreenState
         _analysisBody = 'Check the pasted bill details and try again.';
         _isParsing = false;
       });
+    }
+  }
+
+  _ManualPasteAnalysis _billResultFeedback(CardBillDueHandlingResult result) {
+    final details =
+        '${inr(result.parsed.totalAmountDue)} due ${result.parsed.dueDate.day}/${result.parsed.dueDate.month}/${result.parsed.dueDate.year} for card XX${result.parsed.cardLast4}.';
+    switch (result.action) {
+      case 'createdExternalBill':
+        return _ManualPasteAnalysis(
+          title: 'Generated bill added',
+          body: details,
+          reason: result.action,
+          parseResult: 'bill-created',
+        );
+      case 'manualAmountOverride':
+      case 'updatedDueDate':
+      case 'verified':
+      case 'remainingDueVerified':
+        return _ManualPasteAnalysis(
+          title: 'Generated bill updated',
+          body: details,
+          reason: result.action,
+          parseResult: 'bill-updated',
+        );
+      case 'noMatchingCard':
+        return _ManualPasteAnalysis(
+          title: 'Matching card not found',
+          body:
+              '$details Add or edit a card with last four digits ${result.parsed.cardLast4}, then retry.',
+          reason: result.action,
+          parseResult: 'bill-not-applied',
+        );
+      case 'multipleMatchingCards':
+        return _ManualPasteAnalysis(
+          title: 'Multiple matching cards found',
+          body:
+              '$details Make the card name or last four digits unique, then retry.',
+          reason: result.action,
+          parseResult: 'bill-not-applied',
+        );
+      case 'minimumDueOnly':
+        return _ManualPasteAnalysis(
+          title: 'Total bill amount missing',
+          body: '$details Paste a message containing Total Amount Due.',
+          reason: result.action,
+          parseResult: 'bill-not-applied',
+        );
+      case 'paidBillIgnored':
+        return _ManualPasteAnalysis(
+          title: 'Bill already paid',
+          body: details,
+          reason: result.action,
+          parseResult: 'bill-unchanged',
+        );
+      case 'paidBillMismatch':
+      case 'mismatchAlert':
+        return _ManualPasteAnalysis(
+          title: 'Bill needs review',
+          body: '$details The existing bill was not changed.',
+          reason: result.action,
+          parseResult: 'bill-not-applied',
+        );
+      case 'ignoredDuplicate':
+        return _ManualPasteAnalysis(
+          title: 'Bill already processed',
+          body: details,
+          reason: result.action,
+          parseResult: 'bill-unchanged',
+        );
+      default:
+        return _ManualPasteAnalysis(
+          title: 'Bill message processed',
+          body: details,
+          reason: result.action,
+          parseResult: 'bill-processed',
+        );
     }
   }
 

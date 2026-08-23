@@ -51,7 +51,7 @@ void main() {
   });
 
   test(
-    'dashboard uses billedDue for card dues and actionable recoverables for recoverable metric',
+    'dashboard keeps card charges unbilled until a statement and counts them as actionable recoverables',
     () async {
       final now = DateTime.now();
       final billingDate = DateTime(
@@ -114,9 +114,9 @@ void main() {
       addTearDown(container.dispose);
 
       final snapshot = await container.read(dashboardProvider.future);
-      expect(snapshot.cardDues, closeTo(1000, 0.01));
+      expect(snapshot.cardDues, closeTo(0, 0.01));
       expect(snapshot.cardOutstanding, closeTo(1500, 0.01));
-      expect(snapshot.recoverableAmount, closeTo(1080, 0.01));
+      expect(snapshot.recoverableAmount, closeTo(1530, 0.01));
     },
   );
 

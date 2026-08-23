@@ -90,7 +90,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final gridTop = tester.getTopLeft(find.byType(DashboardMetricGrid)).dy;
-    final headerTop = tester.getTopLeft(find.text('OVERVIEW')).dy;
+    final headerTop = tester.getTopLeft(find.text('Overview')).dy;
 
     expect(headerTop - gridTop, lessThan(24));
   });

@@ -140,7 +140,12 @@ class CardBillDueNotificationService {
     if (parsed == null) return null;
 
     final dedupeKey = _notificationDedupeKey(parsed);
-    if (await _hasProcessedNotification(dedupeKey)) {
+    // A manual paste is an explicit retry/correction by the user. Previous
+    // notification attempts may have logged the same dedupe key without
+    // creating or updating a bill (for example, an amount mismatch). Do not
+    // let that audit entry make the manual repair a silent no-op.
+    final isManualPaste = payload.sourceType == 'manualPaste';
+    if (!isManualPaste && await _hasProcessedNotification(dedupeKey)) {
       await _logAction(
         parsed,
         action: 'ignoredDuplicate',
@@ -229,7 +234,7 @@ class CardBillDueNotificationService {
         bill: unpaidBill,
         parsed: parsed,
         dedupeKey: dedupeKey,
-        allowAmountOverride: payload.sourceType == 'manualPaste',
+        allowAmountOverride: isManualPaste,
       );
       return CardBillDueHandlingResult(
         parsed: parsed,
@@ -378,6 +383,31 @@ class CardBillDueNotificationService {
           dueDate: Value(parsed.dueDate),
           status: Value(nextStatus),
         ),
+      );
+      await _alertService.createAlert(
+        CreateAlertInput(
+          alertType: AlertType.cardDue,
+          title:
+              '${_issuerDisplay(parsed, card)} bill updated from pasted statement',
+          body:
+              '${inr(parsed.totalAmountDue)} due ${_dayMonth(parsed.dueDate)} for card XX${parsed.cardLast4}.',
+          priority: AlertPriority.info,
+          actionRoute: '/cards/${card.id}',
+          dedupeKey: '$dedupeKey:manual-applied',
+          payload: {
+            'kind': 'cardBillDueNotification',
+            'action': 'manualAmountOverride',
+            'cardId': card.id,
+            'billId': bill.id,
+            'totalAmountDue': parsed.totalAmountDue,
+            'minimumAmountDue': parsed.minimumAmountDue,
+            'dueDate': parsed.dueDate.toIso8601String(),
+            'last4': parsed.cardLast4,
+            'issuer': parsed.issuer,
+            'source': 'manualPaste',
+          },
+        ),
+        dedupeWindow: const Duration(days: 90),
       );
       await _logAction(
         parsed,

@@ -188,7 +188,7 @@ void main() {
           ),
         );
 
-    await db
+    final billId = await db
         .into(db.cardBills)
         .insert(
           CardBillsCompanion.insert(
@@ -200,6 +200,18 @@ void main() {
             billedAmount: 10000,
             paidAmount: const Value(5000),
             status: const Value('billed'),
+          ),
+        );
+    await db
+        .into(db.alerts)
+        .insert(
+          AlertsCompanion.insert(
+            alertType: 'cardDue',
+            title: 'Statement detected',
+            body: 'ICICI statement',
+            payload: Value(
+              '{"kind":"cardBillDueNotification","billId":$billId}',
+            ),
           ),
         );
 
@@ -417,7 +429,7 @@ void main() {
       now: DateTime(2026, 5, 25),
     );
 
-    expect(snapshot.cards.totalUtilization, closeTo(34000 / 150000, 0.0001));
+    expect(snapshot.cards.totalUtilization, closeTo(7000 / 150000, 0.0001));
     expect(snapshot.cards.billSummary.billedTotal, 10000);
     expect(snapshot.cards.billSummary.pendingTotal, 5000);
   });

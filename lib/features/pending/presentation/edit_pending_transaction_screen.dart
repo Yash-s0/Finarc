@@ -12,10 +12,15 @@ import '../../expenses/models/transaction_types.dart';
 import '../../expenses/presentation/payment_source_selector_support.dart';
 import '../data/pending_providers.dart';
 import '../models/pending_models.dart';
+import '../notifications/card_payment_notification_service.dart';
 
 final pendingByIdProvider = FutureProvider.family((ref, int id) async {
   await ref.watch(seedProvider.future);
   final db = ref.read(appDatabaseProvider);
+  await CardPaymentNotificationService(
+    database: db,
+    pendingService: ref.read(pendingServiceProvider),
+  ).repairLegacyPendingPayments();
   return (db.select(
     db.pendingTransactions,
   )..where((p) => p.id.equals(id))).getSingleOrNull();
@@ -66,6 +71,7 @@ class _EditPendingTransactionScreenState
   String _sourceType = 'cash';
   int? _sourceId;
   bool _forOthers = false;
+  bool _saving = false;
   final _cashback = TextEditingController();
   final _dateController = TextEditingController();
   bool _initialized = false;
@@ -292,8 +298,9 @@ class _EditPendingTransactionScreenState
                                 controller: _recoverableParty,
                                 label: 'Person name',
                                 onChanged: (_) => setState(
-                                  () => _forOthers =
-                                      _recoverableParty.text.trim().isNotEmpty,
+                                  () => _forOthers = _recoverableParty.text
+                                      .trim()
+                                      .isNotEmpty,
                                 ),
                               ),
                             ),
@@ -394,47 +401,88 @@ class _EditPendingTransactionScreenState
                   ),
                   const SizedBox(height: AppSpacing.md),
                   FinarcPrimaryButton(
-                    onPressed: () async {
-                      if (!_formKey.currentState!.validate()) return;
-                      final recoverableParty = _recoverableParty.text.trim();
-                      final forOthers = recoverableParty.isNotEmpty;
-                      final amount =
-                          double.tryParse(_amount.text) ?? pending.amount;
-                      final cashback = _sourceType != PaymentSourceType.cash
-                          ? double.tryParse(_cashback.text) ?? 0
-                          : 0.0;
-                      final recoverableBase = (amount - cashback)
-                          .clamp(0, amount)
-                          .toDouble();
+                    onPressed: _saving
+                        ? null
+                        : () async {
+                            if (!_formKey.currentState!.validate()) return;
+                            final sourceConfig = sourceConfigForMode(
+                              sources,
+                              _sourceType,
+                            );
+                            final resolvedSourceId =
+                                _sourceId ??
+                                (sourceConfig.options.length == 1
+                                    ? sourceConfig.options.first.id
+                                    : null);
+                            if (resolvedSourceId == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Choose a payment source.'),
+                                ),
+                              );
+                              return;
+                            }
+                            final recoverableParty = _recoverableParty.text
+                                .trim();
+                            final forOthers = recoverableParty.isNotEmpty;
+                            final amount =
+                                double.tryParse(_amount.text) ?? pending.amount;
+                            final cashback =
+                                _sourceType != PaymentSourceType.cash
+                                ? double.tryParse(_cashback.text) ?? 0
+                                : 0.0;
+                            final recoverableBase = (amount - cashback)
+                                .clamp(0, amount)
+                                .toDouble();
 
-                      final edited = PendingEditData(
-                        amount: amount,
-                        merchant: _merchant.text.trim(),
-                        category: _category.text.trim(),
-                        paymentSourceType: _sourceType,
-                        paymentSourceId: _sourceId,
-                        transactionDate: _date,
-                        cashbackAmount: cashback,
-                        isForOthers: forOthers,
-                        recoverableAmount: forOthers
-                            ? recoverableBase
-                                  .clamp(0, double.infinity)
-                                  .toDouble()
-                            : null,
-                        recoveredAmount: forOthers ? 0 : null,
-                        recoverablePartyName: forOthers
-                            ? recoverableParty
-                            : null,
-                        notes: _notes.text.trim().isEmpty
-                            ? null
-                            : _notes.text.trim(),
-                      );
-                      await ref
-                          .read(pendingActionProvider)
-                          .update(widget.pendingId, edited);
-                      if (context.mounted) context.pop();
-                    },
-                    label: 'Save',
+                            final edited = PendingEditData(
+                              amount: amount,
+                              merchant: _merchant.text.trim(),
+                              category: _category.text.trim(),
+                              paymentSourceType: _sourceType,
+                              paymentSourceId: resolvedSourceId,
+                              transactionDate: _date,
+                              cashbackAmount: cashback,
+                              isForOthers: forOthers,
+                              recoverableAmount: forOthers
+                                  ? recoverableBase
+                                        .clamp(0, double.infinity)
+                                        .toDouble()
+                                  : null,
+                              recoveredAmount: forOthers ? 0 : null,
+                              recoverablePartyName: forOthers
+                                  ? recoverableParty
+                                  : null,
+                              notes: _notes.text.trim().isEmpty
+                                  ? null
+                                  : _notes.text.trim(),
+                            );
+                            setState(() => _saving = true);
+                            try {
+                              await ref
+                                  .read(pendingActionProvider)
+                                  .update(widget.pendingId, edited);
+                              ref.invalidate(
+                                pendingByIdProvider(widget.pendingId),
+                              );
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Changes saved.')),
+                              );
+                              context.pop();
+                            } catch (error) {
+                              if (!context.mounted) return;
+                              setState(() => _saving = false);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Unable to save changes: $error',
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                    label: _saving ? 'Saving...' : 'Save',
                     icon: Icons.check_circle_outline,
                   ),
                 ],
