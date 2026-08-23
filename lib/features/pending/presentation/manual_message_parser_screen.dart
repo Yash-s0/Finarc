@@ -172,6 +172,8 @@ class _ManualMessageParserScreenState
       setState(() {
         _analysisTitle = billResult.action == 'createdExternalBill'
             ? 'Generated bill added'
+            : billResult.action == 'manualAmountOverride'
+            ? 'Generated bill updated'
             : 'Bill message processed';
         _analysisBody =
             '${inr(billResult.parsed.totalAmountDue)} due ${billResult.parsed.dueDate.day}/${billResult.parsed.dueDate.month}/${billResult.parsed.dueDate.year} for card XX${billResult.parsed.cardLast4}.';

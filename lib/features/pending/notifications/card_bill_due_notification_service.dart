@@ -229,6 +229,7 @@ class CardBillDueNotificationService {
         bill: unpaidBill,
         parsed: parsed,
         dedupeKey: dedupeKey,
+        allowAmountOverride: payload.sourceType == 'manualPaste',
       );
       return CardBillDueHandlingResult(
         parsed: parsed,
@@ -276,6 +277,7 @@ class CardBillDueNotificationService {
     required CardBill bill,
     required CardBillDueNotification parsed,
     required String dedupeKey,
+    required bool allowAmountOverride,
   }) async {
     final remainingDue = _remainingDue(bill);
     final matchesBilledAmount = _amountsMatch(
@@ -360,6 +362,31 @@ class CardBillDueNotificationService {
         },
       );
       return action;
+    }
+
+    if (allowAmountOverride) {
+      final nextStatus = _billingService.getDueStatusFromDate(
+        isPaid: false,
+        dueDate: parsed.dueDate,
+        now: _now(),
+      );
+      await (_db.update(
+        _db.cardBills,
+      )..where((b) => b.id.equals(bill.id))).write(
+        CardBillsCompanion(
+          billedAmount: Value(parsed.totalAmountDue),
+          dueDate: Value(parsed.dueDate),
+          status: Value(nextStatus),
+        ),
+      );
+      await _logAction(
+        parsed,
+        cardId: card.id,
+        billId: bill.id,
+        action: 'manualAmountOverride',
+        meta: {'dedupeKey': dedupeKey, 'previousAmount': bill.billedAmount},
+      );
+      return 'manualAmountOverride';
     }
 
     await _alertService.createAlert(
