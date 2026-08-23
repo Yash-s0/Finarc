@@ -147,6 +147,42 @@ class _ManualMessageParserScreenState
       _analysisBody = null;
     });
 
+    // Bills do not produce a pending transaction candidate. Accept them from
+    // the main paste action as well, so users do not have to know which of the
+    // two paste buttons applies to an email.
+    final billResult = await ref
+        .read(notificationIngestionServiceProvider)
+        .cardBillDueNotificationService
+        .handleIfBillDue(
+          NotificationPayload(
+            packageName: 'manual-paste',
+            appName: 'Manual paste',
+            sourceType: 'manualPaste',
+            receivedAt: DateTime.now(),
+            title: _sender.text.trim().isEmpty
+                ? 'Pasted bill'
+                : _sender.text.trim(),
+            body: raw,
+          ),
+        );
+    if (billResult != null) {
+      if (!mounted) return;
+      ref.invalidate(cardsOverviewProvider);
+      ref.invalidate(cardDetailProvider);
+      setState(() {
+        _analysisTitle = billResult.action == 'createdExternalBill'
+            ? 'Generated bill added'
+            : 'Bill message processed';
+        _analysisBody =
+            '${inr(billResult.parsed.totalAmountDue)} due ${billResult.parsed.dueDate.day}/${billResult.parsed.dueDate.month}/${billResult.parsed.dueDate.year} for card XX${billResult.parsed.cardLast4}.';
+        _isParsing = false;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_analysisTitle!)));
+      return;
+    }
+
     final input = ParserInput(
       rawText: raw,
       sourceType: _sourceType,

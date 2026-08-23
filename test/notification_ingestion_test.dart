@@ -883,7 +883,7 @@ void main() {
           receivedAt: DateTime(2026, 8, 21, 8, 37),
           title: 'CRED',
           body:
-              'Important: New bill for your ICICI Bank card XXXX-9000 is here. Your credit card bill for August has been generated. ICICI Bank XXXX 9000 bill summary total amount due ₹49,423.00. Payment due by September 07, 2026.',
+              'Important: New bill for your ICICI Bank card XXXX-9000 is here. Your credit card bill for August has been generated. ICICI Bank XXXX 9000 bill summary total amount due: ₹49,423.00. Payment due by September 07, 2026.',
         );
 
         final parsed = service.cardBillDueNotificationService.parse(payload);

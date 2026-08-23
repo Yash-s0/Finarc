@@ -62,15 +62,15 @@ class CardBillDueNotificationService {
   final DateTime Function() _now;
 
   static final RegExp _totalDuePattern = RegExp(
-    r'(?:pay\s+)?total(?:\s+amount)?\s+due(?:\s+of)?(?:\s+is)?\s*(?:inr|rs\.?|₹)\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)',
+    r'(?:pay\s+)?total(?:\s+amount)?\s+due(?:\s+of)?(?:\s+is)?\s*[:\-]?\s*(?:inr|rs\.?|₹)\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)',
     caseSensitive: false,
   );
   static final RegExp _minimumDuePattern = RegExp(
-    r'(?:min|minimum)(?:\s+amount)?\s+due(?:\s+of)?(?:\s+is)?\s*(?:inr|rs\.?|₹)\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)',
+    r'(?:min|minimum)(?:\s+amount)?\s+due(?:\s+of)?(?:\s+is)?\s*[:\-]?\s*(?:inr|rs\.?|₹)\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)',
     caseSensitive: false,
   );
   static final RegExp _genericAmountDuePattern = RegExp(
-    r'amount\s+due(?:\s+of)?(?:\s+is)?\s*(?:inr|rs\.?|₹)\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)',
+    r'amount\s+due(?:\s+of)?(?:\s+is)?\s*[:\-]?\s*(?:inr|rs\.?|₹)\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)',
     caseSensitive: false,
   );
   static final RegExp _billOfAmountPattern = RegExp(
@@ -82,7 +82,7 @@ class CardBillDueNotificationService {
     caseSensitive: false,
   );
   static final RegExp _last4Pattern = RegExp(
-    r'(?:credit\s*card|card)[^0-9]{0,24}(?:ending\s*|xx|x{2,}|\*{2,})?(\d{4})',
+    r'(?:credit\s*card|card)[^0-9]{0,24}(?:ending\s*|xx|x{2,}|\*{2,})?[-\s]?(\d{4})',
     caseSensitive: false,
   );
 
