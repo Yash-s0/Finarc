@@ -101,7 +101,6 @@ class _TransactionDetailScreenState
   DateTime _date = DateTime.now();
   String _sourceType = PaymentSourceType.cash;
   int? _sourceId;
-  String _type = TransactionType.cash;
   String _cashbackDestinationType = CashbackDestinationType.unknown;
   int? _cashbackDestinationId;
   bool _initialized = false;
@@ -150,7 +149,6 @@ class _TransactionDetailScreenState
               _cashback.text = txn.cashbackAmount.toStringAsFixed(2);
               _recoverableParty.text = txn.recoverablePartyName ?? '';
               _forOthers = _recoverableParty.text.trim().isNotEmpty;
-              _type = txn.type;
               _cashbackDestinationType =
                   txn.cashbackDestinationType ??
                   CashbackDestinationType.unknown;
@@ -575,13 +573,14 @@ class _TransactionDetailScreenState
       final selectedCard = _sourceType == PaymentSourceType.creditCard
           ? _cardById(sources?.cards ?? const [], sourceId)
           : null;
+      final transactionType = _resolvedTransactionType(txn.type);
       final transactionImpactType =
           _sourceType == PaymentSourceType.creditCard && selectedCard != null
           ? creditCardTransactionImpactTypeForDate(
               card: selectedCard,
               transactionDate: _date,
               now: DateTime.now(),
-              transactionType: _type,
+              transactionType: transactionType,
             )
           : _dateOnly(_date).isBefore(_dateOnlyNow())
           ? TransactionImpactType.historicalNoBalance
@@ -592,7 +591,7 @@ class _TransactionDetailScreenState
           .updateTransaction(
             txn.id,
             AddTransactionInput(
-              type: _type,
+              type: transactionType,
               amount: amount,
               title: _title.text.trim(),
               category: _category.text.trim(),
@@ -667,6 +666,16 @@ class _TransactionDetailScreenState
       }
     }
     return false;
+  }
+
+  String _resolvedTransactionType(String originalType) {
+    if (originalType == TransactionType.income ||
+        originalType == TransactionType.refund) {
+      return originalType;
+    }
+    return _sourceType == PaymentSourceType.creditCard
+        ? TransactionType.creditCard
+        : _sourceType;
   }
 
   void _syncCashbackDestinationSelection(PaymentSourcesData sources) {

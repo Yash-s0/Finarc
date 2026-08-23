@@ -160,6 +160,48 @@ void main() {
     expect(card.currentOutstanding, 6500);
   });
 
+  test('editing legacy card-source expense normalizes type', () async {
+    await (db.update(db.creditCards)..where((c) => c.id.equals(cardId))).write(
+      const CreditCardsCompanion(currentOutstanding: Value(5500)),
+    );
+    final transactionId = await db
+        .into(db.transactions)
+        .insert(
+          TransactionsCompanion.insert(
+            type: TransactionType.bank,
+            amount: 500,
+            title: 'Amazon',
+            category: 'Shopping',
+            transactionDate: DateTime(2026, 8, 21),
+            paymentSourceType: PaymentSourceType.creditCard,
+            paymentSourceId: cardId,
+          ),
+        );
+
+    await engine.updateTransaction(
+      transactionId,
+      AddTransactionInput(
+        type: TransactionType.creditCard,
+        amount: 700,
+        title: 'Amazon updated',
+        category: 'Shopping',
+        transactionDate: DateTime(2026, 8, 21),
+        paymentSourceType: PaymentSourceType.creditCard,
+        paymentSourceId: cardId,
+      ),
+    );
+
+    final transaction = await (db.select(
+      db.transactions,
+    )..where((t) => t.id.equals(transactionId))).getSingle();
+    final card = await (db.select(
+      db.creditCards,
+    )..where((c) => c.id.equals(cardId))).getSingle();
+
+    expect(transaction.type, TransactionType.creditCard);
+    expect(card.currentOutstanding, 5700);
+  });
+
   test('credit card refund reduces outstanding', () async {
     await engine.addTransaction(
       AddTransactionInput(

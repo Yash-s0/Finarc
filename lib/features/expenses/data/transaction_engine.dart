@@ -472,6 +472,10 @@ class TransactionEngine {
       }
       return;
     }
+    if (txn.paymentSourceType == PaymentSourceType.creditCard) {
+      await _applyCardPaymentIn(sourceId, txn.amount);
+      return;
+    }
     await _applyIncome(txn.paymentSourceType, sourceId, txn.amount);
   }
 
