@@ -64,6 +64,7 @@ class FinarcNotificationListenerService : NotificationListenerService() {
         if (!deliveredToFlutter && likelyFinancial) {
             BackgroundNotificationHelper.showCapturedTransactionNotification(
                 context = applicationContext,
+                sourceLabel = "notification",
             )
         }
     }

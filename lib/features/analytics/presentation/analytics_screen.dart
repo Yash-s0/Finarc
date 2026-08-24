@@ -15,6 +15,7 @@ class AnalyticsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final period = ref.watch(analyticsPeriodProvider);
+    final selectedSection = ref.watch(analyticsSectionProvider);
     final customRange = ref.watch(analyticsCustomRangeProvider);
     final state = ref.watch(analyticsSnapshotProvider);
 
@@ -34,15 +35,12 @@ class AnalyticsScreen extends ConsumerWidget {
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: AppSpacing.sm),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: AnalyticsPeriod.values
-                  .map((item) {
-                    final isSelected = period == item;
-                    return FinarcActionChip(
+            _chipScroller(
+              AnalyticsPeriod.values
+                  .map(
+                    (item) => FinarcActionChip(
                       label: analyticsPeriodLabel(item),
-                      selected: isSelected,
+                      selected: period == item,
                       onTap: () async {
                         if (item == AnalyticsPeriod.custom) {
                           final picked = await showDateRangePicker(
@@ -59,8 +57,22 @@ class AnalyticsScreen extends ConsumerWidget {
                         }
                         ref.read(analyticsPeriodProvider.notifier).state = item;
                       },
-                    );
-                  })
+                    ),
+                  )
+                  .toList(growable: false),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            _chipScroller(
+              analyticsSectionTabs
+                  .map(
+                    (tab) => FinarcActionChip(
+                      label: tab.label,
+                      selected: selectedSection == tab.id,
+                      onTap: () =>
+                          ref.read(analyticsSectionProvider.notifier).state =
+                              tab.id,
+                    ),
+                  )
                   .toList(growable: false),
             ),
             const SizedBox(height: AppSpacing.sm),
@@ -86,19 +98,7 @@ class AnalyticsScreen extends ConsumerWidget {
                 }
 
                 return Column(
-                  children: [
-                    _overviewSection(context, data),
-                    const SizedBox(height: AppSpacing.sm),
-                    _spendingSection(context, data),
-                    const SizedBox(height: AppSpacing.sm),
-                    _incomeSection(context, data),
-                    const SizedBox(height: AppSpacing.sm),
-                    _cardsSection(context, data),
-                    const SizedBox(height: AppSpacing.sm),
-                    _loansSection(context, data),
-                    const SizedBox(height: AppSpacing.sm),
-                    _splitSection(context, data),
-                  ],
+                  children: [_selectedSection(context, data, selectedSection)],
                 );
               },
             ),
@@ -106,6 +106,42 @@ class AnalyticsScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Widget _chipScroller(List<Widget> chips) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (var i = 0; i < chips.length; i++) ...[
+            if (i > 0) const SizedBox(width: AppSpacing.xs),
+            chips[i],
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _selectedSection(
+    BuildContext context,
+    AnalyticsSnapshot data,
+    String selectedSection,
+  ) {
+    switch (selectedSection) {
+      case 'spending':
+        return _spendingSection(context, data);
+      case 'income':
+        return _incomeSection(context, data);
+      case 'cards':
+        return _cardsSection(context, data);
+      case 'loans':
+        return _loansSection(context, data);
+      case 'splits':
+        return _splitSection(context, data);
+      case 'overview':
+      default:
+        return _overviewSection(context, data);
+    }
   }
 
   Widget _overviewSection(BuildContext context, AnalyticsSnapshot data) {
@@ -394,20 +430,20 @@ class AnalyticsScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
-          Row(
+          Wrap(
+            spacing: AppSpacing.xs,
+            runSpacing: AppSpacing.xs,
             children: [
               FinarcStatusBadge(
                 label: 'Paid bills ${cards.billSummary.paidCount}',
                 tone: FinarcStatusTone.success,
                 compact: true,
               ),
-              const SizedBox(width: AppSpacing.xs),
               FinarcStatusBadge(
                 label: 'Due soon ${cards.billSummary.dueSoonCount}',
                 tone: FinarcStatusTone.warning,
                 compact: true,
               ),
-              const SizedBox(width: AppSpacing.xs),
               FinarcStatusBadge(
                 label: 'Overdue ${cards.billSummary.overdueCount}',
                 tone: FinarcStatusTone.error,
@@ -606,10 +642,17 @@ class AnalyticsScreen extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: Theme.of(context).textTheme.bodySmall),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
         const SizedBox(height: 2),
         Text(
           value,
+          maxLines: valueIsAmount ? 1 : 2,
+          overflow: TextOverflow.ellipsis,
           style:
               (valueIsAmount
                       ? Theme.of(context).textTheme.titleMedium

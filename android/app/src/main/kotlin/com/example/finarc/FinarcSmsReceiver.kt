@@ -46,7 +46,20 @@ class FinarcSmsReceiver : BroadcastReceiver() {
                 "isOngoing" to false,
                 "category" to "sms",
             )
-            NotificationBridge.publish(appContext, payload)
+            val deliveredToFlutter = NotificationBridge.publish(appContext, payload)
+            if (!deliveredToFlutter &&
+                NotificationCapturePolicy.isLikelyFinancialContent(
+                    title = sender,
+                    body = body,
+                    bigText = null,
+                    subText = null,
+                )
+            ) {
+                BackgroundNotificationHelper.showCapturedTransactionNotification(
+                    context = appContext,
+                    sourceLabel = "SMS",
+                )
+            }
             persistDiagnostics(appContext, receivedAt, sender, null)
             Log.d("FinarcSmsReceiver", "SMS_RECEIVED sender=$sender bodyLen=${body.length}")
         } catch (t: Throwable) {

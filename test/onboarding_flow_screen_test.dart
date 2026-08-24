@@ -130,7 +130,7 @@ void main() {
     await pumpOnboarding(tester);
 
     expect(find.text('Private by default'), findsOneWidget);
-    expect(find.text('Quick privacy tour'), findsOneWidget);
+    expect(find.text('Local ledger'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     for (final title in [
@@ -161,7 +161,7 @@ void main() {
     expect(find.text('Open SMS Setup'), findsOneWidget);
     expect(
       find.text(
-        'Android opens Settings for this permission. Finarc only checks financial notifications locally.',
+        'Background notification access queues financial alerts for review.',
       ),
       findsOneWidget,
     );
@@ -196,7 +196,7 @@ void main() {
   ) async {
     await pumpOnboarding(tester);
 
-    await tester.tap(find.text('Quick privacy tour'));
+    await tester.tap(find.text('Local ledger'));
     await tester.pumpAndSettle();
 
     expect(find.text('How privacy works'), findsOneWidget);
@@ -288,37 +288,32 @@ void main() {
     expect(fieldValues, containsAllInOrder(['Yash', '120000', '5', 'Acme']));
   });
 
-  testWidgets('expandable feature tile opens and shows details', (
+  testWidgets('privacy points are visible without extra expansion cards', (
     tester,
   ) async {
     await pumpOnboarding(tester);
 
-    const detail =
-        'SMS and notification parsing are helpers. They create pending items, not final transactions.';
-    expect(find.text(detail), findsNothing);
-
-    await tester.tap(find.text('Review first'));
-    await tester.pumpAndSettle();
-
-    expect(find.text(detail), findsOneWidget);
+    expect(find.text('Local ledger'), findsOneWidget);
+    expect(
+      find.text('Detected SMS and notifications become pending items.'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Use the app without a network connection.'),
+      findsOneWidget,
+    );
   });
 
-  testWidgets('expandable feature tile collapses cleanly', (tester) async {
+  testWidgets('privacy tour point stays tappable', (tester) async {
     await pumpOnboarding(tester);
 
-    const detail =
-        'SMS and notification parsing are helpers. They create pending items, not final transactions.';
-
-    await tester.tap(find.text('Review first'));
+    await tester.tap(find.text('Local ledger'));
     await tester.pumpAndSettle();
-    expect(find.text(detail), findsOneWidget);
 
-    await tester.tap(find.text('Review first'));
-    await tester.pumpAndSettle();
-    expect(find.text(detail), findsNothing);
+    expect(find.text('How privacy works'), findsOneWidget);
   });
 
-  testWidgets('opening another feature tile collapses the first', (
+  testWidgets('first step stays compact after removing extra cards', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(420, 1000));
@@ -326,24 +321,9 @@ void main() {
 
     await pumpOnboarding(tester);
 
-    const reviewDetail =
-        'SMS and notification parsing are helpers. They create pending items, not final transactions.';
-    const offlineDetail =
-        'Accounts, expenses, cards, splits and loans are stored locally. Backup and restore are manual Profile actions.';
-
-    await tester.tap(find.text('Review first'));
-    await tester.pumpAndSettle();
-    expect(find.text(reviewDetail), findsOneWidget);
-
-    await tester.scrollUntilVisible(
-      find.text('Offline-first').last,
-      80,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.tap(find.text('Offline-first').last);
-    await tester.pumpAndSettle();
-    expect(find.text(reviewDetail), findsNothing);
-    expect(find.text(offlineDetail), findsOneWidget);
+    expect(find.text('Local ledger'), findsOneWidget);
+    expect(find.byType(Card), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('final onboarding action completes onboarding', (tester) async {

@@ -615,6 +615,33 @@ final notificationListenerBootstrapProvider = Provider<void>((ref) {
     await ref.read(alertEvaluationActionsProvider).evaluateAll();
   }
 
+  Future<void> runSmsCatchUpScan() async {
+    if (!smsIngestionAvailable) return;
+    final settings = await ref.read(detectionSettingsProvider.future);
+    if (!settings.smsDetectionEnabled || !settings.smsBackfillEnabled) return;
+    final granted = await ref
+        .read(smsPermissionServiceProvider)
+        .isPermissionGranted();
+    if (!granted) return;
+
+    final now = DateTime.now();
+    final lastScanned = settings.smsLastScannedAt;
+    if (lastScanned != null && now.difference(lastScanned).inHours < 6) {
+      return;
+    }
+
+    await ref
+        .read(smsPermissionServiceProvider)
+        .scanRecentSms(settings.smsBackfillDays);
+    await ref
+        .read(detectionSettingsProvider.notifier)
+        .applyChanges(smsLastScannedAt: now);
+    ref.invalidate(pendingTransactionsProvider);
+    ref.invalidate(pendingCountProvider);
+    ref.invalidate(accountsOverviewProvider);
+    ref.invalidate(dashboardProvider);
+  }
+
   Future<void> handleRoute(String route) async {
     final action = parseNotificationRouteAction(route);
     if (action.type == 'ignore' && action.pendingId != null) {
@@ -648,8 +675,8 @@ final notificationListenerBootstrapProvider = Provider<void>((ref) {
   unawaited(runAlertEvaluation());
 
   if (realIngestionAvailable) {
-    unawaited(
-      bridge.initialize(
+    Future<void> initializeBridgeAndCatchUpSms() async {
+      await bridge.initialize(
         onPayload: (payload) async {
           if (payload.sourceType == 'sms') {
             if (!smsIngestionAvailable) return;
@@ -688,8 +715,11 @@ final notificationListenerBootstrapProvider = Provider<void>((ref) {
           ref.invalidate(dashboardProvider);
         },
         onRoute: handleRoute,
-      ),
-    );
+      );
+      await runSmsCatchUpScan();
+    }
+
+    unawaited(initializeBridgeAndCatchUpSms());
   }
 
   ref.onDispose(() {

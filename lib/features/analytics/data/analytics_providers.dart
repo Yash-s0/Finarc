@@ -16,6 +16,8 @@ final analyticsCustomRangeProvider = StateProvider<DateTimeRange?>(
   (ref) => null,
 );
 
+final analyticsSectionProvider = StateProvider<String>((ref) => 'overview');
+
 final analyticsServiceProvider = Provider<AnalyticsService>((ref) {
   return AnalyticsService(
     ref.read(appDatabaseProvider),

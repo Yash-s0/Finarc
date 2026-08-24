@@ -21,17 +21,20 @@ object BackgroundNotificationHelper {
 
     fun showCapturedTransactionNotification(
         context: Context,
+        sourceLabel: String = "notification",
     ) {
         if (!isPostNotificationsGranted(context)) return
         createChannelsIfNeeded(context)
 
+        val normalizedSource = sourceLabel.ifBlank { "notification" }
+
         val notification = NotificationCompat.Builder(context, DETECTED_CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("Transaction notification captured")
-            .setContentText("Open Finarc to process it.")
+            .setContentTitle("Transaction $normalizedSource captured")
+            .setContentText("Open Finarc to review the pending item.")
             .setStyle(
                 NotificationCompat.BigTextStyle().bigText(
-                    "Open Finarc to process it.",
+                    "Open Finarc to review the pending item.",
                 ),
             )
             .setAutoCancel(true)

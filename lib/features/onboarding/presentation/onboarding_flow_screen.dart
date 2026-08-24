@@ -113,27 +113,23 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen>
         chips: const ['Offline-first', 'On-device', 'You approve'],
         showPreview: false,
         supporting: [
-          _PopupGuideCard(
+          _SimplePoint(
             icon: Icons.privacy_tip_outlined,
-            title: 'Quick privacy tour',
-            description: 'Local data, pending review and manual backups.',
+            title: 'Local ledger',
+            description: 'Everything stays on this device.',
             onTap: () => _showPrivacyTour(context),
           ),
-          const SizedBox(height: AppSpacing.xs),
-          const _ExpandableFeatureTile(
+          const SizedBox(height: AppSpacing.sm),
+          const _SimplePoint(
             icon: Icons.pending_actions_outlined,
             title: 'Review first',
-            description: 'Detected transactions wait for confirmation.',
-            expandedDescription:
-                'SMS and notification parsing are helpers. They create pending items, not final transactions.',
+            description: 'Detected SMS and notifications become pending items.',
           ),
-          const SizedBox(height: AppSpacing.xs),
-          const _ExpandableFeatureTile(
+          const SizedBox(height: AppSpacing.sm),
+          const _SimplePoint(
             icon: Icons.cloud_off_outlined,
             title: 'Offline-first',
             description: 'Use the app without a network connection.',
-            expandedDescription:
-                'Accounts, expenses, cards, splits and loans are stored locally. Backup and restore are manual Profile actions.',
           ),
         ],
       ),
@@ -490,30 +486,28 @@ class _StepTemplate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _OnboardingExpansionScope(
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.md,
-          AppSpacing.md,
-          AppSpacing.md,
-          AppSpacing.xl,
-        ),
-        children: [
-          _HeroPanel(
-            stepLabel: stepLabel,
-            icon: icon,
-            title: title,
-            subtitle: subtitle,
-            accent: accent.resolve(context),
-            chips: chips,
-            showPreview: showPreview,
-          ),
-          if (supporting != null && supporting!.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.sm),
-            ...supporting!,
-          ],
-        ],
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.md,
+        AppSpacing.md,
+        AppSpacing.xl,
       ),
+      children: [
+        _HeroPanel(
+          stepLabel: stepLabel,
+          icon: icon,
+          title: title,
+          subtitle: subtitle,
+          accent: accent.resolve(context),
+          chips: chips,
+          showPreview: showPreview,
+        ),
+        if (supporting != null && supporting!.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.sm),
+          ...supporting!,
+        ],
+      ],
     );
   }
 }
@@ -677,57 +671,55 @@ class _SetupChoicesStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _OnboardingExpansionScope(
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.md,
-          AppSpacing.md,
-          AppSpacing.md,
-          AppSpacing.xl,
-        ),
-        children: [
-          const _HeroPanel(
-            stepLabel: 'Step 2 of 5',
-            icon: Icons.add_card_outlined,
-            title: 'Set up your first account',
-            subtitle:
-                'Pick what you use. Each balance stays in your local ledger.',
-            accent: AppColors.lightAccent,
-            chips: ['Optional', 'Local balances', 'Add later'],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          _SetupOptionCard(
-            icon: Icons.account_balance_outlined,
-            title: 'Bank account',
-            description: 'Track balances, transfers and salary deposits.',
-            badge: bankOpened ? 'Opened' : 'Best start',
-            buttonLabel: 'Add Bank Account',
-            onPressed: onAddBank,
-            isPrimary: true,
-            completed: bankOpened,
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          _SetupOptionCard(
-            icon: Icons.account_balance_wallet_outlined,
-            title: 'Cash wallet',
-            description: 'Track cash on hand and wallet-style balances.',
-            badge: cashOpened ? 'Opened' : 'Quick',
-            buttonLabel: 'Add Cash Wallet',
-            onPressed: onAddCash,
-            completed: cashOpened,
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          _SetupOptionCard(
-            icon: Icons.credit_card_outlined,
-            title: 'Credit card',
-            description: 'Track card spends, statements and bill dues.',
-            badge: cardOpened ? 'Opened' : 'Bills',
-            buttonLabel: 'Add Credit Card',
-            onPressed: onAddCard,
-            completed: cardOpened,
-          ),
-        ],
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.md,
+        AppSpacing.md,
+        AppSpacing.xl,
       ),
+      children: [
+        const _HeroPanel(
+          stepLabel: 'Step 2 of 5',
+          icon: Icons.add_card_outlined,
+          title: 'Set up your first account',
+          subtitle:
+              'Pick what you use. Each balance stays in your local ledger.',
+          accent: AppColors.lightAccent,
+          chips: ['Optional', 'Local balances', 'Add later'],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        _SetupOptionCard(
+          icon: Icons.account_balance_outlined,
+          title: 'Bank account',
+          description: 'Track balances, transfers and salary deposits.',
+          badge: bankOpened ? 'Opened' : 'Best start',
+          buttonLabel: 'Add Bank Account',
+          onPressed: onAddBank,
+          isPrimary: true,
+          completed: bankOpened,
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        _SetupOptionCard(
+          icon: Icons.account_balance_wallet_outlined,
+          title: 'Cash wallet',
+          description: 'Track cash on hand and wallet-style balances.',
+          badge: cashOpened ? 'Opened' : 'Quick',
+          buttonLabel: 'Add Cash Wallet',
+          onPressed: onAddCash,
+          completed: cashOpened,
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        _SetupOptionCard(
+          icon: Icons.credit_card_outlined,
+          title: 'Credit card',
+          description: 'Track card spends, statements and bill dues.',
+          badge: cardOpened ? 'Opened' : 'Bills',
+          buttonLabel: 'Add Credit Card',
+          onPressed: onAddCard,
+          completed: cardOpened,
+        ),
+      ],
     );
   }
 }
@@ -898,7 +890,7 @@ class _DetectionSetupStep extends ConsumerWidget {
           icon: Icons.notifications_outlined,
           title: 'App notifications',
           description:
-              'Android opens Settings for this permission. Finarc only checks financial notifications locally.',
+              'Background notification access queues financial alerts for review.',
           status: _accessLabel(notificationAccess, notificationSetupOpened),
           statusTone: _accessTone(notificationAccess, notificationSetupOpened),
           buttonLabel: 'Open Settings',
@@ -909,18 +901,17 @@ class _DetectionSetupStep extends ConsumerWidget {
           icon: Icons.sms_outlined,
           title: 'SMS detection',
           description:
-              'Android asks for SMS access. Parsed messages become pending items, not saved transactions.',
+              'SMS permission enables inbox catch-up and new-message background capture.',
           status: _accessLabel(smsAccess, smsSetupOpened),
           statusTone: _accessTone(smsAccess, smsSetupOpened),
           buttonLabel: 'Open SMS Setup',
           onPressed: onOpenSms,
         ),
-        const SizedBox(height: AppSpacing.xs),
-        _InlineInfoCard(
+        const SizedBox(height: AppSpacing.sm),
+        _SimplePoint(
           icon: Icons.notifications_active_outlined,
           title: _appNotificationLabel(appNotifications),
-          description:
-              'Local app alerts help you notice pending reviews. Detection still works without alert permission.',
+          description: 'Alerts only tell you when pending reviews are waiting.',
         ),
       ],
     );
@@ -976,39 +967,109 @@ class _SetupStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FinarcCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+          ),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _SmallIconTile(icon: icon),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        description,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                FinarcStatusBadge(
+                  label: status,
+                  tone: statusTone,
+                  compact: true,
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            FinarcSecondaryButton(
+              onPressed: onPressed,
+              icon: icon,
+              label: buttonLabel,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SimplePoint extends StatelessWidget {
+  const _SimplePoint({
+    required this.icon,
+    required this.title,
+    required this.description,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = isDark ? AppColors.darkAccent : AppColors.lightAccent;
+    final content = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 22, color: accent),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _SmallIconTile(icon: icon),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: Theme.of(context).textTheme.titleSmall),
-                    const SizedBox(height: 2),
-                    Text(
-                      description,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              FinarcStatusBadge(label: status, tone: statusTone, compact: true),
+              Text(title, style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 2),
+              Text(description, style: Theme.of(context).textTheme.bodyMedium),
             ],
           ),
-          const SizedBox(height: AppSpacing.sm),
-          FinarcSecondaryButton(
-            onPressed: onPressed,
-            icon: icon,
-            label: buttonLabel,
+        ),
+        if (onTap != null)
+          Icon(
+            Icons.chevron_right_rounded,
+            color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
           ),
-        ],
+      ],
+    );
+
+    if (onTap == null) return content;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxs),
+        child: content,
       ),
     );
   }
@@ -1031,12 +1092,6 @@ class _ReadyStep extends StatelessWidget {
       chips: const ['Private', 'Review-first'],
       showPreview: false,
       supporting: [
-        const _InlineInfoCard(
-          icon: Icons.verified_user_outlined,
-          title: 'Privacy-first, everywhere',
-          description: 'Your ledger stays local. You control what gets saved.',
-        ),
-        const SizedBox(height: AppSpacing.sm),
         FinarcPrimaryButton(
           onPressed: onDashboard,
           icon: Icons.dashboard_outlined,
@@ -1071,66 +1126,6 @@ class _SmallIconTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.md),
       ),
       child: Icon(icon, color: accent, size: 20),
-    );
-  }
-}
-
-class _PopupGuideCard extends StatelessWidget {
-  const _PopupGuideCard({
-    required this.icon,
-    required this.title,
-    required this.description,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String description;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final accent = isDark ? AppColors.darkAccent : AppColors.lightAccent;
-    return FinarcCard(
-      backgroundColor: accent.withValues(alpha: isDark ? 0.12 : 0.08),
-      borderColor: accent.withValues(alpha: isDark ? 0.34 : 0.24),
-      useShadow: false,
-      onTap: onTap,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: accent.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(AppRadius.md),
-            ),
-            child: Icon(icon, color: accent, size: 20),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: Theme.of(context).textTheme.titleSmall),
-                const SizedBox(height: 2),
-                Text(
-                  description,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: AppSpacing.xs),
-          Icon(
-            Icons.open_in_new_rounded,
-            size: 18,
-            color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
-          ),
-        ],
-      ),
     );
   }
 }
@@ -1177,13 +1172,6 @@ class _ProfileSetupStep extends StatelessWidget {
           accent: AppColors.lightSuccess,
           chips: ['Optional profile', 'Local insights', 'Can skip'],
           showPreview: false,
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        const _InlineInfoCard(
-          icon: Icons.insights_outlined,
-          title: 'Local insights only',
-          description:
-              'Salary details are optional and only used for on-device trends and reminders.',
         ),
         const SizedBox(height: AppSpacing.sm),
         FinarcTextField(
@@ -1645,231 +1633,6 @@ class _HeroChip extends StatelessWidget {
           vertical: 5,
         ),
         child: Text(label, style: Theme.of(context).textTheme.labelMedium),
-      ),
-    );
-  }
-}
-
-class _OnboardingExpansionScope extends StatefulWidget {
-  const _OnboardingExpansionScope({required this.child});
-
-  final Widget child;
-
-  static ValueNotifier<String?> of(BuildContext context) {
-    final scope = context
-        .dependOnInheritedWidgetOfExactType<_OnboardingExpansionController>();
-    assert(scope != null, 'Expandable onboarding tiles require a scope.');
-    return scope!.notifier!;
-  }
-
-  @override
-  State<_OnboardingExpansionScope> createState() =>
-      _OnboardingExpansionScopeState();
-}
-
-class _OnboardingExpansionScopeState extends State<_OnboardingExpansionScope> {
-  final _expandedTile = ValueNotifier<String?>(null);
-
-  @override
-  void dispose() {
-    _expandedTile.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return _OnboardingExpansionController(
-      notifier: _expandedTile,
-      child: widget.child,
-    );
-  }
-}
-
-class _OnboardingExpansionController
-    extends InheritedNotifier<ValueNotifier<String?>> {
-  const _OnboardingExpansionController({
-    required super.notifier,
-    required super.child,
-  });
-}
-
-class _ExpandableFeatureTile extends StatelessWidget {
-  const _ExpandableFeatureTile({
-    required this.icon,
-    required this.title,
-    required this.description,
-    required this.expandedDescription,
-  });
-
-  final IconData icon;
-  final String title;
-  final String description;
-  final String expandedDescription;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final controller = _OnboardingExpansionScope.of(context);
-    return ValueListenableBuilder<String?>(
-      valueListenable: controller,
-      builder: (context, expandedTitle, _) {
-        final expanded = expandedTitle == title;
-        return FinarcCard(
-          backgroundColor: isDark
-              ? AppColors.darkSurfaceLow
-              : AppColors.lightSurfaceHigh,
-          borderColor: expanded
-              ? (isDark ? AppColors.darkAccent : AppColors.lightAccent)
-                    .withValues(alpha: 0.72)
-              : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
-          useShadow: false,
-          onTap: () => controller.value = expanded ? null : title,
-          child: Column(
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? AppColors.darkPrimarySoft
-                          : AppColors.lightPrimarySoft,
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                    ),
-                    child: Icon(
-                      icon,
-                      color: isDark
-                          ? AppColors.darkAccent
-                          : AppColors.lightAccent,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: Theme.of(context).textTheme.titleSmall,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          description,
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    expanded
-                        ? Icons.keyboard_arrow_up_rounded
-                        : Icons.keyboard_arrow_down_rounded,
-                    color: isDark
-                        ? AppColors.darkTextMuted
-                        : AppColors.lightTextMuted,
-                  ),
-                ],
-              ),
-              AnimatedSize(
-                duration: const Duration(milliseconds: 160),
-                curve: Curves.easeOut,
-                alignment: Alignment.topCenter,
-                child: expanded
-                    ? Padding(
-                        padding: const EdgeInsets.only(top: AppSpacing.sm),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            expandedDescription,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ),
-                      )
-                    : const SizedBox(width: double.infinity),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _InlineInfoCard extends StatelessWidget {
-  const _InlineInfoCard({
-    required this.icon,
-    required this.title,
-    required this.description,
-  });
-
-  final IconData icon;
-  final String title;
-  final String description;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final reducedMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: reducedMotion
-          ? Duration.zero
-          : const Duration(milliseconds: 220),
-      curve: Curves.easeOut,
-      builder: (context, value, child) {
-        return Transform.translate(
-          offset: Offset(0, reducedMotion ? 0 : 10 * (1 - value)),
-          child: Opacity(opacity: value, child: child),
-        );
-      },
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.darkSurfaceLow : AppColors.lightSurfaceHigh,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          border: Border.all(
-            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.sm),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? AppColors.darkPrimarySoft
-                      : AppColors.lightPrimarySoft,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-                child: Icon(
-                  icon,
-                  color: isDark ? AppColors.darkAccent : AppColors.lightAccent,
-                  size: 18,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: Theme.of(context).textTheme.titleSmall),
-                    const SizedBox(height: 2),
-                    Text(
-                      description,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
