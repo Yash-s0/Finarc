@@ -100,6 +100,23 @@ void main() {
       expect(result.reason, 'accepted-financial-relay-notification');
     });
 
+    test('accepts Amazon Pay payment mail in a Gmail notification relay', () {
+      final filter = NotificationKeywordFilter();
+      final payload = NotificationPayload(
+        packageName: 'com.google.android.gm',
+        appName: 'Gmail',
+        sourceType: 'appNotification',
+        receivedAt: DateTime(2026, 8, 26, 10, 40),
+        title: 'Amazon Pay India',
+        body:
+            'Your payment of ₹450.0 to Zepto was successful Hi Yash, Your payment to Zepto was Approved Paid to Amount Zepto ₹450.0 Seller Zepto',
+      );
+
+      final result = filter.evaluate(payload);
+      expect(result.accepted, isTrue);
+      expect(result.reason, 'accepted-financial-relay-notification');
+    });
+
     test(
       'accepts transactional messaging app notification from bank sender',
       () {
@@ -518,6 +535,42 @@ void main() {
         final pending = await (db.select(
           db.pendingTransactions,
         )..where((t) => t.id.equals(ids.first))).getSingle();
+        expect(pending.paymentSourceTypeSuggestion, 'cash');
+        expect(pending.paymentSourceIdSuggestion, walletId);
+      },
+    );
+
+    test(
+      'Gmail Amazon Pay balance mail creates wallet pending expense',
+      () async {
+        final walletId = await db
+            .into(db.cashWallets)
+            .insert(
+              CashWalletsCompanion.insert(
+                walletName: 'Amazon Pay',
+                walletType: const drift.Value('amazonPay'),
+                currentBalance: const drift.Value(1200),
+              ),
+            );
+
+        final ids = await service.processPayload(
+          NotificationPayload(
+            packageName: 'com.google.android.gm',
+            appName: 'Gmail',
+            sourceType: 'appNotification',
+            receivedAt: DateTime(2026, 8, 26, 10, 40),
+            title: 'Amazon Pay India',
+            body:
+                'Your payment of ₹450.0 to Zepto was successful Hi Yash, Your payment to Zepto was Approved Paid to Amount Zepto ₹450.0 Seller Zepto Transaction ID P04-7718423-0287705 Payment date Wednesday, 26 August, 2026 10:40:04 AM IST',
+          ),
+        );
+
+        expect(ids, hasLength(1));
+        final pending = await (db.select(
+          db.pendingTransactions,
+        )..where((t) => t.id.equals(ids.first))).getSingle();
+        expect(pending.amount, 450);
+        expect(pending.merchant, 'Zepto');
         expect(pending.paymentSourceTypeSuggestion, 'cash');
         expect(pending.paymentSourceIdSuggestion, walletId);
       },

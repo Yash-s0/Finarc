@@ -7,6 +7,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
+import '../../dashboard/data/dashboard_providers.dart';
 import '../data/alert_types.dart';
 import '../data/alerts_providers.dart';
 
@@ -29,7 +30,12 @@ class AlertsCenterScreen extends ConsumerWidget {
         title: 'Alerts Center',
         actions: [
           IconButton(
-            onPressed: () => ref.read(alertActionsProvider).markAllRead(),
+            onPressed: unreadCount == 0
+                ? null
+                : () async {
+                    await ref.read(alertActionsProvider).markAllRead();
+                    ref.invalidate(dashboardProvider);
+                  },
             icon: const Icon(Icons.drafts_outlined),
             tooltip: 'Mark all read',
           ),
@@ -65,7 +71,9 @@ class AlertsCenterScreen extends ConsumerWidget {
               children: [
                 Expanded(
                   child: _TypeFilterButton(
-                    label: type == null ? 'All types' : _alertTypeLabel(type),
+                    label: type == null
+                        ? 'All types'
+                        : AlertTypeDisplay.label(type),
                     selected: type != null,
                     onTap: () => _showTypeFilterSheet(context, ref, type),
                   ),
@@ -183,6 +191,7 @@ class AlertsCenterScreen extends ConsumerWidget {
     final dismissed = alert.dismissedAt != null;
     final tone = _toneForAlert(alert);
     final iconColor = _colorForTone(context, tone);
+    final presentation = _AlertPresentation.from(alert);
     final hasRoute =
         alert.actionRoute != null && alert.actionRoute!.trim().isNotEmpty;
 
@@ -197,6 +206,7 @@ class AlertsCenterScreen extends ConsumerWidget {
         onTap: () async {
           if (isUnread) {
             await ref.read(alertActionsProvider).markRead(alert.id);
+            ref.invalidate(dashboardProvider);
           }
           final route = alert.actionRoute;
           if (route != null && route.trim().isNotEmpty && context.mounted) {
@@ -246,56 +256,61 @@ class AlertsCenterScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _titleForAlert(alert),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(
-                                fontWeight: isUnread
-                                    ? FontWeight.w800
-                                    : FontWeight.w700,
-                              ),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.xs),
-                      FinarcStatusBadge(
-                        label: _statusLabelForAlert(alert),
-                        tone: tone,
-                        compact: true,
-                      ),
-                    ],
+                  Text(
+                    presentation.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: isUnread ? FontWeight.w800 : FontWeight.w700,
+                    ),
                   ),
-                  if (alert.body.trim().isNotEmpty) ...[
+                  if (presentation.subtitle.isNotEmpty) ...[
                     const SizedBox(height: 3),
                     Text(
-                      alert.body,
+                      presentation.subtitle,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodyMedium,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.84),
+                        fontWeight: isUnread
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                  if (presentation.supportingText.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      presentation.supportingText,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.62),
+                      ),
                     ),
                   ],
                   const SizedBox(height: 6),
-                  Row(
+                  Wrap(
+                    spacing: AppSpacing.xs,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Text(
                         _relativeTime(alert.createdAt),
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
-                      if (dismissed) ...[
-                        const SizedBox(width: AppSpacing.xs),
-                        const FinarcStatusBadge(
-                          label: 'Dismissed',
-                          tone: FinarcStatusTone.neutral,
-                          compact: true,
-                        ),
-                      ],
-                      if (hasRoute) ...[
-                        const SizedBox(width: AppSpacing.xs),
+                      FinarcStatusBadge(
+                        label: dismissed
+                            ? 'Dismissed'
+                            : _statusLabelForAlert(alert),
+                        tone: dismissed ? FinarcStatusTone.neutral : tone,
+                        compact: true,
+                      ),
+                      if (hasRoute)
                         Text(
                           _actionLabel(alert.alertType),
                           style: Theme.of(context).textTheme.labelMedium
@@ -304,13 +319,54 @@ class AlertsCenterScreen extends ConsumerWidget {
                                 fontWeight: FontWeight.w800,
                               ),
                         ),
-                      ],
                     ],
                   ),
                 ],
               ),
             ),
-            if (hasRoute)
+            if (!dismissed)
+              Padding(
+                padding: const EdgeInsets.only(left: 2),
+                child: PopupMenuButton<_AlertMenuAction>(
+                  tooltip: 'Alert actions',
+                  padding: EdgeInsets.zero,
+                  icon: const Icon(Icons.more_vert_rounded, size: 20),
+                  onSelected: (action) async {
+                    switch (action) {
+                      case _AlertMenuAction.markRead:
+                        await ref.read(alertActionsProvider).markRead(alert.id);
+                        ref.invalidate(dashboardProvider);
+                        break;
+                      case _AlertMenuAction.dismiss:
+                        await ref.read(alertActionsProvider).dismiss(alert.id);
+                        ref.invalidate(dashboardProvider);
+                        break;
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    if (isUnread)
+                      const PopupMenuItem(
+                        value: _AlertMenuAction.markRead,
+                        child: ListTile(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(Icons.drafts_outlined),
+                          title: Text('Mark as read'),
+                        ),
+                      ),
+                    const PopupMenuItem(
+                      value: _AlertMenuAction.dismiss,
+                      child: ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(Icons.archive_outlined),
+                        title: Text('Dismiss'),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else if (hasRoute)
               Padding(
                 padding: const EdgeInsets.only(left: AppSpacing.xs, top: 2),
                 child: Icon(
@@ -319,22 +375,6 @@ class AlertsCenterScreen extends ConsumerWidget {
                   color: Theme.of(
                     context,
                   ).colorScheme.onSurface.withValues(alpha: 0.46),
-                ),
-              )
-            else if (!dismissed)
-              Padding(
-                padding: const EdgeInsets.only(left: AppSpacing.xs),
-                child: IconButton(
-                  visualDensity: VisualDensity.compact,
-                  constraints: const BoxConstraints.tightFor(
-                    width: 30,
-                    height: 30,
-                  ),
-                  padding: EdgeInsets.zero,
-                  onPressed: () =>
-                      ref.read(alertActionsProvider).dismiss(alert.id),
-                  icon: const Icon(Icons.close_rounded, size: 18),
-                  tooltip: 'Dismiss',
                 ),
               ),
           ],
@@ -348,6 +388,7 @@ class AlertsCenterScreen extends ConsumerWidget {
       direction: DismissDirection.endToStart,
       confirmDismiss: (_) async {
         await ref.read(alertActionsProvider).dismiss(alert.id);
+        ref.invalidate(dashboardProvider);
         return false;
       },
       background: const SizedBox.shrink(),
@@ -395,6 +436,7 @@ class AlertsCenterScreen extends ConsumerWidget {
     );
     if (confirmed == true) {
       await ref.read(alertActionsProvider).clearRead();
+      ref.invalidate(dashboardProvider);
     }
   }
 
@@ -403,15 +445,15 @@ class AlertsCenterScreen extends ConsumerWidget {
     WidgetRef ref,
     String? selected,
   ) async {
-    await showModalBottomSheet<void>(
-      context: context,
+    await FinarcBottomSheet.show<void>(
+      context,
       isScrollControlled: true,
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Padding(
+      child: Builder(
+        builder: (sheetContext) {
+          return Padding(
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.md,
-              AppSpacing.md,
+              0,
               AppSpacing.md,
               AppSpacing.lg,
             ),
@@ -438,100 +480,43 @@ class AlertsCenterScreen extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  for (final group in _alertTypeGroups.entries) ...[
+                  _AlertTypeRadioRow(
+                    label: 'All types',
+                    icon: Icons.all_inbox_rounded,
+                    selected: selected == null,
+                    onTap: () {
+                      ref.read(alertsTypeFilterProvider.notifier).state = null;
+                      Navigator.pop(sheetContext);
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  for (final group in AlertTypeDisplay.groups.entries) ...[
                     Text(
                       group.key,
                       style: Theme.of(context).textTheme.labelLarge,
                     ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Wrap(
-                      spacing: AppSpacing.xs,
-                      runSpacing: AppSpacing.xs,
-                      children: group.value
-                          .map(
-                            (value) => FinarcActionChip(
-                              label: _alertTypeLabel(value),
-                              selected: selected == value,
-                              onTap: () {
-                                ref
-                                        .read(alertsTypeFilterProvider.notifier)
-                                        .state =
-                                    value;
-                                Navigator.pop(sheetContext);
-                              },
-                            ),
-                          )
-                          .toList(growable: false),
+                    const SizedBox(height: 6),
+                    ...group.value.map(
+                      (value) => _AlertTypeRadioRow(
+                        label: AlertTypeDisplay.label(value),
+                        icon: _iconForAlert(value),
+                        selected: selected == value,
+                        onTap: () {
+                          ref.read(alertsTypeFilterProvider.notifier).state =
+                              value;
+                          Navigator.pop(sheetContext);
+                        },
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.md),
                   ],
                 ],
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
-  }
-
-  static const _alertTypeGroups = {
-    'Transactions': [
-      AlertType.pendingTransaction,
-      AlertType.largeExpense,
-      AlertType.unusualSpending,
-    ],
-    'Bills & payments': [
-      AlertType.cardDue,
-      AlertType.emiDue,
-      AlertType.splitSettlement,
-      AlertType.lowBalance,
-    ],
-    'Insights': [
-      AlertType.recurringMerchant,
-      AlertType.weeklySummary,
-      AlertType.monthlySummary,
-    ],
-    'General': [AlertType.reminder, AlertType.info],
-  };
-
-  static String _alertTypeLabel(String? type) {
-    switch (type) {
-      case AlertType.pendingTransaction:
-        return 'Pending transactions';
-      case AlertType.cardDue:
-        return 'Card bills';
-      case AlertType.emiDue:
-        return 'EMI reminders';
-      case AlertType.splitSettlement:
-        return 'Split settlements';
-      case AlertType.lowBalance:
-        return 'Low balance';
-      case AlertType.unusualSpending:
-        return 'Unusual spending';
-      case AlertType.recurringMerchant:
-        return 'Recurring payments';
-      case AlertType.largeExpense:
-        return 'Large expenses';
-      case AlertType.weeklySummary:
-        return 'Weekly summary';
-      case AlertType.monthlySummary:
-        return 'Monthly summary';
-      case AlertType.reminder:
-        return 'Reminders';
-      case AlertType.info:
-        return 'Information';
-      default:
-        return 'Alert';
-    }
-  }
-
-  static String _titleForAlert(Alert alert) {
-    if (alert.alertType == AlertType.pendingTransaction) {
-      return 'Transaction detected';
-    }
-    return alert.title.trim().isEmpty
-        ? _alertTypeLabel(alert.alertType)
-        : alert.title;
   }
 
   static String _statusLabelForAlert(Alert alert) {
@@ -680,6 +665,161 @@ enum _InboxMode {
     if (onlyUnread) return _InboxMode.unread;
     if (includeDismissed) return _InboxMode.dismissed;
     return _InboxMode.all;
+  }
+}
+
+enum _AlertMenuAction { markRead, dismiss }
+
+class _AlertPresentation {
+  const _AlertPresentation({
+    required this.title,
+    required this.subtitle,
+    required this.supportingText,
+  });
+
+  final String title;
+  final String subtitle;
+  final String supportingText;
+
+  factory _AlertPresentation.from(Alert alert) {
+    if (alert.alertType == AlertType.pendingTransaction) {
+      final parsed = _fromPendingTransaction(alert);
+      if (parsed != null) return parsed;
+      return _AlertPresentation(
+        title: 'Transaction detected',
+        subtitle: alert.title.trim(),
+        supportingText: alert.body.trim(),
+      );
+    }
+
+    final title = alert.title.trim().isEmpty
+        ? AlertTypeDisplay.label(alert.alertType)
+        : alert.title.trim();
+    return _AlertPresentation(
+      title: title,
+      subtitle: alert.body.trim(),
+      supportingText: '',
+    );
+  }
+
+  static _AlertPresentation? _fromPendingTransaction(Alert alert) {
+    final title = alert.title.trim();
+    final match = RegExp(
+      r'^(.+?)\s+detected\s+at\s+(.+)$',
+      caseSensitive: false,
+    ).firstMatch(title);
+    if (match == null) return null;
+
+    final amount = _normalizeCurrency(match.group(1) ?? '');
+    final merchant = _extractMerchant(match.group(2) ?? '');
+    if (amount.isEmpty || merchant.isEmpty) return null;
+
+    final body = alert.body.trim();
+    return _AlertPresentation(
+      title: 'Transaction detected',
+      subtitle: '$amount paid to $merchant',
+      supportingText: body.isEmpty
+          ? 'Confirm this transaction in Finarc.'
+          : body,
+    );
+  }
+
+  static String _normalizeCurrency(String value) {
+    return value
+        .replaceAll(RegExp(r'\bINR\b', caseSensitive: false), '₹')
+        .replaceAll(RegExp(r'\bRs\.?\b', caseSensitive: false), '₹')
+        .replaceAll(RegExp(r'₹\s+'), '₹')
+        .trim();
+  }
+
+  static String _extractMerchant(String value) {
+    var merchant = value.trim();
+    final paymentMatch = RegExp(
+      r'\b(?:to|at|on)\s+(.+?)(?:\s+(?:was|is|has|for|using|via)\b|$)',
+      caseSensitive: false,
+    ).firstMatch(merchant);
+    if (paymentMatch != null) {
+      merchant = paymentMatch.group(1)?.trim() ?? merchant;
+    }
+    return merchant
+        .replaceAll(RegExp(r'\s+successful$', caseSensitive: false), '')
+        .replaceAll(RegExp(r'\s+approved$', caseSensitive: false), '')
+        .replaceAll(RegExp(r'[.。…]+$'), '')
+        .trim();
+  }
+}
+
+class _AlertTypeRadioRow extends StatelessWidget {
+  const _AlertTypeRadioRow({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = isDark ? AppColors.darkAccent : AppColors.lightAccent;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: selected
+                      ? accent.withValues(alpha: 0.16)
+                      : (isDark
+                            ? AppColors.darkSurfaceLow
+                            : AppColors.lightSurfaceHigh),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: Border.all(
+                    color: selected
+                        ? accent.withValues(alpha: 0.36)
+                        : (isDark
+                              ? AppColors.darkBorder
+                              : AppColors.lightBorder),
+                  ),
+                ),
+                child: Icon(icon, size: 17, color: accent),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                  ),
+                ),
+              ),
+              Icon(
+                selected
+                    ? Icons.radio_button_checked_rounded
+                    : Icons.radio_button_unchecked_rounded,
+                size: 20,
+                color: selected
+                    ? accent
+                    : Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.45),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

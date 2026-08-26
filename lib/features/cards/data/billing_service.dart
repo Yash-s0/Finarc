@@ -849,6 +849,18 @@ class BillingService {
       final linkedOriginalBill = linkedOriginal?.cardBillId == null
           ? null
           : billById[linkedOriginal!.cardBillId!];
+      final currentBill = txn.cardBillId == null
+          ? null
+          : billById[txn.cardBillId!];
+      if (_shouldPreserveExistingBillLink(txn, currentBill)) {
+        continue;
+      }
+      if (currentBill != null && _isBillPaidLike(currentBill)) {
+        await _flagPaidBillNeedsReview(currentBill.id);
+        await (_db.update(_db.transactions)..where((t) => t.id.equals(txn.id)))
+            .write(const TransactionsCompanion(cardBillId: Value(null)));
+        continue;
+      }
       if (txn.type == 'refund' &&
           linkedOriginalBill != null &&
           _isBillPaidLike(linkedOriginalBill)) {
@@ -968,6 +980,20 @@ class BillingService {
     if (bill.status == 'paid' || bill.status == 'needsReview') return true;
     if (bill.billedAmount <= 0.009) return false;
     return bill.paidAmount >= bill.billedAmount;
+  }
+
+  bool _shouldPreserveExistingBillLink(Transaction txn, CardBill? bill) {
+    if (bill == null || bill.status == 'opening') return false;
+    if (bill.cardId != txn.paymentSourceId) return false;
+    if (_isBillPaidLike(bill) && txn.type != TransactionType.creditCard) {
+      return false;
+    }
+    final txnDate = _dateOnly(txn.transactionDate);
+    final cycleStart = _dateOnly(bill.cycleStartDate);
+    final cycleEnd = _dateOnly(bill.cycleEndDate);
+    final inCycle = !txnDate.isBefore(cycleStart) && !txnDate.isAfter(cycleEnd);
+    if (_isBillPaidLike(bill)) return inCycle && txn.cardBillId == bill.id;
+    return inCycle;
   }
 
   Future<bool> _hasNotificationEvidenceForBill(int billId) async {

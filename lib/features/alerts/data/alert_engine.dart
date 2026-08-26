@@ -35,14 +35,30 @@ class AlertEngine {
     required String title,
     required String body,
   }) async {
+    final pending = await (_db.select(
+      _db.pendingTransactions,
+    )..where((p) => p.id.equals(pendingId))).getSingleOrNull();
+    final alertTitle = pending == null ? title : 'Transaction detected';
+    final alertBody = pending == null
+        ? body
+        : '${inr(pending.amount)} paid to ${pending.merchant}';
+    final payload = <String, dynamic>{
+      'pendingId': pendingId,
+      if (pending != null) ...{
+        'amount': pending.amount,
+        'merchant': pending.merchant,
+        'sourceType': pending.sourceType,
+        'transactionDate': pending.transactionDate.toIso8601String(),
+      },
+    };
     final alert = await _alerts.createAlert(
       CreateAlertInput(
         alertType: AlertType.pendingTransaction,
-        title: title,
-        body: body,
+        title: alertTitle,
+        body: alertBody,
         priority: AlertPriority.info,
         actionRoute: '/pending?openPendingId=$pendingId',
-        payload: {'pendingId': pendingId},
+        payload: payload,
         dedupeKey: 'pending_detected_$pendingId',
       ),
       dedupeWindow: const Duration(days: 7),
@@ -75,7 +91,13 @@ class AlertEngine {
 
     final receivable = await _split.getCurrentUserReceivables();
     final payable = await _split.getCurrentUserPayables();
-    if (receivable <= 0 && payable <= 0) return;
+    if (receivable <= 0 && payable <= 0) {
+      await _dismissInactiveAlerts(
+        type: AlertType.splitSettlement,
+        isStillValid: (_) => false,
+      );
+      return;
+    }
 
     String title;
     String body;
@@ -95,6 +117,11 @@ class AlertEngine {
       dedupeKey =
           'split_payable_${DateTime.now().year}_${DateTime.now().month}';
     }
+
+    await _dismissInactiveAlerts(
+      type: AlertType.splitSettlement,
+      isStillValid: (alert) => alert.dedupeKey == dedupeKey,
+    );
 
     final alert = await _alerts.createAlert(
       CreateAlertInput(
@@ -195,6 +222,16 @@ class AlertEngine {
     final threshold = settings.lowBalanceThreshold;
     final banks = await _db.select(_db.bankAccounts).get();
     final wallets = await _db.select(_db.cashWallets).get();
+    final validKeys = <String>{
+      for (final bank in banks)
+        if (bank.currentBalance <= threshold) 'low_balance_bank_${bank.id}',
+      for (final wallet in wallets)
+        if (wallet.currentBalance <= threshold) 'low_balance_cash_${wallet.id}',
+    };
+    await _dismissInactiveAlerts(
+      type: AlertType.lowBalance,
+      isStillValid: (alert) => validKeys.contains(alert.dedupeKey),
+    );
 
     for (final bank in banks) {
       if (bank.currentBalance > threshold) continue;
@@ -329,6 +366,7 @@ class AlertEngine {
     final bills = await _db.select(_db.cardBills).get();
     final cards = await _db.select(_db.creditCards).get();
     final now = DateTime.now();
+    final validKeys = <String>{};
 
     for (final bill in bills) {
       final card = cards.where((c) => c.id == bill.cardId).firstOrNull;
@@ -357,6 +395,8 @@ class AlertEngine {
       final body = status == 'overdue'
           ? '${inr(pendingAmount)} overdue for payment.'
           : '${inr(pendingAmount)} due in ${days <= 0 ? 'today' : '$days day(s)'}.';
+      final dedupeKey = 'card_due_${bill.id}_$status';
+      validKeys.add(dedupeKey);
 
       final alert = await _alerts.createAlert(
         CreateAlertInput(
@@ -365,16 +405,22 @@ class AlertEngine {
           body: body,
           priority: priority,
           actionRoute: '/cards/${card.id}/bills/${bill.id}',
-          dedupeKey: 'card_due_${bill.id}_$status',
+          dedupeKey: dedupeKey,
         ),
         dedupeWindow: const Duration(hours: 12),
       );
       if (alert != null) await _showLocalAlertIfAllowed(alert);
     }
+
+    await _dismissInactiveAlerts(
+      type: AlertType.cardDue,
+      isStillValid: (alert) => validKeys.contains(alert.dedupeKey),
+    );
   }
 
   Future<void> _evaluateEmiDueAlerts() async {
     final schedules = await _loans.getUpcomingEmis(withinDays: 3);
+    final validKeys = <String>{};
     for (final schedule in schedules) {
       final due = schedule.daysUntilDue;
       if (due > 2) continue;
@@ -386,6 +432,9 @@ class AlertEngine {
           : (due == 0
                 ? '${schedule.loan.title} EMI of $amount is due today.'
                 : '${schedule.loan.title} EMI of $amount is due in $due day(s).');
+      final dedupeKey =
+          'emi_due_${schedule.loan.id}_${schedule.nextDate.toIso8601String()}';
+      validKeys.add(dedupeKey);
 
       final alert = await _alerts.createAlert(
         CreateAlertInput(
@@ -394,13 +443,17 @@ class AlertEngine {
           body: body,
           priority: priority,
           actionRoute: '/loans/${schedule.loan.id}',
-          dedupeKey:
-              'emi_due_${schedule.loan.id}_${schedule.nextDate.toIso8601String()}',
+          dedupeKey: dedupeKey,
         ),
         dedupeWindow: const Duration(hours: 12),
       );
       if (alert != null) await _showLocalAlertIfAllowed(alert);
     }
+
+    await _dismissInactiveAlerts(
+      type: AlertType.emiDue,
+      isStillValid: (alert) => validKeys.contains(alert.dedupeKey),
+    );
   }
 
   Future<void> _showLocalAlertIfAllowed(Alert alert) async {
@@ -427,6 +480,17 @@ class AlertEngine {
         message: 'alert-notified',
         meta: <String, Object?>{'type': alert.alertType},
       );
+    }
+  }
+
+  Future<void> _dismissInactiveAlerts({
+    required String type,
+    required bool Function(Alert alert) isStillValid,
+  }) async {
+    final active = await _alerts.getAlerts(query: AlertQuery(alertType: type));
+    for (final alert in active) {
+      if (isStillValid(alert)) continue;
+      await _alerts.dismiss(alert.id);
     }
   }
 

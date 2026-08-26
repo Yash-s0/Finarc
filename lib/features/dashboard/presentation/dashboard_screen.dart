@@ -9,6 +9,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
 import '../../onboarding/data/onboarding_providers.dart';
+import '../../pending/notifications/notification_providers.dart';
 import '../../profile/data/profile_settings_providers.dart';
 import '../data/dashboard_providers.dart';
 import 'widgets/dashboard_sections.dart';
@@ -203,6 +204,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                     const SizedBox(height: AppSpacing.xs),
                     DashboardMetricGrid(data: data),
                     const SizedBox(height: AppSpacing.xs),
+                    _backgroundDetectionPrompt(data),
+                    const SizedBox(height: AppSpacing.xs),
                     DashboardAlertsSection(
                       pendingCount: data.pendingCount,
                       dueSoonBillsCount: data.dueSoonBillsCount,
@@ -250,6 +253,70 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           },
         );
       },
+    );
+  }
+
+  Widget _backgroundDetectionPrompt(DashboardSnapshot data) {
+    final notificationAccess =
+        ref.watch(notificationAccessStatusProvider).valueOrNull ?? false;
+    final notificationAvailable =
+        ref.watch(notificationIngestionAvailableProvider).valueOrNull ?? false;
+    final smsAccess =
+        ref.watch(smsPermissionStatusProvider).valueOrNull ?? false;
+    final smsAvailable =
+        ref.watch(smsIngestionAvailableProvider).valueOrNull ?? false;
+    final notificationReady =
+        !notificationAvailable ||
+        (notificationAccess && data.notificationDetectionEnabled);
+    final smsReady = !smsAvailable || smsAccess;
+
+    if (notificationReady && smsReady) return const SizedBox.shrink();
+
+    final missing = <String>[
+      if (!notificationReady) 'notification access',
+      if (!smsReady) 'SMS background access',
+    ].join(' and ');
+
+    return FinarcCard(
+      useShadow: false,
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.notification_important_outlined, size: 20),
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: Text(
+                  'Enable $missing so Finarc can keep checking in the background.',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Wrap(
+            spacing: AppSpacing.xs,
+            runSpacing: AppSpacing.xs,
+            children: [
+              if (!notificationReady)
+                OutlinedButton.icon(
+                  onPressed: () => context.push('/notifications/setup'),
+                  icon: const Icon(Icons.notifications_outlined, size: 16),
+                  label: const Text('Check Notifications'),
+                ),
+              if (!smsReady)
+                OutlinedButton.icon(
+                  onPressed: () => context.push('/sms/setup'),
+                  icon: const Icon(Icons.sms_outlined, size: 16),
+                  label: const Text('Check SMS'),
+                ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 

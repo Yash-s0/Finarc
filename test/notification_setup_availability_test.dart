@@ -170,10 +170,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Android access required'), findsOneWidget);
+    expect(find.text('Keep background detection on'), findsOneWidget);
     expect(
       find.text(
-        'Android keeps notification listener access inside system Settings. Finarc opens that page so you can allow local financial notification detection.',
+        'Enable Android notification access and SMS access so Finarc can keep checking transaction alerts even when the app is not open.',
       ),
       findsOneWidget,
     );

@@ -137,8 +137,9 @@ class AlertService {
   }
 
   Future<void> dismiss(int id) async {
+    final now = DateTime.now();
     await (_db.update(_db.alerts)..where((a) => a.id.equals(id))).write(
-      AlertsCompanion(dismissedAt: Value(DateTime.now())),
+      AlertsCompanion(dismissedAt: Value(now), readAt: Value(now)),
     );
   }
 

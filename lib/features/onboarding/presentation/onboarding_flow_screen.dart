@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/router/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_shadows.dart';
@@ -32,11 +33,9 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen>
   final _name = TextEditingController();
   final _salary = TextEditingController();
   final _salaryDay = TextEditingController();
-  final _company = TextEditingController();
   final _nameFocus = FocusNode();
   final _salaryFocus = FocusNode();
   final _salaryDayFocus = FocusNode();
-  final _companyFocus = FocusNode();
   int _index = 0;
   static const int _profileStepIndex = 3;
   bool _notificationPromptHandled = false;
@@ -47,6 +46,7 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen>
   bool _smsSetupOpened = false;
   bool _detectionSkipPromptShown = false;
   bool _profileSkipPromptShown = false;
+  bool _isFinishing = false;
 
   @override
   void initState() {
@@ -64,11 +64,9 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen>
     _name.dispose();
     _salary.dispose();
     _salaryDay.dispose();
-    _company.dispose();
     _nameFocus.dispose();
     _salaryFocus.dispose();
     _salaryDayFocus.dispose();
-    _companyFocus.dispose();
     super.dispose();
   }
 
@@ -76,8 +74,10 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) return;
     ref.invalidate(notificationAccessStatusProvider);
+    ref.invalidate(notificationIngestionAvailableProvider);
     ref.invalidate(postNotificationsPermissionProvider);
     ref.invalidate(smsPermissionStatusProvider);
+    ref.invalidate(smsIngestionAvailableProvider);
   }
 
   Future<void> _maybePromptForAppNotifications() async {
@@ -105,30 +105,29 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen>
   Widget build(BuildContext context) {
     final pages = <Widget>[
       _StepTemplate(
-        stepLabel: 'Step 1 of 5',
         title: 'Private by default',
-        subtitle: 'Track money on this device. No account. No cloud sync.',
-        icon: Icons.wallet_rounded,
-        accent: _OnboardingAccent.info,
-        chips: const ['Offline-first', 'On-device', 'You approve'],
+        subtitle:
+            'Your financial data stays on this device. No account or cloud sync is required.',
+        icon: Icons.privacy_tip_outlined,
         showPreview: false,
         supporting: [
           _SimplePoint(
             icon: Icons.privacy_tip_outlined,
-            title: 'Local ledger',
+            title: 'Stored locally',
             description: 'Everything stays on this device.',
             onTap: () => _showPrivacyTour(context),
           ),
           const SizedBox(height: AppSpacing.sm),
           const _SimplePoint(
             icon: Icons.pending_actions_outlined,
-            title: 'Review first',
-            description: 'Detected SMS and notifications become pending items.',
+            title: 'You review first',
+            description:
+                'Detected SMS and notifications become pending items before saving.',
           ),
           const SizedBox(height: AppSpacing.sm),
           const _SimplePoint(
             icon: Icons.cloud_off_outlined,
-            title: 'Offline-first',
+            title: 'Works offline',
             description: 'Use the app without a network connection.',
           ),
         ],
@@ -147,6 +146,7 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen>
         ),
         onAddCard: () =>
             _openSetup('/cards/add', () => _cardSetupOpened = true),
+        onSetUpLater: _goNext,
       ),
       _DetectionSetupStep(
         notificationSetupOpened: _notificationSetupOpened,
@@ -156,20 +156,21 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen>
           () => _notificationSetupOpened = true,
         ),
         onOpenSms: () => _openSetup('/sms/setup', () => _smsSetupOpened = true),
+        onSetUpLater: () async {
+          _detectionSkipPromptShown = true;
+          await _goNext();
+        },
       ),
       _ProfileSetupStep(
         nameController: _name,
         salaryController: _salary,
         salaryDayController: _salaryDay,
-        companyController: _company,
         nameFocusNode: _nameFocus,
         salaryFocusNode: _salaryFocus,
         salaryDayFocusNode: _salaryDayFocus,
-        companyFocusNode: _companyFocus,
-        onSkipName: _skipNameAndContinue,
+        onSetUpLater: _setUpProfileLater,
       ),
       _ReadyStep(
-        onDashboard: _finish,
         onAddExpense: () => _finish(routeAfterComplete: '/expenses/add'),
       ),
     ];
@@ -177,7 +178,14 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen>
     return FinarcScaffold(
       appBar: FinarcAppBar(
         title: 'First Run Setup',
-        actions: [TextButton(onPressed: _finish, child: const Text('Skip'))],
+        actions: _index == pages.length - 1
+            ? const []
+            : [
+                TextButton(
+                  onPressed: _isFinishing ? null : _confirmSkipSetup,
+                  child: const Text('Skip setup'),
+                ),
+              ],
       ),
       body: Column(
         children: [
@@ -235,6 +243,7 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen>
             child: _OnboardingNavBar(
               canGoBack: _index != 0,
               isLast: _index == pages.length - 1,
+              isLoading: _isFinishing,
               onBack: () => _controller.previousPage(
                 duration: const Duration(milliseconds: 220),
                 curve: Curves.easeOut,
@@ -252,6 +261,10 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen>
       return;
     }
     if (!await _confirmOptionalSkipIfNeeded()) return;
+    await _goNext();
+  }
+
+  Future<void> _goNext() async {
     await _controller.nextPage(
       duration: const Duration(milliseconds: 220),
       curve: Curves.easeOut,
@@ -263,8 +276,10 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen>
     await context.push(route);
     if (!mounted) return;
     ref.invalidate(notificationAccessStatusProvider);
+    ref.invalidate(notificationIngestionAvailableProvider);
     ref.invalidate(postNotificationsPermissionProvider);
     ref.invalidate(smsPermissionStatusProvider);
+    ref.invalidate(smsIngestionAvailableProvider);
   }
 
   Future<bool> _confirmOptionalSkipIfNeeded() async {
@@ -284,13 +299,12 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen>
         !_profileSkipPromptShown &&
         _name.text.trim().isEmpty &&
         _salary.text.trim().isEmpty &&
-        _salaryDay.text.trim().isEmpty &&
-        _company.text.trim().isEmpty) {
+        _salaryDay.text.trim().isEmpty) {
       _profileSkipPromptShown = true;
       return _showSkipSheet(
         title: 'Skip profile details?',
         description:
-            'Salary and company details only improve local insights. You can add them later from Profile.',
+            'Salary details only improve local insights. You can add them later from Profile.',
         continueLabel: 'Continue empty',
       );
     }
@@ -323,36 +337,59 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen>
     return true;
   }
 
-  Future<void> _skipNameAndContinue() async {
+  Future<void> _setUpProfileLater() async {
     _name.clear();
+    _salary.clear();
+    _salaryDay.clear();
     FocusScope.of(context).unfocus();
     _profileSkipPromptShown = true;
-    await _controller.nextPage(
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOut,
-    );
+    await _goNext();
   }
 
-  Future<void> _finish({String? routeAfterComplete}) async {
-    if (!_validateProfileInputs()) return;
+  Future<void> _finish({
+    String? routeAfterComplete,
+    bool discardProfile = false,
+  }) async {
+    if (_isFinishing) return;
+    if (!discardProfile && !_validateProfileInputs()) return;
 
-    final name = _name.text.trim();
-    final salary = double.tryParse(_salary.text.trim());
-    final rawSalaryDay = int.tryParse(_salaryDay.text.trim());
+    final name = discardProfile ? '' : _name.text.trim();
+    final salary = discardProfile ? null : double.tryParse(_salary.text.trim());
+    final rawSalaryDay = discardProfile
+        ? null
+        : int.tryParse(_salaryDay.text.trim());
     final salaryDay = rawSalaryDay == null
         ? null
         : (rawSalaryDay >= 1 && rawSalaryDay <= 31 ? rawSalaryDay : null);
-    final company = _company.text.trim();
-    await ref
-        .read(onboardingActionsProvider)
-        .complete(
-          userName: name.isEmpty ? null : name,
-          monthlySalary: salary,
-          salaryCreditDay: salaryDay,
-          companyName: company.isEmpty ? null : company,
-        );
-    if (!mounted) return;
-    context.go(routeAfterComplete ?? '/');
+    setState(() => _isFinishing = true);
+    try {
+      await ref
+          .read(onboardingActionsProvider)
+          .complete(
+            userName: name.isEmpty ? null : name,
+            monthlySalary: salary,
+            salaryCreditDay: salaryDay,
+          );
+      if (!mounted) return;
+      context.go(routeAfterComplete ?? AppRoutes.home);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isFinishing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Setup could not be saved. Try again.')),
+      );
+    }
+  }
+
+  Future<void> _confirmSkipSetup() async {
+    final skip = await _showSkipSheet(
+      title: 'Skip setup?',
+      description:
+          'You can add accounts, detection, and profile details later from Profile. Finarc will start with empty, local data.',
+      continueLabel: 'Skip setup',
+    );
+    if (!skip) return;
+    await _finish(discardProfile: true);
   }
 
   Future<bool> _showSkipSheet({
@@ -362,34 +399,39 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen>
   }) async {
     final result = await showModalBottomSheet<bool>(
       context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
       showDragHandle: true,
-      builder: (context) => Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.md,
-          0,
-          AppSpacing.md,
-          AppSpacing.lg,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: AppSpacing.xs),
-            Text(description, style: Theme.of(context).textTheme.bodyMedium),
-            const SizedBox(height: AppSpacing.md),
-            FinarcPrimaryButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              icon: Icons.arrow_forward_rounded,
-              label: continueLabel,
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            FinarcSecondaryButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              icon: Icons.keyboard_return_rounded,
-              label: 'Go back',
-            ),
-          ],
+      builder: (context) => FractionallySizedBox(
+        heightFactor: 0.72,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            0,
+            AppSpacing.md,
+            AppSpacing.lg,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: AppSpacing.xs),
+              Text(description, style: Theme.of(context).textTheme.bodyMedium),
+              const SizedBox(height: AppSpacing.md),
+              FinarcPrimaryButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                icon: Icons.arrow_forward_rounded,
+                label: continueLabel,
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              FinarcSecondaryButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                icon: Icons.keyboard_return_rounded,
+                label: 'Go back',
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -465,22 +507,18 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen>
 
 class _StepTemplate extends StatelessWidget {
   const _StepTemplate({
-    required this.stepLabel,
     required this.title,
     required this.subtitle,
     required this.icon,
     this.accent = _OnboardingAccent.primary,
-    this.chips = const [],
     this.showPreview = true,
     this.supporting,
   });
 
-  final String stepLabel;
   final String title;
   final String subtitle;
   final IconData icon;
   final _OnboardingAccent accent;
-  final List<String> chips;
   final bool showPreview;
   final List<Widget>? supporting;
 
@@ -495,12 +533,10 @@ class _StepTemplate extends StatelessWidget {
       ),
       children: [
         _HeroPanel(
-          stepLabel: stepLabel,
           icon: icon,
           title: title,
           subtitle: subtitle,
           accent: accent.resolve(context),
-          chips: chips,
           showPreview: showPreview,
         ),
         if (supporting != null && supporting!.isNotEmpty) ...[
@@ -660,6 +696,7 @@ class _SetupChoicesStep extends StatelessWidget {
     required this.onAddBank,
     required this.onAddCash,
     required this.onAddCard,
+    required this.onSetUpLater,
   });
 
   final bool bankOpened;
@@ -668,6 +705,7 @@ class _SetupChoicesStep extends StatelessWidget {
   final VoidCallback onAddBank;
   final VoidCallback onAddCash;
   final VoidCallback onAddCard;
+  final VoidCallback onSetUpLater;
 
   @override
   Widget build(BuildContext context) {
@@ -680,20 +718,17 @@ class _SetupChoicesStep extends StatelessWidget {
       ),
       children: [
         const _HeroPanel(
-          stepLabel: 'Step 2 of 5',
           icon: Icons.add_card_outlined,
-          title: 'Set up your first account',
-          subtitle:
-              'Pick what you use. Each balance stays in your local ledger.',
+          title: 'Add your first account',
+          subtitle: 'Add what you use today. You can always add more later.',
           accent: AppColors.lightAccent,
-          chips: ['Optional', 'Local balances', 'Add later'],
         ),
         const SizedBox(height: AppSpacing.sm),
         _SetupOptionCard(
           icon: Icons.account_balance_outlined,
           title: 'Bank account',
           description: 'Track balances, transfers and salary deposits.',
-          badge: bankOpened ? 'Opened' : 'Best start',
+          badge: bankOpened ? 'Opened' : 'Recommended',
           buttonLabel: 'Add Bank Account',
           onPressed: onAddBank,
           isPrimary: true,
@@ -704,7 +739,7 @@ class _SetupChoicesStep extends StatelessWidget {
           icon: Icons.account_balance_wallet_outlined,
           title: 'Cash wallet',
           description: 'Track cash on hand and wallet-style balances.',
-          badge: cashOpened ? 'Opened' : 'Quick',
+          badge: cashOpened ? 'Opened' : null,
           buttonLabel: 'Add Cash Wallet',
           onPressed: onAddCash,
           completed: cashOpened,
@@ -714,10 +749,16 @@ class _SetupChoicesStep extends StatelessWidget {
           icon: Icons.credit_card_outlined,
           title: 'Credit card',
           description: 'Track card spends, statements and bill dues.',
-          badge: cardOpened ? 'Opened' : 'Bills',
+          badge: cardOpened ? 'Opened' : null,
           buttonLabel: 'Add Credit Card',
           onPressed: onAddCard,
           completed: cardOpened,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        FinarcSecondaryButton(
+          onPressed: onSetUpLater,
+          icon: Icons.schedule_outlined,
+          label: 'Set up later',
         ),
       ],
     );
@@ -729,9 +770,9 @@ class _SetupOptionCard extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.description,
-    required this.badge,
     required this.buttonLabel,
     required this.onPressed,
+    this.badge,
     this.isPrimary = false,
     this.completed = false,
   });
@@ -739,7 +780,7 @@ class _SetupOptionCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String description;
-  final String badge;
+  final String? badge;
   final String buttonLabel;
   final VoidCallback onPressed;
   final bool isPrimary;
@@ -799,11 +840,12 @@ class _SetupOptionCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppSpacing.xs),
-              _OptionBadge(
-                label: badge,
-                active: isPrimary || completed,
-                icon: completed ? Icons.check_rounded : null,
-              ),
+              if (badge != null)
+                _OptionBadge(
+                  label: badge!,
+                  active: isPrimary || completed,
+                  icon: completed ? Icons.check_rounded : null,
+                ),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -863,61 +905,101 @@ class _DetectionSetupStep extends ConsumerWidget {
     required this.smsSetupOpened,
     required this.onOpenNotifications,
     required this.onOpenSms,
+    required this.onSetUpLater,
   });
 
   final bool notificationSetupOpened;
   final bool smsSetupOpened;
   final VoidCallback onOpenNotifications;
   final VoidCallback onOpenSms;
+  final VoidCallback onSetUpLater;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notificationAccess = ref.watch(notificationAccessStatusProvider);
     final appNotifications = ref.watch(postNotificationsPermissionProvider);
     final smsAccess = ref.watch(smsPermissionStatusProvider);
+    final notificationAvailable = ref.watch(
+      notificationIngestionAvailableProvider,
+    );
+    final smsAvailable = ref.watch(smsIngestionAvailableProvider);
 
     return _StepTemplate(
-      stepLabel: 'Step 3 of 5',
-      title: 'Connect detection',
+      title: 'Detect transactions automatically',
       subtitle:
-          'Optional helpers. You review every detected item before saving.',
+          'Finarc can detect payment notifications and SMS. You review everything before it reaches your ledger.',
       icon: Icons.notifications_active_outlined,
       accent: _OnboardingAccent.warning,
-      chips: const ['Optional', 'Local', 'Pending first'],
       showPreview: false,
       supporting: [
         _SetupStatusCard(
           icon: Icons.notifications_outlined,
           title: 'App notifications',
           description:
-              'Background notification access queues financial alerts for review.',
-          status: _accessLabel(notificationAccess, notificationSetupOpened),
-          statusTone: _accessTone(notificationAccess, notificationSetupOpened),
-          buttonLabel: 'Open Settings',
-          onPressed: onOpenNotifications,
+              'Detect payment notifications in the background and queue them for review.',
+          status: _accessLabel(
+            notificationAccess,
+            notificationAvailable,
+            notificationSetupOpened,
+          ),
+          statusTone: _accessTone(
+            notificationAccess,
+            notificationAvailable,
+            notificationSetupOpened,
+          ),
+          buttonLabel: _setupButtonLabel(
+            notificationAccess,
+            notificationAvailable,
+          ),
+          onPressed: _isAvailable(notificationAvailable)
+              ? onOpenNotifications
+              : null,
         ),
         const SizedBox(height: AppSpacing.xs),
         _SetupStatusCard(
           icon: Icons.sms_outlined,
           title: 'SMS detection',
-          description:
-              'SMS permission enables inbox catch-up and new-message background capture.',
-          status: _accessLabel(smsAccess, smsSetupOpened),
-          statusTone: _accessTone(smsAccess, smsSetupOpened),
-          buttonLabel: 'Open SMS Setup',
-          onPressed: onOpenSms,
+          description: _isAvailable(smsAvailable)
+              ? 'Scan SMS payments in the background and queue pending items for review.'
+              : 'SMS detection is not available in this build.',
+          status: _accessLabel(smsAccess, smsAvailable, smsSetupOpened),
+          statusTone: _accessTone(smsAccess, smsAvailable, smsSetupOpened),
+          buttonLabel: _setupButtonLabel(smsAccess, smsAvailable),
+          onPressed: _isAvailable(smsAvailable) ? onOpenSms : null,
         ),
         const SizedBox(height: AppSpacing.sm),
         _SimplePoint(
           icon: Icons.notifications_active_outlined,
-          title: _appNotificationLabel(appNotifications),
+          title: 'Review reminders',
           description: 'Alerts only tell you when pending reviews are waiting.',
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        _SimplePoint(
+          icon: Icons.mark_email_read_outlined,
+          title: _appNotificationLabel(appNotifications),
+          description: 'You can change reminder permissions later.',
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        FinarcSecondaryButton(
+          onPressed: onSetUpLater,
+          icon: Icons.schedule_outlined,
+          label: 'Set up later',
         ),
       ],
     );
   }
 
-  String _accessLabel(AsyncValue<bool> state, bool opened) {
+  bool _isAvailable(AsyncValue<bool> availability) {
+    return availability.valueOrNull == true;
+  }
+
+  String _accessLabel(
+    AsyncValue<bool> state,
+    AsyncValue<bool> availability,
+    bool opened,
+  ) {
+    if (availability.isLoading) return 'Checking';
+    if (availability.valueOrNull != true) return 'Unavailable';
     return state.maybeWhen(
       data: (enabled) {
         if (enabled) return 'Enabled';
@@ -927,13 +1009,30 @@ class _DetectionSetupStep extends ConsumerWidget {
     );
   }
 
-  FinarcStatusTone _accessTone(AsyncValue<bool> state, bool opened) {
+  FinarcStatusTone _accessTone(
+    AsyncValue<bool> state,
+    AsyncValue<bool> availability,
+    bool opened,
+  ) {
+    if (availability.isLoading) return FinarcStatusTone.info;
+    if (availability.valueOrNull != true) return FinarcStatusTone.neutral;
     return state.maybeWhen(
       data: (enabled) {
         if (enabled) return FinarcStatusTone.success;
         return opened ? FinarcStatusTone.warning : FinarcStatusTone.neutral;
       },
       orElse: () => opened ? FinarcStatusTone.info : FinarcStatusTone.neutral,
+    );
+  }
+
+  String _setupButtonLabel(
+    AsyncValue<bool> state,
+    AsyncValue<bool> availability,
+  ) {
+    if (availability.valueOrNull != true) return 'Unavailable';
+    return state.maybeWhen(
+      data: (enabled) => enabled ? 'Manage settings' : 'Set up',
+      orElse: () => 'Set up',
     );
   }
 
@@ -963,7 +1062,7 @@ class _SetupStatusCard extends StatelessWidget {
   final String status;
   final FinarcStatusTone statusTone;
   final String buttonLabel;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -990,9 +1089,21 @@ class _SetupStatusCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        title,
-                        style: Theme.of(context).textTheme.titleSmall,
+                      Wrap(
+                        spacing: AppSpacing.xs,
+                        runSpacing: AppSpacing.xxs,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Text(
+                            title,
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                          FinarcStatusBadge(
+                            label: status,
+                            tone: statusTone,
+                            compact: true,
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 2),
                       Text(
@@ -1001,12 +1112,6 @@ class _SetupStatusCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(width: AppSpacing.xs),
-                FinarcStatusBadge(
-                  label: status,
-                  tone: statusTone,
-                  compact: true,
                 ),
               ],
             ),
@@ -1076,32 +1181,31 @@ class _SimplePoint extends StatelessWidget {
 }
 
 class _ReadyStep extends StatelessWidget {
-  const _ReadyStep({required this.onDashboard, required this.onAddExpense});
+  const _ReadyStep({required this.onAddExpense});
 
-  final VoidCallback onDashboard;
   final VoidCallback onAddExpense;
 
   @override
   Widget build(BuildContext context) {
     return _StepTemplate(
-      stepLabel: 'Step 5 of 5',
-      title: 'Ready',
-      subtitle: 'Start tracking manually or review detected pending items.',
+      title: 'You are ready to go',
+      subtitle:
+          'Start with an empty local ledger, add expenses manually, or review detected items when they appear.',
       icon: Icons.check_circle_outline,
       accent: _OnboardingAccent.success,
-      chips: const ['Private', 'Review-first'],
       showPreview: false,
       supporting: [
-        FinarcPrimaryButton(
-          onPressed: onDashboard,
-          icon: Icons.dashboard_outlined,
-          label: 'Go to Dashboard',
+        const _SimplePoint(
+          icon: Icons.fact_check_outlined,
+          title: 'Review-first stays on',
+          description:
+              'Detected transactions remain pending until you approve.',
         ),
         const SizedBox(height: AppSpacing.xs),
         FinarcSecondaryButton(
           onPressed: onAddExpense,
           icon: Icons.add_rounded,
-          label: 'Add First Expense',
+          label: 'Add first expense',
         ),
       ],
     );
@@ -1135,23 +1239,19 @@ class _ProfileSetupStep extends StatelessWidget {
     required this.nameController,
     required this.salaryController,
     required this.salaryDayController,
-    required this.companyController,
     required this.nameFocusNode,
     required this.salaryFocusNode,
     required this.salaryDayFocusNode,
-    required this.companyFocusNode,
-    required this.onSkipName,
+    required this.onSetUpLater,
   });
 
   final TextEditingController nameController;
   final TextEditingController salaryController;
   final TextEditingController salaryDayController;
-  final TextEditingController companyController;
   final FocusNode nameFocusNode;
   final FocusNode salaryFocusNode;
   final FocusNode salaryDayFocusNode;
-  final FocusNode companyFocusNode;
-  final VoidCallback onSkipName;
+  final VoidCallback onSetUpLater;
 
   @override
   Widget build(BuildContext context) {
@@ -1164,34 +1264,31 @@ class _ProfileSetupStep extends StatelessWidget {
       ),
       children: [
         const _HeroPanel(
-          stepLabel: 'Step 4 of 5',
           icon: Icons.person_outline,
-          title: 'Tell us about you',
+          title: 'Personalize your insights',
           subtitle:
-              'Optional details for local insights. Skip anything you do not need.',
+              'Optional details help Finarc understand your monthly cash flow.',
           accent: AppColors.lightSuccess,
-          chips: ['Optional profile', 'Local insights', 'Can skip'],
           showPreview: false,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        const _SimplePoint(
+          icon: Icons.insights_outlined,
+          title: 'Used for local insights',
+          description:
+              'Salary and credit day help estimate monthly income trends.',
         ),
         const SizedBox(height: AppSpacing.sm),
         FinarcTextField(
           controller: nameController,
-          label: 'Your name',
+          label: 'Name (optional)',
           focusNode: nameFocusNode,
           nextFocusNode: salaryFocusNode,
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton(
-            onPressed: onSkipName,
-            child: const Text('Skip name for now'),
-          ),
         ),
         const SizedBox(height: AppSpacing.sm),
         FinarcTextField(
           controller: salaryController,
-          label: 'Monthly salary',
+          label: 'Monthly salary (optional)',
           focusNode: salaryFocusNode,
           nextFocusNode: salaryDayFocusNode,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -1200,18 +1297,17 @@ class _ProfileSetupStep extends StatelessWidget {
         const SizedBox(height: AppSpacing.sm),
         FinarcTextField(
           controller: salaryDayController,
-          label: 'Salary credit day',
+          label: 'Salary credit day (optional)',
           focusNode: salaryDayFocusNode,
-          nextFocusNode: companyFocusNode,
+          textInputAction: TextInputAction.done,
           keyboardType: TextInputType.number,
           inputFormatters: [StripLeadingZeroFormatter(allowDecimal: false)],
         ),
         const SizedBox(height: AppSpacing.sm),
-        FinarcTextField(
-          controller: companyController,
-          label: 'Company name',
-          focusNode: companyFocusNode,
-          textInputAction: TextInputAction.done,
+        FinarcSecondaryButton(
+          onPressed: onSetUpLater,
+          icon: Icons.schedule_outlined,
+          label: 'Set up later',
         ),
       ],
     );
@@ -1220,21 +1316,17 @@ class _ProfileSetupStep extends StatelessWidget {
 
 class _HeroPanel extends StatelessWidget {
   const _HeroPanel({
-    required this.stepLabel,
     required this.icon,
     required this.title,
     required this.subtitle,
     required this.accent,
-    this.chips = const [],
     this.showPreview = true,
   });
 
-  final String stepLabel;
   final IconData icon;
   final String title;
   final String subtitle;
   final Color accent;
-  final List<String> chips;
   final bool showPreview;
 
   @override
@@ -1275,11 +1367,10 @@ class _HeroPanel extends StatelessWidget {
             width: 1,
           ),
           boxShadow: [
-            ...(isDark ? AppShadows.heroGlow : AppShadows.heroGlowLight),
             BoxShadow(
-              color: accent.withValues(alpha: isDark ? 0.14 : 0.08),
-              blurRadius: 26,
-              offset: const Offset(0, 12),
+              color: accent.withValues(alpha: isDark ? 0.08 : 0.05),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
@@ -1291,9 +1382,7 @@ class _HeroPanel extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: _StepPill(label: stepLabel, color: accent),
-                  ),
+                  const Spacer(),
                   const SizedBox(width: AppSpacing.sm),
                   _HeroIconBadge(icon: icon, accent: accent),
                 ],
@@ -1305,16 +1394,6 @@ class _HeroPanel extends StatelessWidget {
               if (showPreview) ...[
                 const SizedBox(height: AppSpacing.sm),
                 _HeroPreview(icon: icon, accent: accent),
-              ],
-              if (chips.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.sm),
-                Wrap(
-                  spacing: AppSpacing.xs,
-                  runSpacing: AppSpacing.xs,
-                  children: chips
-                      .map((chip) => _HeroChip(label: chip, color: accent))
-                      .toList(growable: false),
-                ),
               ],
             ],
           ),
@@ -1335,17 +1414,28 @@ class _StepCounter extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       children: [
-        Text(
-          'Step $current of $total',
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+        Expanded(
+          child: Text(
+            'Step $current of $total',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: isDark
+                  ? AppColors.darkTextMuted
+                  : AppColors.lightTextMuted,
+            ),
           ),
         ),
-        const Spacer(),
-        Text(
-          _stepHint(current),
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            color: isDark ? AppColors.darkAccent : AppColors.lightAccent,
+        const SizedBox(width: AppSpacing.xs),
+        Flexible(
+          child: Text(
+            _stepHint(current),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.end,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: isDark ? AppColors.darkAccent : AppColors.lightAccent,
+            ),
           ),
         ),
       ],
@@ -1363,7 +1453,7 @@ class _StepCounter extends StatelessWidget {
       case 4:
         return 'Profile';
       case 5:
-        return 'Finish';
+        return 'Ready';
       default:
         return '';
     }
@@ -1374,12 +1464,14 @@ class _OnboardingNavBar extends StatelessWidget {
   const _OnboardingNavBar({
     required this.canGoBack,
     required this.isLast,
+    required this.isLoading,
     required this.onBack,
     required this.onNext,
   });
 
   final bool canGoBack;
   final bool isLast;
+  final bool isLoading;
   final VoidCallback onBack;
   final VoidCallback onNext;
 
@@ -1406,7 +1498,7 @@ class _OnboardingNavBar extends StatelessWidget {
               children: [
                 Expanded(
                   child: FinarcSecondaryButton(
-                    onPressed: canGoBack ? onBack : null,
+                    onPressed: canGoBack && !isLoading ? onBack : null,
                     icon: compact ? null : Icons.arrow_back_rounded,
                     label: 'Back',
                   ),
@@ -1414,48 +1506,21 @@ class _OnboardingNavBar extends StatelessWidget {
                 const SizedBox(width: AppSpacing.xs),
                 Expanded(
                   child: FinarcPrimaryButton(
-                    onPressed: onNext,
+                    onPressed: isLoading ? null : onNext,
+                    isLoading: isLoading,
                     icon: compact
                         ? null
                         : (isLast
                               ? Icons.check_circle_outline
                               : Icons.arrow_forward_rounded),
                     label: isLast
-                        ? (compact ? 'Finish' : 'Finish Setup')
+                        ? (compact ? 'Start' : 'Start using Finarc')
                         : 'Next',
                   ),
                 ),
               ],
             );
           },
-        ),
-      ),
-    );
-  }
-}
-
-class _StepPill extends StatelessWidget {
-  const _StepPill({required this.label, required this.color});
-
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.14),
-          borderRadius: BorderRadius.circular(AppRadius.pill),
-          border: Border.all(color: color.withValues(alpha: 0.32)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.sm,
-            vertical: 6,
-          ),
-          child: Text(label, style: Theme.of(context).textTheme.labelMedium),
         ),
       ),
     );
@@ -1609,31 +1674,6 @@ class _PreviewAction extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.md),
       ),
       child: Icon(icon, size: 16, color: color),
-    );
-  }
-}
-
-class _HeroChip extends StatelessWidget {
-  const _HeroChip({required this.label, required this.color});
-
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-        border: Border.all(color: color.withValues(alpha: 0.28)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm,
-          vertical: 5,
-        ),
-        child: Text(label, style: Theme.of(context).textTheme.labelMedium),
-      ),
     );
   }
 }

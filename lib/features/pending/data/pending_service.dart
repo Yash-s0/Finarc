@@ -4,6 +4,7 @@ import '../../../core/database/app_database.dart';
 import '../../../core/logging/app_log_service.dart';
 import '../../cards/data/billing_service.dart';
 import '../../accounts/data/wallet_types.dart';
+import '../../alerts/data/alert_types.dart';
 import '../../expenses/data/transaction_engine.dart';
 import '../../expenses/models/transaction_types.dart';
 import '../models/pending_models.dart';
@@ -195,6 +196,7 @@ class PendingService {
         updatedAt: Value(DateTime.now()),
       ),
     );
+    await _resolvePendingAlerts(pendingId);
   }
 
   Future<PendingEditData> _resolveConfirmationData({
@@ -591,6 +593,7 @@ class PendingService {
         updatedAt: Value(DateTime.now()),
       ),
     );
+    await _resolvePendingAlerts(pendingId);
   }
 
   Future<void> markPendingAsDuplicate(
@@ -606,6 +609,7 @@ class PendingService {
         updatedAt: Value(DateTime.now()),
       ),
     );
+    await _resolvePendingAlerts(pendingId);
   }
 
   Future<void> mergeDuplicatePendingTransaction(
@@ -621,6 +625,18 @@ class PendingService {
         updatedAt: Value(DateTime.now()),
       ),
     );
+    await _resolvePendingAlerts(pendingId);
+  }
+
+  Future<void> _resolvePendingAlerts(int pendingId) async {
+    final now = DateTime.now();
+    await (_db.update(_db.alerts)..where(
+          (a) =>
+              a.alertType.equals(AlertType.pendingTransaction) &
+              a.dismissedAt.isNull() &
+              a.actionRoute.equals('/pending?openPendingId=$pendingId'),
+        ))
+        .write(AlertsCompanion(readAt: Value(now), dismissedAt: Value(now)));
   }
 
   Future<void> updatePendingTransaction(

@@ -258,11 +258,9 @@ void main() {
     'partial recovery applies billed then bank cash before unbilled card items',
     () async {
       final now = DateTime.now();
-      final billedDate = DateTime(
-        now.year,
-        now.month,
-        now.day,
-      ).subtract(const Duration(days: 2));
+      final statementStart = DateTime(now.year, now.month - 1, 21);
+      final statementEnd = DateTime(now.year, now.month, 21);
+      final billedDate = statementEnd.subtract(const Duration(days: 1));
       final bankDate = billedDate.subtract(const Duration(days: 4));
       final unbilledDate = now.day > 1
           ? DateTime(now.year, now.month, now.day)
@@ -299,8 +297,8 @@ void main() {
               cardId: cardId,
               // An externally confirmed statement can have a cycle boundary
               // that differs from the card's locally estimated billing day.
-              cycleStartDate: Value(DateTime(now.year, now.month - 1, 21)),
-              cycleEndDate: Value(DateTime(now.year, now.month, 21)),
+              cycleStartDate: Value(statementStart),
+              cycleEndDate: Value(statementEnd),
               billingDate: Value(DateTime(now.year, now.month, 22)),
               dueDate: Value(DateTime(now.year, now.month + 1, 7)),
               billedAmount: 300,

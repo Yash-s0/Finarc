@@ -278,6 +278,7 @@ class GenericBankSmsParser implements TransactionParser {
     var value = raw;
     final markers = [
       ' on ',
+      ' was ',
       ' upi ref',
       ' rrn',
       ' avl bal',

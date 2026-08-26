@@ -11,6 +11,7 @@ import 'package:finarc/core/theme/app_colors.dart';
 import 'package:finarc/core/theme/app_theme.dart';
 import 'package:finarc/features/onboarding/presentation/onboarding_flow_screen.dart';
 import 'package:finarc/features/pending/notifications/notification_permission_service.dart';
+import 'package:finarc/features/pending/notifications/notification_providers.dart';
 
 class _FakeNotificationPermissionService extends NotificationPermissionService {
   _FakeNotificationPermissionService({this.isGranted = true});
@@ -38,6 +39,7 @@ void main() {
   Future<void> pumpOnboarding(
     WidgetTester tester, {
     _FakeNotificationPermissionService? permissionService,
+    List<Override> overrides = const [],
   }) async {
     final service = permissionService ?? _FakeNotificationPermissionService();
     await tester.pumpWidget(
@@ -46,6 +48,11 @@ void main() {
           onboardingNotificationPermissionServiceProvider.overrideWithValue(
             service,
           ),
+          notificationIngestionAvailableProvider.overrideWith(
+            (ref) async => true,
+          ),
+          smsIngestionAvailableProvider.overrideWith((ref) async => true),
+          ...overrides,
         ],
         child: MaterialApp(
           theme: AppTheme.dark(),
@@ -92,6 +99,10 @@ void main() {
           onboardingNotificationPermissionServiceProvider.overrideWithValue(
             service,
           ),
+          notificationIngestionAvailableProvider.overrideWith(
+            (ref) async => true,
+          ),
+          smsIngestionAvailableProvider.overrideWith((ref) async => true),
         ],
         child: MaterialApp.router(theme: AppTheme.dark(), routerConfig: router),
       ),
@@ -102,14 +113,14 @@ void main() {
   }
 
   Future<void> tapNext(WidgetTester tester) async {
-    await tester.tap(find.text('Next'));
+    await tester.tap(find.text('Next').hitTestable());
     await tester.pumpAndSettle();
     if (find.text('Skip detection setup?').evaluate().isNotEmpty) {
-      await tester.tap(find.text('Skip for now'));
+      await tester.tap(find.text('Skip for now').hitTestable());
       await tester.pumpAndSettle();
     }
     if (find.text('Skip profile details?').evaluate().isNotEmpty) {
-      await tester.tap(find.text('Continue empty'));
+      await tester.tap(find.text('Continue empty').hitTestable());
       await tester.pumpAndSettle();
     }
   }
@@ -130,14 +141,14 @@ void main() {
     await pumpOnboarding(tester);
 
     expect(find.text('Private by default'), findsOneWidget);
-    expect(find.text('Local ledger'), findsOneWidget);
+    expect(find.text('Stored locally'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     for (final title in [
-      'Set up your first account',
-      'Connect detection',
-      'Tell us about you',
-      'Ready',
+      'Add your first account',
+      'Detect transactions automatically',
+      'Personalize your insights',
+      'You are ready to go',
     ]) {
       await tapNext(tester);
       expect(find.text(title), findsOneWidget);
@@ -155,13 +166,12 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    expect(find.text('Connect detection'), findsOneWidget);
+    expect(find.text('Detect transactions automatically'), findsOneWidget);
     expect(find.text('App notifications'), findsOneWidget);
-    expect(find.text('Open Settings'), findsOneWidget);
-    expect(find.text('Open SMS Setup'), findsOneWidget);
+    expect(find.text('Set up'), findsWidgets);
     expect(
       find.text(
-        'Background notification access queues financial alerts for review.',
+        'Detect payment notifications in the background and queue them for review.',
       ),
       findsOneWidget,
     );
@@ -175,7 +185,7 @@ void main() {
 
     await tapNext(tester);
     await tapNext(tester);
-    await tester.tap(find.text('Next'));
+    await tester.tap(find.text('Next').hitTestable());
     await tester.pumpAndSettle();
 
     expect(find.text('Skip detection setup?'), findsOneWidget);
@@ -188,7 +198,7 @@ void main() {
 
     await tester.tap(find.text('Go back'));
     await tester.pumpAndSettle();
-    expect(find.text('Connect detection'), findsOneWidget);
+    expect(find.text('Detect transactions automatically'), findsOneWidget);
   });
 
   testWidgets('privacy tour popup opens and closes from onboarding', (
@@ -196,7 +206,7 @@ void main() {
   ) async {
     await pumpOnboarding(tester);
 
-    await tester.tap(find.text('Local ledger'));
+    await tester.tap(find.text('Stored locally'));
     await tester.pumpAndSettle();
 
     expect(find.text('How privacy works'), findsOneWidget);
@@ -210,19 +220,18 @@ void main() {
     expect(find.text('How privacy works'), findsNothing);
   });
 
-  testWidgets('skip name moves to summary and completes with empty profile', (
+  testWidgets('empty profile prompt moves to summary and completes', (
     tester,
   ) async {
     final db = await pumpRoutedOnboarding(tester);
 
     await advanceToProfileStep(tester);
-    expect(find.text('Tell us about you'), findsOneWidget);
+    expect(find.text('Personalize your insights'), findsOneWidget);
 
-    await tester.tap(find.text('Skip name for now'));
-    await tester.pumpAndSettle();
-    expect(find.text('Ready'), findsOneWidget);
+    await tapNext(tester);
+    expect(find.text('You are ready to go'), findsOneWidget);
 
-    await tester.tap(find.text('Finish Setup'));
+    await tester.tap(find.text('Start using Finarc'));
     await tester.pumpAndSettle();
     expect(find.text('Home'), findsOneWidget);
 
@@ -237,11 +246,12 @@ void main() {
 
     await advanceToProfileStep(tester);
     await tapNext(tester);
-    expect(find.text('Ready'), findsOneWidget);
-    expect(find.text('Go to Dashboard'), findsOneWidget);
-    expect(find.text('Add First Expense'), findsOneWidget);
+    expect(find.text('You are ready to go'), findsOneWidget);
+    expect(find.text('Go to Dashboard'), findsNothing);
+    expect(find.text('Add first expense'), findsOneWidget);
+    expect(find.text('Skip setup'), findsNothing);
 
-    await tester.tap(find.text('Finish Setup'));
+    await tester.tap(find.text('Start using Finarc'));
     await tester.pumpAndSettle();
 
     final row = await db.select(db.appSettings).getSingle();
@@ -260,9 +270,9 @@ void main() {
     await pumpOnboarding(tester);
     await advanceToProfileStep(tester);
 
-    await tester.tap(find.widgetWithText(TextFormField, 'Your name'));
+    await tester.tap(find.widgetWithText(TextFormField, 'Name (optional)'));
     await tester.enterText(
-      find.widgetWithText(TextFormField, 'Your name'),
+      find.widgetWithText(TextFormField, 'Name (optional)'),
       'Yash',
     );
     await tester.testTextInput.receiveAction(TextInputAction.next);
@@ -275,17 +285,12 @@ void main() {
     tester.testTextInput.enterText('5');
     await tester.pump();
 
-    await tester.testTextInput.receiveAction(TextInputAction.next);
-    await tester.pump();
-    tester.testTextInput.enterText('Acme');
-    await tester.pump();
-
     final fieldValues = tester
         .widgetList<EditableText>(find.byType(EditableText))
         .map((field) => field.controller.text)
         .toList(growable: false);
 
-    expect(fieldValues, containsAllInOrder(['Yash', '120000', '5', 'Acme']));
+    expect(fieldValues, containsAllInOrder(['Yash', '120000', '5']));
   });
 
   testWidgets('privacy points are visible without extra expansion cards', (
@@ -293,9 +298,11 @@ void main() {
   ) async {
     await pumpOnboarding(tester);
 
-    expect(find.text('Local ledger'), findsOneWidget);
+    expect(find.text('Stored locally'), findsOneWidget);
     expect(
-      find.text('Detected SMS and notifications become pending items.'),
+      find.text(
+        'Detected SMS and notifications become pending items before saving.',
+      ),
       findsOneWidget,
     );
     expect(
@@ -307,7 +314,7 @@ void main() {
   testWidgets('privacy tour point stays tappable', (tester) async {
     await pumpOnboarding(tester);
 
-    await tester.tap(find.text('Local ledger'));
+    await tester.tap(find.text('Stored locally'));
     await tester.pumpAndSettle();
 
     expect(find.text('How privacy works'), findsOneWidget);
@@ -321,7 +328,7 @@ void main() {
 
     await pumpOnboarding(tester);
 
-    expect(find.text('Local ledger'), findsOneWidget);
+    expect(find.text('Stored locally'), findsOneWidget);
     expect(find.byType(Card), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -333,15 +340,219 @@ void main() {
       await tapNext(tester);
     }
 
-    expect(find.text('Ready'), findsOneWidget);
-    expect(find.text('Go to Dashboard'), findsOneWidget);
-    expect(find.text('Add First Expense'), findsOneWidget);
-    await tester.tap(find.text('Finish Setup'));
+    expect(find.text('You are ready to go'), findsOneWidget);
+    expect(find.text('Go to Dashboard'), findsNothing);
+    expect(find.text('Add first expense'), findsOneWidget);
+    expect(find.text('Skip setup'), findsNothing);
+    await tester.tap(find.text('Start using Finarc'));
     await tester.pumpAndSettle();
 
     expect(find.text('Home'), findsOneWidget);
     final row = await db.select(db.appSettings).getSingle();
     expect(row.hasCompletedOnboarding, true);
+  });
+
+  testWidgets('rapid final taps persist a single completed settings row', (
+    tester,
+  ) async {
+    final db = await pumpRoutedOnboarding(tester);
+
+    for (var i = 0; i < 4; i++) {
+      await tapNext(tester);
+    }
+
+    await tester.tap(find.text('Start using Finarc'));
+    await tester.tap(find.text('Start using Finarc'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Home'), findsOneWidget);
+    final rows = await db.select(db.appSettings).get();
+    expect(rows, hasLength(1));
+    expect(rows.single.hasCompletedOnboarding, true);
+  });
+
+  testWidgets('add first expense completes onboarding before routing', (
+    tester,
+  ) async {
+    final db = await pumpRoutedOnboarding(tester);
+
+    for (var i = 0; i < 4; i++) {
+      await tapNext(tester);
+    }
+
+    await tester.tap(find.text('Add first expense'));
+    await tester.tap(find.text('Add first expense'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Add Expense'), findsOneWidget);
+    final row = await db.select(db.appSettings).getSingle();
+    expect(row.hasCompletedOnboarding, true);
+  });
+
+  testWidgets('global skip setup confirms and completes empty setup', (
+    tester,
+  ) async {
+    final db = await pumpRoutedOnboarding(tester);
+
+    await tester.tap(find.text('Skip setup'));
+    await tester.pumpAndSettle();
+    expect(find.text('Skip setup?'), findsOneWidget);
+
+    await tester.tap(find.text('Skip setup').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Home'), findsOneWidget);
+    final row = await db.select(db.appSettings).getSingle();
+    expect(row.hasCompletedOnboarding, true);
+    expect(row.userName, isNull);
+    expect(row.monthlySalary, isNull);
+  });
+
+  testWidgets('detection step reflects enabled permission state', (
+    tester,
+  ) async {
+    await pumpOnboarding(
+      tester,
+      overrides: [
+        notificationAccessStatusProvider.overrideWith((ref) async => true),
+        smsPermissionStatusProvider.overrideWith((ref) async => true),
+      ],
+    );
+
+    await tapNext(tester);
+    await tapNext(tester);
+
+    expect(find.text('Detect transactions automatically'), findsOneWidget);
+    expect(find.text('Enabled'), findsWidgets);
+    expect(find.text('Manage settings'), findsWidgets);
+  });
+
+  testWidgets('detection step disables unavailable setup actions', (
+    tester,
+  ) async {
+    await pumpOnboarding(
+      tester,
+      overrides: [
+        notificationIngestionAvailableProvider.overrideWith(
+          (ref) async => false,
+        ),
+        smsIngestionAvailableProvider.overrideWith((ref) async => false),
+        notificationAccessStatusProvider.overrideWith((ref) async => true),
+        smsPermissionStatusProvider.overrideWith((ref) async => true),
+      ],
+    );
+
+    await tapNext(tester);
+    await tapNext(tester);
+
+    expect(find.text('Unavailable'), findsWidgets);
+    expect(find.text('Enabled'), findsNothing);
+    final unavailableButtons = tester
+        .widgetList<OutlinedButton>(
+          find.widgetWithText(OutlinedButton, 'Unavailable'),
+        )
+        .toList(growable: false);
+    expect(unavailableButtons, hasLength(2));
+    expect(
+      unavailableButtons.every((button) => button.onPressed == null),
+      true,
+    );
+  });
+
+  testWidgets(
+    'detection availability refreshes after returning from settings',
+    (tester) async {
+      var notificationAvailable = false;
+      var smsAvailable = false;
+
+      await pumpOnboarding(
+        tester,
+        overrides: [
+          notificationIngestionAvailableProvider.overrideWith(
+            (ref) async => notificationAvailable,
+          ),
+          smsIngestionAvailableProvider.overrideWith(
+            (ref) async => smsAvailable,
+          ),
+          notificationAccessStatusProvider.overrideWith((ref) async => false),
+          smsPermissionStatusProvider.overrideWith((ref) async => false),
+        ],
+      );
+
+      await tapNext(tester);
+      await tapNext(tester);
+      expect(find.text('Unavailable'), findsWidgets);
+
+      notificationAvailable = true;
+      smsAvailable = true;
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      await tester.pump();
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Set up'), findsWidgets);
+      expect(find.text('Unavailable'), findsNothing);
+    },
+  );
+
+  testWidgets('large text onboarding stays overflow-free', (tester) async {
+    tester.binding.platformDispatcher.textScaleFactorTestValue = 1.45;
+    await tester.binding.setSurfaceSize(const Size(360, 700));
+    addTearDown(() {
+      tester.binding.platformDispatcher.clearTextScaleFactorTestValue();
+      tester.binding.setSurfaceSize(null);
+    });
+
+    await pumpOnboarding(tester);
+
+    for (var i = 0; i < 4; i++) {
+      expect(tester.takeException(), isNull);
+      await tapNext(tester);
+    }
+    expect(find.text('You are ready to go'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('invalid optional profile values block only until corrected', (
+    tester,
+  ) async {
+    await pumpOnboarding(tester);
+    await advanceToProfileStep(tester);
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Monthly salary (optional)'),
+      '-10',
+    );
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+    expect(find.text('Monthly salary must be positive.'), findsOneWidget);
+    expect(find.text('Personalize your insights'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Monthly salary (optional)'),
+      '',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Salary credit day (optional)'),
+      '32',
+    );
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    tester.testTextInput.hide();
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
+    await tapNext(tester);
+    expect(find.text('Salary credit day must be 1 to 31.'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Salary credit day (optional)'),
+      '',
+    );
+    await tapNext(tester);
+    expect(find.text('You are ready to go'), findsOneWidget);
   });
 
   testWidgets('onboarding prompts for app notifications and allows skip', (

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
 import '../../dashboard/data/dashboard_providers.dart';
+import '../../onboarding/data/onboarding_providers.dart';
 import '../data/profile_settings_providers.dart';
 import '../data/profile_settings_service.dart';
 import '../../../core/router/app_routes.dart';
@@ -134,6 +135,10 @@ class ProfileScreenSafe extends ConsumerWidget {
             salaryCreditDay: profile?.salaryCreditDay,
             companyName: profile?.companyName,
             onEdit: () => _showProfileEditSheet(context, ref, profile),
+            onRedoOnboarding: () async {
+              await ref.read(onboardingActionsProvider).reset();
+              if (context.mounted) context.go(AppRoutes.onboarding);
+            },
           ),
           const SizedBox(height: AppSpacing.sm),
           ThemeSettingsSection(

@@ -50,7 +50,13 @@ class _FinarcSecondaryButtonState extends State<FinarcSecondaryButton> {
             children: [
               Icon(widget.icon, size: 18),
               const SizedBox(width: AppSpacing.xs),
-              Text(widget.label),
+              Flexible(
+                child: Text(
+                  widget.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ],
           );
 

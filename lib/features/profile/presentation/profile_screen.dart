@@ -274,6 +274,10 @@ class ProfileScreen extends ConsumerWidget {
             salaryCreditDay: profile?.salaryCreditDay,
             companyName: profile?.companyName,
             onEdit: () => _showProfileEditSheet(context, ref, profile),
+            onRedoOnboarding: () async {
+              await ref.read(onboardingActionsProvider).reset();
+              if (context.mounted) context.go(AppRoutes.onboarding);
+            },
           ),
           const SizedBox(height: AppSpacing.sm),
           ThemeSettingsSection(

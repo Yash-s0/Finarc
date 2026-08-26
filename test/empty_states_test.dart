@@ -110,6 +110,37 @@ void main() {
     expect(find.text('Add Expense'), findsOneWidget);
   });
 
+  testWidgets('completed empty setup keeps core screens usable', (
+    tester,
+  ) async {
+    await db.seedIfEmpty();
+    final settings = await (db.select(db.appSettings)..limit(1)).getSingle();
+    await (db.update(
+      db.appSettings,
+    )..where((s) => s.id.equals(settings.id))).write(
+      const AppSettingsCompanion(
+        hasCompletedOnboarding: Value(true),
+        userName: Value(null),
+        monthlySalary: Value(null),
+        salaryCreditDay: Value(null),
+      ),
+    );
+
+    await pumpScreen(tester, const DashboardScreen());
+    expect(find.text('Welcome to Finarc'), findsOneWidget);
+    expect(find.text('Add Bank Account'), findsOneWidget);
+    expect(find.text('Continue Setup'), findsNothing);
+    expect(tester.takeException(), equals(null));
+
+    await pumpScreen(tester, const ExpensesScreen());
+    expect(find.text('No transactions yet'), findsOneWidget);
+    expect(tester.takeException(), equals(null));
+
+    await pumpScreen(tester, const CardsOverviewScreen());
+    expect(find.text('No cards added yet'), findsOneWidget);
+    expect(tester.takeException(), equals(null));
+  });
+
   testWidgets('split empty state works', (tester) async {
     await pumpScreen(tester, const SplitScreen());
     expect(find.text('No groups yet'), findsOneWidget);

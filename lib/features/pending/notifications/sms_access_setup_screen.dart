@@ -36,17 +36,17 @@ class SmsAccessSetupScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Read transaction SMS locally',
+                    'Keep SMS detection running',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
-                    'Finarc only parses transaction-like SMS and creates pending transactions for your confirmation. No SMS is uploaded anywhere.',
+                    'Allow SMS access so Finarc can catch new transaction SMS in the background and scan recent messages you may have missed.',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   const FinarcStatusBadge(
-                    label: 'Local-only parsing. User confirmation required.',
+                    label: 'Background capture. Local-only parsing.',
                     tone: FinarcStatusTone.info,
                   ),
                   const SizedBox(height: AppSpacing.xs),
@@ -167,7 +167,20 @@ class SmsAccessSetupScreen extends ConsumerWidget {
                                 .read(detectionSettingsProvider.notifier)
                                 .applyChanges(
                                   smsPermissionAskedAt: DateTime.now(),
+                                  smsDetectionEnabled: granted,
+                                  smsBackfillEnabled:
+                                      granted || settings.smsBackfillEnabled,
                                 );
+                            if (granted) {
+                              await ref
+                                  .read(smsPermissionServiceProvider)
+                                  .scanRecentSms(settings.smsBackfillDays);
+                              await ref
+                                  .read(detectionSettingsProvider.notifier)
+                                  .applyChanges(
+                                    smsLastScannedAt: DateTime.now(),
+                                  );
+                            }
                             ref
                                     .read(smsPermissionCachedProvider.notifier)
                                     .state =

@@ -33,6 +33,7 @@ class ProfileHeaderCard extends StatelessWidget {
     required this.salaryCreditDay,
     required this.companyName,
     required this.onEdit,
+    required this.onRedoOnboarding,
   });
 
   final String? name;
@@ -40,6 +41,7 @@ class ProfileHeaderCard extends StatelessWidget {
   final int? salaryCreditDay;
   final String? companyName;
   final VoidCallback onEdit;
+  final VoidCallback onRedoOnboarding;
 
   @override
   Widget build(BuildContext context) {
@@ -116,6 +118,12 @@ class ProfileHeaderCard extends StatelessWidget {
             onPressed: onEdit,
             icon: Icons.edit_outlined,
             label: 'Edit',
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          FinarcSecondaryButton(
+            onPressed: onRedoOnboarding,
+            icon: Icons.replay_rounded,
+            label: 'Redo onboarding',
           ),
         ],
       ),

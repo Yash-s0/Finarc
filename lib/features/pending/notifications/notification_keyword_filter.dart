@@ -132,6 +132,8 @@ class NotificationKeywordFilter {
     'idfc',
     'hsbc',
     'citibank',
+    'amazon pay',
+    'amazonpay',
   ];
 
   NotificationFilterResult evaluate(NotificationPayload payload) {

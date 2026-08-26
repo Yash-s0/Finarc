@@ -99,20 +99,25 @@ final pendingActionProvider = Provider((ref) {
   final service = ref.read(pendingServiceProvider);
   final ingestion = ref.read(pendingIngestionServiceProvider);
 
+  void refreshPendingAndAlerts() {
+    ref.invalidate(pendingTransactionsProvider);
+    ref.invalidate(pendingCountProvider);
+    ref.invalidate(pendingHistoryProvider);
+    ref.invalidate(alertsInboxProvider);
+    ref.invalidate(alertsUnreadCountProvider);
+    ref.invalidate(latestImportantAlertProvider);
+  }
+
   Future<void> confirm(int pendingId, PendingEditData editedData) async {
     await service.confirmPendingTransaction(pendingId, editedData);
     await ref.read(alertEvaluationActionsProvider).evaluateAll();
-    ref.invalidate(pendingTransactionsProvider);
     ref.invalidate(expenseListProvider);
-    ref.invalidate(pendingCountProvider);
-    ref.invalidate(pendingHistoryProvider);
+    refreshPendingAndAlerts();
   }
 
   Future<void> ignore(int pendingId) async {
     await service.ignorePendingTransaction(pendingId);
-    ref.invalidate(pendingTransactionsProvider);
-    ref.invalidate(pendingCountProvider);
-    ref.invalidate(pendingHistoryProvider);
+    refreshPendingAndAlerts();
   }
 
   Future<void> seedDemo() async {
@@ -133,9 +138,7 @@ final pendingActionProvider = Provider((ref) {
 
   Future<void> markDuplicate(int pendingId, int existingTransactionId) async {
     await service.markPendingAsDuplicate(pendingId, existingTransactionId);
-    ref.invalidate(pendingTransactionsProvider);
-    ref.invalidate(pendingCountProvider);
-    ref.invalidate(pendingHistoryProvider);
+    refreshPendingAndAlerts();
   }
 
   Future<void> mergeDuplicate(int pendingId, int existingTransactionId) async {
@@ -143,9 +146,7 @@ final pendingActionProvider = Provider((ref) {
       pendingId,
       existingTransactionId,
     );
-    ref.invalidate(pendingTransactionsProvider);
-    ref.invalidate(pendingCountProvider);
-    ref.invalidate(pendingHistoryProvider);
+    refreshPendingAndAlerts();
   }
 
   Future<List<int>> ingestParsedInput(ParserInput input) async {

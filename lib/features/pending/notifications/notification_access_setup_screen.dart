@@ -35,12 +35,12 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Android access required',
+                    'Keep background detection on',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
-                    'Android keeps notification listener access inside system Settings. Finarc opens that page so you can allow local financial notification detection.',
+                    'Enable Android notification access and SMS access so Finarc can keep checking transaction alerts even when the app is not open.',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   const SizedBox(height: AppSpacing.sm),
@@ -71,7 +71,7 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                   if (!hasNotificationAccess)
                     Text(
                       notificationIngestionAvailable
-                          ? 'Turn on Finarc in Android Notification Access, then come back and refresh status.'
+                          ? 'Turn on Finarc in Android Notification Access, then come back and refresh. This is required for background notification capture.'
                           : 'Notification access needs Android listener support on this device.',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
@@ -108,8 +108,7 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton.icon(
-                      onPressed: () =>
-                          ref.invalidate(notificationAccessStatusProvider),
+                      onPressed: () => _refreshBackgroundAccessStatus(ref),
                       icon: const Icon(Icons.refresh, size: 16),
                       label: const Text('Refresh Status'),
                     ),
@@ -123,6 +122,11 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const FinarcSectionHeader(title: 'SMS Detection'),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'SMS access catches transaction texts that may not appear as notifications and can queue recent inbox messages for parsing.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                   const SizedBox(height: AppSpacing.xs),
                   smsAccessState.when(
                     loading: () => const Text('Checking SMS permission...'),
@@ -463,6 +467,24 @@ class NotificationAccessSetupScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  static Future<void> _refreshBackgroundAccessStatus(WidgetRef ref) async {
+    ref.invalidate(notificationAccessStatusProvider);
+    ref.invalidate(smsPermissionStatusProvider);
+    final hasNotificationAccess = await ref
+        .read(notificationPermissionServiceProvider)
+        .isAccessEnabled();
+    final hasSmsAccess = await ref
+        .read(smsPermissionServiceProvider)
+        .isPermissionGranted();
+    await ref
+        .read(detectionSettingsProvider.notifier)
+        .applyChanges(
+          notificationDetectionEnabled: hasNotificationAccess,
+          smsDetectionEnabled: hasSmsAccess,
+          smsBackfillEnabled: hasSmsAccess,
+        );
   }
 
   static Widget _toggleRow({

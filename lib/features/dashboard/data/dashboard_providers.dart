@@ -101,23 +101,10 @@ final dashboardProvider = FutureProvider<DashboardSnapshot>((ref) async {
           .getSingle()
           .then((r) => r.read(db.pendingTransactions.id.count()) ?? 0);
   final bills = await db.select(db.cardBills).get();
-  final unreadAlertsCount =
-      await (db.selectOnly(db.alerts)
-            ..addColumns([db.alerts.id.count()])
-            ..where(db.alerts.readAt.isNull() & db.alerts.dismissedAt.isNull()))
-          .getSingle()
-          .then((r) => r.read(db.alerts.id.count()) ?? 0);
-  final latestImportantAlert =
-      await (db.select(db.alerts)
-            ..where(
-              (a) =>
-                  a.dismissedAt.isNull() &
-                  (a.priority.equals('critical') |
-                      a.priority.equals('warning')),
-            )
-            ..orderBy([(a) => OrderingTerm.desc(a.createdAt)])
-            ..limit(1))
-          .getSingleOrNull();
+  final unreadAlertsCount = await ref.watch(alertsUnreadCountProvider.future);
+  final latestImportantAlert = await ref.watch(
+    latestImportantAlertProvider.future,
+  );
   final settings = await (db.select(
     db.appSettings,
   )..limit(1)).getSingleOrNull();
