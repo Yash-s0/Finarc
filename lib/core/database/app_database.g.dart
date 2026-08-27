@@ -14000,6 +14000,17 @@ class $AppSettingsTable extends AppSettings
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _salaryCreditRuleMeta = const VerificationMeta(
+    'salaryCreditRule',
+  );
+  @override
+  late final GeneratedColumn<String> salaryCreditRule = GeneratedColumn<String>(
+    'salary_credit_rule',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _companyNameMeta = const VerificationMeta(
     'companyName',
   );
@@ -14052,6 +14063,7 @@ class $AppSettingsTable extends AppSettings
     userName,
     monthlySalary,
     salaryCreditDay,
+    salaryCreditRule,
     companyName,
   ];
   @override
@@ -14408,6 +14420,15 @@ class $AppSettingsTable extends AppSettings
         ),
       );
     }
+    if (data.containsKey('salary_credit_rule')) {
+      context.handle(
+        _salaryCreditRuleMeta,
+        salaryCreditRule.isAcceptableOrUnknown(
+          data['salary_credit_rule']!,
+          _salaryCreditRuleMeta,
+        ),
+      );
+    }
     if (data.containsKey('company_name')) {
       context.handle(
         _companyNameMeta,
@@ -14582,6 +14603,10 @@ class $AppSettingsTable extends AppSettings
         DriftSqlType.int,
         data['${effectivePrefix}salary_credit_day'],
       ),
+      salaryCreditRule: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}salary_credit_rule'],
+      ),
       companyName: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}company_name'],
@@ -14635,6 +14660,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
   final String? userName;
   final double? monthlySalary;
   final int? salaryCreditDay;
+  final String? salaryCreditRule;
   final String? companyName;
   const AppSetting({
     required this.id,
@@ -14676,6 +14702,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     this.userName,
     this.monthlySalary,
     this.salaryCreditDay,
+    this.salaryCreditRule,
     this.companyName,
   });
   @override
@@ -14754,6 +14781,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     if (!nullToAbsent || salaryCreditDay != null) {
       map['salary_credit_day'] = Variable<int>(salaryCreditDay);
     }
+    if (!nullToAbsent || salaryCreditRule != null) {
+      map['salary_credit_rule'] = Variable<String>(salaryCreditRule);
+    }
     if (!nullToAbsent || companyName != null) {
       map['company_name'] = Variable<String>(companyName);
     }
@@ -14815,6 +14845,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       salaryCreditDay: salaryCreditDay == null && nullToAbsent
           ? const Value.absent()
           : Value(salaryCreditDay),
+      salaryCreditRule: salaryCreditRule == null && nullToAbsent
+          ? const Value.absent()
+          : Value(salaryCreditRule),
       companyName: companyName == null && nullToAbsent
           ? const Value.absent()
           : Value(companyName),
@@ -14918,6 +14951,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       userName: serializer.fromJson<String?>(json['userName']),
       monthlySalary: serializer.fromJson<double?>(json['monthlySalary']),
       salaryCreditDay: serializer.fromJson<int?>(json['salaryCreditDay']),
+      salaryCreditRule: serializer.fromJson<String?>(json['salaryCreditRule']),
       companyName: serializer.fromJson<String?>(json['companyName']),
     );
   }
@@ -14990,6 +15024,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       'userName': serializer.toJson<String?>(userName),
       'monthlySalary': serializer.toJson<double?>(monthlySalary),
       'salaryCreditDay': serializer.toJson<int?>(salaryCreditDay),
+      'salaryCreditRule': serializer.toJson<String?>(salaryCreditRule),
       'companyName': serializer.toJson<String?>(companyName),
     };
   }
@@ -15034,6 +15069,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     Value<String?> userName = const Value.absent(),
     Value<double?> monthlySalary = const Value.absent(),
     Value<int?> salaryCreditDay = const Value.absent(),
+    Value<String?> salaryCreditRule = const Value.absent(),
     Value<String?> companyName = const Value.absent(),
   }) => AppSetting(
     id: id ?? this.id,
@@ -15100,6 +15136,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     salaryCreditDay: salaryCreditDay.present
         ? salaryCreditDay.value
         : this.salaryCreditDay,
+    salaryCreditRule: salaryCreditRule.present
+        ? salaryCreditRule.value
+        : this.salaryCreditRule,
     companyName: companyName.present ? companyName.value : this.companyName,
   );
   AppSetting copyWithCompanion(AppSettingsCompanion data) {
@@ -15220,6 +15259,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       salaryCreditDay: data.salaryCreditDay.present
           ? data.salaryCreditDay.value
           : this.salaryCreditDay,
+      salaryCreditRule: data.salaryCreditRule.present
+          ? data.salaryCreditRule.value
+          : this.salaryCreditRule,
       companyName: data.companyName.present
           ? data.companyName.value
           : this.companyName,
@@ -15278,6 +15320,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           ..write('userName: $userName, ')
           ..write('monthlySalary: $monthlySalary, ')
           ..write('salaryCreditDay: $salaryCreditDay, ')
+          ..write('salaryCreditRule: $salaryCreditRule, ')
           ..write('companyName: $companyName')
           ..write(')'))
         .toString();
@@ -15324,6 +15367,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     userName,
     monthlySalary,
     salaryCreditDay,
+    salaryCreditRule,
     companyName,
   ]);
   @override
@@ -15375,6 +15419,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           other.userName == this.userName &&
           other.monthlySalary == this.monthlySalary &&
           other.salaryCreditDay == this.salaryCreditDay &&
+          other.salaryCreditRule == this.salaryCreditRule &&
           other.companyName == this.companyName);
 }
 
@@ -15418,6 +15463,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   final Value<String?> userName;
   final Value<double?> monthlySalary;
   final Value<int?> salaryCreditDay;
+  final Value<String?> salaryCreditRule;
   final Value<String?> companyName;
   const AppSettingsCompanion({
     this.id = const Value.absent(),
@@ -15459,6 +15505,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.userName = const Value.absent(),
     this.monthlySalary = const Value.absent(),
     this.salaryCreditDay = const Value.absent(),
+    this.salaryCreditRule = const Value.absent(),
     this.companyName = const Value.absent(),
   });
   AppSettingsCompanion.insert({
@@ -15501,6 +15548,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.userName = const Value.absent(),
     this.monthlySalary = const Value.absent(),
     this.salaryCreditDay = const Value.absent(),
+    this.salaryCreditRule = const Value.absent(),
     this.companyName = const Value.absent(),
   });
   static Insertable<AppSetting> custom({
@@ -15543,6 +15591,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Expression<String>? userName,
     Expression<double>? monthlySalary,
     Expression<int>? salaryCreditDay,
+    Expression<String>? salaryCreditRule,
     Expression<String>? companyName,
   }) {
     return RawValuesInsertable({
@@ -15613,6 +15662,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       if (userName != null) 'user_name': userName,
       if (monthlySalary != null) 'monthly_salary': monthlySalary,
       if (salaryCreditDay != null) 'salary_credit_day': salaryCreditDay,
+      if (salaryCreditRule != null) 'salary_credit_rule': salaryCreditRule,
       if (companyName != null) 'company_name': companyName,
     });
   }
@@ -15657,6 +15707,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Value<String?>? userName,
     Value<double?>? monthlySalary,
     Value<int?>? salaryCreditDay,
+    Value<String?>? salaryCreditRule,
     Value<String?>? companyName,
   }) {
     return AppSettingsCompanion(
@@ -15718,6 +15769,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       userName: userName ?? this.userName,
       monthlySalary: monthlySalary ?? this.monthlySalary,
       salaryCreditDay: salaryCreditDay ?? this.salaryCreditDay,
+      salaryCreditRule: salaryCreditRule ?? this.salaryCreditRule,
       companyName: companyName ?? this.companyName,
     );
   }
@@ -15886,6 +15938,9 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     if (salaryCreditDay.present) {
       map['salary_credit_day'] = Variable<int>(salaryCreditDay.value);
     }
+    if (salaryCreditRule.present) {
+      map['salary_credit_rule'] = Variable<String>(salaryCreditRule.value);
+    }
     if (companyName.present) {
       map['company_name'] = Variable<String>(companyName.value);
     }
@@ -15944,6 +15999,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           ..write('userName: $userName, ')
           ..write('monthlySalary: $monthlySalary, ')
           ..write('salaryCreditDay: $salaryCreditDay, ')
+          ..write('salaryCreditRule: $salaryCreditRule, ')
           ..write('companyName: $companyName')
           ..write(')'))
         .toString();
@@ -22254,6 +22310,7 @@ typedef $$AppSettingsTableCreateCompanionBuilder =
       Value<String?> userName,
       Value<double?> monthlySalary,
       Value<int?> salaryCreditDay,
+      Value<String?> salaryCreditRule,
       Value<String?> companyName,
     });
 typedef $$AppSettingsTableUpdateCompanionBuilder =
@@ -22297,6 +22354,7 @@ typedef $$AppSettingsTableUpdateCompanionBuilder =
       Value<String?> userName,
       Value<double?> monthlySalary,
       Value<int?> salaryCreditDay,
+      Value<String?> salaryCreditRule,
       Value<String?> companyName,
     });
 
@@ -22502,6 +22560,11 @@ class $$AppSettingsTableFilterComposer
 
   ColumnFilters<int> get salaryCreditDay => $composableBuilder(
     column: $table.salaryCreditDay,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get salaryCreditRule => $composableBuilder(
+    column: $table.salaryCreditRule,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -22718,6 +22781,11 @@ class $$AppSettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get salaryCreditRule => $composableBuilder(
+    column: $table.salaryCreditRule,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get companyName => $composableBuilder(
     column: $table.companyName,
     builder: (column) => ColumnOrderings(column),
@@ -22927,6 +22995,11 @@ class $$AppSettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get salaryCreditRule => $composableBuilder(
+    column: $table.salaryCreditRule,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get companyName => $composableBuilder(
     column: $table.companyName,
     builder: (column) => column,
@@ -23006,6 +23079,7 @@ class $$AppSettingsTableTableManager
                 Value<String?> userName = const Value.absent(),
                 Value<double?> monthlySalary = const Value.absent(),
                 Value<int?> salaryCreditDay = const Value.absent(),
+                Value<String?> salaryCreditRule = const Value.absent(),
                 Value<String?> companyName = const Value.absent(),
               }) => AppSettingsCompanion(
                 id: id,
@@ -23048,6 +23122,7 @@ class $$AppSettingsTableTableManager
                 userName: userName,
                 monthlySalary: monthlySalary,
                 salaryCreditDay: salaryCreditDay,
+                salaryCreditRule: salaryCreditRule,
                 companyName: companyName,
               ),
           createCompanionCallback:
@@ -23094,6 +23169,7 @@ class $$AppSettingsTableTableManager
                 Value<String?> userName = const Value.absent(),
                 Value<double?> monthlySalary = const Value.absent(),
                 Value<int?> salaryCreditDay = const Value.absent(),
+                Value<String?> salaryCreditRule = const Value.absent(),
                 Value<String?> companyName = const Value.absent(),
               }) => AppSettingsCompanion.insert(
                 id: id,
@@ -23136,6 +23212,7 @@ class $$AppSettingsTableTableManager
                 userName: userName,
                 monthlySalary: monthlySalary,
                 salaryCreditDay: salaryCreditDay,
+                salaryCreditRule: salaryCreditRule,
                 companyName: companyName,
               ),
           withReferenceMapper: (p0) => p0

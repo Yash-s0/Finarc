@@ -10,6 +10,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../shared/widgets/finarc/finarc_widgets.dart';
 import '../../onboarding/data/onboarding_providers.dart';
 import '../../pending/notifications/notification_providers.dart';
+import '../../profile/data/salary_credit_schedule.dart';
 import '../../profile/data/profile_settings_providers.dart';
 import '../data/dashboard_providers.dart';
 import 'widgets/dashboard_sections.dart';
@@ -134,7 +135,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 data.cardCount == 0 &&
                 data.loansOutstanding == 0 &&
                 data.recentTransactions.isEmpty;
-            final salaryCreditDay = profile?.salaryCreditDay;
+            final salaryCreditSchedule = profile?.salaryCreditSchedule;
 
             if (freshInstall) {
               return FadeTransition(
@@ -167,7 +168,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     NetWorthHeroCard(data: data),
-                    if (salaryCreditDay != null) ...[
+                    if (salaryCreditSchedule != null) ...[
                       const SizedBox(height: AppSpacing.xs),
                       FinarcCard(
                         padding: const EdgeInsets.symmetric(
@@ -193,7 +194,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                             const SizedBox(width: AppSpacing.xs),
                             Expanded(
                               child: Text(
-                                _salaryInsight(salaryCreditDay),
+                                _salaryInsight(salaryCreditSchedule),
                                 style: Theme.of(context).textTheme.bodyMedium,
                               ),
                             ),
@@ -352,25 +353,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     return today.add(const Duration(days: 1, hours: 5));
   }
 
-  String _salaryInsight(int salaryCreditDay) {
+  String _salaryInsight(SalaryCreditSchedule salaryCreditSchedule) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    var expected = DateTime(now.year, now.month, salaryCreditDay);
-    if (salaryCreditDay > 28) {
-      final monthEnd = DateTime(now.year, now.month + 1, 0).day;
-      expected = DateTime(
-        now.year,
-        now.month,
-        salaryCreditDay.clamp(1, monthEnd),
-      );
-    }
+    var expected = salaryCreditSchedule.resolveDate(now.year, now.month);
     if (expected.isBefore(today)) {
-      final nextMonthEnd = DateTime(now.year, now.month + 2, 0).day;
-      expected = DateTime(
-        now.year,
-        now.month + 1,
-        salaryCreditDay.clamp(1, nextMonthEnd),
-      );
+      expected = salaryCreditSchedule.resolveDate(now.year, now.month + 1);
     }
     final days = expected.difference(today).inDays;
     if (days <= 0) return 'Salary expected today';

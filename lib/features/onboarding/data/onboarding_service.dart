@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../profile/data/salary_credit_schedule.dart';
 
 class OnboardingService {
   const OnboardingService(this._db);
@@ -17,6 +18,7 @@ class OnboardingService {
     String? userName,
     double? monthlySalary,
     int? salaryCreditDay,
+    String? salaryCreditRule,
     String? companyName,
   }) async {
     if (monthlySalary != null && monthlySalary <= 0) {
@@ -26,8 +28,16 @@ class OnboardingService {
         (salaryCreditDay < 1 || salaryCreditDay > 31)) {
       throw ArgumentError('Salary credit day must be between 1 and 31');
     }
+    final salaryRule = SalaryCreditRule.fromStorage(salaryCreditRule);
+    if (salaryRule != SalaryCreditRule.fixedDay && salaryCreditDay != null) {
+      throw ArgumentError(
+        'Semantic salary credit rules must not store a fixed day',
+      );
+    }
 
     final row = await _ensureSettingsRow();
+    final writesSalarySchedule =
+        salaryCreditDay != null || salaryCreditRule != null;
     await (_db.update(
       _db.appSettings,
     )..where((t) => t.id.equals(row.id))).write(
@@ -42,6 +52,9 @@ class OnboardingService {
         salaryCreditDay: salaryCreditDay == null
             ? const Value.absent()
             : Value(salaryCreditDay),
+        salaryCreditRule: writesSalarySchedule
+            ? Value(salaryRule.storageValue)
+            : const Value.absent(),
         companyName: companyName == null
             ? const Value.absent()
             : Value(_normalize(companyName)),

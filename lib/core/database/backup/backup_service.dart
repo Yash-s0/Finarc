@@ -390,6 +390,7 @@ class BackupService {
     'userName': row.userName,
     'monthlySalary': row.monthlySalary,
     'salaryCreditDay': row.salaryCreditDay,
+    'salaryCreditRule': row.salaryCreditRule,
     'companyName': row.companyName,
   };
 

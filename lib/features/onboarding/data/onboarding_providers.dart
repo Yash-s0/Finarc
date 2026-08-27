@@ -17,6 +17,7 @@ final onboardingActionsProvider = Provider((ref) {
     String? userName,
     double? monthlySalary,
     int? salaryCreditDay,
+    String? salaryCreditRule,
     String? companyName,
   }) async {
     await ref
@@ -26,6 +27,7 @@ final onboardingActionsProvider = Provider((ref) {
           userName: userName,
           monthlySalary: monthlySalary,
           salaryCreditDay: salaryCreditDay,
+          salaryCreditRule: salaryCreditRule,
           companyName: companyName,
         );
     ref.invalidate(onboardingCompletedProvider);

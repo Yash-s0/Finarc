@@ -369,6 +369,7 @@ class AppSettings extends Table {
   TextColumn get userName => text().nullable()();
   RealColumn get monthlySalary => real().nullable()();
   IntColumn get salaryCreditDay => integer().nullable()();
+  TextColumn get salaryCreditRule => text().nullable()();
   TextColumn get companyName => text().nullable()();
 }
 
@@ -398,7 +399,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 26;
+  int get schemaVersion => 27;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -629,6 +630,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 26) {
         await m.createTable(debitCards);
+      }
+      if (from < 27) {
+        await m.addColumn(appSettings, appSettings.salaryCreditRule);
       }
       await globalAppLogService.log(
         category: 'migration',

@@ -269,6 +269,7 @@ class ImportService {
                 userName: Value(_stringOrNull(row['userName'])),
                 monthlySalary: Value(_double(row['monthlySalary'])),
                 salaryCreditDay: Value(_int(row['salaryCreditDay'])),
+                salaryCreditRule: Value(_stringOrNull(row['salaryCreditRule'])),
                 companyName: Value(_stringOrNull(row['companyName'])),
               ),
             );

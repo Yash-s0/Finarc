@@ -8,6 +8,7 @@ import '../../../../core/utils/formatters.dart';
 import '../../../../shared/widgets/finarc/finarc_widgets.dart';
 import '../../../pending/notifications/detection_settings.dart';
 import '../../../pending/notifications/ingestion_diagnostics.dart';
+import '../../data/salary_credit_schedule.dart';
 
 class LocalRowsSummary {
   const LocalRowsSummary({
@@ -31,6 +32,7 @@ class ProfileHeaderCard extends StatelessWidget {
     required this.name,
     required this.monthlySalary,
     required this.salaryCreditDay,
+    required this.salaryCreditRule,
     required this.companyName,
     required this.onEdit,
     required this.onRedoOnboarding,
@@ -39,6 +41,7 @@ class ProfileHeaderCard extends StatelessWidget {
   final String? name;
   final double? monthlySalary;
   final int? salaryCreditDay;
+  final String? salaryCreditRule;
   final String? companyName;
   final VoidCallback onEdit;
   final VoidCallback onRedoOnboarding;
@@ -50,6 +53,10 @@ class ProfileHeaderCard extends StatelessWidget {
     final hasName = trimmedName != null && trimmedName.isNotEmpty;
     final trimmedCompany = companyName?.trim();
     final hasCompany = trimmedCompany != null && trimmedCompany.isNotEmpty;
+    final salarySchedule = SalaryCreditSchedule.fromStorage(
+      salaryCreditDay: salaryCreditDay,
+      salaryCreditRule: salaryCreditRule,
+    );
     return FinarcCard(
       gradient: LinearGradient(
         begin: Alignment.topLeft,
@@ -108,8 +115,8 @@ class ProfileHeaderCard extends StatelessWidget {
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           Text(
-            salaryCreditDay != null
-                ? 'Salary credit day: $salaryCreditDay'
+            salarySchedule != null
+                ? 'Salary credit day: ${salarySchedule.profileLabel}'
                 : 'Salary credit day: Add salary day',
             style: Theme.of(context).textTheme.bodyMedium,
           ),

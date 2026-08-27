@@ -170,10 +170,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Keep background detection on'), findsOneWidget);
+    expect(find.text('Notification detection is ready'), findsOneWidget);
     expect(
       find.text(
-        'Enable Android notification access and SMS access so Finarc can keep checking transaction alerts even when the app is not open.',
+        'Finarc can detect payment notifications from your apps. Detected items are reviewed before saving.',
       ),
       findsOneWidget,
     );
@@ -198,14 +198,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('SMS ACCESS DISABLED'), findsOneWidget);
+    expect(find.text('SMS permission granted'), findsOneWidget);
     expect(find.text('SMS NOT AVAILABLE IN THIS BUILD'), findsNothing);
     expect(
       find.text('SMS reading is not available in this build.'),
       findsNothing,
     );
     final enableSmsButton = tester.widget<FilledButton>(
-      find.widgetWithText(FilledButton, 'Enable SMS Access'),
+      find.widgetWithText(FilledButton, 'Manage permissions'),
     );
     expect(enableSmsButton.onPressed, isNotNull);
   });
@@ -225,14 +225,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Android access required'), findsOneWidget);
+    expect(find.text('Set up notification detection'), findsOneWidget);
     expect(find.text('Detection enabled'), findsOneWidget);
     expect(find.text('Show local detection notifications'), findsOneWidget);
     expect(find.text('UPI/payment app notifications'), findsOneWidget);
     expect(find.text('SMS is unavailable in this build.'), findsNothing);
     expect(
       find.text(
-        'UPI/payment app notifications can improve detection but may create duplicates. Turn this on if you expect Google Pay, PhonePe, Paytm, Amazon Pay, or CRED app notifications to be parsed.',
+        'Improve detection for Google Pay, PhonePe, Paytm, Amazon Pay, CRED and similar apps.',
       ),
       findsOneWidget,
     );

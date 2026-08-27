@@ -9,6 +9,7 @@ import '../../analytics/data/analytics_providers.dart';
 import '../../expenses/data/expenses_providers.dart';
 import '../../loans/data/loan_service.dart';
 import '../../pending/data/pending_providers.dart';
+import '../../profile/data/salary_credit_schedule.dart';
 import '../../recoverables/data/recoverables_service.dart';
 import '../../split/data/split_service.dart';
 import 'net_worth_service.dart';
@@ -143,7 +144,10 @@ final dashboardProvider = FutureProvider<DashboardSnapshot>((ref) async {
     allTxns,
     cards: cards,
     bills: bills,
-    salaryCreditDay: settings?.salaryCreditDay,
+    salaryCreditSchedule: SalaryCreditSchedule.fromStorage(
+      salaryCreditDay: settings?.salaryCreditDay,
+      salaryCreditRule: settings?.salaryCreditRule,
+    ),
     now: now,
   );
   final monthlySpends = monthlySpendTrend.isEmpty
@@ -184,7 +188,7 @@ List<MonthlySpendPoint> _buildMonthlySpendTrend(
   List<Transaction> transactions, {
   required List<CreditCard> cards,
   required List<CardBill> bills,
-  required int? salaryCreditDay,
+  required SalaryCreditSchedule? salaryCreditSchedule,
   required DateTime now,
 }) {
   final currentMonth = DateTime(now.year, now.month);
@@ -207,7 +211,7 @@ List<MonthlySpendPoint> _buildMonthlySpendTrend(
         txn,
         cardsById: cardsById,
         billsById: billsById,
-        salaryCreditDay: salaryCreditDay,
+        salaryCreditSchedule: salaryCreditSchedule,
       );
       final key = _monthKey(bucket);
       if (totals.containsKey(key)) {
@@ -251,7 +255,7 @@ DateTime _spendBucketMonth(
   Transaction txn, {
   required Map<int, CreditCard> cardsById,
   required Map<int, CardBill> billsById,
-  required int? salaryCreditDay,
+  required SalaryCreditSchedule? salaryCreditSchedule,
 }) {
   if (txn.paymentSourceType == 'creditCard') {
     final linkedBill = txn.cardBillId == null
@@ -272,14 +276,17 @@ DateTime _spendBucketMonth(
 
   final cycleMonth = _salaryCycleMonth(
     txn.transactionDate,
-    salaryCreditDay: salaryCreditDay,
+    salaryCreditSchedule: salaryCreditSchedule,
   );
   return DateTime(cycleMonth.year, cycleMonth.month);
 }
 
-DateTime _salaryCycleMonth(DateTime date, {required int? salaryCreditDay}) {
-  if (salaryCreditDay == null) return DateTime(date.year, date.month);
-  final safeDay = _safeDay(date.year, date.month, salaryCreditDay).day;
+DateTime _salaryCycleMonth(
+  DateTime date, {
+  required SalaryCreditSchedule? salaryCreditSchedule,
+}) {
+  if (salaryCreditSchedule == null) return DateTime(date.year, date.month);
+  final safeDay = salaryCreditSchedule.resolveDay(date.year, date.month);
   if (date.day < safeDay) {
     return DateTime(date.year, date.month - 1);
   }

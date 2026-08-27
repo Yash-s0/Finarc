@@ -12,6 +12,7 @@ import 'package:finarc/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:finarc/features/dashboard/presentation/widgets/dashboard_sections.dart';
 import 'package:finarc/features/onboarding/data/onboarding_providers.dart';
 import 'package:finarc/features/onboarding/data/onboarding_service.dart';
+import 'package:finarc/features/profile/data/salary_credit_schedule.dart';
 import 'package:finarc/features/pending/notifications/notification_providers.dart';
 import 'package:finarc/features/profile/data/profile_settings_service.dart';
 import 'package:finarc/features/profile/data/profile_settings_providers.dart';
@@ -53,7 +54,61 @@ void main() {
     final row = await db.select(db.appSettings).getSingle();
     expect(row.monthlySalary, 78000);
     expect(row.salaryCreditDay, 7);
+    expect(row.salaryCreditRule, isNull);
     expect(row.companyName, 'Finarc Labs');
+  });
+
+  test('semantic last salary day resolves per month', () {
+    const schedule = SalaryCreditSchedule.lastDayOfMonth();
+
+    expect(schedule.resolveDay(2026, 8), 31);
+    expect(schedule.resolveDay(2026, 4), 30);
+    expect(schedule.resolveDay(2027, 2), 28);
+    expect(schedule.resolveDay(2028, 2), 29);
+  });
+
+  test('fixed salary day 31 remains a fixed legacy day', () {
+    const schedule = SalaryCreditSchedule.fixedDay(31);
+
+    expect(schedule.resolveDay(2026, 8), 31);
+    expect(schedule.resolveDay(2026, 4), 30);
+    expect(schedule.resolveDay(2027, 2), 28);
+    expect(schedule.displayLabel, '31');
+  });
+
+  test('semantic salary day storage does not use fixed 31', () async {
+    final service = OnboardingService(db);
+
+    await service.setCompleted(
+      true,
+      userName: 'Yash',
+      salaryCreditRule: 'lastDayOfMonth',
+    );
+
+    final row = await db.select(db.appSettings).getSingle();
+    expect(row.salaryCreditDay, isNull);
+    expect(row.salaryCreditRule, 'lastDayOfMonth');
+
+    final schedule = SalaryCreditSchedule.fromStorage(
+      salaryCreditDay: row.salaryCreditDay,
+      salaryCreditRule: row.salaryCreditRule,
+    );
+    expect(schedule?.rule, SalaryCreditRule.lastDayOfMonth);
+    expect(schedule?.profileLabel, 'Last day of month');
+  });
+
+  test('onboarding blocks mixed semantic and fixed salary schedule', () async {
+    final service = OnboardingService(db);
+
+    expect(
+      () => service.setCompleted(
+        true,
+        userName: 'Yash',
+        salaryCreditDay: 31,
+        salaryCreditRule: 'lastDayOfMonth',
+      ),
+      throwsArgumentError,
+    );
   });
 
   test('skip optional fields works in onboarding', () async {
@@ -132,6 +187,30 @@ void main() {
       ),
       throwsArgumentError,
     );
+  });
+
+  test('profile save preserves fixed and semantic salary schedules', () async {
+    final service = ProfileSettingsService(db);
+
+    await service.save(
+      const UserProfileSettings(name: 'Alex', salaryCreditDay: 31),
+    );
+    var loaded = await service.load();
+    expect(loaded.salaryCreditDay, 31);
+    expect(loaded.salaryCreditRule, isNull);
+    expect(loaded.salaryCreditSchedule?.rule, SalaryCreditRule.fixedDay);
+    expect(loaded.salaryCreditSchedule?.profileLabel, '31');
+
+    await service.save(
+      const UserProfileSettings(
+        name: 'Alex',
+        salaryCreditRule: 'lastDayOfMonth',
+      ),
+    );
+    loaded = await service.load();
+    expect(loaded.salaryCreditDay, isNull);
+    expect(loaded.salaryCreditRule, 'lastDayOfMonth');
+    expect(loaded.salaryCreditSchedule?.resolveDay(2028, 2), 29);
   });
 
   test(
@@ -334,10 +413,10 @@ void main() {
       find.widgetWithText(TextFormField, 'Monthly Salary'),
       '75000',
     );
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Salary Credit Day'),
-      '7',
-    );
+    await tester.tap(find.text('Select day (1 - 31)'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('7'));
+    await tester.pumpAndSettle();
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Company Name'),
       'Acme Corp',

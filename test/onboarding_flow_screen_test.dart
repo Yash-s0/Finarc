@@ -140,7 +140,7 @@ void main() {
 
     await pumpOnboarding(tester);
 
-    expect(find.text('Private by default'), findsOneWidget);
+    expect(find.text('Your data, your device'), findsOneWidget);
     expect(find.text('Stored locally'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
@@ -148,7 +148,7 @@ void main() {
       'Add your first account',
       'Detect transactions automatically',
       'Personalize your insights',
-      'You are ready to go',
+      "You're ready to go!",
     ]) {
       await tapNext(tester);
       expect(find.text(title), findsOneWidget);
@@ -170,9 +170,7 @@ void main() {
     expect(find.text('App notifications'), findsOneWidget);
     expect(find.text('Set up'), findsWidgets);
     expect(
-      find.text(
-        'Detect payment notifications in the background and queue them for review.',
-      ),
+      find.text('Detect payment notifications in the background.'),
       findsOneWidget,
     );
     expect(find.text('SMS setup unavailable in this build'), findsNothing);
@@ -229,7 +227,7 @@ void main() {
     expect(find.text('Personalize your insights'), findsOneWidget);
 
     await tapNext(tester);
-    expect(find.text('You are ready to go'), findsOneWidget);
+    expect(find.text("You're ready to go!"), findsOneWidget);
 
     await tester.tap(find.text('Start using Finarc'));
     await tester.pumpAndSettle();
@@ -246,7 +244,7 @@ void main() {
 
     await advanceToProfileStep(tester);
     await tapNext(tester);
-    expect(find.text('You are ready to go'), findsOneWidget);
+    expect(find.text("You're ready to go!"), findsOneWidget);
     expect(find.text('Go to Dashboard'), findsNothing);
     expect(find.text('Add first expense'), findsOneWidget);
     expect(find.text('Skip setup'), findsNothing);
@@ -259,6 +257,37 @@ void main() {
     expect(row.userName, isNull);
     expect(row.monthlySalary, isNull);
     expect(row.salaryCreditDay, isNull);
+    expect(row.salaryCreditRule, isNull);
+  });
+
+  testWidgets('profile salary credit picker saves semantic last day', (
+    tester,
+  ) async {
+    final db = await pumpRoutedOnboarding(tester);
+
+    await advanceToProfileStep(tester);
+    await tester.tap(find.text('Select day (1 - 31)'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Salary credit day'), findsWidgets);
+    expect(find.text('First day of month'), findsOneWidget);
+    expect(find.text('Last day of month'), findsOneWidget);
+    expect(find.text('31'), findsOneWidget);
+
+    await tester.tap(find.text('Last day of month'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Last day of month'), findsOneWidget);
+
+    await tapNext(tester);
+    expect(find.text("You're ready to go!"), findsOneWidget);
+
+    await tester.tap(find.text('Start using Finarc'));
+    await tester.pumpAndSettle();
+
+    final row = await db.select(db.appSettings).getSingle();
+    expect(row.salaryCreditDay, isNull);
+    expect(row.salaryCreditRule, 'lastDayOfMonth');
   });
 
   testWidgets('profile keyboard next moves through optional fields', (
@@ -270,9 +299,9 @@ void main() {
     await pumpOnboarding(tester);
     await advanceToProfileStep(tester);
 
-    await tester.tap(find.widgetWithText(TextFormField, 'Name (optional)'));
+    await tester.tap(find.widgetWithText(TextFormField, 'e.g. Yash Sharma'));
     await tester.enterText(
-      find.widgetWithText(TextFormField, 'Name (optional)'),
+      find.widgetWithText(TextFormField, 'e.g. Yash Sharma'),
       'Yash',
     );
     await tester.testTextInput.receiveAction(TextInputAction.next);
@@ -280,9 +309,7 @@ void main() {
     tester.testTextInput.enterText('120000');
     await tester.pump();
 
-    await tester.testTextInput.receiveAction(TextInputAction.next);
-    await tester.pump();
-    tester.testTextInput.enterText('5');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pump();
 
     final fieldValues = tester
@@ -290,7 +317,8 @@ void main() {
         .map((field) => field.controller.text)
         .toList(growable: false);
 
-    expect(fieldValues, containsAllInOrder(['Yash', '120000', '5']));
+    expect(fieldValues, containsAllInOrder(['Yash', '120000']));
+    expect(find.text('Select day (1 - 31)'), findsOneWidget);
   });
 
   testWidgets('privacy points are visible without extra expansion cards', (
@@ -300,13 +328,11 @@ void main() {
 
     expect(find.text('Stored locally'), findsOneWidget);
     expect(
-      find.text(
-        'Detected SMS and notifications become pending items before saving.',
-      ),
+      find.text('Detected items are reviewed before saving.'),
       findsOneWidget,
     );
     expect(
-      find.text('Use the app without a network connection.'),
+      find.text('Track your finances without an internet connection.'),
       findsOneWidget,
     );
   });
@@ -340,7 +366,7 @@ void main() {
       await tapNext(tester);
     }
 
-    expect(find.text('You are ready to go'), findsOneWidget);
+    expect(find.text("You're ready to go!"), findsOneWidget);
     expect(find.text('Go to Dashboard'), findsNothing);
     expect(find.text('Add first expense'), findsOneWidget);
     expect(find.text('Skip setup'), findsNothing);
@@ -509,7 +535,7 @@ void main() {
       expect(tester.takeException(), isNull);
       await tapNext(tester);
     }
-    expect(find.text('You are ready to go'), findsOneWidget);
+    expect(find.text("You're ready to go!"), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -519,10 +545,7 @@ void main() {
     await pumpOnboarding(tester);
     await advanceToProfileStep(tester);
 
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Monthly salary (optional)'),
-      '-10',
-    );
+    await tester.enterText(find.widgetWithText(TextFormField, '₹ 0'), '-10');
     await tester.tap(find.text('Next'));
     await tester.pumpAndSettle();
     expect(find.text('Monthly salary must be positive.'), findsOneWidget);
@@ -530,29 +553,9 @@ void main() {
     await tester.pump(const Duration(seconds: 4));
     await tester.pumpAndSettle();
 
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Monthly salary (optional)'),
-      '',
-    );
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Salary credit day (optional)'),
-      '32',
-    );
-    await tester.testTextInput.receiveAction(TextInputAction.done);
-    tester.testTextInput.hide();
-    FocusManager.instance.primaryFocus?.unfocus();
-    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextFormField, '₹ 0'), '');
     await tapNext(tester);
-    expect(find.text('Salary credit day must be 1 to 31.'), findsOneWidget);
-    await tester.pump(const Duration(seconds: 4));
-    await tester.pumpAndSettle();
-
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Salary credit day (optional)'),
-      '',
-    );
-    await tapNext(tester);
-    expect(find.text('You are ready to go'), findsOneWidget);
+    expect(find.text("You're ready to go!"), findsOneWidget);
   });
 
   testWidgets('onboarding prompts for app notifications and allows skip', (

@@ -1,19 +1,28 @@
 import 'package:drift/drift.dart';
 
 import '../../../core/database/app_database.dart';
+import 'salary_credit_schedule.dart';
 
 class UserProfileSettings {
   const UserProfileSettings({
     this.name,
     this.monthlySalary,
     this.salaryCreditDay,
+    this.salaryCreditRule,
     this.companyName,
   });
 
   final String? name;
   final double? monthlySalary;
   final int? salaryCreditDay;
+  final String? salaryCreditRule;
   final String? companyName;
+
+  SalaryCreditSchedule? get salaryCreditSchedule =>
+      SalaryCreditSchedule.fromStorage(
+        salaryCreditDay: salaryCreditDay,
+        salaryCreditRule: salaryCreditRule,
+      );
 
   String get effectiveGreetingName {
     final trimmed = name?.trim();
@@ -33,6 +42,7 @@ class ProfileSettingsService {
       name: row.userName,
       monthlySalary: row.monthlySalary,
       salaryCreditDay: row.salaryCreditDay,
+      salaryCreditRule: row.salaryCreditRule,
       companyName: row.companyName,
     );
   }
@@ -45,6 +55,13 @@ class ProfileSettingsService {
         (profile.salaryCreditDay! < 1 || profile.salaryCreditDay! > 31)) {
       throw ArgumentError('Salary credit day must be between 1 and 31');
     }
+    final salaryRule = SalaryCreditRule.fromStorage(profile.salaryCreditRule);
+    if (salaryRule != SalaryCreditRule.fixedDay &&
+        profile.salaryCreditDay != null) {
+      throw ArgumentError(
+        'Semantic salary credit rules must not store a fixed day',
+      );
+    }
     final row = await _ensureSettingsRow();
     await (_db.update(
       _db.appSettings,
@@ -53,6 +70,7 @@ class ProfileSettingsService {
         userName: Value(_normalize(profile.name)),
         monthlySalary: Value(profile.monthlySalary),
         salaryCreditDay: Value(profile.salaryCreditDay),
+        salaryCreditRule: Value(salaryRule.storageValue),
         companyName: Value(_normalize(profile.companyName)),
       ),
     );
