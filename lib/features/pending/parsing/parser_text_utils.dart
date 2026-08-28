@@ -323,10 +323,49 @@ class ParserTextUtils {
   }
 
   static bool looksLikeNonTransactionMessage(String text) {
-    return looksLikeNonExpenseCardMessage(text) ||
+    return looksLikeFuturePaymentNotice(text) ||
+        looksLikeNonExpenseCardMessage(text) ||
         looksLikeAutopayMandateSetupMessage(text) ||
         looksLikeCreditLimitOfferMessage(text) ||
         looksLikeInvestmentPromoMessage(text);
+  }
+
+  static bool looksLikeFuturePaymentNotice(String text) {
+    final lower = compactSpaces(text).toLowerCase();
+    if (lower.isEmpty) return false;
+
+    final hasFutureSignal = <RegExp>[
+      RegExp(r'\bwill\s+be\s+(?:auto[- ]?)?(?:debited|deducted|charged)\b'),
+      RegExp(r'\bwill\s+be\s+processed\b'),
+      RegExp(r'\bpayment\s+will\s+be\s+processed\b'),
+      RegExp(r'\bpayment\s+will\s+be\s+(?:auto[- ]?)?debited\b'),
+      RegExp(r'\bauto[- ]?debit\s+will\s+occur\b'),
+      RegExp(r'\bdue\s+to\s+be\s+(?:debited|deducted|charged)\b'),
+      RegExp(
+        r'\b(?:auto[- ]?pay|autopay|auto[- ]?debit|payment|debit|charge)\b.{0,80}\bscheduled\s+(?:for|on)\b',
+      ),
+      RegExp(
+        r'\bscheduled\s+(?:auto[- ]?pay|autopay|auto[- ]?debit|debit|payment|charge)\b',
+      ),
+      RegExp(r'\bautopay\s+scheduled\b'),
+      RegExp(r'\bupcoming\s+debit\b'),
+      RegExp(r'\bstanding\s+instruction\b'),
+    ].any((pattern) => pattern.hasMatch(lower));
+    if (!hasFutureSignal) return false;
+
+    final hasCompletedReceipt = <RegExp>[
+      RegExp(
+        r'\bhas\s+been\s+(?:successfully\s+)?(?:debited|deducted|charged)\b',
+      ),
+      RegExp(r'\bwas\s+(?:successfully\s+)?(?:debited|deducted|charged)\b'),
+      RegExp(
+        r'\b(?:auto[- ]?debit|autopay)[^.!?]{0,80}\bsuccess(?:ful|fully)?\b',
+      ),
+      RegExp(r'\b(?:spent|purchase(?:d)?|paid|withdrawn)\b'),
+      RegExp(r'\btransaction\s+(?:was\s+)?successful\b'),
+    ].any((pattern) => pattern.hasMatch(lower));
+
+    return !hasCompletedReceipt;
   }
 
   static bool looksLikeInvestmentPromoMessage(String text) {

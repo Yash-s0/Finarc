@@ -30,12 +30,12 @@ class NotificationPayload {
   DateTime get captureTime => postTime ?? receivedAt;
 
   String get combinedText {
-    return [
+    return _dedupeTextParts([
       if (title != null && title!.trim().isNotEmpty) title!.trim(),
       if (body != null && body!.trim().isNotEmpty) body!.trim(),
       if (bigText != null && bigText!.trim().isNotEmpty) bigText!.trim(),
       if (subText != null && subText!.trim().isNotEmpty) subText!.trim(),
-    ].join(' ').trim();
+    ]).join(' ').trim();
   }
 
   factory NotificationPayload.fromMap(Map<dynamic, dynamic> map) {
@@ -60,4 +60,19 @@ class NotificationPayload {
       category: map['category'] as String?,
     );
   }
+}
+
+List<String> _dedupeTextParts(List<String> parts) {
+  final seen = <String>{};
+  final output = <String>[];
+  for (final part in parts) {
+    final normalized = part
+        .toLowerCase()
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    if (normalized.isEmpty || seen.contains(normalized)) continue;
+    seen.add(normalized);
+    output.add(part);
+  }
+  return output;
 }

@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 import '../../../core/database/app_database.dart';
 import '../data/pending_service.dart';
 import '../parsing/parser_models.dart';
+import '../parsing/parser_text_utils.dart';
 import '../parsing/pending_ingestion_service.dart';
 import 'card_bill_due_notification_service.dart';
 import 'card_payment_notification_service.dart';
@@ -117,6 +118,10 @@ class SmsIngestionService {
     final filterResult = _keywordFilter.evaluate(payload);
     if (!filterResult.accepted) {
       _log(payload, 'blocked-non-transaction-text');
+      return const [];
+    }
+    if (ParserTextUtils.looksLikeFuturePaymentNotice(payload.combinedText)) {
+      _log(payload, 'blocked-future-payment-notice');
       return const [];
     }
 

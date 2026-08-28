@@ -68,13 +68,28 @@ class ParserInput {
   DateTime get captureTime => postTime ?? receivedAt;
 
   String get fullText {
-    final parts = <String>[
+    final parts = _dedupeTextParts([
       if (notificationTitle != null && notificationTitle!.trim().isNotEmpty)
         notificationTitle!.trim(),
       if (notificationBody != null && notificationBody!.trim().isNotEmpty)
         notificationBody!.trim(),
       rawText.trim(),
-    ];
+    ]);
     return parts.join(' ').trim();
   }
+}
+
+List<String> _dedupeTextParts(List<String> parts) {
+  final seen = <String>{};
+  final output = <String>[];
+  for (final part in parts) {
+    final normalized = part
+        .toLowerCase()
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    if (normalized.isEmpty || seen.contains(normalized)) continue;
+    seen.add(normalized);
+    output.add(part);
+  }
+  return output;
 }

@@ -66,7 +66,7 @@ void main() {
       expect(find.text('Open Release Checklist'), findsNothing);
       expect(find.text('Notification Testing'), findsNothing);
       expect(
-        find.text('Made with love by Yash at ArcNest Labs'),
+        find.text('ArcNest Labs'),
         findsOneWidget,
       );
     },

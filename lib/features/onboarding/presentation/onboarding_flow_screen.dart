@@ -172,7 +172,6 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen>
         isLoading: _isFinishing,
         onStart: () => _finish(),
         onAddExpense: () => _finish(routeAfterComplete: '/expenses/add'),
-        onBack: _goBack,
       ),
     ];
 
@@ -193,21 +192,20 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen>
               children: pages,
             ),
           ),
-          if (_index != pages.length - 1)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                AppSpacing.xs,
-                AppSpacing.md,
-                AppSpacing.md,
-              ),
-              child: _CompactNavRow(
-                canGoBack: _index != 0,
-                isLoading: _isFinishing,
-                onBack: _goBack,
-                onNext: _onNext,
-              ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.xs,
+              AppSpacing.md,
+              AppSpacing.md,
             ),
+            child: _CompactNavRow(
+              canGoBack: _index != 0,
+              isLoading: _isFinishing,
+              onBack: _goBack,
+              onNext: _index == pages.length - 1 ? null : _onNext,
+            ),
+          ),
         ],
       ),
     );
@@ -1146,40 +1144,10 @@ class _SetupStatusCard extends StatelessWidget {
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final inlineAction = constraints.maxWidth >= 310;
           final action = _CompactOutlineButton(
             onPressed: onPressed,
             icon: Icons.arrow_forward_rounded,
             label: buttonLabel,
-          );
-          final body = Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
-                    FinarcStatusBadge(
-                      label: status,
-                      tone: statusTone,
-                      compact: true,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  description,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ],
-            ),
           );
 
           return Padding(
@@ -1192,26 +1160,33 @@ class _SetupStatusCard extends StatelessWidget {
                   children: [
                     _SmallIconTile(icon: icon),
                     const SizedBox(width: AppSpacing.sm),
-                    body,
-                    if (inlineAction) ...[
-                      const SizedBox(width: AppSpacing.sm),
-                      SizedBox(
-                        width: buttonLabel == 'Manage settings' ? 150 : 96,
-                        child: action,
+                    Expanded(
+                      child: Wrap(
+                        spacing: AppSpacing.xs,
+                        runSpacing: AppSpacing.xxs,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Text(
+                            title,
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                          FinarcStatusBadge(
+                            label: status,
+                            tone: statusTone,
+                            compact: true,
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ],
                 ),
-                if (!inlineAction) ...[
-                  const SizedBox(height: AppSpacing.xs),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 170),
-                      child: action,
-                    ),
-                  ),
-                ],
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  description,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Align(alignment: Alignment.centerRight, child: action),
               ],
             ),
           );
@@ -1419,13 +1394,11 @@ class _ReadyStep extends StatelessWidget {
     required this.isLoading,
     required this.onStart,
     required this.onAddExpense,
-    required this.onBack,
   });
 
   final bool isLoading;
   final VoidCallback onStart;
   final VoidCallback onAddExpense;
-  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -1472,15 +1445,6 @@ class _ReadyStep extends StatelessWidget {
           onPressed: isLoading ? null : onAddExpense,
           icon: Icons.add_rounded,
           label: 'Add first expense',
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: _TertiaryAction(
-            onPressed: isLoading ? null : onBack,
-            icon: Icons.arrow_back_rounded,
-            label: 'Back',
-          ),
         ),
       ],
     );
@@ -1783,29 +1747,41 @@ class _CompactNavRow extends StatelessWidget {
     required this.canGoBack,
     required this.isLoading,
     required this.onBack,
-    required this.onNext,
+    this.onNext,
   });
 
   final bool canGoBack;
   final bool isLoading;
   final VoidCallback onBack;
-  final VoidCallback onNext;
+  final VoidCallback? onNext;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 360;
+        final backButton = Expanded(
+          child: _CompactOutlineButton(
+            onPressed: canGoBack && !isLoading ? onBack : null,
+            icon: compact ? null : Icons.arrow_back_rounded,
+            leadingIcon: true,
+            label: 'Back',
+          ),
+        );
+
+        if (onNext == null) {
+          return Row(
+            children: [
+              backButton,
+              const SizedBox(width: AppSpacing.sm),
+              const Spacer(),
+            ],
+          );
+        }
+
         return Row(
           children: [
-            Expanded(
-              child: _CompactOutlineButton(
-                onPressed: canGoBack && !isLoading ? onBack : null,
-                icon: compact ? null : Icons.arrow_back_rounded,
-                leadingIcon: true,
-                label: 'Back',
-              ),
-            ),
+            backButton,
             const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: _CompactGradientButton(

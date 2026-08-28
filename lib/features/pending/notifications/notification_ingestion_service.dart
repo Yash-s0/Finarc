@@ -181,6 +181,20 @@ class NotificationIngestionService {
       return const [];
     }
 
+    if (ParserTextUtils.looksLikeFuturePaymentNotice(payload.combinedText)) {
+      _log(
+        payload,
+        decision: 'ignored',
+        reason: 'future-payment-notice',
+        parseResult: 'ignored-future-payment-notice',
+        providerName: filterResult.providerName,
+        senderFilterResult: filterResult.senderFilterResult,
+        amountCandidate: filterResult.amountCandidate,
+        blockedContext: filterResult.blockedContext,
+      );
+      return const [];
+    }
+
     final parserInput = ParserInput(
       rawText: _parserRawText(payload, isMessagingSmsNotification),
       sourceType: isMessagingSmsNotification

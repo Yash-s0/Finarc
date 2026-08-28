@@ -378,6 +378,41 @@ void main() {
     expect(row.hasCompletedOnboarding, true);
   });
 
+  testWidgets('final step uses footer back navigation only', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await pumpOnboarding(tester);
+    await advanceToProfileStep(tester);
+
+    final step4BackButton = find.widgetWithText(OutlinedButton, 'Back');
+    expect(step4BackButton, findsOneWidget);
+    final step4BackSize = tester.getSize(step4BackButton);
+
+    await tapNext(tester);
+
+    expect(find.text("You're ready to go!"), findsOneWidget);
+    expect(find.text('Start using Finarc'), findsOneWidget);
+    expect(find.text('Add first expense'), findsOneWidget);
+    expect(find.text('Next'), findsNothing);
+    expect(find.text('Back'), findsOneWidget);
+
+    final step5BackButton = find.widgetWithText(OutlinedButton, 'Back');
+    expect(tester.getSize(step5BackButton).width, step4BackSize.width);
+
+    final startTop = tester
+        .getTopLeft(find.widgetWithText(FilledButton, 'Start using Finarc'))
+        .dy;
+    final addTop = tester
+        .getTopLeft(find.widgetWithText(OutlinedButton, 'Add first expense'))
+        .dy;
+    final backTop = tester.getTopLeft(step5BackButton).dy;
+
+    expect(backTop, greaterThan(startTop));
+    expect(backTop, greaterThan(addTop));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('rapid final taps persist a single completed settings row', (
     tester,
   ) async {
@@ -406,8 +441,15 @@ void main() {
       await tapNext(tester);
     }
 
-    await tester.tap(find.text('Add first expense'));
-    await tester.tap(find.text('Add first expense'));
+    final addExpenseButton = find.widgetWithText(
+      OutlinedButton,
+      'Add first expense',
+    );
+    await tester.ensureVisible(addExpenseButton);
+    await tester.drag(find.byType(ListView).last, const Offset(0, -160));
+    await tester.pumpAndSettle();
+    await tester.tap(addExpenseButton.hitTestable());
+    await tester.tap(addExpenseButton.hitTestable());
     await tester.pumpAndSettle();
 
     expect(find.text('Add Expense'), findsOneWidget);

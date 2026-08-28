@@ -168,6 +168,26 @@ void main() {
       expect(input.rawText, contains('Rs.700.00'));
     });
 
+    test('sms payload text de-duplicates repeated expanded body', () {
+      final body =
+          'Dear Customer, the payment of Rs. 1694.07 for OpenAILLC will be auto debited via YES Bank Card XX1266 by 28/08/2026.';
+      final payload = NotificationPayload(
+        packageName: 'android.sms',
+        sourceType: 'sms',
+        receivedAt: DateTime(2026, 8, 28, 20, 19, 33),
+        sender: 'VM-YESBNK-S',
+        body: body,
+        bigText: body,
+      );
+      final input = smsService.toParserInput(payload);
+
+      expect(
+        RegExp('OpenAILLC').allMatches(payload.combinedText),
+        hasLength(1),
+      );
+      expect(RegExp('OpenAILLC').allMatches(input.fullText), hasLength(1));
+    });
+
     test('smsDetectionEnabled false prevents ingestion', () async {
       final disabledService = SmsIngestionService(
         database: db,
@@ -215,6 +235,54 @@ void main() {
       expect(row.rawText, contains('SWIGGY'));
       expect(notifier.showCount, 1);
     });
+
+    for (final body in const [
+      'Dear Customer, the payment of Rs. 1694.07 for OpenAILLC will be auto debited via YES Bank Card XX1266 by 28/08/2026. If you wish to deactivate the Auto-Pay facility, please login https://www.sihub.in/managesi/yesbank .T&C apply',
+      'Your card will be charged ₹999 tomorrow',
+      'Auto debit of ₹500 is scheduled for 30 Aug',
+    ]) {
+      test('future debit notice does not create pending: $body', () async {
+        final ids = await smsService.processSmsPayload(
+          NotificationPayload(
+            packageName: 'android.sms',
+            sourceType: 'sms',
+            receivedAt: DateTime(2026, 8, 28, 20, 19, 33),
+            sender: 'JD-YESBAK-S',
+            body: body,
+          ),
+        );
+
+        expect(ids, isEmpty);
+        expect(await db.select(db.pendingTransactions).get(), isEmpty);
+        expect(notifier.showCount, 0);
+      });
+    }
+
+    for (final caseData in const [
+      (body: '₹1694.07 has been debited from your card', amount: 1694.07),
+      (
+        body: 'Rs 1694.07 was debited via YES Bank Card XX1266',
+        amount: 1694.07,
+      ),
+      (body: 'You spent ₹1694.07 at OpenAILLC', amount: 1694.07),
+    ]) {
+      test('completed debit still creates pending: ${caseData.body}', () async {
+        final ids = await smsService.processSmsPayload(
+          NotificationPayload(
+            packageName: 'android.sms',
+            sourceType: 'sms',
+            receivedAt: DateTime(2026, 8, 28, 20, 19, 33),
+            sender: 'JD-YESBAK-S',
+            body: caseData.body,
+          ),
+        );
+
+        expect(ids, hasLength(1));
+        final rows = await db.select(db.pendingTransactions).get();
+        expect(rows, hasLength(1));
+        expect(rows.single.amount, caseData.amount);
+      });
+    }
 
     test(
       'direct Kotak CRED card payment SMS creates settlement pending',

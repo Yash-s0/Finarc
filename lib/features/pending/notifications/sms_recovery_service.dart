@@ -202,11 +202,13 @@ class SmsRecoveryService {
       );
     }
 
-    if (ParserTextUtils.looksLikeNonExpenseCardMessage(payload.combinedText)) {
+    if (ParserTextUtils.looksLikeNonTransactionMessage(payload.combinedText)) {
       return _blocked(
         previewId,
         payload,
-        'non-expense-card-message',
+        ParserTextUtils.looksLikeFuturePaymentNotice(payload.combinedText)
+            ? 'future-payment-notice'
+            : 'non-expense-card-message',
         SmsBackfillPreviewStatus.ignored,
       );
     }

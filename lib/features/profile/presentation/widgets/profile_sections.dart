@@ -1023,7 +1023,7 @@ class DeveloperSignatureFooter extends StatelessWidget {
       ),
       child: Center(
         child: Text(
-          'Made with love by Yash at ArcNest Labs',
+          'ArcNest Labs',
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.bodySmall,
         ),

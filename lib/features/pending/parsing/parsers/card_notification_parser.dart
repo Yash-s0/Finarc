@@ -125,7 +125,7 @@ class CardNotificationParser implements TransactionParser {
   }
 
   bool _isExcludedCardMessage(String text) {
-    return ParserTextUtils.looksLikeNonExpenseCardMessage(text);
+    return ParserTextUtils.looksLikeNonTransactionMessage(text);
   }
 
   bool _mentionsCard(String text) {

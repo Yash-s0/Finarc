@@ -92,71 +92,73 @@ class _SalaryCreditDayPickerSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        0,
-        AppSpacing.md,
-        MediaQuery.of(context).viewInsets.bottom + AppSpacing.lg,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Salary credit day',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          _SemanticChoice(
-            title: 'First day of month',
-            selected: value?.rule == SalaryCreditRule.firstDayOfMonth,
-            onTap: () => Navigator.of(
-              context,
-            ).pop(const SalaryCreditSchedule.firstDayOfMonth()),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          _SemanticChoice(
-            title: 'Last day of month',
-            selected: value?.rule == SalaryCreditRule.lastDayOfMonth,
-            onTap: () => Navigator.of(
-              context,
-            ).pop(const SalaryCreditSchedule.lastDayOfMonth()),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            'Choose a specific day',
-            style: Theme.of(
-              context,
-            ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: 31,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 7,
-              mainAxisSpacing: AppSpacing.xs,
-              crossAxisSpacing: AppSpacing.xs,
-              childAspectRatio: 1.12,
+    return SingleChildScrollView(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.md,
+          0,
+          AppSpacing.md,
+          MediaQuery.of(context).viewInsets.bottom + AppSpacing.lg,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Salary credit day',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
             ),
-            itemBuilder: (context, index) {
-              final day = index + 1;
-              return _DayChoice(
-                day: day,
-                selected:
-                    value?.rule == SalaryCreditRule.fixedDay &&
-                    value?.fixedDay == day,
-                onTap: () => Navigator.of(
-                  context,
-                ).pop(SalaryCreditSchedule.fixedDay(day)),
-              );
-            },
-          ),
-        ],
+            const SizedBox(height: AppSpacing.sm),
+            _SemanticChoice(
+              title: 'First day of month',
+              selected: value?.rule == SalaryCreditRule.firstDayOfMonth,
+              onTap: () => Navigator.of(
+                context,
+              ).pop(const SalaryCreditSchedule.firstDayOfMonth()),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            _SemanticChoice(
+              title: 'Last day of month',
+              selected: value?.rule == SalaryCreditRule.lastDayOfMonth,
+              onTap: () => Navigator.of(
+                context,
+              ).pop(const SalaryCreditSchedule.lastDayOfMonth()),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              'Choose a specific day',
+              style: Theme.of(
+                context,
+              ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: 31,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 7,
+                mainAxisSpacing: AppSpacing.xs,
+                crossAxisSpacing: AppSpacing.xs,
+                childAspectRatio: 1.12,
+              ),
+              itemBuilder: (context, index) {
+                final day = index + 1;
+                return _DayChoice(
+                  day: day,
+                  selected:
+                      value?.rule == SalaryCreditRule.fixedDay &&
+                      value?.fixedDay == day,
+                  onTap: () => Navigator.of(
+                    context,
+                  ).pop(SalaryCreditSchedule.fixedDay(day)),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
