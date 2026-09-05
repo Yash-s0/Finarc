@@ -1,13 +1,28 @@
 package com.yashsharma.finarc
 
 import android.app.Notification
+import android.content.ComponentName
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 
 class FinarcNotificationListenerService : NotificationListenerService() {
 
+    override fun onListenerConnected() {
+        super.onListenerConnected()
+        getSharedPreferences("finarc_notification_bridge", MODE_PRIVATE).edit()
+            .putBoolean("notification_listener_connected", true).apply()
+    }
+
+    override fun onListenerDisconnected() {
+        getSharedPreferences("finarc_notification_bridge", MODE_PRIVATE).edit()
+            .putBoolean("notification_listener_connected", false).apply()
+        requestRebind(ComponentName(this, FinarcNotificationListenerService::class.java))
+        super.onListenerDisconnected()
+    }
+
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         if (sbn == null) return
+        if (!NotificationBridge.isNotificationDetectionEnabled(applicationContext)) return
 
         if (sbn.packageName == packageName) return
         if (NotificationCapturePolicy.shouldIgnorePackage(sbn.packageName)) return

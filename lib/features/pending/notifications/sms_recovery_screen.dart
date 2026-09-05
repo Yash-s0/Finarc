@@ -79,7 +79,7 @@ class _SmsRecoveryScreenState extends ConsumerState<SmsRecoveryScreen> {
   Widget build(BuildContext context) {
     final smsAvailable =
         ref.watch(smsIngestionAvailableProvider).valueOrNull ?? false;
-    final smsPermission = ref.watch(smsPermissionStatusProvider);
+    final smsPermission = ref.watch(smsReadPermissionStatusProvider);
     final hasPermission = smsPermission.valueOrNull ?? false;
     final paymentSources = ref.watch(paymentSourcesProvider).valueOrNull;
     final sourceFilterOptions = _sourceFilterOptions(paymentSources);
@@ -100,7 +100,7 @@ class _SmsRecoveryScreenState extends ConsumerState<SmsRecoveryScreen> {
                 AppSpacing.md,
                 AppSpacing.md,
                 AppSpacing.md,
-                showImportActions ? AppSpacing.sm : AppSpacing.md,
+                showImportActions ? 156 : AppSpacing.md,
               ),
               children: [
                 const _SmsRecoveryIntro(),
@@ -350,19 +350,20 @@ class _SmsRecoveryScreenState extends ConsumerState<SmsRecoveryScreen> {
   Future<void> _requestPermission(BuildContext context) async {
     final granted = await ref
         .read(smsPermissionServiceProvider)
-        .requestPermission();
+        .requestReadPermission();
     await ref
         .read(detectionSettingsProvider.notifier)
         .applyChanges(smsPermissionAskedAt: DateTime.now());
-    ref.read(smsPermissionCachedProvider.notifier).state = granted;
-    ref.invalidate(smsPermissionStatusProvider);
+    ref.invalidate(smsReadPermissionStatusProvider);
     ref.invalidate(smsPermissionRationaleProvider);
     ref.invalidate(smsRuntimeDiagnosticsProvider);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          granted ? 'SMS permission enabled.' : 'SMS permission denied.',
+          granted
+              ? 'Past SMS access enabled.'
+              : 'Past SMS access permission denied.',
         ),
       ),
     );
@@ -485,9 +486,8 @@ class _SmsRecoveryScreenState extends ConsumerState<SmsRecoveryScreen> {
   Future<bool> _syncSmsPermissionCache() async {
     final granted = await ref
         .read(smsPermissionServiceProvider)
-        .isPermissionGranted();
-    ref.read(smsPermissionCachedProvider.notifier).state = granted;
-    ref.invalidate(smsPermissionStatusProvider);
+        .isReadPermissionGranted();
+    ref.invalidate(smsReadPermissionStatusProvider);
     return granted;
   }
 
@@ -531,7 +531,8 @@ class _SmsRecoveryScreenState extends ConsumerState<SmsRecoveryScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _SmsResultOverview(
-          totalCount: _transactionPreviews.length,
+          scannedCount: (_previews ?? const <SmsBackfillPreview>[]).length,
+          matchedCount: _transactionPreviews.length,
           importableCount: _allImportableCount,
           needsSourceCount: _statusCount(
             SmsBackfillPreviewStatus.sourceMissing,
@@ -781,34 +782,9 @@ class _SmsRecoveryIntro extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final muted = isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Recover past SMS', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: AppSpacing.xs),
-        Text(
-          'Scan recent SMS for transaction-like messages. Review everything before anything is added to Finarc.',
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        Row(
-          children: [
-            Icon(Icons.lock_outline, size: 16, color: muted),
-            const SizedBox(width: AppSpacing.xxs),
-            Expanded(
-              child: Text(
-                'Processed locally on this device.',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: muted),
-              ),
-            ),
-          ],
-        ),
-      ],
+    return Text(
+      'Recover past SMS',
+      style: Theme.of(context).textTheme.titleLarge,
     );
   }
 }
@@ -877,7 +853,8 @@ class _SmsRecoveryStateCard extends StatelessWidget {
 
 class _SmsResultOverview extends StatelessWidget {
   const _SmsResultOverview({
-    required this.totalCount,
+    required this.scannedCount,
+    required this.matchedCount,
     required this.importableCount,
     required this.needsSourceCount,
     required this.duplicateCount,
@@ -885,7 +862,8 @@ class _SmsResultOverview extends StatelessWidget {
     required this.ignoredCount,
   });
 
-  final int totalCount;
+  final int scannedCount;
+  final int matchedCount;
   final int importableCount;
   final int needsSourceCount;
   final int duplicateCount;
@@ -894,14 +872,6 @@ class _SmsResultOverview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final details = <String>[
-      '$importableCount importable',
-      if (needsSourceCount > 0) '$needsSourceCount need source',
-      if (duplicateCount > 0) '$duplicateCount duplicates',
-      if (importedCount > 0) '$importedCount imported',
-      if (ignoredCount > 0) '$ignoredCount ignored',
-    ];
-
     return FinarcCard(
       padding: const EdgeInsets.all(AppSpacing.sm),
       useShadow: false,
@@ -915,12 +885,14 @@ class _SmsResultOverview extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '$totalCount ${totalCount == 1 ? 'message' : 'messages'} found',
+                  '$scannedCount SMS scanned',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: AppSpacing.xxs),
                 Text(
-                  details.join(' • '),
+                  '$matchedCount transaction-like matches\n'
+                  '$importableCount ready • $needsSourceCount need source • '
+                  '$duplicateCount duplicates\n$ignoredCount non-transaction SMS ignored',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
@@ -955,7 +927,7 @@ class _SmsSelectionToolbar extends StatelessWidget {
       children: [
         Expanded(
           child: Text(
-            '$visibleImportableCount importable of $totalVisibleCount $label',
+            '$visibleImportableCount ready to import',
             style: Theme.of(context).textTheme.labelLarge,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -1008,30 +980,17 @@ class _SmsImportActions extends StatelessWidget {
           ),
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final compact = constraints.maxWidth < 360;
               final selectedButton = FinarcPrimaryButton(
                 onPressed: importing ? null : onImportSelected,
                 isLoading: importing && selectedCount > 0,
                 icon: Icons.playlist_add_check_outlined,
-                label: 'Add selected ($selectedCount)',
+                label: 'Import selected ($selectedCount)',
               );
               final allButton = FinarcSecondaryButton(
                 onPressed: importing ? null : onImportAll,
                 icon: Icons.download_done_outlined,
-                label: 'Add all importable ($importableCount)',
+                label: 'Import all ($importableCount)',
               );
-
-              if (compact) {
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    selectedButton,
-                    const SizedBox(height: AppSpacing.xs),
-                    allButton,
-                  ],
-                );
-              }
-
               return Row(
                 children: [
                   Expanded(child: selectedButton),
@@ -1116,7 +1075,7 @@ class _PermissionCard extends StatelessWidget {
           FinarcPrimaryButton(
             onPressed: onEnable,
             icon: Icons.sms_outlined,
-            label: 'Enable SMS Access',
+            label: 'Preview past SMS',
           ),
           const SizedBox(height: AppSpacing.xs),
           FinarcSecondaryButton(
@@ -1374,18 +1333,17 @@ class _SmsPreviewTile extends StatelessWidget {
   }
 
   String _sourceLabel(SmsBackfillPreview preview) {
-    final parser = preview.parserName ?? 'SMS';
     switch (preview.paymentSourceType) {
       case PaymentSourceType.creditCard:
-        return 'Card • $parser';
+        return 'Card SMS';
       case PaymentSourceType.bank:
-        return 'Bank • $parser';
+        return 'Bank SMS';
       case PaymentSourceType.cash:
-        return 'Cash • $parser';
+        return 'Cash SMS';
       case PaymentSourceType.upi:
-        return 'UPI • $parser';
+        return 'UPI SMS';
       default:
-        return '${preview.sender} • $parser';
+        return 'Unknown source';
     }
   }
 }

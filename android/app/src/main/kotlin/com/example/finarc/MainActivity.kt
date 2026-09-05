@@ -116,6 +116,19 @@ class MainActivity : FlutterActivity() {
                     }
                     result.success(drained)
                 }
+                "acknowledgeCapturedNotifications" -> {
+                    val ids = call.argument<List<String>>("eventIds") ?: emptyList()
+                    NotificationBridge.acknowledgeQueue(applicationContext, ids)
+                    result.success(true)
+                }
+                "setNativeDetectionSettings" -> {
+                    NotificationBridge.setDetectionSettings(
+                        applicationContext,
+                        call.argument<Boolean>("smsDetectionEnabled") ?: false,
+                        call.argument<Boolean>("notificationDetectionEnabled") ?: false,
+                    )
+                    result.success(true)
+                }
 
                 "showDetectionNotification" -> {
                     val title = call.argument<String>("title") ?: "Transaction detected"

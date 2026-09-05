@@ -69,7 +69,13 @@ final smsPermissionServiceProvider = Provider<SmsPermissionService>((ref) {
 final smsPermissionStatusProvider = FutureProvider<bool>((ref) async {
   final ingestionEnabled = await ref.read(smsIngestionAvailableProvider.future);
   if (!ingestionEnabled) return false;
-  return ref.read(smsPermissionServiceProvider).isPermissionGranted();
+  return ref.read(smsPermissionServiceProvider).isReceivePermissionGranted();
+});
+
+final smsReadPermissionStatusProvider = FutureProvider<bool>((ref) async {
+  final ingestionEnabled = await ref.read(smsIngestionAvailableProvider.future);
+  if (!ingestionEnabled) return false;
+  return ref.read(smsPermissionServiceProvider).isReadPermissionGranted();
 });
 
 final smsReceiverAvailableProvider = FutureProvider<bool>((ref) async {
@@ -127,7 +133,11 @@ final detectionSettingsServiceProvider = Provider<DetectionSettingsService>((
 class DetectionSettingsController extends AsyncNotifier<DetectionSettings> {
   @override
   Future<DetectionSettings> build() async {
-    return ref.read(detectionSettingsServiceProvider).load();
+    final settings = await ref.read(detectionSettingsServiceProvider).load();
+    await ref
+        .read(detectionSettingsServiceProvider)
+        .syncNativeSettings(settings);
+    return settings;
   }
 
   Future<void> applyChanges({
@@ -607,7 +617,7 @@ final notificationListenerBootstrapProvider = Provider<void>((ref) {
     }
     final granted = await ref
         .read(smsPermissionServiceProvider)
-        .isPermissionGranted();
+        .isReceivePermissionGranted();
     ref.read(smsPermissionCachedProvider.notifier).state = granted;
   }
 
@@ -621,7 +631,7 @@ final notificationListenerBootstrapProvider = Provider<void>((ref) {
     if (!settings.smsDetectionEnabled || !settings.smsBackfillEnabled) return;
     final granted = await ref
         .read(smsPermissionServiceProvider)
-        .isPermissionGranted();
+        .isReadPermissionGranted();
     if (!granted) return;
 
     final now = DateTime.now();

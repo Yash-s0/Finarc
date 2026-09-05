@@ -14,6 +14,8 @@ interface IngestionPlatformBridge {
     fun isReceiverComponentEnabled(): Boolean
     fun getReceiverDiagnostics(): Map<String, Any?>
     fun requestPermission(result: MethodChannel.Result)
+    fun requestReadPermission(result: MethodChannel.Result)
+    fun requestReceivePermission(result: MethodChannel.Result)
     fun handleMethodCall(call: MethodCall, result: MethodChannel.Result): Boolean
     fun onRequestPermissionsResult(
         requestCode: Int,
@@ -40,6 +42,14 @@ private class NoOpIngestionPlatformBridge : IngestionPlatformBridge {
     override fun getReceiverDiagnostics(): Map<String, Any?> = emptyMap()
 
     override fun requestPermission(result: MethodChannel.Result) {
+        result.success(false)
+    }
+
+    override fun requestReadPermission(result: MethodChannel.Result) {
+        result.success(false)
+    }
+
+    override fun requestReceivePermission(result: MethodChannel.Result) {
         result.success(false)
     }
 

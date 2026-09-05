@@ -1,11 +1,14 @@
 package com.yashsharma.finarc
 
+import android.Manifest
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.provider.Telephony
 import android.telephony.SmsMessage
 import android.util.Log
+import androidx.core.content.ContextCompat
+import android.content.pm.PackageManager
 
 class FinarcSmsReceiver : BroadcastReceiver() {
     companion object {
@@ -19,6 +22,12 @@ class FinarcSmsReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
         if (intent == null || intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
         val appContext = context?.applicationContext ?: return
+        if (ContextCompat.checkSelfPermission(
+                appContext,
+                Manifest.permission.RECEIVE_SMS,
+        ) != PackageManager.PERMISSION_GRANTED
+        ) return
+        if (!NotificationBridge.isSmsDetectionEnabled(appContext)) return
 
         try {
             val messages: Array<SmsMessage> = Telephony.Sms.Intents.getMessagesFromIntent(intent)

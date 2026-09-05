@@ -94,6 +94,22 @@ void main() {
     expect(diagnostics.lastCallbackSuccessAt, isNotNull);
   });
 
+  test(
+    'capability-specific permission requests use separate channel actions',
+    () async {
+      final service = SmsPermissionService();
+
+      await service.requestReceivePermission();
+      expect(calls, contains('requestReceiveSmsPermission'));
+      expect(calls, isNot(contains('requestReadSmsPermission')));
+
+      calls.clear();
+      await service.requestReadPermission();
+      expect(calls, contains('requestReadSmsPermission'));
+      expect(calls, isNot(contains('requestReceiveSmsPermission')));
+    },
+  );
+
   test('previewRecentSms maps native rows', () async {
     final service = SmsPermissionService();
     final rows = await service.previewRecentSms(60);

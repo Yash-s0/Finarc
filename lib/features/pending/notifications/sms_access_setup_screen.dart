@@ -17,6 +17,7 @@ class SmsAccessSetupScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final smsPermission = ref.watch(smsPermissionStatusProvider);
+    final readSmsPermission = ref.watch(smsReadPermissionStatusProvider);
     final receiverEnabled = ref.watch(smsReceiverEnabledProvider);
     final permissionRationale = ref.watch(smsPermissionRationaleProvider);
     final runtimeDiagnostics = ref.watch(smsRuntimeDiagnosticsProvider);
@@ -36,6 +37,7 @@ class SmsAccessSetupScreen extends ConsumerWidget {
             final statusCard = _SmsStatusCard(
               isReady: hasSmsAccess,
               smsPermission: smsPermission,
+              readSmsPermission: readSmsPermission,
               receiverEnabled: receiverEnabled,
               smsIngestionAvailable: smsIngestionAvailable,
               permanentlyDenied:
@@ -55,23 +57,13 @@ class SmsAccessSetupScreen extends ConsumerWidget {
 
                 final granted = await ref
                     .read(smsPermissionServiceProvider)
-                    .requestPermission();
+                    .requestReceivePermission();
                 await ref
                     .read(detectionSettingsProvider.notifier)
                     .applyChanges(
                       smsPermissionAskedAt: DateTime.now(),
                       smsDetectionEnabled: granted,
-                      smsBackfillEnabled:
-                          granted || settings.smsBackfillEnabled,
                     );
-                if (granted) {
-                  await ref
-                      .read(smsPermissionServiceProvider)
-                      .scanRecentSms(settings.smsBackfillDays);
-                  await ref
-                      .read(detectionSettingsProvider.notifier)
-                      .applyChanges(smsLastScannedAt: DateTime.now());
-                }
                 ref.read(smsPermissionCachedProvider.notifier).state = granted;
                 ref.invalidate(smsPermissionStatusProvider);
                 ref.invalidate(smsPermissionRationaleProvider);
@@ -87,10 +79,27 @@ class SmsAccessSetupScreen extends ConsumerWidget {
               hasSmsAccess: hasSmsAccess,
               onDetectionChanged: (value) async {
                 if (value && !hasSmsAccess) {
+                  final granted = await ref
+                      .read(smsPermissionServiceProvider)
+                      .requestReceivePermission();
+                  await ref
+                      .read(detectionSettingsProvider.notifier)
+                      .applyChanges(
+                        smsPermissionAskedAt: DateTime.now(),
+                        smsDetectionEnabled: granted,
+                      );
+                  ref.read(smsPermissionCachedProvider.notifier).state =
+                      granted;
+                  ref.invalidate(smsPermissionStatusProvider);
+                  ref.invalidate(smsPermissionRationaleProvider);
+                  ref.invalidate(smsRuntimeDiagnosticsProvider);
+                  if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
+                    SnackBar(
                       content: Text(
-                        'Enable SMS permission before turning on SMS detection.',
+                        granted
+                            ? 'Incoming SMS detection enabled.'
+                            : 'Incoming SMS detection permission was denied.',
                       ),
                     ),
                   );
@@ -111,11 +120,15 @@ class SmsAccessSetupScreen extends ConsumerWidget {
                   : null,
               onQueueBackfill: () async {
                 if (!smsIngestionAvailable) return;
-                if (!hasSmsAccess) {
+                final hasReadAccess = await ref
+                    .read(smsPermissionServiceProvider)
+                    .isReadPermissionGranted();
+                if (!hasReadAccess) {
+                  if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text(
-                        'SMS permission is required before backfill.',
+                        'Past SMS access is required before backfill.',
                       ),
                     ),
                   );
@@ -131,6 +144,7 @@ class SmsAccessSetupScreen extends ConsumerWidget {
                       smsBackfillEnabled: true,
                     );
                 ref.invalidate(smsPermissionStatusProvider);
+                ref.invalidate(smsReadPermissionStatusProvider);
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -268,6 +282,7 @@ class _SmsStatusCard extends StatelessWidget {
   const _SmsStatusCard({
     required this.isReady,
     required this.smsPermission,
+    required this.readSmsPermission,
     required this.receiverEnabled,
     required this.smsIngestionAvailable,
     required this.permanentlyDenied,
@@ -276,6 +291,7 @@ class _SmsStatusCard extends StatelessWidget {
 
   final bool isReady;
   final AsyncValue<bool> smsPermission;
+  final AsyncValue<bool> readSmsPermission;
   final AsyncValue<bool> receiverEnabled;
   final bool smsIngestionAvailable;
   final bool permanentlyDenied;
@@ -301,15 +317,15 @@ class _SmsStatusCard extends StatelessWidget {
                   children: [
                     Text(
                       isReady
-                          ? 'SMS detection is ready'
-                          : 'Set up SMS detection',
+                          ? 'Incoming SMS detection is ready'
+                          : 'Set up incoming SMS detection',
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xxs),
                     Text(
-                      'Finarc can scan transaction SMS in the background and review them before adding to your ledger.',
+                      'Detect newly received bank, card, and UPI transaction messages and send them to your review queue.',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
@@ -320,8 +336,14 @@ class _SmsStatusCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           _statusLine(
             context,
-            label: 'SMS permission granted',
+            label: 'Incoming SMS detection',
             state: smsPermission,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          _statusLine(
+            context,
+            label: 'Past SMS import',
+            state: readSmsPermission,
           ),
           const SizedBox(height: AppSpacing.xs),
           _statusLine(
@@ -339,7 +361,7 @@ class _SmsStatusCard extends StatelessWidget {
           if (permanentlyDenied) ...[
             const SizedBox(height: AppSpacing.sm),
             Text(
-              'SMS permission appears permanently denied. Open app settings and allow SMS access.',
+              'Incoming SMS detection permission appears permanently denied. Open app settings to allow it.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -347,7 +369,7 @@ class _SmsStatusCard extends StatelessWidget {
           FinarcPrimaryButton(
             onPressed: onManagePermissions,
             icon: Icons.settings_outlined,
-            label: 'Manage permissions',
+            label: 'Enable incoming SMS detection',
           ),
         ],
       ),
@@ -445,13 +467,13 @@ class _SmsDetectionCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           _switchRow(
             context,
-            title: 'SMS detection enabled',
+            title: 'Incoming SMS detection',
             value: smsDetectionEnabled,
             onChanged: smsIngestionAvailable ? onDetectionChanged : null,
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            'Backfill',
+            'Past SMS import',
             style: Theme.of(
               context,
             ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
@@ -459,7 +481,7 @@ class _SmsDetectionCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           _switchRow(
             context,
-            title: 'SMS backfill enabled',
+            title: 'Keep import settings',
             value: smsBackfillEnabled,
             onChanged: smsIngestionAvailable ? onBackfillChanged : null,
           ),

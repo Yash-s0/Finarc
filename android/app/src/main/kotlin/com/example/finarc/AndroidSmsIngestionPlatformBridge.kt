@@ -16,7 +16,8 @@ class AndroidSmsIngestionPlatformBridge(
     private val activity: FlutterActivity,
 ) : IngestionPlatformBridge {
     companion object {
-        private const val SMS_PERMISSION_REQUEST_CODE = 7307
+        private const val READ_SMS_PERMISSION_REQUEST_CODE = 7307
+        private const val RECEIVE_SMS_PERMISSION_REQUEST_CODE = 7308
     }
 
     private var smsPermissionResult: MethodChannel.Result? = null
@@ -31,7 +32,6 @@ class AndroidSmsIngestionPlatformBridge(
     }
 
     override fun isReadPermissionGranted(): Boolean {
-        if (!isIngestionAvailable()) return false
         return ContextCompat.checkSelfPermission(
             activity,
             Manifest.permission.READ_SMS,
@@ -86,11 +86,35 @@ class AndroidSmsIngestionPlatformBridge(
     }
 
     override fun requestPermission(result: MethodChannel.Result) {
-        if (!isIngestionAvailable()) {
-            result.success(false)
-            return
-        }
-        if (isPermissionGranted()) {
+        // Legacy action; new callers use the capability-specific methods below.
+        requestReceivePermission(result)
+    }
+
+    override fun requestReadPermission(result: MethodChannel.Result) {
+        requestSinglePermission(
+            permission = Manifest.permission.READ_SMS,
+            requestCode = READ_SMS_PERMISSION_REQUEST_CODE,
+            isGranted = ::isReadPermissionGranted,
+            result = result,
+        )
+    }
+
+    override fun requestReceivePermission(result: MethodChannel.Result) {
+        requestSinglePermission(
+            permission = Manifest.permission.RECEIVE_SMS,
+            requestCode = RECEIVE_SMS_PERMISSION_REQUEST_CODE,
+            isGranted = ::isReceivePermissionGranted,
+            result = result,
+        )
+    }
+
+    private fun requestSinglePermission(
+        permission: String,
+        requestCode: Int,
+        isGranted: () -> Boolean,
+        result: MethodChannel.Result,
+    ) {
+        if (isGranted()) {
             result.success(true)
             return
         }
@@ -101,8 +125,8 @@ class AndroidSmsIngestionPlatformBridge(
 
         smsPermissionResult = result
         activity.requestPermissions(
-            arrayOf(Manifest.permission.READ_SMS, Manifest.permission.RECEIVE_SMS),
-            SMS_PERMISSION_REQUEST_CODE,
+            arrayOf(permission),
+            requestCode,
         )
     }
 
@@ -114,8 +138,7 @@ class AndroidSmsIngestionPlatformBridge(
     }
 
     private fun smsRowsBetween(fromMillis: Long, toMillis: Long): List<Map<String, Any?>> {
-        if (!isIngestionAvailable()) return emptyList()
-        if (!isPermissionGranted()) return emptyList()
+        if (!isReadPermissionGranted()) return emptyList()
 
         val startMillis = minOf(fromMillis, toMillis).coerceAtLeast(0L)
         val endMillis = maxOf(fromMillis, toMillis).coerceAtMost(System.currentTimeMillis())
@@ -207,6 +230,14 @@ class AndroidSmsIngestionPlatformBridge(
                 requestPermission(result)
                 true
             }
+            "requestReadSmsPermission" -> {
+                requestReadPermission(result)
+                true
+            }
+            "requestReceiveSmsPermission" -> {
+                requestReceivePermission(result)
+                true
+            }
             "scanRecentSms" -> {
                 val days = call.argument<Int>("days") ?: 7
                 result.success(scanRecentSms(days))
@@ -234,12 +265,21 @@ class AndroidSmsIngestionPlatformBridge(
         permissions: Array<out String>,
         grantResults: IntArray,
     ): Boolean {
-        if (requestCode != SMS_PERMISSION_REQUEST_CODE) {
+        if (requestCode != READ_SMS_PERMISSION_REQUEST_CODE &&
+            requestCode != RECEIVE_SMS_PERMISSION_REQUEST_CODE
+        ) {
             return false
         }
 
-        val granted = grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }
-        Log.d("FinarcMainActivity", "SMS permission result granted=$granted")
+        val requestedPermission = if (requestCode == READ_SMS_PERMISSION_REQUEST_CODE) {
+            Manifest.permission.READ_SMS
+        } else {
+            Manifest.permission.RECEIVE_SMS
+        }
+        val permissionIndex = permissions.indexOf(requestedPermission)
+        val granted = permissionIndex >= 0 &&
+            grantResults.getOrNull(permissionIndex) == PackageManager.PERMISSION_GRANTED
+        Log.d("FinarcMainActivity", "SMS permission result permission=$requestedPermission granted=$granted")
         smsPermissionResult?.success(granted)
         smsPermissionResult = null
         return true

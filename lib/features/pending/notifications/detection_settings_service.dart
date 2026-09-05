@@ -1,4 +1,6 @@
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 import '../../../core/database/app_database.dart';
 import 'detection_settings.dart';
@@ -7,10 +9,26 @@ class DetectionSettingsService {
   const DetectionSettingsService(this._db);
 
   final AppDatabase _db;
+  static const _nativeChannel = MethodChannel('finarc/notification_control');
 
   Future<DetectionSettings> load() async {
     final row = await _ensureSettingsRow();
     return _mapRow(row);
+  }
+
+  Future<void> syncNativeSettings(DetectionSettings settings) async {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      try {
+        await _nativeChannel.invokeMethod<void>('setNativeDetectionSettings', {
+          'smsDetectionEnabled': settings.smsDetectionEnabled,
+          'notificationDetectionEnabled': settings.notificationDetectionEnabled,
+        });
+      } on MissingPluginException {
+        return;
+      } on PlatformException {
+        return;
+      }
+    }
   }
 
   Future<void> save(DetectionSettings settings) async {
@@ -65,6 +83,7 @@ class DetectionSettingsService {
         ),
       ),
     );
+    await syncNativeSettings(settings);
   }
 
   Future<void> patch({

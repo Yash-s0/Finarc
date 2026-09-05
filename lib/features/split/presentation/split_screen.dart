@@ -17,6 +17,18 @@ class SplitScreen extends ConsumerWidget {
     return FinarcScaffold(
       appBar: FinarcAppBar(
         title: 'Split',
+        titleWidget: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Text('Split'),
+            SizedBox(width: AppSpacing.xs),
+            FinarcStatusBadge(
+              label: 'PREVIEW',
+              tone: FinarcStatusTone.warning,
+              compact: true,
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             onPressed: () => context.push('/split/groups/add'),
@@ -45,6 +57,11 @@ class SplitScreen extends ConsumerWidget {
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(AppSpacing.md),
               children: [
+                Text(
+                  'This feature is still under development and may change.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: AppSpacing.sm),
                 FinarcBalanceCard(
                   label: 'Net Split Balance',
                   value: inr(net),

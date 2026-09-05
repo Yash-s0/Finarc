@@ -155,7 +155,7 @@ final notificationListenerBootstrapProvider = Provider<void>((ref) {
     if (smsAvailable) {
       final smsGranted = await ref
           .read(smsPermissionServiceProvider)
-          .isPermissionGranted();
+          .isReceivePermissionGranted();
       ref.read(smsPermissionCachedProvider.notifier).state = smsGranted;
     }
 

@@ -217,9 +217,29 @@ class SmsPermissionService {
   }
 
   Future<bool> requestPermission() async {
+    return requestReceivePermission();
+  }
+
+  Future<bool> requestReadPermission() async {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return false;
     try {
-      final granted = await _channel.invokeMethod<bool>('requestSmsPermission');
+      final granted = await _channel.invokeMethod<bool>(
+        'requestReadSmsPermission',
+      );
+      return granted ?? false;
+    } on MissingPluginException {
+      return false;
+    } on PlatformException {
+      return false;
+    }
+  }
+
+  Future<bool> requestReceivePermission() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return false;
+    try {
+      final granted = await _channel.invokeMethod<bool>(
+        'requestReceiveSmsPermission',
+      );
       return granted ?? false;
     } on MissingPluginException {
       return false;

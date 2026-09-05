@@ -70,6 +70,12 @@ class NotificationBridge with WidgetsBindingObserver {
     if (event is! Map<dynamic, dynamic>) return;
     try {
       await _onPayload?.call(NotificationPayload.fromMap(event));
+      final id = event['nativeEventId'] as String?;
+      if (id != null) {
+        await _control.invokeMethod<void>('acknowledgeCapturedNotifications', {
+          'eventIds': [id],
+        });
+      }
     } catch (error, stackTrace) {
       FlutterError.reportError(
         FlutterErrorDetails(

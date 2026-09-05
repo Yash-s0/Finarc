@@ -23,7 +23,16 @@ class _FakeSmsPermissionService extends SmsPermissionService {
   Future<bool> isPermissionGranted() async => granted;
 
   @override
+  Future<bool> isReadPermissionGranted() async => granted;
+
+  @override
   Future<bool> requestPermission() async {
+    granted = true;
+    return true;
+  }
+
+  @override
+  Future<bool> requestReadPermission() async {
     granted = true;
     return true;
   }
@@ -108,6 +117,7 @@ void main() {
           appDatabaseProvider.overrideWithValue(db),
           smsIngestionAvailableProvider.overrideWith((ref) async => true),
           smsPermissionStatusProvider.overrideWith((ref) async => true),
+          smsReadPermissionStatusProvider.overrideWith((ref) async => true),
           smsPermissionServiceProvider.overrideWithValue(
             permissionService ?? _FakeSmsPermissionService(),
           ),
