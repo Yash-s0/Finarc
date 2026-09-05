@@ -1,19 +1,33 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/services.dart';
 
 import 'package:finarc/core/database/app_database.dart';
 import 'package:finarc/features/pending/notifications/detection_settings_service.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  const channel = MethodChannel('finarc/notification_control');
   late AppDatabase db;
   late DetectionSettingsService service;
+  Map<dynamic, dynamic>? nativeSettings;
 
   setUp(() {
+    nativeSettings = null;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          if (call.method == 'setNativeDetectionSettings') {
+            nativeSettings = call.arguments as Map<dynamic, dynamic>;
+          }
+          return null;
+        });
     db = AppDatabase(NativeDatabase.memory());
     service = DetectionSettingsService(db);
   });
 
   tearDown(() async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, null);
     await db.close();
   });
 
@@ -66,5 +80,9 @@ void main() {
     expect(updated.smsBackfillEnabled, isTrue);
     expect(updated.smsBackfillDays, 14);
     expect(updated.smsLastScannedAt, DateTime(2026, 5, 25, 8, 30));
+    expect(nativeSettings, {
+      'smsDetectionEnabled': true,
+      'notificationDetectionEnabled': false,
+    });
   });
 }

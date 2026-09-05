@@ -198,14 +198,15 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('SMS permission granted'), findsOneWidget);
+    expect(find.text('Incoming SMS detection'), findsNWidgets(2));
+    expect(find.text('Past SMS import'), findsOneWidget);
     expect(find.text('SMS NOT AVAILABLE IN THIS BUILD'), findsNothing);
     expect(
       find.text('SMS reading is not available in this build.'),
       findsNothing,
     );
     final enableSmsButton = tester.widget<FilledButton>(
-      find.widgetWithText(FilledButton, 'Manage permissions'),
+      find.widgetWithText(FilledButton, 'Enable incoming SMS detection'),
     );
     expect(enableSmsButton.onPressed, isNotNull);
   });

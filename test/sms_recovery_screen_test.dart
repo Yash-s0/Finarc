@@ -147,18 +147,11 @@ void main() {
     );
 
     expect(find.text('Recover past SMS'), findsOneWidget);
-    expect(
-      find.text(
-        'Scan recent SMS for transaction-like messages. Review everything before anything is added to Finarc.',
-      ),
-      findsOneWidget,
-    );
-    expect(find.text('Processed locally on this device.'), findsOneWidget);
+    expect(find.text('Recover past SMS'), findsOneWidget);
     expect(find.text('Preview first. Adds confirmed records.'), findsNothing);
     expect(find.text('No preview yet'), findsOneWidget);
     expect(find.text('Preview last 60 days'), findsOneWidget);
-    expect(find.textContaining('Add selected'), findsNothing);
-    expect(find.textContaining('Add all importable'), findsNothing);
+    expect(find.textContaining('Import selected'), findsNothing);
   });
 
   testWidgets('range selection updates preview button label', (tester) async {
@@ -232,10 +225,10 @@ void main() {
     await tester.tap(find.text('Preview last 60 days'));
     await tester.pumpAndSettle();
 
-    expect(find.text('2 messages found'), findsOneWidget);
-    expect(find.text('1 importable • 1 duplicates'), findsOneWidget);
-    expect(find.text('Add selected (1)'), findsOneWidget);
-    expect(find.text('Add all importable (1)'), findsOneWidget);
+    expect(find.text('2 SMS scanned'), findsOneWidget);
+    expect(find.textContaining('2 transaction-like matches'), findsOneWidget);
+    expect(find.text('Import selected (1)'), findsOneWidget);
+    expect(find.text('Import all (1)'), findsOneWidget);
     expect(find.text('RAW BODY SHOULD STAY OUT OF THE ROW'), findsNothing);
     expect(find.text('Amazon'), findsOneWidget);
     expect(find.text('OpenAI'), findsNothing);
@@ -246,7 +239,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final addSelected = tester.widget<FilledButton>(
-      find.widgetWithText(FilledButton, 'Add selected (0)'),
+      find.widgetWithText(FilledButton, 'Import selected (0)'),
     );
     expect(addSelected.onPressed, isNull);
 
@@ -283,7 +276,7 @@ void main() {
     await tester.drag(find.byType(ListView), const Offset(0, -260));
     await tester.pumpAndSettle();
 
-    expect(find.text('Add selected (1)'), findsOneWidget);
+    expect(find.text('Import selected (1)'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

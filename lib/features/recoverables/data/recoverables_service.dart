@@ -639,6 +639,13 @@ class RecoverablesService {
         item.billingState == RecoverableBillingState.needsReview) {
       return 0;
     }
+    if (item.paymentSourceType == PaymentSourceType.bank ||
+        item.paymentSourceType == PaymentSourceType.cash) {
+      return 1;
+    }
+    if (item.paymentSourceType == PaymentSourceType.creditCard) {
+      return 2;
+    }
     return 1;
   }
 
